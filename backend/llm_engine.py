@@ -67,7 +67,7 @@ def generate_scene_image(api_key, prompt):
     try:
         client = get_client(api_key)
         result = client.models.generate_images(
-            model='imagen-3.0-generate-001',
+            model='gemini-2.5-flash-image',
             prompt=f"Dark anime art style, Sword Art Online inspired, high quality, masterpiece. {prompt}",
             config=types.GenerateImagesConfig(
                 number_of_images=1,
