@@ -178,7 +178,7 @@ if prompt := st.chat_input("Action... (Type /admin to force an AI outcome)"):
                         f.write(image_bytes)
                     st.image(image_path, use_container_width=True)
                 elif img_error:
-                    st.error(f"🖼️ **Image API Error:** {img_error}")
+                    narrative += f"\n\n*(System Note: Image Generation Failed - {img_error})*"
             
     # Save to history & trigger Autosave
     new_msg = {
