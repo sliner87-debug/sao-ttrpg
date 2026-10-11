@@ -102,8 +102,19 @@ if "player" not in st.session_state:
             "max_hp": 100,
             "col": 0,
             "inventory": ["Iron Sword", "Bottled Water x2", "Mysterious USB Drive"],
-            "location": "The Safe-Zone: Yoyogi Park"
+            "location": "Sector 1 Safe-Zone: Washington Borough, NJ"
         }
+        
+    # Migration: Ensure new database keys exist for old save files
+    p = st.session_state.player
+    p.setdefault("race", "Unregistered Anomaly")
+    p.setdefault("class", "Pathless (Freeform)")
+    p.setdefault("stats", {"STR": 10, "DEX": 10, "CON": 10, "INT": 10, "WIS": 10, "CHA": 10})
+    p.setdefault("skills", [])
+    p.setdefault("spells", [])
+    p.setdefault("feats", [])
+    p.setdefault("racial_abilities", [])
+    p.setdefault("equipped", {"head": "None", "chest": "None", "main_hand": "None", "off_hand": "None", "accessory": "None"})
 
 if "messages" not in st.session_state:
     if saved_data:
@@ -130,9 +141,38 @@ with st.sidebar:
     st.write(f"**Col (Currency):** {player['col']} 🪙")
     
     st.divider()
-    st.subheader("🎒 Inventory")
-    for item in player["inventory"]:
-        st.write(f"- {item}")
+    
+    with st.expander("🧬 Character Build", expanded=False):
+        st.write(f"**Race:** {player['race']}")
+        st.write(f"**Class:** {player['class']}")
+        st.write("**Core Stats:**")
+        cols = st.columns(3)
+        cols[0].write(f"STR: {player['stats']['STR']}")
+        cols[1].write(f"DEX: {player['stats']['DEX']}")
+        cols[2].write(f"CON: {player['stats']['CON']}")
+        cols = st.columns(3)
+        cols[0].write(f"INT: {player['stats']['INT']}")
+        cols[1].write(f"WIS: {player['stats']['WIS']}")
+        cols[2].write(f"CHA: {player['stats']['CHA']}")
+        
+    with st.expander("⚔️ Equipped Gear & Abilities", expanded=False):
+        st.write("**Active Loadout:**")
+        st.write(f"- **Head:** {player['equipped']['head']}")
+        st.write(f"- **Chest:** {player['equipped']['chest']}")
+        st.write(f"- **Main:** {player['equipped']['main_hand']}")
+        st.write(f"- **Off:** {player['equipped']['off_hand']}")
+        st.write(f"- **Acc:** {player['equipped']['accessory']}")
+        
+        if player['racial_abilities']:
+            st.write("**Racial Traits:**")
+            for r in player['racial_abilities']: st.write(f"- {r}")
+        if player['skills'] or player['spells'] or player['feats']:
+            st.write("**Skills & Spells:**")
+            for s in player['skills'] + player['spells'] + player['feats']: st.write(f"- {s}")
+            
+    with st.expander("🎒 Backpack Inventory", expanded=False):
+        for item in player["inventory"]:
+            st.write(f"- {item}")
         
     st.divider()
     st.subheader("🗺️ World Data")
@@ -286,6 +326,30 @@ if prompt := (dev_prompt or chat_prompt):
                             if str(item_to_remove).lower() in existing_item.lower():
                                 st.session_state.player["inventory"].remove(existing_item)
                                 break
+                                
+                # Extended Character Sheet Crunch Updates
+                if state_updates.get("race"): st.session_state.player["race"] = state_updates["race"]
+                if state_updates.get("class"): st.session_state.player["class"] = state_updates["class"]
+                
+                stat_changes = state_updates.get("stat_changes") or {}
+                if isinstance(stat_changes, dict):
+                    for stat, change in stat_changes.items():
+                        if stat in st.session_state.player["stats"]:
+                            st.session_state.player["stats"][stat] += int(change)
+                            
+                equip = state_updates.get("equip") or {}
+                if isinstance(equip, dict):
+                    for slot, item in equip.items():
+                        if slot in st.session_state.player["equipped"]:
+                            st.session_state.player["equipped"][slot] = item
+                            
+                for k in ["skills_add", "spells_add", "feats_add", "racial_abilities_add"]:
+                    adds = state_updates.get(k) or []
+                    if isinstance(adds, list):
+                        target_list = k.replace("_add", "")
+                        for a in adds:
+                            if a not in st.session_state.player[target_list]:
+                                st.session_state.player[target_list].append(a)
             
             st.markdown(narrative)
             

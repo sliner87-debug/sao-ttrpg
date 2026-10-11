@@ -46,11 +46,12 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state):
     5. If the player investigates, reveal the hidden secrets organically.
     6. Maintain a grim, high-stakes anime tone. If the player takes damage, describe it viscerally.
     7. ROOT OVERRIDE: If the user input contains [ROOT OVERRIDE], you MUST suspend all game rules, bypass combat logic, and force the exact outcome the Administrator requested into the narrative seamlessly.
+    8. CRUNCH ARBITRATOR (THE SYSTEM): You actively manage the player's mechanical character sheet. When a player wants to create a custom Race/Class or learn new skills, you calculate its power level using a balanced "System Point" (SP) logic. If they ask for powerful abilities, balance it with Flaws. When in combat, you MUST roll the player's relevant stats (e.g. STR + Weapon Mod vs Enemy AC) internally and describe the outcome based on that math.
     
     Format your response EXACTLY as a JSON object with THREE keys:
-    - "narrative": The markdown formatted story/dialogue.
+    - "narrative": The markdown formatted story/dialogue. (If doing combat, briefly mention the stat roll).
     - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged man with a short beard and undercut hair, wearing a heavy black-iron chainmail hauberk and a massive synthetic dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a gaunt, exhausted young man with messy dark hair, wearing cracked glasses and a threadbare corporate hoodie, holding a glowing cyan digital clipboard.
-    - "state_updates": A JSON object containing any changes to the player's status based on the narrative. It must contain these keys: "location" (string, the current location if changed, else null), "inventory_add" (list of strings, items gained), "inventory_remove" (list of strings, items lost/consumed), "col_change" (integer, money gained or lost. e.g. -500 or 100), "hp_change" (integer, damage taken or healed. e.g. -15 or 50).
+    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location" (string), "inventory_add" (list of strings), "inventory_remove" (list of strings), "col_change" (int), "hp_change" (int), "race" (string), "class" (string), "stat_changes" (dict of stat: int, e.g. {"STR": 2}), "equip" (dict of slot: item_name, e.g. {"chest": "Einherjar Rig"}), "skills_add", "spells_add", "feats_add", "racial_abilities_add" (lists of strings).
     """
     
     # Convert Streamlit chat history to Gemini format (keeping last 6 messages for context)
