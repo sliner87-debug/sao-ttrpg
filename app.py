@@ -98,6 +98,7 @@ if "player" not in st.session_state:
         st.session_state.player = {
             "name": "TestSubject_01",
             "level": 1,
+            "xp": 0,
             "hp": 100,
             "max_hp": 100,
             "col": 0,
@@ -112,6 +113,7 @@ if "player" not in st.session_state:
 p = st.session_state.player
 p.setdefault("race", "Unregistered Anomaly")
 p.setdefault("class", "Pathless (Freeform)")
+p.setdefault("xp", 0)
 p.setdefault("stats", {"STR": 10, "DEX": 10, "CON": 10, "INT": 10, "WIS": 10, "CHA": 10})
 p.setdefault("skills", {})
 p.setdefault("spells", [])
@@ -177,8 +179,12 @@ with st.sidebar:
     hp_percent = max(0.0, min(1.0, player["hp"] / player["max_hp"]))
     st.progress(hp_percent, text=f"HP: {player['hp']} / {player['max_hp']}")
     
-    st.write(f"**Level:** {player['level']}")
-    st.write(f"**Col (Currency):** {player['col']} 🪙")
+    xp_max = player.get("level", 1) * 1000
+    xp_current = player.get("xp", 0)
+    xp_percent = max(0.0, min(1.0, xp_current / xp_max))
+    st.progress(xp_percent, text=f"XP: {xp_current} / {xp_max}")
+    
+    st.write(f"**Level:** {player['level']} | **Col:** {player['col']} 🪙")
     
     st.divider()
     
@@ -503,6 +509,27 @@ if prompt := (dev_prompt or chat_prompt):
                     try:
                         clean_hp = str(hp_change).replace(",", "").replace(" ", "")
                         st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + int(clean_hp)))
+                    except ValueError:
+                        pass
+                        
+                xp_change = state_updates.get("xp_change")
+                if xp_change:
+                    try:
+                        clean_xp = int(str(xp_change).replace(",", "").replace(" ", ""))
+                        if clean_xp > 0:
+                            st.session_state.player["xp"] += clean_xp
+                            st.toast(f"✨ Gained {clean_xp} XP!")
+                            
+                            # Level up loop
+                            while st.session_state.player["xp"] >= st.session_state.player["level"] * 1000:
+                                st.session_state.player["xp"] -= st.session_state.player["level"] * 1000
+                                st.session_state.player["level"] += 1
+                                st.session_state.player["max_hp"] += 25
+                                st.session_state.player["hp"] = st.session_state.player["max_hp"]
+                                for s in st.session_state.player["stats"]:
+                                    st.session_state.player["stats"][s] += 1
+                                st.balloons()
+                                st.success(f"🎉 **LEVEL UP!** You are now Level {st.session_state.player['level']}! Max HP and Core Stats increased!")
                     except ValueError:
                         pass
                 
