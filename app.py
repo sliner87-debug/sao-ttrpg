@@ -252,21 +252,31 @@ if prompt := (dev_prompt or chat_prompt):
             state_updates = turn_data.get("state_updates", {})
             
             # Apply State Updates
-            if state_updates:
-                if state_updates.get("location"):
-                    st.session_state.player["location"] = state_updates["location"]
-                if state_updates.get("col_change"):
-                    st.session_state.player["col"] += state_updates["col_change"]
-                if state_updates.get("hp_change"):
-                    st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + state_updates["hp_change"]))
+            if state_updates and isinstance(state_updates, dict):
+                loc = state_updates.get("location")
+                if loc and isinstance(loc, str):
+                    st.session_state.player["location"] = loc
+                    
+                col_change = state_updates.get("col_change")
+                if col_change and isinstance(col_change, (int, float)):
+                    st.session_state.player["col"] += int(col_change)
+                    
+                hp_change = state_updates.get("hp_change")
+                if hp_change and isinstance(hp_change, (int, float)):
+                    st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + int(hp_change)))
                 
-                for item in state_updates.get("inventory_add", []):
-                    st.session_state.player["inventory"].append(item)
-                for item_to_remove in state_updates.get("inventory_remove", []):
-                    for existing_item in st.session_state.player["inventory"][:]:
-                        if item_to_remove.lower() in existing_item.lower():
-                            st.session_state.player["inventory"].remove(existing_item)
-                            break
+                inv_add = state_updates.get("inventory_add") or []
+                if isinstance(inv_add, list):
+                    for item in inv_add:
+                        st.session_state.player["inventory"].append(str(item))
+                        
+                inv_remove = state_updates.get("inventory_remove") or []
+                if isinstance(inv_remove, list):
+                    for item_to_remove in inv_remove:
+                        for existing_item in st.session_state.player["inventory"][:]:
+                            if str(item_to_remove).lower() in existing_item.lower():
+                                st.session_state.player["inventory"].remove(existing_item)
+                                break
             
             st.markdown(narrative)
             
