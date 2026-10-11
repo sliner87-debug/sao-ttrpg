@@ -72,8 +72,7 @@ def generate_scene_image(api_key, prompt):
             config=types.GenerateContentConfig(
                 response_modalities=["IMAGE"],
                 image_config=types.ImageConfig(
-                    aspect_ratio="16:9",
-                    number_of_images=1
+                    aspect_ratio="16:9"
                 ),
             )
         )

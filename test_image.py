@@ -8,16 +8,28 @@ try:
     api_key = secrets.get("GEMINI_API_KEY")
 
     client = genai.Client(api_key=api_key)
-    print("Testing image generation...")
-    result = client.models.generate_images(
-        model='gemini-2.5-flash-image',
-        prompt="A test image of a futuristic sword",
-        config=types.GenerateImagesConfig(
-            number_of_images=1,
-            aspect_ratio="16:9"
+    print("Testing generate_content for image...")
+    response = client.models.generate_content(
+        model='gemini-3.1-flash-lite-image',
+        contents="A test image of a futuristic sword",
+        config=types.GenerateContentConfig(
+            response_modalities=["IMAGE"],
+            image_config=types.ImageConfig(
+                aspect_ratio="16:9"
+            ),
         )
     )
-    print("SUCCESS. Got bytes:", len(result.generated_images[0].image.image_bytes))
+    
+    success = False
+    for part in response.parts:
+        if part.inline_data:
+            print("SUCCESS. Got bytes:", len(part.inline_data.data))
+            success = True
+    
+    if not success:
+        print("NO IMAGE DATA FOUND IN RESPONSE.")
+        print(response)
+        
 except Exception as e:
     print("ERROR:")
     print(str(e))
