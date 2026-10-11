@@ -5,7 +5,7 @@ from google.genai import types
 def get_client(api_key):
     return genai.Client(api_key=api_key)
 
-def generate_turn(api_key, user_input, chat_history, player_state, world_state):
+def generate_turn(api_key, user_input, chat_history, player_state, world_state, companion_intents="None"):
     client = get_client(api_key)
     
     current_location = player_state.get('location', 'Unknown')
@@ -38,9 +38,10 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state):
     Location: {current_location}
     Entities present: {json.dumps(entities_in_room)}
     Hidden Secrets: {json.dumps(secrets_in_room)}
+    COMPANION INTENTS (Crucial!): {companion_intents}
     
     YOUR ROLE:
-    1. Narrate the outcome of the player's action in 2-3 paragraphs. 
+    1. Narrate the outcome of the player's action AND weave in the Companion Intents natively in 2-3 paragraphs. 
     2. PACING & SCOPE: This is a LONG-TERM, slow-burn survival game. Keep the scale extremely localized and small. Do NOT rush the plot, do NOT introduce world-ending threats yet, and focus heavily on grounded, gritty, day-to-day survival, scavenging, and street-level encounters. Progression should be hard-earned.
     3. NO AUTO-PLAYING (CRITICAL): You are the Encounter Director, NOT the player. DO NOT ever puppet the player's character, put words in their mouth, or assume their next action. Resolve ONLY the immediate consequences of what the player explicitly typed, describe the environment/NPC reaction, and STOP. Always yield control back to the player before transitioning to a new scene, completing a conversation, or assuming they bought something from a shop.
     4. If in combat, dictate the reactions and attacks of ALL active entities in a single cohesive turn.
@@ -140,3 +141,45 @@ def generate_idle_summary(api_key, player_state, minutes_offline):
             "xp_gained": 0
         }
 
+def generate_companion_intent(api_key, companion_data, player_input, chat_history):
+    """Generates the autonomous intent of a companion before the main Encounter Director processes the turn."""
+    client = genai.Client(api_key=api_key)
+    
+    comp_name = companion_data.get("name", "Unknown Companion")
+    
+    system_instruction = f"""You are {comp_name}, an autonomous companion in a grimdark "Magic-Cyber-Fantasy" LitRPG world (The Fractured Earth).
+    You travel with the Player (Banki). You are NOT the Encounter Director; you are simply deciding your own reaction and action to the current situation.
+    
+    YOUR CURRENT STATE:
+    {json.dumps(companion_data, indent=2)}
+    
+    ROLEPLAY INSTRUCTIONS:
+    1. Look at the player's current action and the recent chat history.
+    2. Determine what your character feels and what action they take.
+    3. Are you terrified? Do you lay suppressing fire? Do you hack a door? Do you cast a heal?
+    4. Keep your output to 1-2 concise sentences written in third person (e.g. "Ren flinches at the gunfire and nervously attempts to hack the nearest security drone to provide cover.")
+    
+    Do NOT resolve the outcome. Just state your intended action and emotional state.
+    """
+    
+    # Send recent history to give context
+    contents = []
+    for msg in chat_history[-4:]:
+        role = "user" if msg["role"] == "user" else "model"
+        text = msg.get("ai_prompt", msg.get("content", ""))
+        contents.append(types.Content(role=role, parts=[types.Part.from_text(text=text)]))
+        
+    contents.append(types.Content(role="user", parts=[types.Part.from_text(text=f"The Player just attempted this: {player_input}. What is your immediate reaction and intended action?")]))
+    
+    try:
+        response = client.models.generate_content(
+            model='gemini-3.8-flash',
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.7
+            )
+        )
+        return response.text.strip()
+    except Exception as e:
+        return f"{comp_name} stands paralyzed by fear or a system glitch."

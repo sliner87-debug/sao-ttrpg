@@ -115,6 +115,16 @@ p.setdefault("spells", [])
 p.setdefault("feats", [])
 p.setdefault("racial_abilities", [])
 p.setdefault("equipped", {"head": "None", "chest": "None", "main_hand": "None", "off_hand": "None", "accessory": "None"})
+p.setdefault("companions", {
+    "Ren": {
+        "name": "Ren",
+        "archetype": "Corporate Hacker / Magi-tech Support",
+        "hp": 40,
+        "max_hp": 40,
+        "status": "Exhausted but loyal",
+        "inventory": ["Cyan Digital Clipboard (Hacking Deck)", "Corporate Stun-Pistol"]
+    }
+})
 
 if "messages" not in st.session_state:
     if saved_data:
@@ -276,15 +286,34 @@ if prompt := (dev_prompt or chat_prompt):
         st.markdown(ui_text)
         
     with st.chat_message("system", avatar="👾"):
+        
+        # 1. Multi-Agent Companion Logic
+        companion_intents_str = "None"
+        companions = st.session_state.player.get("companions", {})
+        if companions:
+            with st.spinner("Synchronizing companion sub-routines..."):
+                intents = []
+                for comp_name, comp_data in companions.items():
+                    intent = llm_engine.generate_companion_intent(
+                        api_key=api_key,
+                        companion_data=comp_data,
+                        player_input=ai_prompt,
+                        chat_history=st.session_state.messages
+                    )
+                    intents.append(f"{comp_name}: {intent}")
+                    st.info(f"**[{comp_name}]** {intent}")
+                companion_intents_str = " | ".join(intents)
+                
         with st.spinner("The Cardinal System is generating the world..."):
             
-            # 1. Generate Narrative Text
+            # 2. Generate Narrative Text
             turn_data = llm_engine.generate_turn(
                 api_key=api_key,
                 user_input=ai_prompt,
                 chat_history=st.session_state.messages,
                 player_state=st.session_state.player,
-                world_state=world_state
+                world_state=world_state,
+                companion_intents=companion_intents_str
             )
             
             narrative = turn_data.get("narrative", "Error parsing narrative.")
