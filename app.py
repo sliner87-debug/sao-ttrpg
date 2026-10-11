@@ -194,25 +194,34 @@ with st.sidebar:
         cols[1].write(f"WIS: {player['stats']['WIS']}")
         cols[2].write(f"CHA: {player['stats']['CHA']}")
         
-    with st.expander("⚔️ Equipped Gear & Abilities", expanded=False):
-        st.write("**Active Loadout:**")
+    with st.expander("⚔️ Equipped Gear", expanded=False):
         st.write(f"- **Head:** {player['equipped']['head']}")
         st.write(f"- **Chest:** {player['equipped']['chest']}")
         st.write(f"- **Main:** {player['equipped']['main_hand']}")
         st.write(f"- **Off:** {player['equipped']['off_hand']}")
         st.write(f"- **Acc:** {player['equipped']['accessory']}")
         
+    with st.expander("✨ Skills, Spells & Feats", expanded=False):
         if player['racial_abilities']:
             st.write("**Racial Traits:**")
             for r in player['racial_abilities']: st.write(f"- {r}")
-        if player['skills'] or player['spells'] or player['feats']:
-            st.write("**Skills, Spells & Feats:**")
-            for s_name, s_data in player.get('skills', {}).items():
-                st.write(f"**{s_name}** ({s_data.get('mastery', 1)}/1000)")
-                st.progress(min(1.0, s_data.get('mastery', 1) / 1000.0))
-                st.caption(s_data.get('description', ''))
-            for s in player.get('spells', []) + player.get('feats', []):
-                st.write(f"- {s}")
+            st.divider()
+            
+        for s_name, s_data in player.get('skills', {}).items():
+            # Fallback in case of weird data structures
+            if isinstance(s_data, dict):
+                mastery = s_data.get('mastery', 1)
+                desc = s_data.get('description', '')
+            else:
+                mastery = 1
+                desc = str(s_data)
+                
+            st.write(f"**{s_name}** ({mastery}/1000)")
+            st.progress(min(1.0, mastery / 1000.0))
+            st.caption(desc)
+            
+        for s in player.get('spells', []) + player.get('feats', []):
+            st.write(f"- {s}")
             
     with st.expander("🎒 Backpack Inventory", expanded=False):
         rarity_colors = {"Common": "⚪", "Uncommon": "🟢", "Rare": "🔵", "Epic": "🟣", "Legendary": "🟠", "Mythic": "🔴", "Unique": "✨"}
