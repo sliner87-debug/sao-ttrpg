@@ -130,9 +130,10 @@ def generate_overlay(player_skills=None):
                 draw.line([px1, py1, px2, py2], fill=(255, 215, 0, 180), width=2)
 
     # 3. Draw Nodes
+    node_overrides = state.get("node_overrides", {})
     for key, node in NODES.items():
         px, py = node["x"] * PIXELS_PER_GRID, node["y"] * PIXELS_PER_GRID
-        color = node["color"]
+        color = node_overrides.get(key, node["color"])
         draw.ellipse([px - 6, py - 6, px + 6, py + 6], fill=color, outline="white", width=2)
         draw.text((px + 10, py - 10), node["label"], fill="white")
         

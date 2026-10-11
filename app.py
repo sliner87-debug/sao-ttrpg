@@ -435,15 +435,17 @@ if prompt := (dev_prompt or chat_prompt):
                     except ValueError:
                         pass
                         
-                # Handle Procedural Nodes
+                # Handle Procedural Nodes and Faction Overrides
                 discovered_nodes = state_updates.get("discovered_nodes", [])
+                node_updates = state_updates.get("node_updates", {})
                 
                 coord_x = state_updates.get("coord_x")
                 coord_y = state_updates.get("coord_y")
                 
-                if coord_x is not None or coord_y is not None or discovered_nodes:
+                if coord_x is not None or coord_y is not None or discovered_nodes or node_updates:
                     ms = map_engine.load_map_state()
                     if "dynamic_nodes" not in ms: ms["dynamic_nodes"] = []
+                    if "node_overrides" not in ms: ms["node_overrides"] = {}
                     
                     if coord_x is not None: ms["player_x"] = int(coord_x)
                     if coord_y is not None: ms["player_y"] = int(coord_y)
@@ -454,6 +456,10 @@ if prompt := (dev_prompt or chat_prompt):
                         for n in discovered_nodes:
                             if "name" in n and "x" in n and "y" in n:
                                 ms["dynamic_nodes"].append(n)
+                                
+                    if node_updates and isinstance(node_updates, dict):
+                        for n_key, color in node_updates.items():
+                            ms["node_overrides"][n_key] = color
                                 
                     map_engine.save_map_state(ms)
 
