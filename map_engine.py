@@ -158,6 +158,31 @@ def generate_overlay(player_skills=None):
     py = state["player_y"] * PIXELS_PER_GRID
     draw.polygon([(px, py - 10), (px - 8, py + 8), (px + 8, py + 8)], fill="cyan", outline="black")
     
+    # 5. Draw Legend
+    try:
+        legend_x = 10
+        legend_y = base_img.size[1] - 110
+        draw.rectangle([legend_x, legend_y, legend_x + 140, legend_y + 100], fill=(0, 0, 0, 180), outline="white")
+        draw.text((legend_x + 10, legend_y + 5), "--- MAP LEGEND ---", fill="white")
+        
+        # Safe Zone (Circle)
+        draw.ellipse([legend_x + 8, legend_y + 24, legend_x + 16, legend_y + 32], fill="blue", outline="white", width=2)
+        draw.text((legend_x + 25, legend_y + 22), "Safe Zone / Node", fill="white")
+        
+        # Hidden Secret (Diamond)
+        draw.polygon([(legend_x+12, legend_y+40), (legend_x+18, legend_y+46), (legend_x+12, legend_y+52), (legend_x+6, legend_y+46)], fill="gold", outline="white")
+        draw.text((legend_x + 25, legend_y + 42), "Hidden Secret", fill="white")
+        
+        # Procedural Landmark (Hexagon)
+        draw.polygon([(legend_x+8, legend_y+60), (legend_x+16, legend_y+60), (legend_x+19, legend_y+66), (legend_x+16, legend_y+72), (legend_x+8, legend_y+72), (legend_x+5, legend_y+66)], fill="purple", outline="black")
+        draw.text((legend_x + 25, legend_y + 61), "Discovered Landmark", fill="white")
+        
+        # Player Position (Triangle)
+        draw.polygon([(legend_x+12, legend_y+82), (legend_x+6, legend_y+94), (legend_x+18, legend_y+94)], fill="cyan", outline="black")
+        draw.text((legend_x + 25, legend_y + 83), "Player Location", fill="white")
+    except Exception as e:
+        print("Legend drawing failed:", e)
+    
     map_img = map_img.convert("RGB")
     map_img.save("current_map.jpg")
     return "current_map.jpg"
