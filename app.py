@@ -185,10 +185,14 @@ with st.sidebar:
             st.write(f"- {item}")
         
     st.divider()
-    st.subheader("🗺️ World Data")
-    st.write(f"**Current Sector:** {world_state['sector']}")
+    st.subheader("🗺️ Sector 1 Map")
+    import map_engine
+    map_state = map_engine.load_map_state()
+    map_path = map_engine.generate_overlay()
+    if map_path and os.path.exists(map_path):
+        st.image(map_path, use_container_width=True)
+    st.write(f"**GPS Coordinates:** X: {map_state['player_x']}, Y: {map_state['player_y']}")
     st.write(f"**Status:** {world_state['world_status']}")
-    st.write(f"**Current Location:** {player['location']}")
 
     st.divider()
     with st.expander("💻 Root Dev Console"):
@@ -340,7 +344,19 @@ if prompt := (dev_prompt or chat_prompt):
                         st.session_state.player["col"] += int(clean_col)
                     except ValueError:
                         pass
+                        
+                coord_x = state_updates.get("coord_x")
+                coord_y = state_updates.get("coord_y")
+                if coord_x is not None or coord_y is not None:
+                    import map_engine
+                    ms = map_engine.load_map_state()
+                    if coord_x is not None: ms["player_x"] = int(coord_x)
+                    if coord_y is not None: ms["player_y"] = int(coord_y)
+                    if [ms["player_x"], ms["player_y"]] not in ms["explored_tiles"]:
+                        ms["explored_tiles"].append([ms["player_x"], ms["player_y"]])
+                    map_engine.save_map_state(ms)
                     
+
                 hp_change = state_updates.get("hp_change")
                 if hp_change:
                     try:
