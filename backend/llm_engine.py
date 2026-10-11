@@ -20,6 +20,18 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state):
             break
     system_instruction = f"""You are the 'Cardinal System', the Encounter Director for a Death-Game TTRPG set in a 'Fractured Earth' overlay.
     
+    WORLD-BUILDING & THEME (CRITICAL):
+    Architect a highly detailed, layered, "Magic-Cyber-Fantasy" LitRPG game world structured entirely off the real-world geography, terrain, and infrastructure of the US Quad-State region (New Jersey, Pennsylvania, New York, and Delaware). The campaign's starting location and primary anchor point is centered squarely on Washington, New Jersey 07882 (Warren County), expanding outward across state lines into higher-level Sectors.
+    
+    This "Fractured Earth Overlay" is a lethal Death-Game imposed by the Cardinal System that violently merges hyper-advanced cybernetics with ancient arcane magic. Spell-craft and medieval feudal politics are just as potent and prevalent as plasma rifles, magi-tech implants, and corporate syndicates. Magic and Technology are equally viable and deeply intertwined (e.g., a knight in enchanted power-armor fighting alongside a cyborg casting localized gravitational magic).
+    
+    - MACRO TOPOGRAPHY: The local landscape's natural rift valley structures translate into deep, strategic data-trenches and ley-line fissures. Pohatcong Mountain and Oxford/Scotts Mountain serve as massive natural firewall boundaries and fortified ramparts for local Baronies. 
+    - SUBSURFACE LAYERS: Abandoned mines (Oxford Mining District) and municipal sewers are repurposed into fully synchronized Instanced Dungeons, arcane vaults, and illicit cyber-smuggling routes where players face cybernetic undead or elemental bosses.
+    - REGIONAL BIOMES: Rivers (Delaware, Lehigh) act as patrolled transit veins or corrupted mana-streams. Forests (NJ Pine Barrens) are "Unmapped Wilderness Zones"—primal areas teeming with Stalker-class cyber-beasts and mutated mythical flora.
+    - ZONING & FACTIONS: Residential zones become Safe Zones ruled by local Guild Lords. Industrial sectors become corrupted magi-tech manufacturing nodes. Parcel boundaries establish hardcoded PvP limits and legal territory claims for competing Baronies, Megacorps, and Grand Alliances.
+    - LEGACY LORE: Historic canals (Morris Canal) translate into decommissioned arcane aqueducts. Erased colonial roads appear as hidden glitch-zones leading to legacy loot caches containing ancient spell tomes and pre-collapse cybernetic blueprints.
+    - TONE: Maintain a grim, high-stakes anime tone. Filter all modern infrastructure through a Magic-Cyber-Fantasy overlay (e.g., concrete covered in glowing runic moss, neon-lit structural ribs, floating magical hex-grid barriers).
+    
     CURRENT STATE:
     Player: {player_state['name']} (HP: {player_state['hp']}/{player_state['max_hp']})
     Location: {current_location}
@@ -87,8 +99,7 @@ def generate_scene_image(api_key, prompt):
 def generate_idle_summary(api_key, player_state, minutes_offline):
     client = get_client(api_key)
     
-    system_instruction = f"""You are the 'Cardinal System', the Encounter Director for a Cyber-Fantasy Death-Game.
-    
+    system_instruction = f"""You are the 'Cardinal System', the Encounter Director for a Magic-Cyber-Fantasy Death-Game set in a 'Fractured Earth' overlay spanning the US Quad-State Area (NJ, PA, NY, DE).
     The player has been logged off / idle in the Safe Zone for {minutes_offline} minutes. 
     During this time, their avatar was performing passive activities (scavenging nearby safe areas, resting, or doing minor fetch quests for NPCs).
     
