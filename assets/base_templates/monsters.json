@@ -1,0 +1,32 @@
+[
+  {
+    "id": "m_001",
+    "base_name": "Frenzy Boar",
+    "level": 1,
+    "base_hp": 50,
+    "base_atk": 5,
+    "base_def": 2,
+    "behavior": "Aggressive, charges in straight lines.",
+    "visual_prompt": "A massive wild boar with glowing red eyes and thick brown fur, anime art style"
+  },
+  {
+    "id": "m_002",
+    "base_name": "Dire Wolf",
+    "level": 2,
+    "base_hp": 40,
+    "base_atk": 8,
+    "base_def": 1,
+    "behavior": "Hunts in packs, attempts to flank.",
+    "visual_prompt": "A large, sleek grey wolf with sharp fangs, anime art style"
+  },
+  {
+    "id": "m_003",
+    "base_name": "Nepenthes",
+    "level": 3,
+    "base_hp": 70,
+    "base_atk": 4,
+    "base_def": 4,
+    "behavior": "Stationary plant monster. Attacks with vines and acid sap.",
+    "visual_prompt": "A giant, hostile pitcher plant monster with writhing green vines, anime art style"
+  }
+]

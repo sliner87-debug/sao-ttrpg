@@ -1,0 +1,455 @@
+{
+    "sector": 1,
+    "world_status": "LOCKED - FIREWALL ACTIVE",
+    "map_locations": [
+        {
+            "id": "loc_0",
+            "name": "The Safe-Zone: Yoyogi Park",
+            "is_safe_zone": true,
+            "secrets": [
+                {
+                    "id": "sec_dev_01",
+                    "type": "npc_dev",
+                    "description": "A hollow-eyed man clutching a digital clipboard. He is a trapped Junior Environment Artist. If given food, he will reveal a safe path through the next 3 combat zones without drawing aggro."
+                }
+            ],
+            "entities": []
+        },
+        {
+            "id": "loc_1",
+            "name": "Overgrown Shibuya 104 Tower",
+            "is_safe_zone": false,
+            "secrets": [
+                {
+                    "id": "sec_03",
+                    "type": "loot",
+                    "description": "An un-textured grey cube hovering in the air. Interacting with it grants the 'Admin's Blessing' buff, permanently increasing Max HP by 100."
+                },
+                {
+                    "id": "sec_09",
+                    "type": "combat_boss",
+                    "description": "A corrupted admin console. Touching it flags the player as 'INTRUDER' and spawns a Level 99 System Enforcer. It is an instant-death encounter if they don't run immediately."
+                }
+            ],
+            "entities": [
+                {
+                    "id": "m_002",
+                    "base_name": "Dire Wolf",
+                    "level": 2,
+                    "base_hp": 40,
+                    "base_atk": 8,
+                    "base_def": 1,
+                    "behavior": "Hunts in packs, attempts to flank. Teleports erratically. Hits incredibly hard but is extremely fragile.",
+                    "visual_prompt": "A large, sleek grey wolf with sharp fangs, anime art style, flickering with green wireframe textures and missing polygons",
+                    "name": "Debug-Corrupted Dire Wolf",
+                    "max_hp": 20,
+                    "atk": 20,
+                    "def": 0,
+                    "is_mutated": true,
+                    "mutation_tag": "Debug-Corrupted",
+                    "spawn_id": "spawn_S1_11"
+                },
+                {
+                    "id": "m_001",
+                    "base_name": "Frenzy Boar",
+                    "level": 1,
+                    "base_hp": 50,
+                    "base_atk": 5,
+                    "base_def": 2,
+                    "behavior": "Aggressive, charges in straight lines.",
+                    "visual_prompt": "A massive wild boar with glowing red eyes and thick brown fur, anime art style",
+                    "name": "Frenzy Boar",
+                    "max_hp": 50,
+                    "atk": 5,
+                    "def": 2,
+                    "is_mutated": false,
+                    "spawn_id": "spawn_S1_14"
+                },
+                {
+                    "id": "m_002",
+                    "base_name": "Dire Wolf",
+                    "level": 2,
+                    "base_hp": 40,
+                    "base_atk": 8,
+                    "base_def": 1,
+                    "behavior": "Hunts in packs, attempts to flank. Moves slowly, heavily armored.",
+                    "visual_prompt": "A large, sleek grey wolf with sharp fangs, anime art style, covered in glowing, jagged crystal growths",
+                    "name": "Crystalline Dire Wolf",
+                    "max_hp": 60,
+                    "atk": 6,
+                    "def": 2,
+                    "is_mutated": true,
+                    "mutation_tag": "Crystalline",
+                    "spawn_id": "spawn_S1_15"
+                }
+            ]
+        },
+        {
+            "id": "loc_2",
+            "name": "Corrupted Olympic Stadium (Sector 1 Boss)",
+            "is_safe_zone": false,
+            "secrets": [
+                {
+                    "id": "sec_01",
+                    "type": "lore_heavy",
+                    "description": "A perfectly preserved smartphone from Earth. Battery at 99%, NO SIGNAL.\n[CONTENTS]\n- Texts from 'Mom': 'Dinner is cold', 'Where are you?', 'It's been 3 days, please answer the door.'\n- Browser History: 'NerveGear manual override', 'SAO missing logout button', 'Can NerveGear be removed safely?'\n- Pictures: A selfie of a teenager putting on a VR headset captioned 'Link Start! See you in Aincrad!'\n- Apps: A proprietary 'Argus Employee Tracker' app that points the player towards a hidden developer bunker."
+                }
+            ],
+            "entities": [
+                {
+                    "id": "m_001",
+                    "base_name": "Frenzy Boar",
+                    "level": 1,
+                    "base_hp": 50,
+                    "base_atk": 5,
+                    "base_def": 2,
+                    "behavior": "Aggressive, charges in straight lines.",
+                    "visual_prompt": "A massive wild boar with glowing red eyes and thick brown fur, anime art style",
+                    "name": "Frenzy Boar",
+                    "max_hp": 50,
+                    "atk": 5,
+                    "def": 2,
+                    "is_mutated": false,
+                    "spawn_id": "spawn_S1_1"
+                },
+                {
+                    "id": "m_002",
+                    "base_name": "Dire Wolf",
+                    "level": 2,
+                    "base_hp": 40,
+                    "base_atk": 8,
+                    "base_def": 1,
+                    "behavior": "Hunts in packs, attempts to flank. Aggressive. Attacks lower max HP temporarily.",
+                    "visual_prompt": "A large, sleek grey wolf with sharp fangs, anime art style, dripping with dark, shadowy energy",
+                    "name": "Void-Blighted Dire Wolf",
+                    "max_hp": 48,
+                    "atk": 9,
+                    "def": 1,
+                    "is_mutated": true,
+                    "mutation_tag": "Void-Blighted",
+                    "spawn_id": "spawn_S1_2"
+                },
+                {
+                    "id": "m_003",
+                    "base_name": "Nepenthes",
+                    "level": 3,
+                    "base_hp": 70,
+                    "base_atk": 4,
+                    "base_def": 4,
+                    "behavior": "Stationary plant monster. Attacks with vines and acid sap.",
+                    "visual_prompt": "A giant, hostile pitcher plant monster with writhing green vines, anime art style",
+                    "name": "Nepenthes",
+                    "max_hp": 70,
+                    "atk": 4,
+                    "def": 4,
+                    "is_mutated": false,
+                    "spawn_id": "spawn_S1_5"
+                },
+                {
+                    "id": "m_001",
+                    "base_name": "Frenzy Boar",
+                    "level": 1,
+                    "base_hp": 50,
+                    "base_atk": 5,
+                    "base_def": 2,
+                    "behavior": "Aggressive, charges in straight lines.",
+                    "visual_prompt": "A massive wild boar with glowing red eyes and thick brown fur, anime art style",
+                    "name": "Frenzy Boar",
+                    "max_hp": 50,
+                    "atk": 5,
+                    "def": 2,
+                    "is_mutated": false,
+                    "spawn_id": "spawn_S1_6"
+                }
+            ]
+        },
+        {
+            "id": "loc_3",
+            "name": "Fractured Financial District",
+            "is_safe_zone": false,
+            "secrets": [
+                {
+                    "id": "sec_02",
+                    "type": "loot",
+                    "description": "A floating line of green text: '// TODO: Remove beta-test chest before launch'. Below it is a locked chest containing 10,000 Col and the 'Beta Tester's Cloak'."
+                }
+            ],
+            "entities": [
+                {
+                    "id": "m_002",
+                    "base_name": "Dire Wolf",
+                    "level": 2,
+                    "base_hp": 40,
+                    "base_atk": 8,
+                    "base_def": 1,
+                    "behavior": "Hunts in packs, attempts to flank. Aggressive. Attacks lower max HP temporarily.",
+                    "visual_prompt": "A large, sleek grey wolf with sharp fangs, anime art style, dripping with dark, shadowy energy",
+                    "name": "Void-Blighted Dire Wolf",
+                    "max_hp": 48,
+                    "atk": 9,
+                    "def": 1,
+                    "is_mutated": true,
+                    "mutation_tag": "Void-Blighted",
+                    "spawn_id": "spawn_S1_3"
+                },
+                {
+                    "id": "m_002",
+                    "base_name": "Dire Wolf",
+                    "level": 2,
+                    "base_hp": 40,
+                    "base_atk": 8,
+                    "base_def": 1,
+                    "behavior": "Hunts in packs, attempts to flank. Moves slowly, heavily armored.",
+                    "visual_prompt": "A large, sleek grey wolf with sharp fangs, anime art style, covered in glowing, jagged crystal growths",
+                    "name": "Crystalline Dire Wolf",
+                    "max_hp": 60,
+                    "atk": 6,
+                    "def": 2,
+                    "is_mutated": true,
+                    "mutation_tag": "Crystalline",
+                    "spawn_id": "spawn_S1_17"
+                }
+            ]
+        },
+        {
+            "id": "loc_4",
+            "name": "Crystalline Financial District",
+            "is_safe_zone": false,
+            "secrets": [
+                {
+                    "id": "sec_11",
+                    "type": "combat_trap",
+                    "description": "A weeping-angel style entity made of static noise. It only moves closer when the player speaks or uses the chat UI. If it touches them, it deletes a random item from their inventory."
+                },
+                {
+                    "id": "sec_dev_04",
+                    "type": "lore_admin",
+                    "description": "A holographic whiteboard left behind in a panic by the devs. It lists the Sector 1 Boss mechanics, but the last line is violently crossed out in red ink with the words: 'THE AI CHANGED THE CODE. IT'S NOT A GAME ANYMORE'."
+                }
+            ],
+            "entities": [
+                {
+                    "id": "m_001",
+                    "base_name": "Frenzy Boar",
+                    "level": 1,
+                    "base_hp": 50,
+                    "base_atk": 5,
+                    "base_def": 2,
+                    "behavior": "Aggressive, charges in straight lines.",
+                    "visual_prompt": "A massive wild boar with glowing red eyes and thick brown fur, anime art style",
+                    "name": "Frenzy Boar",
+                    "max_hp": 50,
+                    "atk": 5,
+                    "def": 2,
+                    "is_mutated": false,
+                    "spawn_id": "spawn_S1_0"
+                },
+                {
+                    "id": "m_002",
+                    "base_name": "Dire Wolf",
+                    "level": 2,
+                    "base_hp": 40,
+                    "base_atk": 8,
+                    "base_def": 1,
+                    "behavior": "Hunts in packs, attempts to flank. Moves slowly, heavily armored.",
+                    "visual_prompt": "A large, sleek grey wolf with sharp fangs, anime art style, covered in glowing, jagged crystal growths",
+                    "name": "Crystalline Dire Wolf",
+                    "max_hp": 60,
+                    "atk": 6,
+                    "def": 2,
+                    "is_mutated": true,
+                    "mutation_tag": "Crystalline",
+                    "spawn_id": "spawn_S1_8"
+                },
+                {
+                    "id": "m_002",
+                    "base_name": "Dire Wolf",
+                    "level": 2,
+                    "base_hp": 40,
+                    "base_atk": 8,
+                    "base_def": 1,
+                    "behavior": "Hunts in packs, attempts to flank. Teleports erratically. Hits incredibly hard but is extremely fragile.",
+                    "visual_prompt": "A large, sleek grey wolf with sharp fangs, anime art style, flickering with green wireframe textures and missing polygons",
+                    "name": "Debug-Corrupted Dire Wolf",
+                    "max_hp": 20,
+                    "atk": 20,
+                    "def": 0,
+                    "is_mutated": true,
+                    "mutation_tag": "Debug-Corrupted",
+                    "spawn_id": "spawn_S1_9"
+                }
+            ]
+        },
+        {
+            "id": "loc_5",
+            "name": "Rusted Plaza",
+            "is_safe_zone": false,
+            "secrets": [
+                {
+                    "id": "sec_dev_03",
+                    "type": "admin_loot",
+                    "description": "The frozen avatar of a Lead Network Engineer. Looting them yields an 'Admin ID Badge' that can permanently bypass one glitched Firewall barrier without needing a boss key."
+                }
+            ],
+            "entities": [
+                {
+                    "id": "m_003",
+                    "base_name": "Nepenthes",
+                    "level": 3,
+                    "base_hp": 70,
+                    "base_atk": 4,
+                    "base_def": 4,
+                    "behavior": "Stationary plant monster. Attacks with vines and acid sap. Moves slowly, heavily armored.",
+                    "visual_prompt": "A giant, hostile pitcher plant monster with writhing green vines, anime art style, covered in glowing, jagged crystal growths",
+                    "name": "Crystalline Nepenthes",
+                    "max_hp": 105,
+                    "atk": 3,
+                    "def": 8,
+                    "is_mutated": true,
+                    "mutation_tag": "Crystalline",
+                    "spawn_id": "spawn_S1_10"
+                },
+                {
+                    "id": "m_003",
+                    "base_name": "Nepenthes",
+                    "level": 3,
+                    "base_hp": 70,
+                    "base_atk": 4,
+                    "base_def": 4,
+                    "behavior": "Stationary plant monster. Attacks with vines and acid sap.",
+                    "visual_prompt": "A giant, hostile pitcher plant monster with writhing green vines, anime art style",
+                    "name": "Nepenthes",
+                    "max_hp": 70,
+                    "atk": 4,
+                    "def": 4,
+                    "is_mutated": false,
+                    "spawn_id": "spawn_S1_13"
+                },
+                {
+                    "id": "m_003",
+                    "base_name": "Nepenthes",
+                    "level": 3,
+                    "base_hp": 70,
+                    "base_atk": 4,
+                    "base_def": 4,
+                    "behavior": "Stationary plant monster. Attacks with vines and acid sap.",
+                    "visual_prompt": "A giant, hostile pitcher plant monster with writhing green vines, anime art style",
+                    "name": "Nepenthes",
+                    "max_hp": 70,
+                    "atk": 4,
+                    "def": 4,
+                    "is_mutated": false,
+                    "spawn_id": "spawn_S1_18"
+                }
+            ]
+        },
+        {
+            "id": "loc_6",
+            "name": "Sunken Catacombs",
+            "is_safe_zone": false,
+            "secrets": [
+                {
+                    "id": "sec_dev_02",
+                    "type": "admin_loot",
+                    "description": "A floating, glowing blue 'DEV-CONSOLE'. Touching it grants the player a 1-time-use item: [Debug Wand]. It can instantly delete any non-boss enemy, but using it drains 90% of the player's HP."
+                },
+                {
+                    "id": "sec_07",
+                    "type": "combat_trap",
+                    "description": "A glowing, golden subway turnstile labeled 'EXIT GAME'. Crossing it triggers a brutal trap, dropping player HP by 50% and spawning three Void-Blighted monsters."
+                }
+            ],
+            "entities": [
+                {
+                    "id": "m_003",
+                    "base_name": "Nepenthes",
+                    "level": 3,
+                    "base_hp": 70,
+                    "base_atk": 4,
+                    "base_def": 4,
+                    "behavior": "Stationary plant monster. Attacks with vines and acid sap.",
+                    "visual_prompt": "A giant, hostile pitcher plant monster with writhing green vines, anime art style",
+                    "name": "Nepenthes",
+                    "max_hp": 70,
+                    "atk": 4,
+                    "def": 4,
+                    "is_mutated": false,
+                    "spawn_id": "spawn_S1_7"
+                },
+                {
+                    "id": "m_002",
+                    "base_name": "Dire Wolf",
+                    "level": 2,
+                    "base_hp": 40,
+                    "base_atk": 8,
+                    "base_def": 1,
+                    "behavior": "Hunts in packs, attempts to flank.",
+                    "visual_prompt": "A large, sleek grey wolf with sharp fangs, anime art style",
+                    "name": "Dire Wolf",
+                    "max_hp": 40,
+                    "atk": 8,
+                    "def": 1,
+                    "is_mutated": false,
+                    "spawn_id": "spawn_S1_16"
+                },
+                {
+                    "id": "m_002",
+                    "base_name": "Dire Wolf",
+                    "level": 2,
+                    "base_hp": 40,
+                    "base_atk": 8,
+                    "base_def": 1,
+                    "behavior": "Hunts in packs, attempts to flank.",
+                    "visual_prompt": "A large, sleek grey wolf with sharp fangs, anime art style",
+                    "name": "Dire Wolf",
+                    "max_hp": 40,
+                    "atk": 8,
+                    "def": 1,
+                    "is_mutated": false,
+                    "spawn_id": "spawn_S1_19"
+                }
+            ]
+        },
+        {
+            "id": "loc_7",
+            "name": "Overgrown Plaza",
+            "is_safe_zone": false,
+            "secrets": [],
+            "entities": [
+                {
+                    "id": "m_003",
+                    "base_name": "Nepenthes",
+                    "level": 3,
+                    "base_hp": 70,
+                    "base_atk": 4,
+                    "base_def": 4,
+                    "behavior": "Stationary plant monster. Attacks with vines and acid sap. Erratic and fast. Deals slight magic damage.",
+                    "visual_prompt": "A giant, hostile pitcher plant monster with writhing green vines, anime art style, radiating a faint, ethereal purple aura",
+                    "name": "Aether-Touched Nepenthes",
+                    "max_hp": 56,
+                    "atk": 6,
+                    "def": 2,
+                    "is_mutated": true,
+                    "mutation_tag": "Aether-Touched",
+                    "spawn_id": "spawn_S1_4"
+                },
+                {
+                    "id": "m_003",
+                    "base_name": "Nepenthes",
+                    "level": 3,
+                    "base_hp": 70,
+                    "base_atk": 4,
+                    "base_def": 4,
+                    "behavior": "Stationary plant monster. Attacks with vines and acid sap.",
+                    "visual_prompt": "A giant, hostile pitcher plant monster with writhing green vines, anime art style",
+                    "name": "Nepenthes",
+                    "max_hp": 70,
+                    "atk": 4,
+                    "def": 4,
+                    "is_mutated": false,
+                    "spawn_id": "spawn_S1_12"
+                }
+            ]
+        }
+    ]
+}
