@@ -249,6 +249,22 @@ if prompt := (dev_prompt or chat_prompt):
             
             narrative = turn_data.get("narrative", "Error parsing narrative.")
             image_prompt = turn_data.get("image_prompt", "")
+            state_updates = turn_data.get("state_updates", {})
+            
+            # Apply State Updates
+            if state_updates:
+                if state_updates.get("location"):
+                    st.session_state.player["location"] = state_updates["location"]
+                if state_updates.get("col_change"):
+                    st.session_state.player["col"] += state_updates["col_change"]
+                if state_updates.get("hp_change"):
+                    st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + state_updates["hp_change"]))
+                
+                for item in state_updates.get("inventory_add", []):
+                    st.session_state.player["inventory"].append(item)
+                for item in state_updates.get("inventory_remove", []):
+                    if item in st.session_state.player["inventory"]:
+                        st.session_state.player["inventory"].remove(item)
             
             st.markdown(narrative)
             
