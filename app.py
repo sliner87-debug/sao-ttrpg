@@ -297,6 +297,12 @@ if prompt := (dev_prompt or chat_prompt):
                 if loc and isinstance(loc, str):
                     st.session_state.player["location"] = loc
                     
+                w_status = state_updates.get("world_status")
+                if w_status and isinstance(w_status, str):
+                    world_state["world_status"] = w_status
+                    with open("world_state.json", "w") as f:
+                        json.dump(world_state, f)
+                    
                 col_change = state_updates.get("col_change")
                 if col_change:
                     try:
