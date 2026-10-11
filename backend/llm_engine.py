@@ -78,7 +78,7 @@ def generate_scene_image(api_key, prompt):
         for part in response.parts:
             if part.inline_data:
                 return part.inline_data.data, None
-        return None, "No image was returned by the API."
+    except Exception as e:
         return None, str(e)
 
 def generate_idle_summary(api_key, player_state, minutes_offline):
