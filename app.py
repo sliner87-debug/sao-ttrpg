@@ -3,6 +3,7 @@ import json
 import os
 import time
 import importlib
+import base64
 import backend.llm_engine as llm_engine
 importlib.reload(llm_engine)
 
@@ -23,10 +24,6 @@ if api_key == "your_api_key_here":
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 WORLD_PATH = os.path.join(BASE_DIR, 'world_state.json')
 SAVE_PATH = os.path.join(BASE_DIR, 'save_game.json')
-IMAGE_DIR = os.path.join(BASE_DIR, 'assets', 'generated_images')
-
-if not os.path.exists(IMAGE_DIR):
-    os.makedirs(IMAGE_DIR)
 
 # --- SAVE/LOAD LOGIC ---
 @st.cache_data
@@ -150,9 +147,34 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
-    if st.button("💾 Force Save Game"):
-        save_game(st.session_state.player, st.session_state.messages)
-        st.success("Game Saved successfully!")
+    with st.expander("💾 Save Management"):
+        st.caption("Streamlit Cloud erases local files when it sleeps. Download your save file to keep your game safe!")
+        
+        # Export
+        save_json = json.dumps({"player": st.session_state.player, "messages": st.session_state.messages, "last_saved": time.time()}, indent=4)
+        st.download_button(
+            label="📥 Export Save to Device",
+            data=save_json,
+            file_name=f"fractured_earth_save_{int(time.time())}.json",
+            mime="application/json"
+        )
+        
+        # Import
+        st.divider()
+        uploaded_file = st.file_uploader("📤 Import Save from Device", type="json")
+        if uploaded_file is not None:
+            if st.button("Restore Save"):
+                try:
+                    loaded_data = json.load(uploaded_file)
+                    st.session_state.player = loaded_data["player"]
+                    st.session_state.messages = loaded_data["messages"]
+                    if "last_saved" in loaded_data:
+                        save_game(st.session_state.player, st.session_state.messages)
+                    st.success("Save loaded! Refreshing...")
+                    time.sleep(1)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to load save: {e}")
 
 # --- MAIN UI: THE CHAT WINDOW ---
 st.title("🗡️ The Fractured Overlay")
@@ -163,7 +185,9 @@ for msg in st.session_state.messages:
     avatar = "👾" if msg["role"] == "system" else "👤"
     with st.chat_message(msg["role"], avatar=avatar):
         st.markdown(msg["content"])
-        if msg.get("image_path") and os.path.exists(msg["image_path"]):
+        if msg.get("image_data"):
+            st.image(msg["image_data"], use_container_width=True)
+        elif msg.get("image_path") and os.path.exists(msg["image_path"]):
             st.image(msg["image_path"], use_container_width=True)
 
 # User Input
@@ -200,16 +224,14 @@ if prompt := st.chat_input("Action... (Type /admin to force an AI outcome)"):
             
             st.markdown(narrative)
             
-            # 2. Generate Scene Image & Save to Disk
-            image_path = None
+            # 2. Generate Scene Image & Encode to Base64
+            image_data = None
             if image_prompt:
                 image_bytes, img_error = llm_engine.generate_scene_image(api_key, image_prompt)
                 if image_bytes:
-                    image_filename = f"scene_{int(time.time())}.png"
-                    image_path = os.path.join(IMAGE_DIR, image_filename)
-                    with open(image_path, "wb") as f:
-                        f.write(image_bytes)
-                    st.image(image_path, use_container_width=True)
+                    b64_img = base64.b64encode(image_bytes).decode("utf-8")
+                    image_data = f"data:image/png;base64,{b64_img}"
+                    st.image(image_data, use_container_width=True)
                 elif img_error:
                     narrative += f"\n\n*(System Note: Image Generation Failed - {img_error})*"
             
@@ -217,7 +239,7 @@ if prompt := st.chat_input("Action... (Type /admin to force an AI outcome)"):
     new_msg = {
         "role": "system", 
         "content": narrative,
-        "image_path": image_path
+        "image_data": image_data
     }
     st.session_state.messages.append(new_msg)
     save_game(st.session_state.player, st.session_state.messages)
