@@ -258,12 +258,21 @@ if prompt := (dev_prompt or chat_prompt):
                     st.session_state.player["location"] = loc
                     
                 col_change = state_updates.get("col_change")
-                if col_change and isinstance(col_change, (int, float)):
-                    st.session_state.player["col"] += int(col_change)
+                if col_change:
+                    try:
+                        # Handle strings like "-426,200" or ints
+                        clean_col = str(col_change).replace(",", "").replace(" ", "")
+                        st.session_state.player["col"] += int(clean_col)
+                    except ValueError:
+                        pass
                     
                 hp_change = state_updates.get("hp_change")
-                if hp_change and isinstance(hp_change, (int, float)):
-                    st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + int(hp_change)))
+                if hp_change:
+                    try:
+                        clean_hp = str(hp_change).replace(",", "").replace(" ", "")
+                        st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + int(clean_hp)))
+                    except ValueError:
+                        pass
                 
                 inv_add = state_updates.get("inventory_add") or []
                 if isinstance(inv_add, list):
