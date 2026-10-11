@@ -37,7 +37,7 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state):
     
     Format your response EXACTLY as a JSON object with two keys:
     - "narrative": The markdown formatted story/dialogue.
-    - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene (include mutation visual tags and the overgrown earth environments).
+    - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged man with a short beard and undercut hair, wearing a heavy black-iron chainmail hauberk and a massive synthetic dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a gaunt, exhausted young man with messy dark hair, wearing cracked glasses and a threadbare corporate hoodie, holding a glowing cyan digital clipboard.
     """
     
     # Convert Streamlit chat history to Gemini format (keeping last 6 messages for context)
