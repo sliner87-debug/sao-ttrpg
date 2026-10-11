@@ -101,7 +101,10 @@ if "player" not in st.session_state:
             "hp": 100,
             "max_hp": 100,
             "col": 0,
-            "inventory": ["Iron Sword", "Bottled Water x2", "Mysterious USB Drive"],
+            "inventory": [
+                {"name": "Iron Sword", "rarity": "Common", "durability": 45, "max_durability": 50, "qty": 1, "desc": "A basic, slightly rusted blade."},
+                {"name": "Bottled Water", "rarity": "Common", "durability": 1, "max_durability": 1, "qty": 2, "desc": "Clean drinking water."}
+            ],
             "location": "Sector 1 Safe-Zone: Washington Borough, NJ"
         }
         
@@ -110,9 +113,35 @@ p = st.session_state.player
 p.setdefault("race", "Unregistered Anomaly")
 p.setdefault("class", "Pathless (Freeform)")
 p.setdefault("stats", {"STR": 10, "DEX": 10, "CON": 10, "INT": 10, "WIS": 10, "CHA": 10})
-p.setdefault("skills", [])
+p.setdefault("skills", {})
 p.setdefault("spells", [])
 p.setdefault("feats", [])
+
+# Migrate old inventory (list of strings) to complex objects
+new_inv = []
+for item in p.get("inventory", []):
+    if isinstance(item, str):
+        qty = 1
+        name = item
+        if " x" in item:
+            parts = item.rsplit(" x", 1)
+            name = parts[0]
+            try: qty = int(parts[1])
+            except: pass
+        new_inv.append({"name": name, "rarity": "Common", "durability": 100, "max_durability": 100, "qty": qty, "desc": "Legacy item."})
+    else:
+        new_inv.append(item)
+p["inventory"] = new_inv
+
+# Migrate old skills (list of strings) to mastery dictionaries
+if isinstance(p.get("skills", {}), list):
+    new_skills = {}
+    for s in p["skills"]:
+        if isinstance(s, str):
+            name = s.split(":")[0] if ":" in s else s
+            new_skills[name] = {"mastery": 1, "description": s}
+    p["skills"] = new_skills
+
 p.setdefault("racial_abilities", [])
 p.setdefault("equipped", {"head": "None", "chest": "None", "main_hand": "None", "off_hand": "None", "accessory": "None"})
 p.setdefault("companions", {
@@ -177,12 +206,23 @@ with st.sidebar:
             st.write("**Racial Traits:**")
             for r in player['racial_abilities']: st.write(f"- {r}")
         if player['skills'] or player['spells'] or player['feats']:
-            st.write("**Skills & Spells:**")
-            for s in player['skills'] + player['spells'] + player['feats']: st.write(f"- {s}")
+            st.write("**Skills, Spells & Feats:**")
+            for s_name, s_data in player.get('skills', {}).items():
+                st.write(f"**{s_name}** ({s_data.get('mastery', 1)}/1000)")
+                st.progress(min(1.0, s_data.get('mastery', 1) / 1000.0))
+                st.caption(s_data.get('description', ''))
+            for s in player.get('spells', []) + player.get('feats', []):
+                st.write(f"- {s}")
             
     with st.expander("🎒 Backpack Inventory", expanded=False):
-        for item in player["inventory"]:
-            st.write(f"- {item}")
+        rarity_colors = {"Common": "⚪", "Uncommon": "🟢", "Rare": "🔵", "Epic": "🟣", "Legendary": "🟠", "Mythic": "🔴", "Unique": "✨"}
+        for item in player.get("inventory", []):
+            if isinstance(item, dict):
+                icon = rarity_colors.get(item.get("rarity", "Common"), "⚪")
+                st.write(f"{icon} **{item.get('name', 'Unknown')}** (x{item.get('qty', 1)})")
+                st.caption(f"Durability: {item.get('durability', 0)}/{item.get('max_durability', 0)} | {item.get('desc', '')}")
+            else:
+                st.write(f"- {item}")
         
     st.divider()
     st.subheader("🗺️ Sector 1 Map")
@@ -419,13 +459,20 @@ if prompt := (dev_prompt or chat_prompt):
                 inv_add = state_updates.get("inventory_add") or []
                 if isinstance(inv_add, list):
                     for item in inv_add:
-                        st.session_state.player["inventory"].append(str(item))
-                        
+                        if isinstance(item, dict) and "name" in item:
+                            st.session_state.player["inventory"].append(item)
+                        elif isinstance(item, str):
+                            st.session_state.player["inventory"].append({"name": item, "rarity": "Common", "durability": 100, "max_durability": 100, "qty": 1, "desc": ""})
+                            
                 inv_remove = state_updates.get("inventory_remove") or []
                 if isinstance(inv_remove, list):
                     for item_to_remove in inv_remove:
+                        name_to_remove = item_to_remove.get("name", "").lower() if isinstance(item_to_remove, dict) else str(item_to_remove).lower()
                         for existing_item in st.session_state.player["inventory"][:]:
-                            if str(item_to_remove).lower() in existing_item.lower():
+                            if isinstance(existing_item, dict) and name_to_remove in existing_item.get("name", "").lower():
+                                st.session_state.player["inventory"].remove(existing_item)
+                                break
+                            elif isinstance(existing_item, str) and name_to_remove in existing_item.lower():
                                 st.session_state.player["inventory"].remove(existing_item)
                                 break
                                 
@@ -445,7 +492,22 @@ if prompt := (dev_prompt or chat_prompt):
                         if slot in st.session_state.player["equipped"]:
                             st.session_state.player["equipped"][slot] = item
                             
-                for k in ["skills_add", "spells_add", "feats_add", "racial_abilities_add"]:
+                # Handle Skill Mastery updates
+                skill_updates = state_updates.get("skill_updates") or []
+                if isinstance(skill_updates, list):
+                    for su in skill_updates:
+                        if isinstance(su, dict) and "name" in su:
+                            name = su["name"]
+                            change = int(su.get("mastery_change", 1))
+                            desc = su.get("description", "")
+                            
+                            if name in st.session_state.player["skills"]:
+                                st.session_state.player["skills"][name]["mastery"] = min(1000, st.session_state.player["skills"][name]["mastery"] + change)
+                                if desc: st.session_state.player["skills"][name]["description"] = desc
+                            else:
+                                st.session_state.player["skills"][name] = {"mastery": max(1, change), "description": desc}
+                                
+                for k in ["spells_add", "feats_add", "racial_abilities_add"]:
                     adds = state_updates.get(k) or []
                     if isinstance(adds, list):
                         target_list = k.replace("_add", "")
@@ -453,7 +515,7 @@ if prompt := (dev_prompt or chat_prompt):
                             if a not in st.session_state.player[target_list]:
                                 st.session_state.player[target_list].append(a)
                                 
-                for k in ["skills_remove", "spells_remove", "feats_remove", "racial_abilities_remove"]:
+                for k in ["spells_remove", "feats_remove", "racial_abilities_remove"]:
                     removes = state_updates.get(k) or []
                     if isinstance(removes, list):
                         target_list = k.replace("_remove", "")
