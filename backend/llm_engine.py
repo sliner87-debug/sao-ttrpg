@@ -5,7 +5,7 @@ from google.genai import types
 def get_client(api_key):
     return genai.Client(api_key=api_key)
 
-def generate_turn(api_key, user_input, chat_history, player_state, world_state, companion_intents="None"):
+def generate_turn(api_key, user_input, chat_history, player_state, world_state, map_state, companion_intents="None"):
     client = get_client(api_key)
     
     current_location = player_state.get('location', 'Unknown')
@@ -36,6 +36,7 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     CURRENT STATE:
     Player: {player_state['name']} (HP: {player_state['hp']}/{player_state['max_hp']})
     Location: {current_location}
+    GPS Coordinates: X: {map_state.get('player_x', 50)}, Y: {map_state.get('player_y', 50)}
     Entities present: {json.dumps(entities_in_room)}
     Hidden Secrets: {json.dumps(secrets_in_room)}
     COMPANION INTENTS (Crucial!): {companion_intents}
@@ -49,11 +50,12 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     6. Maintain a grim, high-stakes anime tone. If the player takes damage, describe it viscerally.
     7. ROOT OVERRIDE: If the user input contains [ROOT OVERRIDE], you MUST suspend all game rules, bypass combat logic, and force the exact outcome the Administrator requested into the narrative seamlessly.
     8. CRUNCH ARBITRATOR (THE SYSTEM): You actively manage the player's mechanical character sheet. When a player wants to create a custom Race/Class or learn new skills, you calculate its power level using a balanced "System Point" (SP) logic. If they ask for powerful abilities, balance it with Flaws. When in combat, you MUST roll the player's relevant stats (e.g. STR + Weapon Mod vs Enemy AC) internally and describe the outcome based on that math.
+    9. PROCEDURAL MAP GENERATION: If the player discovers a major new landmark, town, hostile encampment, or dungeon entrance during the narrative, you MUST generate a new map node for it using the `discovered_nodes` list. Place the new node physically near the player's current GPS coordinates (e.g. X +/- 2, Y +/- 2).
     
     Format your response EXACTLY as a JSON object with THREE keys:
     - "narrative": The markdown formatted story/dialogue. (If doing combat, briefly mention the stat roll).
     - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged man with a short beard and undercut hair, wearing a heavy black-iron chainmail hauberk and a massive synthetic dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a gaunt, exhausted young man with messy dark hair, wearing cracked glasses and a threadbare corporate hoodie, holding a glowing cyan digital clipboard.
-    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location" (string), "world_status" (string, the current threat level or environmental status), "inventory_add" (list of strings), "inventory_remove" (list of strings), "col_change" (int), "hp_change" (int), "race" (string), "class" (string), "stat_changes" (dict of stat: int, e.g. {{"STR": 2}}), "equip" (dict of slot: item_name, e.g. {{"chest": "Einherjar Rig"}}), "skills_add", "spells_add", "feats_add", "racial_abilities_add" (lists of strings - INCLUDE FULL MECHANICAL DESCRIPTIONS IN THESE STRINGS), "skills_remove", "spells_remove", "feats_remove", "racial_abilities_remove" (lists of strings), "coord_x" (int), "coord_y" (int).
+    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location" (string), "world_status" (string, the current threat level or environmental status), "inventory_add" (list of strings), "inventory_remove" (list of strings), "col_change" (int), "hp_change" (int), "race" (string), "class" (string), "stat_changes" (dict of stat: int, e.g. {{"STR": 2}}), "equip" (dict of slot: item_name, e.g. {{"chest": "Einherjar Rig"}}), "skills_add", "spells_add", "feats_add", "racial_abilities_add" (lists of strings - INCLUDE FULL MECHANICAL DESCRIPTIONS IN THESE STRINGS), "skills_remove", "spells_remove", "feats_remove", "racial_abilities_remove" (lists of strings), "coord_x" (int), "coord_y" (int), "discovered_nodes" (list of dicts, each with keys "name", "x", "y", "color", "label").
     
     MAP MECHANICS (CRITICAL): The world operates on a 100x100 grid mapped to a real satellite image. Washington NJ is at (50, 50). If the player "fast travels" or takes a caravan to a new Node, output the exact new destination coordinates in `coord_x` and `coord_y` (e.g., Oxford is 40,20). If the player explores the wilderness on foot, shift their coordinates by 1 (e.g. from 50,50 to 50,49) to simulate micro-exploration and clear the Fog of War.
     """

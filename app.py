@@ -347,6 +347,9 @@ if prompt := (dev_prompt or chat_prompt):
                 
         with st.spinner("The Cardinal System is generating the world..."):
             
+            import map_engine
+            current_ms = map_engine.load_map_state()
+            
             # 2. Generate Narrative Text
             turn_data = llm_engine.generate_turn(
                 api_key=api_key,
@@ -354,6 +357,7 @@ if prompt := (dev_prompt or chat_prompt):
                 chat_history=st.session_state.messages,
                 player_state=st.session_state.player,
                 world_state=world_state,
+                map_state=current_ms,
                 companion_intents=companion_intents_str
             )
             
@@ -382,17 +386,27 @@ if prompt := (dev_prompt or chat_prompt):
                     except ValueError:
                         pass
                         
+                # Handle Procedural Nodes
+                discovered_nodes = state_updates.get("discovered_nodes", [])
+                
                 coord_x = state_updates.get("coord_x")
                 coord_y = state_updates.get("coord_y")
-                if coord_x is not None or coord_y is not None:
-                    import map_engine
+                
+                if coord_x is not None or coord_y is not None or discovered_nodes:
                     ms = map_engine.load_map_state()
+                    if "dynamic_nodes" not in ms: ms["dynamic_nodes"] = []
+                    
                     if coord_x is not None: ms["player_x"] = int(coord_x)
                     if coord_y is not None: ms["player_y"] = int(coord_y)
                     if [ms["player_x"], ms["player_y"]] not in ms["explored_tiles"]:
                         ms["explored_tiles"].append([ms["player_x"], ms["player_y"]])
+                        
+                    if discovered_nodes:
+                        for n in discovered_nodes:
+                            if "name" in n and "x" in n and "y" in n:
+                                ms["dynamic_nodes"].append(n)
+                                
                     map_engine.save_map_state(ms)
-                    
 
                 hp_change = state_updates.get("hp_change")
                 if hp_change:

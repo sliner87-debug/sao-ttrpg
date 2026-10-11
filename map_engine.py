@@ -94,6 +94,12 @@ def generate_overlay(player_skills=None):
             visible_secrets[key] = sec
             px, py = sec["x"] * PIXELS_PER_GRID, sec["y"] * PIXELS_PER_GRID
             mask_draw.ellipse([px - 25, py - 25, px + 25, py + 25], fill=0) # Smaller reveal radius
+            
+    # Reveal Dynamic Procedural Nodes
+    dynamic_nodes = state.get("dynamic_nodes", [])
+    for d_node in dynamic_nodes:
+        px, py = d_node["x"] * PIXELS_PER_GRID, d_node["y"] * PIXELS_PER_GRID
+        mask_draw.ellipse([px - 35, py - 35, px + 35, py + 35], fill=0)
         
     fog.putalpha(mask)
     
@@ -136,6 +142,16 @@ def generate_overlay(player_skills=None):
         color = sec["color"]
         draw.polygon([(px, py-6), (px+6, py), (px, py+6), (px-6, py)], fill=color, outline="white") # Diamond shape
         draw.text((px + 10, py - 10), sec["label"], fill=color)
+        
+    # Draw Procedural Dynamic Nodes
+    dynamic_nodes = state.get("dynamic_nodes", [])
+    for d_node in dynamic_nodes:
+        px, py = d_node["x"] * PIXELS_PER_GRID, d_node["y"] * PIXELS_PER_GRID
+        color = d_node.get("color", "cyan")
+        label = d_node.get("label", d_node.get("name", "Unknown Node"))
+        # Hexagon shape for AI-generated nodes
+        draw.polygon([(px-5, py-8), (px+5, py-8), (px+8, py), (px+5, py+8), (px-5, py+8), (px-8, py)], fill=color, outline="black")
+        draw.text((px + 12, py - 10), label, fill=color)
         
     # 4. Draw Player Position
     px = state["player_x"] * PIXELS_PER_GRID
