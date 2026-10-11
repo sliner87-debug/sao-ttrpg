@@ -105,16 +105,16 @@ if "player" not in st.session_state:
             "location": "Sector 1 Safe-Zone: Washington Borough, NJ"
         }
         
-    # Migration: Ensure new database keys exist for old save files
-    p = st.session_state.player
-    p.setdefault("race", "Unregistered Anomaly")
-    p.setdefault("class", "Pathless (Freeform)")
-    p.setdefault("stats", {"STR": 10, "DEX": 10, "CON": 10, "INT": 10, "WIS": 10, "CHA": 10})
-    p.setdefault("skills", [])
-    p.setdefault("spells", [])
-    p.setdefault("feats", [])
-    p.setdefault("racial_abilities", [])
-    p.setdefault("equipped", {"head": "None", "chest": "None", "main_hand": "None", "off_hand": "None", "accessory": "None"})
+# Migration: Ensure new database keys exist for old save files and cached sessions
+p = st.session_state.player
+p.setdefault("race", "Unregistered Anomaly")
+p.setdefault("class", "Pathless (Freeform)")
+p.setdefault("stats", {"STR": 10, "DEX": 10, "CON": 10, "INT": 10, "WIS": 10, "CHA": 10})
+p.setdefault("skills", [])
+p.setdefault("spells", [])
+p.setdefault("feats", [])
+p.setdefault("racial_abilities", [])
+p.setdefault("equipped", {"head": "None", "chest": "None", "main_hand": "None", "off_hand": "None", "accessory": "None"})
 
 if "messages" not in st.session_state:
     if saved_data:
