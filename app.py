@@ -262,9 +262,11 @@ if prompt := (dev_prompt or chat_prompt):
                 
                 for item in state_updates.get("inventory_add", []):
                     st.session_state.player["inventory"].append(item)
-                for item in state_updates.get("inventory_remove", []):
-                    if item in st.session_state.player["inventory"]:
-                        st.session_state.player["inventory"].remove(item)
+                for item_to_remove in state_updates.get("inventory_remove", []):
+                    for existing_item in st.session_state.player["inventory"][:]:
+                        if item_to_remove.lower() in existing_item.lower():
+                            st.session_state.player["inventory"].remove(existing_item)
+                            break
             
             st.markdown(narrative)
             
