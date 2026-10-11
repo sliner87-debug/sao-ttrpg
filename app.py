@@ -188,9 +188,46 @@ with st.sidebar:
     st.subheader("🗺️ Sector 1 Map")
     import map_engine
     map_state = map_engine.load_map_state()
-    map_path = map_engine.generate_overlay()
+    player_skills = st.session_state.player.get("skills", [])
+    map_path = map_engine.generate_overlay(player_skills=player_skills)
     if map_path and os.path.exists(map_path):
-        st.image(map_path, use_container_width=True)
+        import base64
+        import streamlit.components.v1 as components
+        with open(map_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode()
+        
+        # Inject native inline mouse-wheel zoom & drag panning using Panzoom.js!
+        html_code = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+        <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+        <style>
+          body {{ margin: 0; padding: 0; overflow: hidden; background-color: transparent; }}
+          #map-container {{ width: 100%; height: 100vh; display: flex; justify-content: center; align-items: center; }}
+          img {{ max-width: 100%; max-height: 100%; object-fit: contain; cursor: grab; border-radius: 8px; }}
+          img:active {{ cursor: grabbing; }}
+        </style>
+        </head>
+        <body>
+          <div id="map-container">
+            <img id="map" src="data:image/jpeg;base64,{encoded_string}" />
+          </div>
+          <script>
+            const elem = document.getElementById('map')
+            const panzoom = Panzoom(elem, {{
+              maxScale: 6,
+              minScale: 1,
+              contain: 'outside',
+              step: 0.3
+            }})
+            elem.parentElement.addEventListener('wheel', panzoom.zoomWithWheel)
+          </script>
+        </body>
+        </html>
+        """
+        components.html(html_code, height=350)
+        
     st.write(f"**GPS Coordinates:** X: {map_state['player_x']}, Y: {map_state['player_y']}")
     st.write(f"**Status:** {world_state['world_status']}")
 
