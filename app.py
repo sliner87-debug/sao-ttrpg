@@ -116,6 +116,7 @@ p.setdefault("stats", {"STR": 10, "DEX": 10, "CON": 10, "INT": 10, "WIS": 10, "C
 p.setdefault("skills", {})
 p.setdefault("spells", [])
 p.setdefault("feats", [])
+p.setdefault("quests", [])
 
 # Migrate old inventory (list of strings) to complex objects
 new_inv = []
@@ -232,6 +233,13 @@ with st.sidebar:
                 st.caption(f"Durability: {item.get('durability', 0)}/{item.get('max_durability', 0)} | {item.get('desc', '')}")
             else:
                 st.write(f"- {item}")
+                
+    with st.expander("📜 Active Quests & Bounties", expanded=True):
+        if not player.get("quests"):
+            st.caption("No active directives.")
+        else:
+            for q in player["quests"]:
+                st.write(f"🔸 {q}")
                 
     with st.expander("🌍 Global Threat Intelligence", expanded=False):
         global_news = world_state.get("global_news", [])
@@ -556,6 +564,24 @@ if prompt := (dev_prompt or chat_prompt):
                                 if str(item_to_remove).lower() in existing_item.lower():
                                     st.session_state.player[target_list].remove(existing_item)
                                     break
+                                    
+                # Handle Active Quests & Bounties
+                for q in state_updates.get("quests_add", []):
+                    if q not in st.session_state.player["quests"]:
+                        st.session_state.player["quests"].append(q)
+                        st.toast(f"📜 New Quest Accepted: {q}")
+                for q in state_updates.get("quests_complete", []):
+                    for active_q in st.session_state.player["quests"][:]:
+                        if str(q).lower() in active_q.lower():
+                            st.session_state.player["quests"].remove(active_q)
+                            st.toast(f"✅ Quest Completed: {active_q}")
+                            st.balloons()
+                            break
+                for q in state_updates.get("quests_remove", []):
+                    for active_q in st.session_state.player["quests"][:]:
+                        if str(q).lower() in active_q.lower():
+                            st.session_state.player["quests"].remove(active_q)
+                            break
             # 1.5 Handle Combat Crunch Logs
             combat_logs = turn_data.get("combat_logs", [])
             log_markdown = ""
