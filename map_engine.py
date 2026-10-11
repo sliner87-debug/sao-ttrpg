@@ -161,7 +161,7 @@ def generate_overlay(player_skills=None):
     # 5. Draw Legend
     try:
         legend_x = 10
-        legend_y = base_img.size[1] - 110
+        legend_y = 10
         draw.rectangle([legend_x, legend_y, legend_x + 140, legend_y + 100], fill=(0, 0, 0, 180), outline="white")
         draw.text((legend_x + 10, legend_y + 5), "--- MAP LEGEND ---", fill="white")
         
