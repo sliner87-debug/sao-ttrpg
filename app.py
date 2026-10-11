@@ -239,7 +239,17 @@ with st.sidebar:
             st.caption("No active directives.")
         else:
             for q in player["quests"]:
-                st.write(f"🔸 {q}")
+                if isinstance(q, dict):
+                    title = q.get('title', q.get('name', 'Unknown Quest'))
+                    desc = q.get('desc', q.get('description', ''))
+                    reward = q.get('reward', '')
+                    st.markdown(f"🔸 **{title}**")
+                    if desc: st.caption(desc)
+                    if reward: st.markdown(f"🎁 *Reward:* {reward}")
+                    st.divider()
+                else:
+                    st.markdown(f"🔸 {q}")
+                    st.divider()
                 
     with st.expander("🌍 Global Threat Intelligence", expanded=False):
         global_news = world_state.get("global_news", [])
@@ -567,19 +577,33 @@ if prompt := (dev_prompt or chat_prompt):
                                     
                 # Handle Active Quests & Bounties
                 for q in state_updates.get("quests_add", []):
-                    if q not in st.session_state.player["quests"]:
+                    # To prevent identical dicts from failing simple 'not in' checks, we check titles
+                    new_title = q.get('title', q.get('name', str(q))) if isinstance(q, dict) else str(q)
+                    exists = False
+                    for active_q in st.session_state.player["quests"]:
+                        active_title = active_q.get('title', active_q.get('name', str(active_q))) if isinstance(active_q, dict) else str(active_q)
+                        if new_title.lower() == active_title.lower():
+                            exists = True
+                            break
+                    if not exists:
                         st.session_state.player["quests"].append(q)
-                        st.toast(f"📜 New Quest Accepted: {q}")
+                        st.toast(f"📜 New Quest Accepted: {new_title}")
+                        
                 for q in state_updates.get("quests_complete", []):
+                    search_title = q.get('title', q.get('name', str(q))) if isinstance(q, dict) else str(q)
                     for active_q in st.session_state.player["quests"][:]:
-                        if str(q).lower() in active_q.lower():
+                        active_title = active_q.get('title', active_q.get('name', str(active_q))) if isinstance(active_q, dict) else str(active_q)
+                        if search_title.lower() in active_title.lower():
                             st.session_state.player["quests"].remove(active_q)
-                            st.toast(f"✅ Quest Completed: {active_q}")
+                            st.toast(f"✅ Quest Completed: {active_title}")
                             st.balloons()
                             break
+                            
                 for q in state_updates.get("quests_remove", []):
+                    search_title = q.get('title', q.get('name', str(q))) if isinstance(q, dict) else str(q)
                     for active_q in st.session_state.player["quests"][:]:
-                        if str(q).lower() in active_q.lower():
+                        active_title = active_q.get('title', active_q.get('name', str(active_q))) if isinstance(active_q, dict) else str(active_q)
+                        if search_title.lower() in active_title.lower():
                             st.session_state.player["quests"].remove(active_q)
                             break
             # 1.5 Handle Combat Crunch Logs

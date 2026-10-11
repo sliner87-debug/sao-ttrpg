@@ -62,11 +62,13 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     - "global_news_add": A list of strings showing macro world events (e.g. continental faction movements). MUST BE POPULATED IF THE PLAYER SKIPS TIME OR SLEEPS.
     - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged man with a short beard and undercut hair, wearing a heavy black-iron chainmail hauberk and a massive synthetic dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a gaunt, exhausted young man with messy dark hair, wearing cracked glasses and a threadbare corporate hoodie, holding a glowing cyan digital clipboard.
     - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
-      Additionally, use the following complex schemas for skills, inventory, and factions:
+      Additionally, use the following complex schemas for skills, inventory, factions, and quests:
       - "inventory_add": List of dicts, e.g. [{{"name": "Rusted Iron Sword", "rarity": "Common", "durability": 45, "max_durability": 50, "qty": 1, "desc": "A chipped blade scavenged from the ruins."}}]
       - "inventory_remove": List of strings (item names to delete).
       - "skill_updates": List of dicts, e.g. [{{"name": "One-Handed Swords", "mastery_change": 3, "description": "Increases accuracy and damage with short blades."}}]
       - "node_updates": Dict of node_name to color, e.g. {{"Washington_Borough": "red", "Oxford_Mines": "blue"}}
+      - "quests_add": List of dicts, e.g. [{{"title": "Slay the Boar", "desc": "Kill 5 boars in the ruins", "reward": "500 Col, 200 XP"}}]
+      - "quests_complete": List of strings matching the exact titles of completed quests.
     
     MAP MECHANICS (CRITICAL): The world operates on a 100x100 grid mapped to a real satellite image. Washington NJ is at (50, 50). If the player "fast travels" or takes a caravan to a new Node, output the exact new destination coordinates in `coord_x` and `coord_y` (e.g., Oxford is 40,20). If the player explores the wilderness on foot locally, you MUST shift their coordinates slightly (e.g. from 50,50 to 50,49) to simulate micro-exploration and clear the Fog of War. ALWAYS output their current or new coordinates on every single turn.
     """
