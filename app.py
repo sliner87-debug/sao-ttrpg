@@ -356,6 +356,16 @@ if prompt := (dev_prompt or chat_prompt):
                         for a in adds:
                             if a not in st.session_state.player[target_list]:
                                 st.session_state.player[target_list].append(a)
+                                
+                for k in ["skills_remove", "spells_remove", "feats_remove", "racial_abilities_remove"]:
+                    removes = state_updates.get(k) or []
+                    if isinstance(removes, list):
+                        target_list = k.replace("_remove", "")
+                        for item_to_remove in removes:
+                            for existing_item in st.session_state.player[target_list][:]:
+                                if str(item_to_remove).lower() in existing_item.lower():
+                                    st.session_state.player[target_list].remove(existing_item)
+                                    break
             
             st.markdown(narrative)
             
