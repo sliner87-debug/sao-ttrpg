@@ -28,10 +28,11 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state):
     
     YOUR ROLE:
     1. Narrate the outcome of the player's action in 2-3 paragraphs. 
-    2. If in combat, dictate the reactions and attacks of ALL active entities in a single cohesive turn.
-    3. If the player investigates, reveal the hidden secrets organically.
-    4. Maintain a grim, high-stakes anime tone. If the player takes damage, describe it viscerally.
-    5. ROOT OVERRIDE: If the user input contains [ROOT OVERRIDE], you MUST suspend all game rules, bypass combat logic, and force the exact outcome the Administrator requested into the narrative seamlessly.
+    2. PACING & SCOPE: This is a LONG-TERM, slow-burn survival game. Keep the scale extremely localized and small. Do NOT rush the plot, do NOT introduce world-ending threats yet, and focus heavily on grounded, gritty, day-to-day survival, scavenging, and street-level encounters. Progression should be hard-earned.
+    3. If in combat, dictate the reactions and attacks of ALL active entities in a single cohesive turn.
+    4. If the player investigates, reveal the hidden secrets organically.
+    5. Maintain a grim, high-stakes anime tone. If the player takes damage, describe it viscerally.
+    6. ROOT OVERRIDE: If the user input contains [ROOT OVERRIDE], you MUST suspend all game rules, bypass combat logic, and force the exact outcome the Administrator requested into the narrative seamlessly.
     
     Format your response EXACTLY as a JSON object with two keys:
     - "narrative": The markdown formatted story/dialogue.
@@ -96,8 +97,9 @@ def generate_idle_summary(api_key, player_state, minutes_offline):
     
     YOUR ROLE:
     1. Write a 1-2 paragraph recap of what the player's avatar did while they were offline. Make it thematic to the grim, apocalyptic setting.
-    2. Calculate reasonable passive rewards based on the time offline (approx 10 Col per minute, maybe a random minor junk item if they were offline for more than 60 minutes).
-    3. Format your response EXACTLY as a JSON object with the following keys:
+    2. PACING & SCOPE: Keep this very small-scale. They are just surviving, scrounging for scraps, or hiding. Nothing epic happens offline.
+    3. Calculate reasonable passive rewards based on the time offline (approx 10 Col per minute, maybe a random minor junk item if they were offline for more than 60 minutes).
+    4. Format your response EXACTLY as a JSON object with the following keys:
        - "narrative": The markdown formatted recap story.
        - "col_gained": (integer) Amount of Col found.
        - "items_found": (list of strings) Any items found, or empty list.
