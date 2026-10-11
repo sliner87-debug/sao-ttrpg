@@ -232,6 +232,14 @@ with st.sidebar:
                 st.caption(f"Durability: {item.get('durability', 0)}/{item.get('max_durability', 0)} | {item.get('desc', '')}")
             else:
                 st.write(f"- {item}")
+                
+    with st.expander("🌍 Global Threat Intelligence", expanded=False):
+        global_news = world_state.get("global_news", [])
+        if not global_news:
+            st.caption("No global uplinks established yet...")
+        else:
+            for news in reversed(global_news[-15:]):
+                st.info(f"📡 {news}")
         
     st.divider()
     st.subheader("🗺️ Sector 1 Map")
@@ -421,8 +429,15 @@ if prompt := (dev_prompt or chat_prompt):
                     st.session_state.player["location"] = loc
                     
                 w_status = state_updates.get("world_status")
-                if w_status and isinstance(w_status, str):
-                    world_state["world_status"] = w_status
+                news_add = state_updates.get("global_news_add", [])
+                
+                if w_status or news_add:
+                    if w_status and isinstance(w_status, str):
+                        world_state["world_status"] = w_status
+                    if news_add and isinstance(news_add, list):
+                        if "global_news" not in world_state: world_state["global_news"] = []
+                        world_state["global_news"].extend(news_add)
+                        
                     with open("world_state.json", "w") as f:
                         json.dump(world_state, f)
                     
