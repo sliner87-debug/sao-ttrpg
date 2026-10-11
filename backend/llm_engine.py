@@ -79,5 +79,47 @@ def generate_scene_image(api_key, prompt):
             if part.inline_data:
                 return part.inline_data.data, None
         return None, "No image was returned by the API."
-    except Exception as e:
         return None, str(e)
+
+def generate_idle_summary(api_key, player_state, minutes_offline):
+    client = get_client(api_key)
+    
+    system_instruction = f"""You are the 'Cardinal System', the Encounter Director for a Cyber-Fantasy Death-Game.
+    
+    The player has been logged off / idle in the Safe Zone for {minutes_offline} minutes. 
+    During this time, their avatar was performing passive activities (scavenging nearby safe areas, resting, or doing minor fetch quests for NPCs).
+    
+    CURRENT STATE:
+    Player: {player_state['name']} (Level {player_state['level']})
+    Location: {player_state['location']}
+    Current Col: {player_state['col']}
+    
+    YOUR ROLE:
+    1. Write a 1-2 paragraph recap of what the player's avatar did while they were offline. Make it thematic to the grim, apocalyptic setting.
+    2. Calculate reasonable passive rewards based on the time offline (approx 10 Col per minute, maybe a random minor junk item if they were offline for more than 60 minutes).
+    3. Format your response EXACTLY as a JSON object with the following keys:
+       - "narrative": The markdown formatted recap story.
+       - "col_gained": (integer) Amount of Col found.
+       - "items_found": (list of strings) Any items found, or empty list.
+       - "xp_gained": (integer) Amount of XP gained.
+    """
+    
+    try:
+        response = client.models.generate_content(
+            model='gemini-3.8-flash',
+            contents="Calculate my offline idle progress and generate the summary.",
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                temperature=0.7
+            )
+        )
+        return json.loads(response.text)
+    except Exception as e:
+        return {
+            "narrative": f"**System Sync Error:** Unable to retrieve offline records. ({str(e)})",
+            "col_gained": 0,
+            "items_found": [],
+            "xp_gained": 0
+        }
+
