@@ -57,31 +57,37 @@ if "offline_processed" not in st.session_state:
     st.session_state.offline_processed = False
 
 if not st.session_state.offline_processed and saved_data and "last_saved" in saved_data:
-    time_offline = time.time() - saved_data["last_saved"]
-    minutes_offline = int(time_offline / 60)
+    is_paused = saved_data["player"].get("is_paused", False)
     
-    # Trigger if offline for more than 1 minute (adjustable later)
-    if minutes_offline >= 1:
-        with st.spinner(f"Synchronizing Offline Avatar Activity ({minutes_offline} minutes)..."):
-            idle_data = llm_engine.generate_idle_summary(api_key, saved_data["player"], minutes_offline)
-            
-            # Update Player State
-            col_gained = idle_data.get("col_gained", 0)
-            xp_gained = idle_data.get("xp_gained", 0)
-            items = idle_data.get("items_found", [])
-            
-            saved_data["player"]["col"] += col_gained
-            saved_data["player"]["inventory"].extend(items)
-            
-            # Create a System Message
-            narrative = f"### 💤 Offline Synchronization Complete\n\n**Time Offline:** {minutes_offline} minutes\n\n{idle_data.get('narrative')}\n\n**Rewards:**\n- Col: +{col_gained}\n- XP: +{xp_gained}\n- Items Found: {', '.join(items) if items else 'None'}"
-            
-            saved_data["messages"].append({
-                "role": "system",
-                "content": narrative,
-                "image_path": None
-            })
-            save_game(saved_data["player"], saved_data["messages"])
+    if is_paused:
+        # If paused, just update last_saved so offline time isn't retroactively accumulated
+        save_game(saved_data["player"], saved_data["messages"])
+    else:
+        time_offline = time.time() - saved_data["last_saved"]
+        minutes_offline = int(time_offline / 60)
+        
+        # Trigger if offline for more than 1 minute (adjustable later)
+        if minutes_offline >= 1:
+            with st.spinner(f"Synchronizing Offline Avatar Activity ({minutes_offline} minutes)..."):
+                idle_data = llm_engine.generate_idle_summary(api_key, saved_data["player"], minutes_offline)
+                
+                # Update Player State
+                col_gained = idle_data.get("col_gained", 0)
+                xp_gained = idle_data.get("xp_gained", 0)
+                items = idle_data.get("items_found", [])
+                
+                saved_data["player"]["col"] += col_gained
+                saved_data["player"]["inventory"].extend(items)
+                
+                # Create a System Message
+                narrative = f"### 💤 Offline Synchronization Complete\n\n**Time Offline:** {minutes_offline} minutes\n\n{idle_data.get('narrative')}\n\n**Rewards:**\n- Col: +{col_gained}\n- XP: +{xp_gained}\n- Items Found: {', '.join(items) if items else 'None'}"
+                
+                saved_data["messages"].append({
+                    "role": "system",
+                    "content": narrative,
+                    "image_path": None
+                })
+                save_game(saved_data["player"], saved_data["messages"])
             
     st.session_state.offline_processed = True
 
@@ -142,7 +148,26 @@ with st.sidebar:
         st.session_state.player['level'] = st.number_input("Set Level", value=player['level'], step=1)
         st.session_state.player['col'] = st.number_input("Set Col", value=player['col'], step=100)
         
+        dev_cmd = st.text_input("Execute Root Command (Optional)")
+        
         if st.button("Apply Database Override"):
+            if dev_cmd:
+                st.session_state.pending_dev_command = dev_cmd
+            save_game(st.session_state.player, st.session_state.messages)
+            st.rerun()
+
+    st.divider()
+    st.subheader("⏳ Time Control")
+    if player.get("is_paused", False):
+        st.warning("World is currently PAUSED.")
+        if st.button("▶️ Resume World"):
+            st.session_state.player["is_paused"] = False
+            save_game(st.session_state.player, st.session_state.messages)
+            st.rerun()
+    else:
+        st.success("World is ACTIVE.")
+        if st.button("⏸️ Pause World"):
+            st.session_state.player["is_paused"] = True
             save_game(st.session_state.player, st.session_state.messages)
             st.rerun()
 
@@ -191,10 +216,13 @@ for msg in st.session_state.messages:
             st.image(msg["image_path"], use_container_width=True)
 
 # User Input
-if prompt := st.chat_input("Action... (Type /admin to force an AI outcome)"):
+chat_prompt = st.chat_input("Action... (Type /admin to force an AI outcome)")
+dev_prompt = st.session_state.pop("pending_dev_command", None)
+
+if prompt := (dev_prompt or chat_prompt):
     
     # Intercept Admin Commands
-    is_admin = prompt.startswith("/admin ")
+    is_admin = prompt.startswith("/admin ") or dev_prompt is not None
     if is_admin:
         command = prompt.replace("/admin ", "")
         ui_text = f"💻 **ROOT OVERRIDE EXECUTED:** {command}"
