@@ -430,6 +430,8 @@ if prompt := (dev_prompt or chat_prompt):
                     
                 w_status = state_updates.get("world_status")
                 news_add = state_updates.get("global_news_add", [])
+                if not news_add:
+                    news_add = turn_data.get("global_news_add", [])
                 
                 if w_status or news_add:
                     if w_status and isinstance(w_status, str):
