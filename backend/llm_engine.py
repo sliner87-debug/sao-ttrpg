@@ -18,8 +18,7 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state):
             entities_in_room = loc.get('entities', [])
             secrets_in_room = loc.get('secrets', [])
             break
-            
-    system_instruction = f"""You are the 'Cardinal System', the Encounter Director for a Death-Game TTRPG set in a 'Fractured Earth' overlay (Sword Art Online inspired).
+    system_instruction = f"""You are the 'Cardinal System', the Encounter Director for a Death-Game TTRPG set in a 'Fractured Earth' overlay.
     
     CURRENT STATE:
     Player: {player_state['name']} (HP: {player_state['hp']}/{player_state['max_hp']})
@@ -68,7 +67,7 @@ def generate_scene_image(api_key, prompt):
         client = get_client(api_key)
         response = client.models.generate_content(
             model='gemini-3.1-flash-lite-image',
-            contents=f"Dark anime art style, Sword Art Online inspired, high quality, masterpiece. {prompt}",
+            contents=f"Dark anime art style, high quality, masterpiece. {prompt}",
             config=types.GenerateContentConfig(
                 response_modalities=["IMAGE"],
                 image_config=types.ImageConfig(
