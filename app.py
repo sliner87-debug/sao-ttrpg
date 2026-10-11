@@ -170,13 +170,15 @@ if prompt := st.chat_input("Action... (Type /admin to force an AI outcome)"):
             # 2. Generate Scene Image & Save to Disk
             image_path = None
             if image_prompt:
-                image_bytes = llm_engine.generate_scene_image(api_key, image_prompt)
+                image_bytes, img_error = llm_engine.generate_scene_image(api_key, image_prompt)
                 if image_bytes:
                     image_filename = f"scene_{int(time.time())}.png"
                     image_path = os.path.join(IMAGE_DIR, image_filename)
                     with open(image_path, "wb") as f:
                         f.write(image_bytes)
                     st.image(image_path, use_container_width=True)
+                elif img_error:
+                    st.error(f"🖼️ **Image API Error:** {img_error}")
             
     # Save to history & trigger Autosave
     new_msg = {

@@ -75,7 +75,7 @@ def generate_scene_image(api_key, prompt):
             )
         )
         if result.generated_images:
-            return result.generated_images[0].image.image_bytes
+            return result.generated_images[0].image.image_bytes, None
+        return None, "No image was returned by the API."
     except Exception as e:
-        print(f"Image generation failed: {e}")
-        return None
+        return None, str(e)
