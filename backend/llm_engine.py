@@ -66,16 +66,20 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state):
 def generate_scene_image(api_key, prompt):
     try:
         client = get_client(api_key)
-        result = client.models.generate_images(
-            model='gemini-2.5-flash-image',
-            prompt=f"Dark anime art style, Sword Art Online inspired, high quality, masterpiece. {prompt}",
-            config=types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio="16:9"
+        response = client.models.generate_content(
+            model='gemini-3.1-flash-lite-image',
+            contents=f"Dark anime art style, Sword Art Online inspired, high quality, masterpiece. {prompt}",
+            config=types.GenerateContentConfig(
+                response_modalities=["IMAGE"],
+                image_config=types.ImageConfig(
+                    aspect_ratio="16:9",
+                    number_of_images=1
+                ),
             )
         )
-        if result.generated_images:
-            return result.generated_images[0].image.image_bytes, None
+        for part in response.parts:
+            if part.inline_data:
+                return part.inline_data.data, None
         return None, "No image was returned by the API."
     except Exception as e:
         return None, str(e)
