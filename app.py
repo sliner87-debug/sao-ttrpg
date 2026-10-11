@@ -533,6 +533,24 @@ if prompt := (dev_prompt or chat_prompt):
                                 if str(item_to_remove).lower() in existing_item.lower():
                                     st.session_state.player[target_list].remove(existing_item)
                                     break
+            # 1.5 Handle Combat Crunch Logs
+            combat_logs = turn_data.get("combat_logs", [])
+            log_markdown = ""
+            if combat_logs and isinstance(combat_logs, list):
+                for log in combat_logs:
+                    if "CRITICAL" in log.upper() or "FAIL" in log.upper() or "MISS" in log.upper():
+                        st.error(f"💥 **{log}**")
+                    elif "DAMAGE" in log.upper() or "DMG" in log.upper():
+                        st.warning(f"🩸 {log}")
+                    elif "ROLL" in log.upper():
+                        st.info(f"🎲 {log}")
+                    else:
+                        st.info(f"⚔️ {log}")
+                    log_markdown += f"> 🎲 `{log}`\n>\n"
+                
+                # Prepend the logs to the narrative so it persists in the chat history
+                if log_markdown:
+                    narrative = log_markdown + "\n\n" + narrative
             
             st.markdown(narrative)
             

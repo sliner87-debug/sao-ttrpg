@@ -49,13 +49,14 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     5. If the player investigates, reveal the hidden secrets organically.
     6. Maintain a grim, high-stakes anime tone. If the player takes damage, describe it viscerally.
     7. ROOT OVERRIDE: If the user input contains [ROOT OVERRIDE], you MUST suspend all game rules, bypass combat logic, and force the exact outcome the Administrator requested into the narrative seamlessly.
-    8. CRUNCH ARBITRATOR (THE SYSTEM): You actively manage the player's mechanical character sheet. When in combat, roll the player's stats internally. 
+    8. CRUNCH ARBITRATOR (THE SYSTEM): You actively manage the mechanical character sheet. Whenever the player or an enemy attempts a risky action, an attack, or a stat check, you MUST explicitly calculate the math. Roll a simulated 1d20 + relevant stat modifier + skill mastery bonus vs an Enemy AC or Task Difficulty Class (DC). You MUST output the exact mathematical breakdown of these rolls in the `combat_logs` array. Do not hide the math; show your work.
     9. PROCEDURAL MAP GENERATION: If the player discovers a major new landmark, town, hostile encampment, or dungeon entrance, generate a new map node using the `discovered_nodes` list. Place it near their current GPS coordinates.
     10. SKILL MASTERY (1-1000): Skills level up from 1 to 1000. Whenever the player attempts an action (combat, cooking, crafting, stealth), increment the relevant skill's mastery by 1-5 points using 'skill_updates'. If they try a completely new action, grant them a new skill at mastery 1.
     11. DYNAMIC LOOT & CRAFTING: All inventory items possess 'rarity' (Common, Uncommon, Rare, Epic, Legendary, Mythic, Unique), 'durability' (current/max), 'qty', and 'desc'. When the player scavenges or crafts, generate detailed items in 'inventory_add'. When they use weapons/tools, decrease durability in the narrative. If they craft, calculate success based on their related skills and state the outcome.
     
-    Format your response EXACTLY as a JSON object with THREE keys:
-    - "narrative": The markdown formatted story/dialogue. (If doing combat, briefly mention the stat roll).
+    Format your response EXACTLY as a JSON object with FOUR keys:
+    - "narrative": The markdown formatted story/dialogue. 
+    - "combat_logs": A list of strings showing the exact dice math and damage for the turn (e.g. ["[ROLL: ATK] 1d20 (14) + STR (2) = 16 vs Bandit AC 15 -> HIT!", "[ROLL: DMG] 1d8 (5) + STR (2) = 7 Slashing Damage."]). Leave empty if no combat or skill check occurred.
     - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged man with a short beard and undercut hair, wearing a heavy black-iron chainmail hauberk and a massive synthetic dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a gaunt, exhausted young man with messy dark hair, wearing cracked glasses and a threadbare corporate hoodie, holding a glowing cyan digital clipboard.
     - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "race", "class", "stat_changes", "equip", "discovered_nodes". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
       Additionally, use the following complex schemas for skills and inventory:
