@@ -81,10 +81,16 @@ def generate_overlay(player_skills=None):
         px, py = node["x"] * PIXELS_PER_GRID, node["y"] * PIXELS_PER_GRID
         mask_draw.ellipse([px - 40, py - 40, px + 40, py + 40], fill=0)
         
+    # Helper to check if player has a required skill (fuzzy match to ignore AI descriptions)
+    def has_skill(req_skill, p_skills):
+        if req_skill is None: return True
+        req_lower = req_skill.lower()
+        return any(req_lower in s.lower() or "omniscience (dev)" in s.lower() for s in p_skills)
+
     # Reveal Secrets (if skill check passes)
     visible_secrets = {}
     for key, sec in SECRETS.items():
-        if sec["skill"] in player_skills or "Omniscience (Dev)" in player_skills:
+        if has_skill(sec.get("skill"), player_skills):
             visible_secrets[key] = sec
             px, py = sec["x"] * PIXELS_PER_GRID, sec["y"] * PIXELS_PER_GRID
             mask_draw.ellipse([px - 25, py - 25, px + 25, py + 25], fill=0) # Smaller reveal radius
@@ -105,7 +111,7 @@ def generate_overlay(player_skills=None):
         
     # Draw Hidden Connections
     for n1, n2, req_skill in HIDDEN_CONNECTIONS:
-        if req_skill in player_skills or "Omniscience (Dev)" in player_skills:
+        if has_skill(req_skill, player_skills):
             def get_coords(n):
                 if n in NODES: return NODES[n]["x"], NODES[n]["y"]
                 if n in visible_secrets: return visible_secrets[n]["x"], visible_secrets[n]["y"]
