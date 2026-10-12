@@ -1,14 +1,16 @@
 import os
 import io
 import json
+import argparse
+from datetime import datetime
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseDownload
+from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
 
-# Scopes allow read-only access to Drive metadata and file contents
-SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+# Scopes allow full read/write access to Drive metadata and file contents
+SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def authenticate():
     creds = None
@@ -29,6 +31,29 @@ def authenticate():
             
     return creds
 
+def get_or_create_folder(service, folder_name="saosaves"):
+    print(f"Searching for '{folder_name}' folder...")
+    results = service.files().list(
+        q=f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false", 
+        spaces='drive', 
+        fields='files(id, name)'
+    ).execute()
+    
+    items = results.get('files', [])
+    
+    if items:
+        print(f"Found folder '{items[0]['name']}'.")
+        return items[0]['id']
+    else:
+        print(f"Could not find folder '{folder_name}'. Creating it now...")
+        file_metadata = {
+            'name': folder_name,
+            'mimeType': 'application/vnd.google-apps.folder'
+        }
+        folder = service.files().create(body=file_metadata, fields='id').execute()
+        print(f"Folder created with ID: {folder.get('id')}")
+        return folder.get('id')
+
 def download_latest_save():
     print("Authenticating with Google Drive...")
     try:
@@ -39,22 +64,9 @@ def download_latest_save():
         print("Please ensure 'drive_credentials.json' is in the root directory.")
         return
 
-    print("Searching for 'saosaves' folder...")
-    results = service.files().list(
-        q="name='saosaves' and mimeType='application/vnd.google-apps.folder' and trashed=false", 
-        spaces='drive', 
-        fields='files(id, name)'
-    ).execute()
+    folder_id = get_or_create_folder(service)
     
-    items = results.get('files', [])
-    
-    if not items:
-        print("Could not find a folder named 'saosaves' in your Google Drive.")
-        return
-        
-    folder_id = items[0]['id']
-    print(f"Found folder '{items[0]['name']}'. Searching for JSON saves inside...")
-    
+    print("Searching for JSON saves inside...")
     # Find all JSON files in that folder, ordered by newest first
     results = service.files().list(
         q=f"'{folder_id}' in parents and mimeType='application/json' and trashed=false", 
@@ -85,5 +97,48 @@ def download_latest_save():
     print(f"Successfully downloaded and overwrote local game save!")
     print("Refresh your Streamlit app now to load the restored data.")
 
+def upload_save(file_path="save1.json"):
+    print("Authenticating with Google Drive...")
+    try:
+        creds = authenticate()
+        service = build('drive', 'v3', credentials=creds)
+    except Exception as e:
+        print(f"Failed to authenticate: {e}")
+        print("Please ensure 'drive_credentials.json' is in the root directory.")
+        return
+
+    if not os.path.exists(file_path):
+        print(f"File {file_path} does not exist locally. Cannot upload.")
+        return
+
+    folder_id = get_or_create_folder(service)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = f"save_{timestamp}.json"
+    
+    file_metadata = {
+        'name': file_name,
+        'parents': [folder_id]
+    }
+    media = MediaFileUpload(file_path, mimetype='application/json', resumable=True)
+    
+    print(f"Uploading {file_path} to Google Drive as {file_name}...")
+    file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+    print(f"Successfully uploaded save! File ID: {file.get('id')}")
+
 if __name__ == '__main__':
-    download_latest_save()
+    parser = argparse.ArgumentParser(description="Sync SAO saves with Google Drive.")
+    parser.add_argument('--upload', action='store_true', help="Upload the local save1.json to Google Drive")
+    parser.add_argument('--download', action='store_true', help="Download the latest save from Google Drive")
+    parser.add_argument('--file', type=str, default="save1.json", help="Specify a file to upload (default: save1.json)")
+    
+    args = parser.parse_args()
+    
+    if args.upload:
+        upload_save(args.file)
+    elif args.download:
+        download_latest_save()
+    else:
+        # Default behavior if no flag is provided
+        print("Please specify --upload or --download.")
+        print("Example: python gdrive_sync.py --upload")
