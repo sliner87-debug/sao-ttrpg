@@ -7,9 +7,6 @@ import base64
 import backend.gm_engine as gm_engine
 import backend.actor_engine as actor_engine
 
-importlib.reload(gm_engine)
-importlib.reload(actor_engine)
-
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="The Fractured Overlay", page_icon="🗡️", layout="wide")
 
