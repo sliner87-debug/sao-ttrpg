@@ -154,6 +154,40 @@ def apply_player_state_updates(state_updates):
                     st.session_state.player.setdefault(target_list, []).append(a)
                     st.toast(f"🔮 Learned {target_list[:-1].capitalize()}: {a}!")
 
+def apply_companion_state_updates(hp_changes: dict):
+    """Synchronizes companion damage/healing across session state and Party/*.json sheets."""
+    if not hp_changes or not isinstance(hp_changes, dict):
+        return
+        
+    for c_key in ["companion_ren", "Ren", "ren"]:
+        if c_key in hp_changes:
+            delta = hp_changes[c_key]
+            # 1. Update session state player["companions"]["Ren"]
+            if "companions" in st.session_state.player and "Ren" in st.session_state.player["companions"]:
+                ren_ref = st.session_state.player["companions"]["Ren"]
+                old_hp = ren_ref.get("hp", 35)
+                max_hp = ren_ref.get("max_hp", 35)
+                new_hp = max(0, min(max_hp, old_hp + delta))
+                ren_ref["hp"] = new_hp
+                if delta < 0:
+                    st.toast(f"🩸 Ren took {abs(delta)} damage! (HP: {new_hp}/{max_hp})", icon="🛡️")
+                elif delta > 0:
+                    st.toast(f"💚 Ren recovered {delta} HP! (HP: {new_hp}/{max_hp})", icon="🩹")
+                    
+            # 2. Update Party/companion_ren.json on disk
+            party_file = os.path.join(BASE_DIR, "Party", "companion_ren.json")
+            if os.path.exists(party_file):
+                try:
+                    with open(party_file, "r", encoding="utf-8") as f:
+                        p_sheet = json.load(f)
+                    p_max = p_sheet.get("max_hp", 35)
+                    p_sheet["hp"] = max(0, min(p_max, p_sheet.get("hp", 35) + delta))
+                    with open(party_file, "w", encoding="utf-8") as f:
+                        json.dump(p_sheet, f, indent=4)
+                except Exception as e:
+                    print(f"[COMPANION SYNC ERROR] {e}", flush=True)
+            break
+
 # --- INITIALIZE SESSION STATE ---
 saved_data = load_game()
 
@@ -236,13 +270,31 @@ p.setdefault("equipped", {"head": "None", "chest": "None", "main_hand": "None", 
 p.setdefault("companions", {
     "Ren": {
         "name": "Ren",
-        "archetype": "Corporate Hacker / Magi-tech Support",
-        "hp": 40,
-        "max_hp": 40,
-        "status": "Exhausted but loyal",
-        "inventory": ["Cyan Digital Clipboard (Hacking Deck)", "Corporate Stun-Pistol"]
+        "archetype": "QA Vanguard",
+        "hp": 35,
+        "max_hp": 35,
+        "ac": 16,
+        "status": "Vigilant and operational",
+        "active_grafts": [
+            {"name": "Sub-Dermal Optical Scanner", "slot": "Head", "effect": "Darkvision, reveals traps"}
+        ],
+        "inventory": ["Monofilament Blade", "Smoke Grenades"]
     }
 })
+
+# Synchronize existing session/saved Ren data with canonical QA Vanguard sheet
+if "companions" in p and "Ren" in p["companions"]:
+    r_sheet = p["companions"]["Ren"]
+    if r_sheet.get("archetype") != "QA Vanguard" or r_sheet.get("max_hp") != 35:
+        r_sheet["archetype"] = "QA Vanguard"
+        r_sheet["max_hp"] = 35
+        r_sheet["hp"] = min(35, r_sheet.get("hp", 35))
+        r_sheet["ac"] = 16
+        r_sheet["status"] = "Vigilant and operational"
+        r_sheet["active_grafts"] = [
+            {"name": "Sub-Dermal Optical Scanner", "slot": "Head", "effect": "Darkvision, reveals traps"}
+        ]
+        r_sheet["inventory"] = ["Monofilament Blade", "Smoke Grenades"]
 
 if "messages" not in st.session_state:
     if saved_data:
@@ -344,6 +396,32 @@ with st.sidebar:
                     st.markdown(f"🔸 {q}")
                     st.divider()
                 
+    with st.expander("🤖 Party Companions", expanded=True):
+        companions = player.get("companions", {})
+        if not companions:
+            st.caption("No party companions registered.")
+        else:
+            for c_id, c_data in companions.items():
+                c_name = c_data.get("name", c_id)
+                c_hp = c_data.get("hp", 35)
+                c_max_hp = c_data.get("max_hp", 35)
+                c_ac = c_data.get("ac", 16)
+                c_archetype = c_data.get("archetype", "Vanguard")
+                c_status = c_data.get("status", "Active")
+                st.markdown(f"**{c_name}** ({c_archetype}) — AC: {c_ac}")
+                c_hp_pct = max(0.0, min(1.0, c_hp / max(1, c_max_hp)))
+                st.progress(c_hp_pct, text=f"HP: {c_hp} / {c_max_hp}")
+                st.caption(f"Status: {c_status}")
+                if "active_grafts" in c_data:
+                    st.markdown("**Active Grafts:**")
+                    for g in c_data["active_grafts"]:
+                        st.caption(f"- 🔧 {g.get('name')} [{g.get('slot')}]: {g.get('effect')}")
+                if "inventory" in c_data:
+                    st.markdown("**Inventory:**")
+                    for itm in c_data["inventory"]:
+                        st.caption(f"- 🎒 {itm}")
+                st.divider()
+
     with st.expander("🌍 Global Threat Intelligence", expanded=False):
         global_news = world_state.get("global_news", [])
         if not global_news:
@@ -449,6 +527,7 @@ with st.sidebar:
                                 state_updates["hp_change"] = hp_changes["player"]
                                 
                             apply_player_state_updates(state_updates)
+                            apply_companion_state_updates(hp_changes)
                             st.session_state.messages.append({"role": "assistant", "content": narrative})
                         else:
                             st.session_state.messages.append({"role": "system", "content": f"**[LIVE COMPANION LOG]**\n\n{result_text}"})
@@ -695,6 +774,9 @@ if prompt := (dev_prompt or chat_prompt):
             hp_changes = turn_data.get("hp_changes", {})
             if "player" in hp_changes:
                 state_updates["hp_change"] = hp_changes["player"]
+                
+            # Synchronize Companion HP (e.g. Ren) across party sheet and HUD
+            apply_companion_state_updates(hp_changes)
                 
             # Fallback for old variables
             image_prompt = "" 

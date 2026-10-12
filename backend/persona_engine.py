@@ -80,16 +80,39 @@ def get_subagent_action(api_key: str, entity_id: str, visible_room: dict) -> dic
     persona_path = os.path.join(ENTITIES_DIR, f"{entity_id}.json")
     persona = load_json(persona_path)
     
-    # Fallback to Party if companion
+    # Check if a mechanical character sheet exists in Party/
+    party_path = os.path.join(PARTY_DIR, f"{entity_id}.json")
+    party_sheet = load_json(party_path)
+
+    # Fallback to Party if persona missing
     if not persona:
-        party_path = os.path.join(PARTY_DIR, f"{entity_id}.json")
-        persona = load_json(party_path)
+        persona = party_sheet
 
     if not persona:
         # Forge on the fly if missing
         persona = forge_entity_persona(api_key, entity_id, raw_name=entity_id, environment=visible_room.get("environment"))
 
-    # 2. Build the persona's subjective perception prompt
+    # 2. Build mechanical gear & physical status context if available
+    mech_lines = []
+    if party_sheet:
+        hp = party_sheet.get("hp")
+        max_hp = party_sheet.get("max_hp")
+        ac = party_sheet.get("ac")
+        if hp is not None and max_hp is not None:
+            mech_lines.append(f"- Current Health: {hp}/{max_hp} HP (Armor Class: {ac})")
+        grafts = party_sheet.get("active_grafts", [])
+        if grafts:
+            g_strs = [f"{g.get('name')} [{g.get('slot')} slot: {g.get('effect')}]" if isinstance(g, dict) else str(g) for g in grafts]
+            mech_lines.append(f"- Active Grafts & Implants: {', '.join(g_strs)}")
+        inv = party_sheet.get("inventory", [])
+        if inv:
+            mech_lines.append(f"- Tactical Inventory: {', '.join([str(i) for i in inv])}")
+            
+    mechanical_section = ""
+    if mech_lines:
+        mechanical_section = "\nYOUR CURRENT PHYSICAL STATUS & TACTICAL LOADOUT:\n" + "\n".join(mech_lines) + "\n"
+
+    # 3. Build the persona's subjective perception prompt
     prompt = f"""You are an autonomous SubAgent in a dark fantasy death-game.
 You are: {persona.get('name', entity_id)} ({persona.get('species_or_type', 'Creature')})
 Role: {persona.get('role', 'entity')}
@@ -104,11 +127,11 @@ YOUR PSYCHE:
 - Deepest Fears: {persona.get('fears_and_dreads', 'Destruction')}
 - Tactical Style: {persona.get('tactical_style', 'Aggressive')}
 - Behavior Rule: {persona.get('behavior_prompt', 'Act tactically.')}
-
+{mechanical_section}
 WHAT YOU CAN CURRENTLY SEE (Visible Room):
 {json.dumps(visible_room, indent=2)}
 
-Decide your next action based on your instincts, fear level, and tactical goals.
+Decide your next action based on your instincts, physical condition, available gear, fear level, and tactical goals.
 Do not break character. Speak from your internal thought and declare your action.
 Output strictly matching ActorActionSchema.
 """

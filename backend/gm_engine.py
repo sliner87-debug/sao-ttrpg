@@ -110,6 +110,22 @@ Output matching TurnResolutionSchema.
         if eid in status_map:
             entity["status"] = status_map[eid]
             
+    # Apply companion HP updates to Party/*.json files
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    party_dir = os.path.join(base_dir, "Party")
+    for eid, delta in hp_map.items():
+        p_path = os.path.join(party_dir, f"{eid}.json")
+        if os.path.exists(p_path):
+            try:
+                p_sheet = load_json(p_path)
+                if p_sheet and "hp" in p_sheet:
+                    max_hp = p_sheet.get("max_hp", 35)
+                    p_sheet["hp"] = max(0, min(max_hp, p_sheet["hp"] + delta))
+                    save_json(p_path, p_sheet)
+                    print(f"[GM ENGINE] Companion {eid} HP updated to {p_sheet['hp']}/{max_hp} (delta: {delta})", flush=True)
+            except Exception as e:
+                print(f"[GM ENGINE] Error updating companion {eid} sheet: {e}", flush=True)
+            
     # If the encounter is resolved, clear traps so companions don't repeat them
     if not resolution.get("encounter_active", True):
         master_state["environment"]["hidden_traps"] = []
