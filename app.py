@@ -245,48 +245,52 @@ with st.sidebar:
             audio_hash = str(hash(audio_bytes))
             
             if audio_hash != st.session_state.get("last_processed_audio_hash"):
-                st.session_state["last_processed_audio_hash"] = audio_hash
-                with st.spinner("Cardinal System analyzing audio..."):
-                    import backend.voice_engine as voice_engine
-                    is_action = (voice_mode == "Player Action")
-                    result_text = voice_engine.process_voice_input(api_key, audio_bytes, action_mode=is_action)
-                    
-                    if is_action:
-                        # Append player's spoken action
-                        st.session_state.messages.append({"role": "user", "content": f"🗣️ [Voice Action] {result_text}"})
+                try:
+                    with st.spinner("Cardinal System analyzing audio..."):
+                        import backend.voice_engine as voice_engine
+                        is_action = (voice_mode == "Player Action")
+                        result_text = voice_engine.process_voice_input(api_key, audio_bytes, action_mode=is_action)
                         
-                        # Execute the full V2 actor pipeline
-                        import backend.gm_engine as gm_engine
-                        import backend.actor_engine as actor_engine
-                        
-                        # 1. Staging ground
-                        gm_engine.generate_visible_state(api_key=api_key)
-                        
-                        # 2. Companion action
-                        ren_action = actor_engine.get_companion_action(api_key=api_key, character_id="companion_ren")
-                        ren_intent = ren_action.get("intended_action", "Ren stands ready.")
-                        ren_thought = ren_action.get("internal_thought", "")
-                        ren_log = f"\n\n**[Ren's Tactical Logic]**\n> *{ren_thought}*\n> **Action:** {ren_intent}"
-                        
-                        # 3. GM resolution
-                        turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=result_text)
-                        narrative = turn_data.get("narrative_recap", "") + ren_log
-                        
-                        state_updates = turn_data.get("player_state_updates", {})
-                        if state_updates is None:
-                            state_updates = {}
-                        hp_changes = turn_data.get("hp_changes", {})
-                        if "player" in hp_changes:
-                            state_updates["hp_change"] = hp_changes["player"]
+                        if is_action:
+                            # Append player's spoken action
+                            st.session_state.messages.append({"role": "user", "content": f"🗣️ [Voice Action] {result_text}"})
                             
-                        # Apply HP delta to player
-                        if "hp_change" in state_updates:
-                            st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + state_updates["hp_change"]))
+                            # Execute the full V2 actor pipeline
+                            import backend.gm_engine as gm_engine
+                            import backend.actor_engine as actor_engine
                             
-                        st.session_state.messages.append({"role": "assistant", "content": narrative})
-                    else:
-                        st.session_state.messages.append({"role": "system", "content": f"**[LIVE COMPANION LOG]**\n\n{result_text}"})
-                st.rerun()
+                            # 1. Staging ground
+                            gm_engine.generate_visible_state(api_key=api_key)
+                            
+                            # 2. Companion action
+                            ren_action = actor_engine.get_companion_action(api_key=api_key, character_id="companion_ren")
+                            ren_intent = ren_action.get("intended_action", "Ren stands ready.")
+                            ren_thought = ren_action.get("internal_thought", "")
+                            ren_log = f"\n\n**[Ren's Tactical Logic]**\n> *{ren_thought}*\n> **Action:** {ren_intent}"
+                            
+                            # 3. GM resolution
+                            turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=result_text)
+                            narrative = turn_data.get("narrative_recap", "") + ren_log
+                            
+                            state_updates = turn_data.get("player_state_updates", {})
+                            if state_updates is None:
+                                state_updates = {}
+                            hp_changes = turn_data.get("hp_changes", {})
+                            if "player" in hp_changes:
+                                state_updates["hp_change"] = hp_changes["player"]
+                                
+                            # Apply HP delta to player
+                            if "hp_change" in state_updates:
+                                st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + state_updates["hp_change"]))
+                                
+                            st.session_state.messages.append({"role": "assistant", "content": narrative})
+                        else:
+                            st.session_state.messages.append({"role": "system", "content": f"**[LIVE COMPANION LOG]**\n\n{result_text}"})
+                            
+                    st.session_state["last_processed_audio_hash"] = audio_hash
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Voice Processing Error: {e}")
             
     st.divider()
     st.subheader("🗺️ Sector 1 Map")
