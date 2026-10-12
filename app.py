@@ -4,6 +4,7 @@ import os
 import time
 import importlib
 import base64
+import re
 import backend.gm_engine as gm_engine
 import backend.actor_engine as actor_engine
 
@@ -41,7 +42,14 @@ def load_game():
             with open(SAVE_PATH, 'r', encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
-            return None
+            pass
+    fallback_path = os.path.join(BASE_DIR, 'campaign_default_save.json')
+    if os.path.exists(fallback_path):
+        try:
+            with open(fallback_path, 'r', encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
     return None
 
 def save_game(player_state, messages):
@@ -80,6 +88,24 @@ def save_game(player_state, messages):
             json.dump(messages, f, indent=4)
     except Exception:
         pass
+
+def extract_subagent_log(msg: dict) -> tuple:
+    """
+    Returns (cleaned_content, subagent_log) from a message dictionary.
+    Handles newly structured messages with 'subagent_log' and legacy
+    messages where thoughts were embedded in 'content'.
+    """
+    content = msg.get("content", "") or ""
+    subagent_log = msg.get("subagent_log", "") or ""
+    
+    if not subagent_log and content:
+        match = re.search(r'(?:\r?\n)+(?:\*\*\[.*?SubAgent Mind\]\*\*|\*\*\[Ren\'s Tactical Logic\]\*\*)', content)
+        if match:
+            split_idx = match.start()
+            subagent_log = content[split_idx:].strip()
+            content = content[:split_idx].strip()
+            
+    return content, subagent_log
 
 def apply_player_state_updates(state_updates):
     if not state_updates or not isinstance(state_updates, dict):
@@ -513,11 +539,11 @@ with st.sidebar:
                                 intent = sa.get("intended_action", "Stands ready.")
                                 icon = "🤖" if "ren" in actor_id.lower() else "👾"
                                 subagent_log_lines.append(f"**[{icon} {actor_name} — SubAgent Mind]**\n> *\"{thought}\"*\n> **Intent:** {intent}")
-                            subagent_log = "\n\n" + "\n\n".join(subagent_log_lines) if subagent_log_lines else ""
+                            subagent_log = "\n\n".join(subagent_log_lines) if subagent_log_lines else ""
                             
                             # 3. GM resolution
                             turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=result_text)
-                            narrative = turn_data.get("narrative_recap", "") + subagent_log
+                            narrative = turn_data.get("narrative_recap", "")
                             
                             state_updates = turn_data.get("player_state_updates", {})
                             if state_updates is None:
@@ -528,7 +554,11 @@ with st.sidebar:
                                 
                             apply_player_state_updates(state_updates)
                             apply_companion_state_updates(hp_changes)
-                            st.session_state.messages.append({"role": "assistant", "content": narrative})
+                            st.session_state.messages.append({
+                                "role": "assistant", 
+                                "content": narrative,
+                                "subagent_log": subagent_log
+                            })
                         else:
                             st.session_state.messages.append({"role": "system", "content": f"**[LIVE COMPANION LOG]**\n\n{result_text}"})
                             
@@ -679,13 +709,16 @@ with st.sidebar:
         transcript_lines = ["# 🗡️ Campaign Transcript: The Fractured Overlay\n\n"]
         for idx, m in enumerate(st.session_state.messages):
             role = m.get("role", "system")
-            content = m.get("content", "")
+            content, subagent_log = extract_subagent_log(m)
             if role == "user":
                 transcript_lines.append(f"### 👤 Turn {idx}: Player Action\n{content}\n\n")
-            elif role == "assistant":
-                transcript_lines.append(f"### 🤖 Turn {idx}: Resolution\n{content}\n\n")
-            else:
-                transcript_lines.append(f"### 📡 System Announcement\n{content}\n\n")
+            elif role in ["assistant", "system"]:
+                icon = "🤖" if role == "assistant" else "📡"
+                title = "Resolution" if role == "assistant" else "System Announcement"
+                entry = f"### {icon} Turn {idx}: {title}\n{content}\n"
+                if subagent_log:
+                    entry += f"\n<details>\n<summary>🧠 SubAgent Thoughts & Planned Actions (Click to open/close)</summary>\n\n{subagent_log}\n\n</details>\n"
+                transcript_lines.append(entry + "\n")
         transcript_md = "".join(transcript_lines)
         
         st.download_button(
@@ -745,9 +778,13 @@ st.caption("A Death-Game TTRPG powered by the Cardinal System AI.")
 
 # Render Chat History
 for msg in st.session_state.messages:
-    avatar = "👾" if msg["role"] == "system" else "👤"
+    avatar = "👾" if msg.get("role") in ["assistant", "system"] else "👤"
     with st.chat_message(msg["role"], avatar=avatar):
-        st.markdown(msg["content"])
+        content, subagent_log = extract_subagent_log(msg)
+        st.markdown(content)
+        if subagent_log:
+            with st.expander("🧠 SubAgent Thoughts & Planned Actions (Click to open/close)", expanded=False):
+                st.markdown(subagent_log)
         if msg.get("image_data"):
             st.image(msg["image_data"], use_container_width=True)
         elif msg.get("image_path") and os.path.exists(msg["image_path"]):
@@ -796,12 +833,12 @@ if prompt := (dev_prompt or chat_prompt):
                 intent = sa.get("intended_action", "Stands ready.")
                 icon = "🤖" if "ren" in actor_id.lower() else "👾"
                 subagent_log_lines.append(f"**[{icon} {actor_name} — SubAgent Mind]**\n> *\"{thought}\"*\n> **Intent:** {intent}")
-            subagent_log = "\n\n" + "\n\n".join(subagent_log_lines) if subagent_log_lines else ""
+            subagent_log = "\n\n".join(subagent_log_lines) if subagent_log_lines else ""
             
             # c. Resolve the turn (Read Player Action + SubAgent Action Queue)
             turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=ai_prompt)
             
-            narrative = turn_data.get("narrative_recap", "Error parsing narrative.") + subagent_log
+            narrative = turn_data.get("narrative_recap", "Error parsing narrative.")
             
             # Extract player state updates into the format app.py expects
             state_updates = turn_data.get("player_state_updates", {})
@@ -972,12 +1009,16 @@ if prompt := (dev_prompt or chat_prompt):
                     narrative = log_markdown + "\n\n" + narrative
             
             st.markdown(narrative)
+            if subagent_log:
+                with st.expander("🧠 SubAgent Thoughts & Planned Actions (Click to open/close)", expanded=False):
+                    st.markdown(subagent_log)
             
             image_data = None
             
     new_msg = {
         "role": "assistant", 
         "content": narrative,
+        "subagent_log": subagent_log,
         "image_data": image_data
     }
     st.session_state.messages.append(new_msg)

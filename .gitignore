@@ -1,6 +1,5 @@
 .env
 .streamlit/secrets.toml
 __pycache__/
-save*.json
 gdrive_tokens.json
 drive_credentials.json
