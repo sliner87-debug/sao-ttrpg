@@ -230,6 +230,26 @@ with st.sidebar:
             for news in reversed(global_news[-15:]):
                 st.info(f"📡 {news}")
         
+
+    st.divider()
+    st.subheader("🎙️ Live Table Companion")
+    st.caption("Stream your mic to the AI GM.")
+    if st.toggle("Activate Microphone Module", value=False):
+        with st.spinner("Minting secure token..."):
+            import backend.auth as auth
+            token = auth.get_ephemeral_token(api_key)
+            
+        import streamlit.components.v1 as components
+        live_companion = components.declare_component("live_companion", path=os.path.join(BASE_DIR, "frontend"))
+        
+        # Pass the token down to the JS component. When the user stops recording, it returns Markdown.
+        markdown_out = live_companion(token=token, default=None)
+        
+        if markdown_out:
+            # Append the transcribed markdown to the chat automatically!
+            st.session_state.messages.append({"role": "system", "content": f"**[LIVE COMPANION LOG]**\n{markdown_out}"})
+            st.rerun()
+            
     st.divider()
     st.subheader("🗺️ Sector 1 Map")
     import map_engine

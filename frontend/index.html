@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Live Table Companion</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        .mic-btn { background: #ff4b4b; border: none; color: white; padding: 20px 30px; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); width: 100%; justify-content: center;}
+        .mic-btn:hover { background: #ff3333; transform: translateY(-2px); }
+        .mic-btn.recording { background: #2e8b57; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(46,139,87, 0.7); } 70% { box-shadow: 0 0 0 20px rgba(46,139,87, 0); } 100% { box-shadow: 0 0 0 0 rgba(46,139,87, 0); } }
+        #status { margin-top: 15px; font-size: 14px; color: #888; text-align: center; font-weight: 500;}
+    </style>
+    <!-- Streamlit Component Library -->
+    <script src="https://cdn.jsdelivr.net/npm/streamlit-component-lib@1.3.0/dist/streamlit.js"></script>
+</head>
+<body>
+
+<button id="micBtn" class="mic-btn">🎙️ Start Listening</button>
+<div id="status">Awaiting Authorization...</div>
+
+<script type="module">
+    import { GoogleGenAI } from "https://esm.sh/@google/genai@0.1.1";
+
+    const btn = document.getElementById("micBtn");
+    const statusEl = document.getElementById("status");
+    
+    let isRecording = false;
+    let aiSession = null;
+    let audioContext = null;
+    let mediaStream = null;
+    let workletNode = null;
+    let ephemeralToken = null;
+    let accumulatedMarkdown = "";
+
+    // 1. Initialize Streamlit connection
+    Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, (event) => {
+        // Extract the token passed from Python
+        if (event.detail.args && event.detail.args.token) {
+            ephemeralToken = event.detail.args.token;
+            if (!isRecording) statusEl.innerText = "System Ready. Click to stream.";
+        }
+        Streamlit.setFrameHeight(120); // Auto-resize iframe
+    });
+    Streamlit.setComponentReady();
+    Streamlit.setFrameHeight(120);
+
+    // 2. Audio processing worklet
+    const workletCode = `
+      class PCMProcessor extends AudioWorkletProcessor {
+        process(inputs, outputs, parameters) {
+          const input = inputs[0];
+          if (input.length > 0) {
+            const channelData = input[0];
+            const pcm16 = new Int16Array(channelData.length);
+            for (let i = 0; i < channelData.length; i++) {
+              let s = Math.max(-1, Math.min(1, channelData[i]));
+              pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            this.port.postMessage(pcm16.buffer, [pcm16.buffer]);
+          }
+          return true;
+        }
+      }
+      registerProcessor('pcm-processor', PCMProcessor);
+    `;
+
+    function arrayBufferToBase64(buffer) {
+        let binary = '';
+        let bytes = new Uint8Array(buffer);
+        let len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return window.btoa(binary);
+    }
+
+    async function toggleRecording() {
+        if (isRecording) stopRecording();
+        else startRecording();
+    }
+
+    async function startRecording() {
+        if (!ephemeralToken) {
+            statusEl.innerText = "Error: No Auth Token from Streamlit.";
+            return;
+        }
+        
+        try {
+            statusEl.innerText = "Connecting to Cardinal System...";
+            
+            // Connect to Gemini Live API
+            const ai = new GoogleGenAI({ apiKey: ephemeralToken, httpOptions: { apiVersion: 'v1beta' } });
+            
+            accumulatedMarkdown = ""; // Reset markdown payload
+
+            aiSession = await ai.live.connect({
+              model: 'gemini-3.8-live',
+              callbacks: {
+                onopen: () => {
+                    statusEl.innerText = "Listening to GM... (Speak now)";
+                    btn.classList.add("recording");
+                    btn.innerText = "🛑 Stop Listening";
+                    isRecording = true;
+                },
+                onmessage: (msg) => {
+                    const content = msg.serverContent;
+                    if (content && content.modelTurn && content.modelTurn.parts) {
+                        for (const part of content.modelTurn.parts) {
+                            if (part.text) {
+                                accumulatedMarkdown += part.text;
+                                statusEl.innerText = "Processing Markdown...";
+                            }
+                        }
+                    }
+                },
+                onerror: (err) => {
+                    console.error(err);
+                    statusEl.innerText = "Connection Error.";
+                    stopRecording();
+                },
+                onclose: () => {
+                    statusEl.innerText = "Disconnected.";
+                    stopRecording();
+                }
+              }
+            });
+
+            // Start Mic
+            mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, sampleRate: 16000 } });
+            audioContext = new AudioContext({ sampleRate: 16000 });
+            
+            const blob = new Blob([workletCode], { type: 'application/javascript' });
+            const workletUrl = URL.createObjectURL(blob);
+            await audioContext.audioWorklet.addModule(workletUrl);
+            
+            const source = audioContext.createMediaStreamSource(mediaStream);
+            workletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
+            
+            workletNode.port.onmessage = (e) => {
+                if (aiSession && isRecording) {
+                    const base64Audio = arrayBufferToBase64(e.data);
+                    aiSession.sendRealtimeInput({
+                        audio: { data: base64Audio, mimeType: 'audio/pcm;rate=16000' }
+                    });
+                }
+            };
+            
+            source.connect(workletNode);
+            workletNode.connect(audioContext.destination);
+
+        } catch (e) {
+            console.error(e);
+            statusEl.innerText = "Mic Access Denied or Stream Error.";
+        }
+    }
+
+    function stopRecording() {
+        if (!isRecording) return;
+        isRecording = false;
+        btn.classList.remove("recording");
+        btn.innerText = "🎙️ Start Listening";
+        
+        if (aiSession) {
+            aiSession.sendRealtimeInput({ audioStreamEnd: true });
+        }
+        
+        // Push the finalized markdown back to Python!
+        if (accumulatedMarkdown.trim().length > 0) {
+            Streamlit.setComponentValue(accumulatedMarkdown);
+            accumulatedMarkdown = ""; // Clear after sending
+        }
+
+        if (workletNode) workletNode.disconnect();
+        if (audioContext) audioContext.close();
+        if (mediaStream) mediaStream.getTracks().forEach(track => track.stop());
+        
+        statusEl.innerText = "Logs submitted to GM Screen.";
+    }
+
+    btn.addEventListener("click", toggleRecording);
+</script>
+</body>
+</html>
