@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types
 from backend.schemas import VisibleRoomSchema, TurnResolutionSchema
 
-client = genai.Client()
+
 
 def load_json(filepath):
     with open(filepath, "r") as f:
@@ -14,8 +14,10 @@ def save_json(filepath, data):
     with open(filepath, "w") as f:
         json.dump(data, f, indent=4)
 
-def generate_visible_state():
+def generate_visible_state(api_key: str):
     """Reads secret_master_state.json and writes sanitized version to visible_room.json"""
+    client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=api_key)
     master_state_path = os.path.join(".game_state", "secret_master_state.json")
     visible_room_path = os.path.join("Staging_Ground", "visible_room.json")
     master_state = load_json(master_state_path)
@@ -43,8 +45,10 @@ Return ONLY the data the players can clearly observe. Output EXACTLY matching th
     print("Staging Ground updated: visible_room.json")
     return visible_room
 
-def resolve_turn(player_action: str):
+def resolve_turn(api_key: str, player_action: str):
     """Takes the player action + AI queue, calculates math, updates master state."""
+    client = genai.Client(api_key=api_key)
+    client = genai.Client(api_key=api_key)
     master_state_path = os.path.join(".game_state", "secret_master_state.json")
     queue_path = os.path.join("Staging_Ground", "action_queue.json")
     rules_path = os.path.join("System_Core", "cardinal_rules.md")
@@ -100,3 +104,5 @@ Output the TurnResolutionSchema.
     
     print("Turn resolved and master_state updated.")
     return resolution
+
+

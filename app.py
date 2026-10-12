@@ -152,22 +152,7 @@ with st.sidebar:
     
     st.divider()
     
-    if st.button("👁️ Consult Oracle"):
-        with st.spinner("Calculating Survival Odds..."):
-            try:
-                import backend.gm_engine as gme
-                import backend.actor_engine as ae
-                room_state = gme.generate_visible_room(player, world_state)
-                oracle_result = ae.calculate_survival_odds(api_key, player, room_state)
-                odds = oracle_result.get("odds", 50)
-                tip = oracle_result.get("tip", "System Error")
-                color = "green" if odds > 60 else "orange" if odds > 30 else "red"
-                st.markdown(f"**Survival Odds:** :{color}[{odds}%]")
-                st.caption(f"**Tip:** {tip}")
-            except Exception as e:
-                st.error(f"Oracle offline: {e}")
-                
-    st.divider()
+
     with st.expander("🧬 Character Build", expanded=False):
         st.write(f"**Race:** {player['race']}")
         st.write(f"**Class:** {player['class']}")
@@ -405,33 +390,37 @@ if prompt := (dev_prompt or chat_prompt):
             import map_engine
             current_ms = map_engine.load_map_state()
             
-            # --- NEW TURN LOOP ---
-            # a. Generate the visible room state
-            gm_engine.generate_room_state(
-                api_key=api_key,
-                player_state=st.session_state.player,
-                world_state=world_state,
-                map_state=current_ms,
-                chat_history=st.session_state.messages
-            )
+            # --- NEW TURN LOOP (V2 ARCHITECTURE) ---
+            import backend.gm_engine as gm_engine
+            import backend.actor_engine as actor_engine
             
-            # b. Get companion's action
-            ren_action = actor_engine.get_actor_action('companion_ren.json', 'visible_room.json')
+            # a. Generate the Staging Ground (Visible Room)
+            gm_engine.generate_visible_state(api_key=api_key)
             
-            # c. Resolve the turn
-            turn_data = gm_engine.resolve_turn(
-                api_key=api_key,
-                player_action=ai_prompt,
-                ren_action=ren_action,
-                chat_history=st.session_state.messages,
-                player_state=st.session_state.player,
-                world_state=world_state,
-                map_state=current_ms
-            )
+            # b. Companions Act (Read Visible Room, Write to Queue)
+            ren_action = actor_engine.get_companion_action(api_key=api_key, character_id="companion_ren")
             
-            narrative = turn_data.get("narrative", "Error parsing narrative.")
-            image_prompt = turn_data.get("image_prompt", "")
-            state_updates = turn_data.get("state_updates", {})
+            ren_intent = ren_action.get("intended_action", "Ren stands ready.")
+            ren_thought = ren_action.get("internal_thought", "")
+            ren_log = f"\n\n**[Ren's Tactical Logic]**\n> *{ren_thought}*\n> **Action:** {ren_intent}"
+            
+            # c. Resolve the turn (Read Player Action + Queue, Update Master State)
+            turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=ai_prompt)
+            
+            narrative = turn_data.get("narrative_recap", "Error parsing narrative.") + ren_log
+            
+            # Extract player state updates into the format app.py expects
+            state_updates = turn_data.get("player_state_updates", {})
+            if state_updates is None:
+                state_updates = {}
+                
+            # Add HP changes to player state updates dynamically
+            hp_changes = turn_data.get("hp_changes", {})
+            if "player" in hp_changes:
+                state_updates["hp_change"] = hp_changes["player"]
+                
+            # Fallback for old variables
+            image_prompt = "" 
             
             # Apply State Updates
             if state_updates and isinstance(state_updates, dict):

@@ -6,7 +6,7 @@ from backend.schemas import ActorActionSchema
 
 # Initialize the new Gemini 3.8 SDK
 # Automatically picks up GEMINI_API_KEY from environment
-client = genai.Client()
+
 
 def load_json(filepath):
     with open(filepath, "r") as f:
@@ -16,12 +16,13 @@ def save_json(filepath, data):
     with open(filepath, "w") as f:
         json.dump(data, f, indent=4)
 
-def get_companion_action(character_id: str):
+def get_companion_action(api_key: str, character_id: str):
     """
     Simulates the AI companion's thought process.
     Reads ONLY the visible_room.json and their own character sheet.
     """
     # 1. Load the isolated states
+    client = genai.Client(api_key=api_key)
     char_sheet_path = os.path.join("Party", f"{character_id}.json")
     visible_room_path = os.path.join("Staging_Ground", "visible_room.json")
     action_queue_path = os.path.join("Staging_Ground", "action_queue.json")
@@ -65,3 +66,4 @@ Output your response exactly matching the requested JSON schema.
 if __name__ == "__main__":
     # Quick test
     get_companion_action("companion_ren")
+
