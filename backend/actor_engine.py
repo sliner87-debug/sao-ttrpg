@@ -63,3 +63,37 @@ def generate_actor_action(api_key, actor_id, player_input,
         return json.loads(response.text)
     except Exception as e:
         return {"actor": actor_name, "action": f"ERROR: Failed to generate action - {str(e)}"}
+
+def calculate_survival_odds(api_key, player_state, visible_room):
+    """
+    Oracle Engine: Calculates the survival odds of the current room state.
+    """
+    client = get_client(api_key)
+    
+    system_instruction = f"""You are the Oracle Prediction Engine.
+    Analyze the player's current state and the visible room, then predict their odds of survival if combat initiates.
+    
+    PLAYER STATE:
+    {json.dumps(player_state, indent=2)}
+    
+    VISIBLE ROOM STATE:
+    {json.dumps(visible_room, indent=2)}
+    
+    Output a JSON object with:
+    - "odds": an integer between 0 and 100 representing the percent chance of survival.
+    - "tip": A 1-sentence tactical tip.
+    """
+    
+    try:
+        response = client.models.generate_content(
+            model='gemini-3.8-flash',
+            contents="Predict survival odds.",
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                temperature=0.2
+            )
+        )
+        return json.loads(response.text)
+    except Exception as e:
+        return {"odds": 50, "tip": "System Error: Cannot compute odds."}

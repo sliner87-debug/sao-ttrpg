@@ -152,6 +152,22 @@ with st.sidebar:
     
     st.divider()
     
+    if st.button("👁️ Consult Oracle"):
+        with st.spinner("Calculating Survival Odds..."):
+            try:
+                import backend.gm_engine as gme
+                import backend.actor_engine as ae
+                room_state = gme.generate_visible_room(player, world_state)
+                oracle_result = ae.calculate_survival_odds(api_key, player, room_state)
+                odds = oracle_result.get("odds", 50)
+                tip = oracle_result.get("tip", "System Error")
+                color = "green" if odds > 60 else "orange" if odds > 30 else "red"
+                st.markdown(f"**Survival Odds:** :{color}[{odds}%]")
+                st.caption(f"**Tip:** {tip}")
+            except Exception as e:
+                st.error(f"Oracle offline: {e}")
+                
+    st.divider()
     with st.expander("🧬 Character Build", expanded=False):
         st.write(f"**Race:** {player['race']}")
         st.write(f"**Class:** {player['class']}")
