@@ -242,13 +242,17 @@ with st.sidebar:
         import streamlit.components.v1 as components
         live_companion = components.declare_component("live_companion", path=os.path.join(BASE_DIR, "frontend"))
         
-        # Pass the token down to the JS component. When the user stops recording, it returns Markdown.
-        markdown_out = live_companion(token=token, default=None)
+        # Pass the token down to the JS component. When the user stops recording, it returns a dict with {text, id}.
+        out_data = live_companion(token=token, default=None)
         
-        if markdown_out:
-            # Append the transcribed markdown to the chat automatically!
-            st.session_state.messages.append({"role": "system", "content": f"**[LIVE COMPANION LOG]**\n{markdown_out}"})
-            st.rerun()
+        if out_data and isinstance(out_data, dict):
+            out_id = out_data.get("id")
+            out_text = out_data.get("text", "")
+            
+            if out_id != st.session_state.get("last_live_log_id") and out_text:
+                st.session_state["last_live_log_id"] = out_id
+                st.session_state.messages.append({"role": "system", "content": f"**[LIVE COMPANION LOG]**\n{out_text}"})
+                st.rerun()
             
     st.divider()
     st.subheader("🗺️ Sector 1 Map")

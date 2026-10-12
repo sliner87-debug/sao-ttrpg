@@ -166,7 +166,7 @@
         
         // Push the finalized markdown back to Python!
         if (accumulatedMarkdown.trim().length > 0) {
-            Streamlit.setComponentValue(accumulatedMarkdown);
+            Streamlit.setComponentValue({text: accumulatedMarkdown, id: Date.now()});
             accumulatedMarkdown = ""; // Clear after sending
         }
 
@@ -181,3 +181,4 @@
 </script>
 </body>
 </html>
+
