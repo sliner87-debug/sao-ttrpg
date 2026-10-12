@@ -1,16 +1,22 @@
 {
-  "name": "Ren",
-  "hp": 35,
-  "max_hp": 35,
-  "level": 3,
-  "class": "QA Spec",
-  "abilities": [
-    "Find Bug",
-    "Stress Test",
-    "Automated Defense"
-  ],
-  "inventory": [
-    "Cyan Digital Clipboard",
-    "Threadbare Corporate Hoodie"
-  ]
+    "id": "companion_ren",
+    "name": "Ren",
+    "role": "QA Vanguard",
+    "level": 3,
+    "hp": 35,
+    "max_hp": 35,
+    "ac": 16,
+    "strain_capacity": 3,
+    "active_grafts": [
+        {
+            "name": "Sub-Dermal Optical Scanner",
+            "slot": "Head",
+            "effect": "Darkvision, reveals traps"
+        }
+    ],
+    "inventory": [
+        "Monofilament Blade",
+        "Smoke Grenades"
+    ],
+    "behavior_prompt": "You are a tactical Vanguard. You prioritize protecting the backline and testing mechanical hazards."
 }

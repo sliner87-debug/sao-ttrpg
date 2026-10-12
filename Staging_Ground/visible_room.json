@@ -1,9 +1,20 @@
 {
-  "turn_number": 0,
-  "active_turn": "player",
-  "environment": {
-    "location": "Unknown",
-    "description": ""
-  },
-  "visible_entities": []
+    "turn_number": 1,
+    "environment": {
+        "location": "Oxford Mine Adits",
+        "description": "A damp, rusted out mine shaft. The ceiling is unstable.",
+        "environmental_effects": [
+            "Dim Light"
+        ]
+    },
+    "entities": [
+        {
+            "id": "enemy_01",
+            "name": "Runic Quarry Golem",
+            "type": "hostile",
+            "status": [
+                "Intact"
+            ]
+        }
+    ]
 }
