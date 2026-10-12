@@ -26,38 +26,87 @@ WORLD_PATH = os.path.join(BASE_DIR, 'world_state.json')
 SAVE_PATH = os.path.join(BASE_DIR, 'save_game.json')
 
 # --- SAVE/LOAD LOGIC ---
-@st.cache_data
 def load_world():
     if os.path.exists(WORLD_PATH):
-        with open(WORLD_PATH, 'r') as f:
-            return json.load(f)
-    return {"sector": 1, "world_status": "OFFLINE", "map_locations": []}
-
-world_state = load_world()
+        try:
+            with open(WORLD_PATH, 'r', encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"sector": 1, "world_status": "CRUCIBLE: ACTIVE", "map_locations": [], "global_news": []}
 
 def load_game():
     if os.path.exists(SAVE_PATH):
-        with open(SAVE_PATH, 'r') as f:
-            return json.load(f)
+        try:
+            with open(SAVE_PATH, 'r', encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None
     return None
 
 def save_game(player_state, messages):
+    master_state_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+    master_state = {}
+    if os.path.exists(master_state_path):
+        try:
+            with open(master_state_path, "r", encoding="utf-8") as f:
+                master_state = json.load(f)
+        except Exception:
+            pass
+
+    world_data = st.session_state.get("world_state", load_world())
+
     data = {
         "player": player_state,
         "messages": messages,
+        "world_state": world_data,
+        "master_state": master_state,
         "last_saved": time.time()
     }
-    with open(SAVE_PATH, 'w') as f:
+    with open(SAVE_PATH, 'w', encoding="utf-8") as f:
         json.dump(data, f, indent=4)
+        
+    # Persist world_state.json
+    try:
+        with open(WORLD_PATH, 'w', encoding="utf-8") as f:
+            json.dump(world_data, f, indent=4)
+    except Exception:
+        pass
+
+    # Rolling chat thread backup
+    try:
+        backup_path = os.path.join(BASE_DIR, "chat_history_backup.json")
+        with open(backup_path, 'w', encoding="utf-8") as f:
+            json.dump(messages, f, indent=4)
+    except Exception:
+        pass
 
 # --- INITIALIZE SESSION STATE ---
 saved_data = load_game()
 
 if "offline_processed" not in st.session_state:
     st.session_state.offline_processed = True
+
+if "world_state" not in st.session_state:
+    if saved_data and "world_state" in saved_data:
+        st.session_state.world_state = saved_data["world_state"]
+    else:
+        st.session_state.world_state = load_world()
+
+world_state = st.session_state.world_state
+
 if "player" not in st.session_state:
     if saved_data:
         st.session_state.player = saved_data["player"]
+        # Restore master state onto disk if saved
+        if "master_state" in saved_data and saved_data["master_state"]:
+            m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+            try:
+                os.makedirs(os.path.dirname(m_path), exist_ok=True)
+                with open(m_path, "w", encoding="utf-8") as f:
+                    json.dump(saved_data["master_state"], f, indent=4)
+            except Exception:
+                pass
     else:
         st.session_state.player = {
             "name": "TestSubject_01",
@@ -388,19 +437,55 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
-    with st.expander("💾 Save Management"):
-        st.caption("Streamlit Cloud erases local files when it sleeps. Download your save file to keep your game safe!")
+    with st.expander("💾 Save & Backup Management"):
+        st.caption("Streamlit Cloud erases local files when it sleeps. Download your save file or transcript to keep your game safe!")
         
-        # Export
-        save_json = json.dumps({"player": st.session_state.player, "messages": st.session_state.messages, "last_saved": time.time()}, indent=4)
+        # Read current master state if available
+        m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+        cur_master = {}
+        if os.path.exists(m_path):
+            try:
+                with open(m_path, "r", encoding="utf-8") as f:
+                    cur_master = json.load(f)
+            except Exception:
+                pass
+
+        # 1. Full State Export (JSON)
+        save_payload = {
+            "player": st.session_state.player,
+            "messages": st.session_state.messages,
+            "world_state": st.session_state.get("world_state", {}),
+            "master_state": cur_master,
+            "last_saved": time.time()
+        }
         st.download_button(
-            label="📥 Export Save to Device",
-            data=save_json,
-            file_name=f"fractured_earth_save_{int(time.time())}.json",
+            label="📥 Export Full Campaign State (.json)",
+            data=json.dumps(save_payload, indent=4),
+            file_name=f"crucible_campaign_save_{int(time.time())}.json",
             mime="application/json"
         )
+
+        # 2. Readable Transcript Backup (Markdown)
+        transcript_lines = ["# 🗡️ Campaign Transcript: The Fractured Overlay\n\n"]
+        for idx, m in enumerate(st.session_state.messages):
+            role = m.get("role", "system")
+            content = m.get("content", "")
+            if role == "user":
+                transcript_lines.append(f"### 👤 Turn {idx}: Player Action\n{content}\n\n")
+            elif role == "assistant":
+                transcript_lines.append(f"### 🤖 Turn {idx}: Resolution\n{content}\n\n")
+            else:
+                transcript_lines.append(f"### 📡 System Announcement\n{content}\n\n")
+        transcript_md = "".join(transcript_lines)
         
-        # Import
+        st.download_button(
+            label="📜 Download Campaign Transcript (.md)",
+            data=transcript_md,
+            file_name=f"campaign_transcript_{int(time.time())}.md",
+            mime="text/markdown"
+        )
+        
+        # 3. Import & Restore
         st.divider()
         uploaded_file = st.file_uploader("📤 Import Save from Device", type="json")
         if uploaded_file is not None:
@@ -409,9 +494,14 @@ with st.sidebar:
                     loaded_data = json.load(uploaded_file)
                     st.session_state.player = loaded_data["player"]
                     st.session_state.messages = loaded_data["messages"]
-                    if "last_saved" in loaded_data:
-                        save_game(st.session_state.player, st.session_state.messages)
-                    st.success("Save loaded! Refreshing...")
+                    if "world_state" in loaded_data:
+                        st.session_state.world_state = loaded_data["world_state"]
+                    if "master_state" in loaded_data and loaded_data["master_state"]:
+                        os.makedirs(os.path.dirname(m_path), exist_ok=True)
+                        with open(m_path, "w", encoding="utf-8") as f:
+                            json.dump(loaded_data["master_state"], f, indent=4)
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.success("Save loaded successfully! Refreshing...")
                     time.sleep(1)
                     st.rerun()
                 except Exception as e:
