@@ -17,7 +17,7 @@ def get_ephemeral_token(api_key: str) -> str:
         config=types.LiveConnectConfig(
             response_modalities=["TEXT"],
             system_instruction=types.Content(
-                parts=[types.Part.from_text(
+                parts=[types.Part(text=
                     "You are a TTRPG Table Companion. Listen to the human GM. "
                     "Do not speak. Respond only with structured Markdown tables and "
                     "bullet points summarizing the combat, entities, or loot mentioned."
@@ -38,3 +38,4 @@ def get_ephemeral_token(api_key: str) -> str:
     
     # Return the token string to be injected into the Streamlit component
     return token_response.name
+
