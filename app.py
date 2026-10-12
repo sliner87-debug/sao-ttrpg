@@ -247,9 +247,11 @@ with st.sidebar:
             if audio_hash != st.session_state.get("last_processed_audio_hash"):
                 try:
                     with st.spinner("Cardinal System analyzing audio..."):
+                        print(f"[VOICE] Processing {len(audio_bytes)} audio bytes in mode: {voice_mode}", flush=True)
                         import backend.voice_engine as voice_engine
                         is_action = (voice_mode == "Player Action")
                         result_text = voice_engine.process_voice_input(api_key, audio_bytes, action_mode=is_action)
+                        print(f"[VOICE] Transcribed result: {result_text}", flush=True)
                         
                         if is_action:
                             # Append player's spoken action
@@ -288,8 +290,11 @@ with st.sidebar:
                             st.session_state.messages.append({"role": "system", "content": f"**[LIVE COMPANION LOG]**\n\n{result_text}"})
                             
                     st.session_state["last_processed_audio_hash"] = audio_hash
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.toast("Voice command executed!", icon="🗣️")
                     st.rerun()
                 except Exception as e:
+                    print(f"[VOICE ERROR] {e}", flush=True)
                     st.error(f"Voice Processing Error: {e}")
             
     st.divider()
@@ -685,14 +690,6 @@ if prompt := (dev_prompt or chat_prompt):
             st.markdown(narrative)
             
             image_data = None
-            if image_prompt:
-                image_bytes, img_error = llm_engine.generate_scene_image(api_key, image_prompt)
-                if image_bytes:
-                    b64_img = base64.b64encode(image_bytes).decode("utf-8")
-                    image_data = f"data:image/png;base64,{b64_img}"
-                    st.image(image_data, use_container_width=True)
-                elif img_error:
-                    narrative += f"\n\n*(System Note: Image Generation Failed - {img_error})*"
             
     new_msg = {
         "role": "system", 
