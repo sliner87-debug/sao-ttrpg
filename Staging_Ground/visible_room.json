@@ -1,0 +1,9 @@
+{
+  "turn_number": 0,
+  "active_turn": "player",
+  "environment": {
+    "location": "Unknown",
+    "description": ""
+  },
+  "visible_entities": []
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Ren",
+  "hp": 35,
+  "max_hp": 35,
+  "level": 3,
+  "class": "QA Spec",
+  "abilities": [
+    "Find Bug",
+    "Stress Test",
+    "Automated Defense"
+  ],
+  "inventory": [
+    "Cyan Digital Clipboard",
+    "Threadbare Corporate Hoodie"
+  ]
+}

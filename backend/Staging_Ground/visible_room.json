@@ -1,0 +1,16 @@
+{
+    "location_name": "Sector 1 Sewer",
+    "description": "You are in Sector 1 Sewer.",
+    "player_summary": {
+        "name": "Banki",
+        "hp": 100,
+        "max_hp": 100,
+        "equipment": {}
+    },
+    "visible_entities": [
+        {
+            "name": "Orc",
+            "hp": 50
+        }
+    ]
+}
