@@ -4,11 +4,9 @@ import os
 import time
 import importlib
 import base64
-import backend.llm_engine as llm_engine
 import backend.gm_engine as gm_engine
 import backend.actor_engine as actor_engine
 
-importlib.reload(llm_engine)
 importlib.reload(gm_engine)
 importlib.reload(actor_engine)
 
@@ -59,43 +57,7 @@ def save_game(player_state, messages):
 saved_data = load_game()
 
 if "offline_processed" not in st.session_state:
-    st.session_state.offline_processed = False
-
-if not st.session_state.offline_processed and saved_data and "last_saved" in saved_data:
-    is_paused = saved_data["player"].get("is_paused", False)
-    
-    if is_paused:
-        # If paused, just update last_saved so offline time isn't retroactively accumulated
-        save_game(saved_data["player"], saved_data["messages"])
-    else:
-        time_offline = time.time() - saved_data["last_saved"]
-        minutes_offline = int(time_offline / 60)
-        
-        # Trigger if offline for more than 1 minute (adjustable later)
-        if minutes_offline >= 1:
-            with st.spinner(f"Synchronizing Offline Avatar Activity ({minutes_offline} minutes)..."):
-                idle_data = llm_engine.generate_idle_summary(api_key, saved_data["player"], minutes_offline)
-                
-                # Update Player State
-                col_gained = idle_data.get("col_gained", 0)
-                xp_gained = idle_data.get("xp_gained", 0)
-                items = idle_data.get("items_found", [])
-                
-                saved_data["player"]["col"] += col_gained
-                saved_data["player"]["inventory"].extend(items)
-                
-                # Create a System Message
-                narrative = f"### 💤 Offline Synchronization Complete\n\n**Time Offline:** {minutes_offline} minutes\n\n{idle_data.get('narrative')}\n\n**Rewards:**\n- Col: +{col_gained}\n- XP: +{xp_gained}\n- Items Found: {', '.join(items) if items else 'None'}"
-                
-                saved_data["messages"].append({
-                    "role": "system",
-                    "content": narrative,
-                    "image_path": None
-                })
-                save_game(saved_data["player"], saved_data["messages"])
-            
     st.session_state.offline_processed = True
-
 if "player" not in st.session_state:
     if saved_data:
         st.session_state.player = saved_data["player"]
