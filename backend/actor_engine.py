@@ -2,98 +2,66 @@ import json
 import os
 from google import genai
 from google.genai import types
+from backend.schemas import ActorActionSchema
 
-def get_client(api_key):
-    return genai.Client(api_key=api_key)
+# Initialize the new Gemini 3.8 SDK
+# Automatically picks up GEMINI_API_KEY from environment
+client = genai.Client()
 
 def load_json(filepath):
-    if os.path.exists(filepath):
-        with open(filepath, 'r', encoding="utf-8") as f:
-            return json.load(f)
-    return {}
+    with open(filepath, "r") as f:
+        return json.load(f)
 
-def generate_actor_action(api_key, actor_id, player_input, 
-                          staging_dir="H:/Antigravity/SAO Sandbox v2/backend/Staging_Ground", 
-                          party_dir="H:/Antigravity/SAO Sandbox v2/backend/Party"):
+def save_json(filepath, data):
+    with open(filepath, "w") as f:
+        json.dump(data, f, indent=4)
+
+def get_companion_action(character_id: str):
     """
-    Generates an intended action for an AI Actor bot based on the visible room and their character sheet.
-    The actor only has access to their sheet and the sanitized Staging_Ground/visible_room.json.
+    Simulates the AI companion's thought process.
+    Reads ONLY the visible_room.json and their own character sheet.
     """
-    client = get_client(api_key)
+    # 1. Load the isolated states
+    char_sheet_path = os.path.join("Party", f"{character_id}.json")
+    visible_room_path = os.path.join("Staging_Ground", "visible_room.json")
+    action_queue_path = os.path.join("Staging_Ground", "action_queue.json")
     
-    # Load actor sheet and visible room
-    actor_sheet_path = os.path.join(party_dir, f"{actor_id}.json")
-    visible_room_path = os.path.join(staging_dir, "visible_room.json")
-    
-    actor_sheet = load_json(actor_sheet_path)
+    char_sheet = load_json(char_sheet_path)
     visible_room = load_json(visible_room_path)
     
-    actor_name = actor_sheet.get('name', actor_id)
-    
-    system_instruction = f"""You are {actor_name}, an autonomous AI Actor bot in a grimdark LitRPG world (The Fractured Earth).
-    You ONLY have access to your character sheet and the currently visible room state.
-    
-    YOUR CHARACTER SHEET:
-    {json.dumps(actor_sheet, indent=2)}
-    
-    VISIBLE ROOM STATE:
-    {json.dumps(visible_room, indent=2)}
-    
-    THE PLAYER'S DECLARED ACTION THIS TURN:
-    "{player_input}"
-    
-    YOUR ROLE:
-    Evaluate the tactical state, how you feel about the situation, and decide what action you will take this turn to help, hinder, or react.
-    
-    You must output EXACTLY a JSON object with two keys:
-    - "actor": Your character's name.
-    - "action": Your intended action, written in first-person or third-person, describing what you try to do this turn.
-    """
-    
-    try:
-        response = client.models.generate_content(
-            model='gemini-3.8-flash',
-            contents="Evaluate the scene and declare your intended action for this turn.",
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-                temperature=0.7
-            )
-        )
-        return json.loads(response.text)
-    except Exception as e:
-        return {"actor": actor_name, "action": f"ERROR: Failed to generate action - {str(e)}"}
+    # 2. Construct the prompt
+    prompt = f"""You are roleplaying as an AI companion in a dark, tactical TTRPG.
+Your character sheet is: {json.dumps(char_sheet, indent=2)}
 
-def calculate_survival_odds(api_key, player_state, visible_room):
-    """
-    Oracle Engine: Calculates the survival odds of the current room state.
-    """
-    client = get_client(api_key)
-    
-    system_instruction = f"""You are the Oracle Prediction Engine.
-    Analyze the player's current state and the visible room, then predict their odds of survival if combat initiates.
-    
-    PLAYER STATE:
-    {json.dumps(player_state, indent=2)}
-    
-    VISIBLE ROOM STATE:
-    {json.dumps(visible_room, indent=2)}
-    
-    Output a JSON object with:
-    - "odds": an integer between 0 and 100 representing the percent chance of survival.
-    - "tip": A 1-sentence tactical tip.
-    """
-    
-    try:
-        response = client.models.generate_content(
-            model='gemini-3.8-flash',
-            contents="Predict survival odds.",
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-                temperature=0.2
-            )
+You only know what you can see in the visible room:
+{json.dumps(visible_room, indent=2)}
+
+Decide on your next tactical action based ONLY on this information and your specific behavior_prompt.
+Output your response exactly matching the requested JSON schema.
+"""
+
+    # 3. Call Gemini Flash with Structured Outputs
+    response = client.models.generate_content(
+        model="gemini-2.5-flash", # Use standard flash model
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=ActorActionSchema,
+            temperature=0.4
         )
-        return json.loads(response.text)
-    except Exception as e:
-        return {"odds": 50, "tip": "System Error: Cannot compute odds."}
+    )
+    
+    # Parse the structured JSON response
+    action_data = json.loads(response.text)
+    
+    # 4. Append to the Action Queue
+    queue = load_json(action_queue_path)
+    queue.append(action_data)
+    save_json(action_queue_path, queue)
+    
+    print(f"[{character_id}] queued action: {action_data['intended_action']}")
+    return action_data
+
+if __name__ == "__main__":
+    # Quick test
+    get_companion_action("companion_ren")

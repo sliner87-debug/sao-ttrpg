@@ -2,111 +2,101 @@ import json
 import os
 from google import genai
 from google.genai import types
+from backend.schemas import VisibleRoomSchema, TurnResolutionSchema
 
-def get_client(api_key):
-    return genai.Client(api_key=api_key)
+client = genai.Client()
 
-def load_cardinal_rules(rules_path="H:/Antigravity/SAO Sandbox v2/backend/System_Core/cardinal_rules.md"):
-    if os.path.exists(rules_path):
-        with open(rules_path, "r", encoding="utf-8") as f:
-            return f.read()
-    return "You are the Cardinal System Encounter Director."
+def load_json(filepath):
+    with open(filepath, "r") as f:
+        return json.load(f)
 
-def generate_visible_room(player_state, world_state, staging_dir="H:/Antigravity/SAO Sandbox v2/backend/Staging_Ground"):
-    """
-    Extracts the visible elements of the current location and saves to Staging_Ground/visible_room.json
-    This serves as a sanitized state for subagents (actors).
-    """
-    current_location = player_state.get('location', 'Unknown')
-    
-    visible_entities = []
-    room_desc = "Unknown area."
-    
-    for loc in world_state.get('map_locations', []):
-        if loc['name'] == current_location:
-            # Sanitize secrets out of the visible room
-            visible_entities = loc.get('entities', [])
-            room_desc = loc.get('description', f"You are in {current_location}.")
-            break
-            
-    visible_state = {
-        "location_name": current_location,
-        "description": room_desc,
-        "player_summary": {
-            "name": player_state.get('name', 'Player'),
-            "hp": player_state.get('hp', 100),
-            "max_hp": player_state.get('max_hp', 100),
-            "equipment": player_state.get('equip', {})
-        },
-        "visible_entities": visible_entities
-    }
-    
-    os.makedirs(staging_dir, exist_ok=True)
-    out_path = os.path.join(staging_dir, "visible_room.json")
-    with open(out_path, 'w', encoding="utf-8") as f:
-        json.dump(visible_state, f, indent=4)
-        
-    return visible_state
+def save_json(filepath, data):
+    with open(filepath, "w") as f:
+        json.dump(data, f, indent=4)
 
-def resolve_turn(api_key, user_input, queued_actions, chat_history, player_state, world_state, map_state, rules_path=None):
-    """
-    Resolves the turn taking into account the player's action and all queued actor actions.
-    """
-    client = get_client(api_key)
+def generate_visible_state():
+    """Reads secret_master_state.json and writes sanitized version to visible_room.json"""
+    master_state_path = os.path.join(".game_state", "secret_master_state.json")
+    visible_room_path = os.path.join("Staging_Ground", "visible_room.json")
+    master_state = load_json(master_state_path)
     
-    cardinal_rules_text = load_cardinal_rules(rules_path) if rules_path else load_cardinal_rules()
+    prompt = f"""You are the Cardinal System (GM).
+Here is the absolute truth of the encounter:
+{json.dumps(master_state, indent=2)}
+
+Strip away all secret mechanics (exact HP, hidden traps, enemy intents).
+Return ONLY the data the players can clearly observe. Output EXACTLY matching the JSON schema.
+"""
     
-    current_location = player_state.get('location', 'Unknown')
-    entities_in_room = []
-    secrets_in_room = []
-    for loc in world_state.get('map_locations', []):
-        if loc['name'] == current_location:
-            entities_in_room = loc.get('entities', [])
-            secrets_in_room = loc.get('secrets', [])
-            break
-            
-    system_instruction = f"""{cardinal_rules_text}
-    
-    CURRENT STATE:
-    Player: {player_state.get('name')} (HP: {player_state.get('hp')}/{player_state.get('max_hp')})
-    Location: {current_location}
-    GPS Coordinates: X: {map_state.get('player_x', 50)}, Y: {map_state.get('player_y', 50)}
-    Entities present: {json.dumps(entities_in_room)}
-    Hidden Secrets: {json.dumps(secrets_in_room)}
-    
-    QUEUED ACTIONS FROM ACTORS:
-    {json.dumps(queued_actions, indent=2)}
-    
-    YOUR ROLE:
-    1. Narrate the outcome of the player's action AND weave in the Queued Actions from Actors natively.
-    2. Resolve combat and skill checks logically based on the queued actions and player input.
-    3. Do NOT puppet the player.
-    4. Reveal hidden secrets if investigated.
-    
-    Format your response EXACTLY as a JSON object with keys:
-    - "narrative": The markdown formatted story/dialogue.
-    - "combat_logs": A list of strings showing the exact dice math and damage for the turn.
-    - "state_updates": A JSON object containing updates to the player's HUD, health, inventory, skills, and map location.
-    """
-    
-    contents = []
-    for msg in chat_history[-6:]:
-        role = "user" if msg["role"] == "user" else "model"
-        text = msg.get("ai_prompt", msg.get("content", ""))
-        contents.append(types.Content(role=role, parts=[types.Part.from_text(text=text)]))
-        
-    contents.append(types.Content(role="user", parts=[types.Part.from_text(text=user_input)]))
-    
-    try:
-        response = client.models.generate_content(
-            model='gemini-3.8-flash',
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-                temperature=0.7
-            )
+    response = client.models.generate_content(
+        model="gemini-2.5-pro",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=VisibleRoomSchema,
+            temperature=0.2
         )
-        return json.loads(response.text)
-    except Exception as e:
-        return {"narrative": f"**System Error:** {str(e)}", "state_updates": {}}
+    )
+    
+    visible_room = json.loads(response.text)
+    save_json(visible_room_path, visible_room)
+    print("Staging Ground updated: visible_room.json")
+    return visible_room
+
+def resolve_turn(player_action: str):
+    """Takes the player action + AI queue, calculates math, updates master state."""
+    master_state_path = os.path.join(".game_state", "secret_master_state.json")
+    queue_path = os.path.join("Staging_Ground", "action_queue.json")
+    rules_path = os.path.join("System_Core", "cardinal_rules.md")
+    
+    master_state = load_json(master_state_path)
+    action_queue = load_json(queue_path)
+    
+    with open(rules_path, "r", encoding="utf-8") as f:
+        rules = f.read()
+        
+    prompt = f"""You are the Cardinal System (GM). Resolve the turn.
+Ruleset constraints must be applied strictly:
+{rules}
+
+Current Master State:
+{json.dumps(master_state, indent=2)}
+
+Human Player Action:
+"{player_action}"
+
+Companion AI Actions in Queue:
+{json.dumps(action_queue, indent=2)}
+
+Determine if attacks hit based on AC, update HP, and advance the turn.
+Output the TurnResolutionSchema.
+"""
+
+    response = client.models.generate_content(
+        model="gemini-2.5-pro",
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=TurnResolutionSchema,
+            temperature=0.4
+        )
+    )
+    
+    resolution = json.loads(response.text)
+    
+    # Apply updates to Master State
+    for entity in master_state["entities"]:
+        eid = entity["id"]
+        if eid in resolution["hp_changes"]:
+            entity["hp"] += resolution["hp_changes"][eid]
+        if eid in resolution["status_updates"]:
+            entity["status"] = resolution["status_updates"][eid]
+            
+    master_state["turn_number"] += 1
+    save_json(master_state_path, master_state)
+    
+    # Clear the queue for the next turn
+    save_json(queue_path, [])
+    
+    print("Turn resolved and master_state updated.")
+    return resolution
