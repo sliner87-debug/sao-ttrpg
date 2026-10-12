@@ -6,6 +6,8 @@ import importlib
 import base64
 import backend.llm_engine as llm_engine
 importlib.reload(llm_engine)
+import backend.mechanics as mechanics
+importlib.reload(mechanics)
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="The Fractured Overlay", page_icon="🗡️", layout="wide")
@@ -147,6 +149,13 @@ if isinstance(p.get("skills", {}), list):
 
 p.setdefault("racial_abilities", [])
 p.setdefault("equipped", {"head": "None", "chest": "None", "main_hand": "None", "off_hand": "None", "accessory": "None"})
+p.setdefault("gear_durability", {
+    "head": {"cur": 100, "max": 100},
+    "chest": {"cur": 250, "max": 250},
+    "main_hand": {"cur": 200, "max": 200},
+    "off_hand": {"cur": 200, "max": 200},
+    "accessory": {"cur": 50, "max": 50}
+})
 p.setdefault("companions", {
     "Ren": {
         "name": "Ren",
@@ -176,6 +185,10 @@ with st.sidebar:
     player = st.session_state.player
     st.subheader(player["name"])
     
+    # Calculate live mechanics
+    encumbrance = mechanics.calculate_encumbrance(player)
+    armor_class = mechanics.calculate_ac(player, encumbrance)
+    
     hp_percent = max(0.0, min(1.0, player["hp"] / player["max_hp"]))
     st.progress(hp_percent, text=f"HP: {player['hp']} / {player['max_hp']}")
     
@@ -184,7 +197,7 @@ with st.sidebar:
     xp_percent = max(0.0, min(1.0, xp_current / xp_max))
     st.progress(xp_percent, text=f"XP: {xp_current} / {xp_max}")
     
-    st.write(f"**Level:** {player['level']} | **Col:** {player['col']} 🪙")
+    st.write(f"**Level:** {player['level']} | **AC:** {armor_class} 🛡️ | **Col:** {player['col']} 🪙")
     
     st.divider()
     
@@ -201,12 +214,25 @@ with st.sidebar:
         cols[1].write(f"WIS: {player['stats']['WIS']}")
         cols[2].write(f"CHA: {player['stats']['CHA']}")
         
+    with st.expander("⚖️ Encumbrance & Carry Physics", expanded=False):
+        st.write(f"**Status:** {encumbrance['label']}")
+        st.progress(encumbrance['weight_percent'], text=f"Weight: {encumbrance['current_weight_lbs']} / {encumbrance['max_weight_lbs']} lbs")
+        st.progress(encumbrance['slots_percent'], text=f"Slots: {encumbrance['used_slots']} / {encumbrance['max_slots']} slots")
+        pen = encumbrance['penalties']
+        if pen['dex_mod'] != 0 or pen['disadvantage_stealth']:
+            st.warning(f"⚠️ **Penalties:** DEX {pen['dex_mod']} | Speed: {pen['speed_pct']}% | Disadvantage on Stealth")
+        else:
+            st.success("✅ **Unburdened:** Full agility and movement speed.")
+            
     with st.expander("⚔️ Equipped Gear", expanded=False):
-        st.write(f"- **Head:** {player['equipped']['head']}")
-        st.write(f"- **Chest:** {player['equipped']['chest']}")
-        st.write(f"- **Main:** {player['equipped']['main_hand']}")
-        st.write(f"- **Off:** {player['equipped']['off_hand']}")
-        st.write(f"- **Acc:** {player['equipped']['accessory']}")
+        gear_dur = player.get("gear_durability", {})
+        for slot in ["head", "chest", "main_hand", "off_hand", "accessory"]:
+            item = player['equipped'].get(slot, "None")
+            dur_info = ""
+            if item != "None" and slot in gear_dur:
+                d = gear_dur[slot]
+                dur_info = f" `[{d['cur']}/{d['max']} dur]`"
+            st.write(f"- **{slot.replace('_', ' ').title()}:** {item}{dur_info}")
         
     with st.expander("✨ Skills, Spells & Feats", expanded=False):
         if player['racial_abilities']:
@@ -645,6 +671,32 @@ if prompt := (dev_prompt or chat_prompt):
                         if search_title.lower() in active_title.lower():
                             st.session_state.player["quests"].remove(active_q)
                             break
+                            
+                # Process Durability Updates
+                dur_updates = state_updates.get("durability_updates")
+                if dur_updates and isinstance(dur_updates, dict):
+                    gear_dur = st.session_state.player.setdefault("gear_durability", {})
+                    for target, change in dur_updates.items():
+                        target_lower = str(target).lower()
+                        matched_slot = None
+                        for s, iname in st.session_state.player["equipped"].items():
+                            if target_lower in iname.lower() or target_lower == s.lower():
+                                matched_slot = s
+                                break
+                        if matched_slot and matched_slot in gear_dur:
+                            if isinstance(change, int) and change < 0:
+                                gear_dur[matched_slot]["cur"] = max(0, gear_dur[matched_slot]["cur"] + change)
+                            elif isinstance(change, int):
+                                gear_dur[matched_slot]["cur"] = min(gear_dur[matched_slot]["max"], change)
+                        else:
+                            for item in st.session_state.player.get("inventory", []):
+                                if isinstance(item, dict) and target_lower in item.get("name", "").lower():
+                                    if isinstance(change, int) and change < 0:
+                                        item["durability"] = max(0, item.get("durability", 100) + change)
+                                    elif isinstance(change, int):
+                                        item["durability"] = min(item.get("max_durability", 100), change)
+                                    break
+
             # 1.5 Handle Combat Crunch Logs
             combat_logs = turn_data.get("combat_logs", [])
             log_markdown = ""

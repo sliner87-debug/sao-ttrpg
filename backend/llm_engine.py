@@ -1,6 +1,7 @@
 import json
 from google import genai
 from google.genai import types
+import backend.mechanics as mechanics
 
 def get_client(api_key):
     return genai.Client(api_key=api_key)
@@ -9,6 +10,10 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     client = get_client(api_key)
     
     current_location = player_state.get('location', 'Unknown')
+    
+    # Calculate live mechanical parameters
+    encumbrance = mechanics.calculate_encumbrance(player_state)
+    armor_class = mechanics.calculate_ac(player_state, encumbrance)
     
     # Locate active entities and secrets for the Encounter Director
     entities_in_room = []
@@ -34,9 +39,12 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     - TONE: Maintain a grim, high-stakes anime tone. Filter all modern infrastructure through a Magic-Cyber-Fantasy overlay (e.g., concrete covered in glowing runic moss, neon-lit structural ribs, floating magical hex-grid barriers).
     
     CURRENT STATE:
-    Player: {player_state['name']} (HP: {player_state['hp']}/{player_state['max_hp']})
+    Player: {player_state['name']} (HP: {player_state['hp']}/{player_state['max_hp']} | Level: {player_state.get('level', 1)} | AC: {armor_class})
+    Encumbrance: {encumbrance['current_weight_lbs']}/{encumbrance['max_weight_lbs']} lbs ({encumbrance['tier']}) - Penalties: {json.dumps(encumbrance['penalties'])}
     Location: {current_location}
     GPS Coordinates: X: {map_state.get('player_x', 50)}, Y: {map_state.get('player_y', 50)}
+    Equipped: {json.dumps(player_state.get('equipped', {}))}
+    Skills: {json.dumps(player_state.get('skills', {}))}
     Entities present: {json.dumps(entities_in_room)}
     Hidden Secrets: {json.dumps(secrets_in_room)}
     COMPANION INTENTS (Crucial!): {companion_intents}
@@ -49,10 +57,18 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     5. If the player investigates, reveal the hidden secrets organically.
     6. Maintain a grim, high-stakes anime tone. If the player takes damage, describe it viscerally.
     7. ROOT OVERRIDE: If the user input contains [ROOT OVERRIDE], you MUST suspend all game rules, bypass combat logic, and force the exact outcome the Administrator requested into the narrative seamlessly.
-    8. CRUNCH ARBITRATOR (THE SYSTEM): You actively manage the mechanical character sheet. Whenever the player or an enemy attempts a risky action, an attack, or a stat check, you MUST explicitly calculate the math. Roll a simulated 1d20 + relevant stat modifier + skill mastery bonus vs an Enemy AC or Task Difficulty Class (DC). You MUST output the exact mathematical breakdown of these rolls in the `combat_logs` array. Do not hide the math; show your work.
+    8. CRUNCH ARBITRATOR (THE SYSTEM): You actively manage the mechanical character sheet. Whenever the player or an enemy attempts a risky action, an attack, or a stat check:
+       - Explicitly calculate the math: Roll 1d20 + relevant stat modifier + skill mastery bonus vs Enemy AC or Task DC.
+       - Factor in Banki's current Armor Class ({armor_class}), his Encumbrance tier ({encumbrance['tier']}), and active penalties: {json.dumps(encumbrance['penalties'])}.
+       - In `combat_logs`, output every mechanical check with exact formatting:
+         * "[ROLL: 1d20 + MOD(X) = Y vs AC/DC Z - HIT/SUCCESS!]"
+         * "[DAMAGE: BaseDice + MOD = Dmg - TargetDR = FinalDmg (Type)]"
+         * "[DURABILITY: ItemName Cur/Max (-Loss)]"
+         * "[CONDITION: Entity gains Condition (Duration)]"
+       - Do not hide the math; show your work in `combat_logs`!
     9. PROCEDURAL MAP GENERATION: If the player discovers a major new landmark, town, hostile encampment, or dungeon entrance, generate a new map node using the `discovered_nodes` list. Place it near their current GPS coordinates.
     10. SKILL MASTERY & PERK UNLOCKS (1-1000): Skills level up from 1 to 1000. Increment relevant skills by 1-5 points using 'skill_updates'. IF a skill reaches a major milestone (e.g. crosses 50, 100, 250, 500), OR if the player does something legendary, you MUST invent a unique combat technique, passive perk, or spell and award it using `feats_add` or `spells_add` (e.g. `["Vorpal Strike (Heavy Hit)"]`). Celebrate this unlock dynamically in the narrative!
-    11. DYNAMIC LOOT & CRAFTING: All inventory items possess 'rarity' (Common, Uncommon, Rare, Epic, Legendary, Mythic, Unique), 'durability' (current/max), 'qty', and 'desc'. When the player scavenges or crafts, generate detailed items in 'inventory_add'. When they use weapons/tools, decrease durability in the narrative. If they craft, calculate success based on their related skills and state the outcome.
+    11. DYNAMIC LOOT, DURABILITY & CRAFTING: All inventory items possess 'rarity' (Common, Uncommon, Rare, Epic, Legendary, Mythic, Unique), 'durability' (current/max), 'qty', and 'desc'. When weapons/armor clash violently or block heavy blows, output durability loss in 'durability_updates'. If the player crafts or rigs traps (using cord, snares, marrow bait), calculate success based on Field Trapping or Crafting skills.
     12. LIVING WORLD SIMULATION (GLOBAL FACTIONS): If the player's prompt implies they are resting, sleeping, or skipping time, YOU MUST simulate factions moving off-screen. Update local node colors via `node_updates`. You MUST also generate 1-3 global/continental news blurbs and push them to the `global_news_add` array (e.g. "[GLOBAL] The Neo-Vatican has declared a crusade on the Berlin Glitch-Hives."). THIS IS MANDATORY IF TIME PASSES.
     13. ACTIVE QUESTS & BOUNTIES: When the player accepts a task from an NPC or discovers a primary objective, add it to the HUD using `quests_add`. When they accomplish the goal, put it in `quests_complete`.
     14. LEVELING & XP: The player earns XP by defeating enemies, finding secrets, and completing quests. Whenever they do, you MUST output a positive integer in 'xp_change' (e.g., 50 for minor, 500 for boss/quest).
@@ -62,10 +78,11 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     - "combat_logs": A list of strings showing the exact dice math and damage for the turn. Leave empty if no combat or skill check occurred.
     - "global_news_add": A list of strings showing macro world events (e.g. continental faction movements). MUST BE POPULATED IF THE PLAYER SKIPS TIME OR SLEEPS.
     - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged man with a short beard and undercut hair, wearing a heavy black-iron chainmail hauberk and a massive synthetic dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a gaunt, exhausted young man with messy dark hair, wearing cracked glasses and a threadbare corporate hoodie, holding a glowing cyan digital clipboard.
-    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
+    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
       Additionally, use the following complex schemas for skills, inventory, factions, and quests:
       - "inventory_add": List of dicts, e.g. [{{"name": "Rusted Iron Sword", "rarity": "Common", "durability": 45, "max_durability": 50, "qty": 1, "desc": "A chipped blade scavenged from the ruins."}}]
       - "inventory_remove": List of strings (item names to delete).
+      - "durability_updates": Dict of item_name (or slot) to new durability or negative delta (e.g. {{"Fenrir's Tusk": 98, "Einherjar Rig": -2}}).
       - "skill_updates": List of dicts, e.g. [{{"name": "One-Handed Swords", "mastery_change": 3, "description": "Increases accuracy and damage with short blades."}}]
       - "node_updates": Dict of node_name to color, e.g. {{"Washington_Borough": "red", "Oxford_Mines": "blue"}}
       - "quests_add": List of dicts, e.g. [{{"title": "Slay the Boar", "desc": "Kill 5 boars in the ruins", "reward": "500 Col, 200 XP"}}]
