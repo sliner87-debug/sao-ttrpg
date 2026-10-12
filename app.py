@@ -352,6 +352,45 @@ with st.sidebar:
             for news in reversed(global_news[-15:]):
                 st.info(f"📡 {news}")
         
+    with st.expander("👾 SubAgent Entity Dossiers", expanded=False):
+        st.caption("Inspect awakened SubAgents: their life stories, quirks, dreams, and secret fears.")
+        entities_dir = os.path.join(BASE_DIR, "Entities")
+        if os.path.exists(entities_dir):
+            entity_files = [f for f in os.listdir(entities_dir) if f.endswith(".json")]
+            if not entity_files:
+                st.caption("No SubAgents awakened yet.")
+            else:
+                for ef in entity_files:
+                    try:
+                        with open(os.path.join(entities_dir, ef), "r", encoding="utf-8") as f:
+                            ent_data = json.load(f)
+                        e_name = ent_data.get("name", ef)
+                        e_type = ent_data.get("species_or_type", "Entity")
+                        e_role = ent_data.get("role", "entity")
+                        icon = "🤖" if "companion" in ef or "ren" in ef else "👾"
+                        
+                        st.markdown(f"### {icon} {e_name}")
+                        st.caption(f"**Classification:** {e_type} | **Role:** {e_role}")
+                        
+                        with st.expander("🎙️ Genesis Interview: 'What has your life been up to now?'"):
+                            st.info(f"\"{ent_data.get('backstory_interview', 'No interview on record.')}\"")
+                            
+                        st.markdown(f"**🧠 Personality:** {ent_data.get('personality', 'Unknown')}")
+                        
+                        quirks = ent_data.get("quirks", [])
+                        if quirks:
+                            st.markdown("**🎭 Quirks & Tics:**")
+                            for q in quirks:
+                                st.markdown(f"- {q}")
+                                
+                        st.markdown(f"🌟 **Desires:** {ent_data.get('dreams_and_desires', 'Survival')}")
+                        st.markdown(f"🩸 **Fears:** {ent_data.get('fears_and_dreads', 'Destruction')}")
+                        st.markdown(f"⚔️ **Combat Style:** {ent_data.get('tactical_style', 'Aggressive')}")
+                        st.divider()
+                    except Exception:
+                        pass
+        else:
+            st.caption("Entities directory not found.")
 
     st.divider()
     st.subheader("🎙️ Live Table Companion")
@@ -381,20 +420,26 @@ with st.sidebar:
                             
                             # Execute the full V2 actor pipeline
                             import backend.gm_engine as gm_engine
-                            import backend.actor_engine as actor_engine
+                            import backend.persona_engine as persona_engine
                             
                             # 1. Staging ground
-                            gm_engine.generate_visible_state(api_key=api_key)
+                            visible_room = gm_engine.generate_visible_state(api_key=api_key)
                             
-                            # 2. Companion action
-                            ren_action = actor_engine.get_companion_action(api_key=api_key, character_id="companion_ren")
-                            ren_intent = ren_action.get("intended_action", "Ren stands ready.")
-                            ren_thought = ren_action.get("internal_thought", "")
-                            ren_log = f"\n\n**[Ren's Tactical Logic]**\n> *{ren_thought}*\n> **Action:** {ren_intent}"
+                            # 2. All Room SubAgents Act Autonomously (Companions, Monsters, NPCs)
+                            subagent_actions = persona_engine.run_all_room_subagents(api_key=api_key, visible_room=visible_room)
+                            subagent_log_lines = []
+                            for sa in subagent_actions:
+                                actor_id = sa.get("actor_id", "")
+                                actor_name = sa.get("actor_name", actor_id or "SubAgent")
+                                thought = sa.get("internal_thought", "")
+                                intent = sa.get("intended_action", "Stands ready.")
+                                icon = "🤖" if "ren" in actor_id.lower() else "👾"
+                                subagent_log_lines.append(f"**[{icon} {actor_name} — SubAgent Mind]**\n> *\"{thought}\"*\n> **Intent:** {intent}")
+                            subagent_log = "\n\n" + "\n\n".join(subagent_log_lines) if subagent_log_lines else ""
                             
                             # 3. GM resolution
                             turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=result_text)
-                            narrative = turn_data.get("narrative_recap", "") + ren_log
+                            narrative = turn_data.get("narrative_recap", "") + subagent_log
                             
                             state_updates = turn_data.get("player_state_updates", {})
                             if state_updates is None:
@@ -619,22 +664,27 @@ if prompt := (dev_prompt or chat_prompt):
             
             # --- NEW TURN LOOP (V2 ARCHITECTURE) ---
             import backend.gm_engine as gm_engine
-            import backend.actor_engine as actor_engine
+            import backend.persona_engine as persona_engine
             
             # a. Generate the Staging Ground (Visible Room)
-            gm_engine.generate_visible_state(api_key=api_key)
+            visible_room = gm_engine.generate_visible_state(api_key=api_key)
             
-            # b. Companions Act (Read Visible Room, Write to Queue)
-            ren_action = actor_engine.get_companion_action(api_key=api_key, character_id="companion_ren")
+            # b. All Room SubAgents Act Autonomously (Companions, Monsters, NPCs)
+            subagent_actions = persona_engine.run_all_room_subagents(api_key=api_key, visible_room=visible_room)
+            subagent_log_lines = []
+            for sa in subagent_actions:
+                actor_id = sa.get("actor_id", "")
+                actor_name = sa.get("actor_name", actor_id or "SubAgent")
+                thought = sa.get("internal_thought", "")
+                intent = sa.get("intended_action", "Stands ready.")
+                icon = "🤖" if "ren" in actor_id.lower() else "👾"
+                subagent_log_lines.append(f"**[{icon} {actor_name} — SubAgent Mind]**\n> *\"{thought}\"*\n> **Intent:** {intent}")
+            subagent_log = "\n\n" + "\n\n".join(subagent_log_lines) if subagent_log_lines else ""
             
-            ren_intent = ren_action.get("intended_action", "Ren stands ready.")
-            ren_thought = ren_action.get("internal_thought", "")
-            ren_log = f"\n\n**[Ren's Tactical Logic]**\n> *{ren_thought}*\n> **Action:** {ren_intent}"
-            
-            # c. Resolve the turn (Read Player Action + Queue, Update Master State)
+            # c. Resolve the turn (Read Player Action + SubAgent Action Queue)
             turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=ai_prompt)
             
-            narrative = turn_data.get("narrative_recap", "Error parsing narrative.") + ren_log
+            narrative = turn_data.get("narrative_recap", "Error parsing narrative.") + subagent_log
             
             # Extract player state updates into the format app.py expects
             state_updates = turn_data.get("player_state_updates", {})

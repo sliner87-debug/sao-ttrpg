@@ -64,6 +64,7 @@ CORE GM BEHAVIOR RULES:
 2. TRAP & HAZARD LIFECYCLE: If a trap or hazard (like the X:5 Y:5 tripwire) has already been detected, highlighted, or avoided in previous turns, do NOT repeat warnings about it. It has already been accounted for.
 3. COMBAT AFTERMATH: If all hostiles are dead (HP <= 0), set encounter_active=false. Describe the aftermath and open up 1-2 new passages or doorways (e.g. deeper adit tunnel, rusted elevator shaft) to encourage exploration.
 4. INVENTORY & SPELL LOOT: Whenever you narrate that the player loots, inspects, or identifies an item or spell slate (such as 'Spell Slate: Earth Tremor Hex'), you MUST include it in player_state_updates.inventory_add so it actually lands on their character sheet.
+5. AUTONOMOUS SUBAGENTS: Each entity in the queue (Companions, Monsters, NPCs) is an autonomous SubAgent with their own quirks, fears, and tactical goals. Resolve how their queued actions collide with each other and with the Human Player's action.
 
 Current Master State:
 {json.dumps(master_state, indent=2)}
@@ -71,7 +72,7 @@ Current Master State:
 Human Player Action:
 "{player_action}"
 
-Companion AI Actions in Queue:
+Autonomous SubAgent Actions in Queue (Companions, Hostiles, Neutrals):
 {json.dumps(action_queue, indent=2)}
 
 Determine if attacks hit based on AC, update HP, and advance the turn.

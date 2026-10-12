@@ -1,1 +1,16 @@
-[]
+[
+    {
+        "actor_id": "companion_ren",
+        "intended_action": "Close the distance and initiate a heavy kinetic strike against the golem to secure front-line aggro and test its armor.",
+        "target": "enemy_01",
+        "internal_thought": "A heavy construct in a narrow shaft is dangerous, but letting it dictate the fight will destroy us. I need to strike first, hold the line, and keep its focus on me.",
+        "actor_name": "Ren"
+    },
+    {
+        "actor_id": "enemy_01",
+        "intended_action": "Slam a calcified iron palm upward against the nearest support timber to gauge the ceiling's load-bearing tension, venting a hiss of scalding geode steam from spinal fissures to scour the shaft.",
+        "target": null,
+        "internal_thought": "The wet timbers groan out of rhythm. Rotten pine and hanging iron cannot hold if the seam shifts. I must test the acoustic grain and hammer the stress out of this ceiling before it drops into my core.",
+        "actor_name": "Silt-Marrow the Unhewn"
+    }
+]
