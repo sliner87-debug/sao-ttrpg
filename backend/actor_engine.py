@@ -4,10 +4,6 @@ from google import genai
 from google.genai import types
 from backend.schemas import ActorActionSchema
 
-# Initialize the new Gemini 3.8 SDK
-# Automatically picks up GEMINI_API_KEY from environment
-
-
 def load_json(filepath):
     with open(filepath, "r") as f:
         return json.load(f)
@@ -43,7 +39,7 @@ Output your response exactly matching the requested JSON schema.
 
     # 3. Call Gemini Flash with Structured Outputs
     response = client.models.generate_content(
-        model="gemini-2.5-flash", # Use standard flash model
+        model="gemini-3.8-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -60,10 +56,5 @@ Output your response exactly matching the requested JSON schema.
     queue.append(action_data)
     save_json(action_queue_path, queue)
     
-    print(f"[{character_id}] queued action: {action_data['intended_action']}")
+    print(f"Queued action for {character_id}: {action_data['intended_action']}")
     return action_data
-
-if __name__ == "__main__":
-    # Quick test
-    get_companion_action("companion_ren")
-

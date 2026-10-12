@@ -4,8 +4,6 @@ from google import genai
 from google.genai import types
 from backend.schemas import VisibleRoomSchema, TurnResolutionSchema
 
-
-
 def load_json(filepath):
     with open(filepath, "r") as f:
         return json.load(f)
@@ -16,7 +14,6 @@ def save_json(filepath, data):
 
 def generate_visible_state(api_key: str):
     """Reads secret_master_state.json and writes sanitized version to visible_room.json"""
-    client = genai.Client(api_key=api_key)
     client = genai.Client(api_key=api_key)
     master_state_path = os.path.join(".game_state", "secret_master_state.json")
     visible_room_path = os.path.join("Staging_Ground", "visible_room.json")
@@ -31,7 +28,7 @@ Return ONLY the data the players can clearly observe. Output EXACTLY matching th
 """
     
     response = client.models.generate_content(
-        model="gemini-2.5-pro",
+        model="gemini-3.8-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -47,7 +44,6 @@ Return ONLY the data the players can clearly observe. Output EXACTLY matching th
 
 def resolve_turn(api_key: str, player_action: str):
     """Takes the player action + AI queue, calculates math, updates master state."""
-    client = genai.Client(api_key=api_key)
     client = genai.Client(api_key=api_key)
     master_state_path = os.path.join(".game_state", "secret_master_state.json")
     queue_path = os.path.join("Staging_Ground", "action_queue.json")
@@ -73,11 +69,11 @@ Companion AI Actions in Queue:
 {json.dumps(action_queue, indent=2)}
 
 Determine if attacks hit based on AC, update HP, and advance the turn.
-Output the TurnResolutionSchema.
+Output matching TurnResolutionSchema.
 """
 
     response = client.models.generate_content(
-        model="gemini-2.5-pro",
+        model="gemini-3.8-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
@@ -88,21 +84,33 @@ Output the TurnResolutionSchema.
     
     resolution = json.loads(response.text)
     
+    # Map lists of EntityHpChange and EntityStatusUpdate into dictionaries for state manipulation
+    hp_map = {}
+    for item in resolution.get("hp_changes", []):
+        if isinstance(item, dict):
+            hp_map[item["entity_id"]] = item["hp_delta"]
+            
+    status_map = {}
+    for item in resolution.get("status_updates", []):
+        if isinstance(item, dict):
+            status_map[item["entity_id"]] = item["statuses"]
+            
     # Apply updates to Master State
     for entity in master_state["entities"]:
         eid = entity["id"]
-        if eid in resolution["hp_changes"]:
-            entity["hp"] += resolution["hp_changes"][eid]
-        if eid in resolution["status_updates"]:
-            entity["status"] = resolution["status_updates"][eid]
+        if eid in hp_map:
+            entity["hp"] += hp_map[eid]
+        if eid in status_map:
+            entity["status"] = status_map[eid]
             
     master_state["turn_number"] += 1
     save_json(master_state_path, master_state)
     
-    # Clear the queue for the next turn
+    # Expose hp_changes as dict for app.py compatibility
+    resolution["hp_changes"] = hp_map
+    resolution["status_updates"] = status_map
+    
+    # Clear action queue for next turn
     save_json(queue_path, [])
     
-    print("Turn resolved and master_state updated.")
     return resolution
-
-

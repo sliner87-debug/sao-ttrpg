@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Dict
+from typing import List, Optional
 
 class ActorActionSchema(BaseModel):
     actor_id: str = Field(description="The ID of the actor making the move (e.g. companion_ren)")
@@ -31,9 +31,17 @@ class PlayerStateUpdates(BaseModel):
     location: Optional[str] = Field(None, description="New location name if moved")
     hp_change: Optional[int] = Field(0, description="HP gained or lost by the human player")
 
+class EntityHpChange(BaseModel):
+    entity_id: str = Field(description="Target entity ID e.g. player, enemy_01, companion_ren")
+    hp_delta: int = Field(description="HP change (negative for damage, positive for healing)")
+
+class EntityStatusUpdate(BaseModel):
+    entity_id: str = Field(description="Target entity ID")
+    statuses: List[str] = Field(description="Current list of status conditions")
+
 class TurnResolutionSchema(BaseModel):
     narrative_recap: str = Field(description="Exciting narrative paragraph describing how the turn played out")
-    hp_changes: Dict[str, int] = Field(description="Dictionary mapping entity_ids to their HP delta (e.g. {'enemy_01': -15})")
-    status_updates: Dict[str, List[str]] = Field(description="Dictionary mapping entity_ids to their new status lists")
+    hp_changes: List[EntityHpChange] = Field(description="List of HP changes for entities")
+    status_updates: List[EntityStatusUpdate] = Field(description="List of updated statuses for entities")
     encounter_active: bool = Field(description="True if the fight continues, False if it is over")
     player_state_updates: Optional[PlayerStateUpdates] = Field(None, description="Updates to the human player's sheet")
