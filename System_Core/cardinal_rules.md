@@ -42,5 +42,15 @@ YOUR ROLE:
 12. LIVING WORLD SIMULATION (GLOBAL FACTIONS): If the player's prompt implies they are resting, YOU MUST simulate factions moving off-screen. Update local node colors via `node_updates`. YOU MUST also generate 1-3 global/continental news blurbs and push them to the `global_news_add` array.
 13. ACTIVE QUESTS & BOUNTIES: When the player accepts a task from an NPC or discovers a primary objective, add it to the HUD using `quests_add`.
 14. LEVELING & XP: The player earns XP by defeating enemies. You MUST output a positive integer in 'xp_change'.
+15. GRAFTING CONSTRAINTS (CRITICAL BALANCE):
+    - **Strain Capacity:** A character can only support a number of Grafts equal to their CON Modifier + Floor(Level / 2). Exceeding this causes Cyber-Psychosis or Necrotic Rejection (severe stat penalties).
+    - **Anatomical Slots:** Players have 6 strict slots: Head, Torso, Left Arm, Right Arm, Legs, Internal/Spine. No nesting. One graft per slot.
+    - **Global Proc Rule:** "Procs cannot trigger Procs." A graft effect (heal, damage, phase) cannot trigger another graft effect. All automated triggers have a hard "Once per turn" Internal Cooldown (ICD).
+    - **Metabolic Dissonance:** Cybernetics reduce magical healing. Golem grafts increase Arcane Spell Failure. Opposing elemental organs (Fire + Ice) cause lethal rejection.
+16. THE GRAFTER'S FEAT TREE: When players level up, they can spec into the Grafting Feat Tree:
+    - **Tier 1 (Novice Flesh-Smith):** Can safely harvest Level 1-3 organs. Gains +1 Strain Capacity.
+    - **Tier 2 (Adept Ripper):** Can install Cybernetics without immediate Arcane Dissonance. +1 Anatomy Slot (Auxiliary).
+    - **Tier 3 (Master Thaumaturge):** Can fuse 2 organs before implantation. Reduces graft penalties by 50%.
+    - **Tier 4 (Apex Chimera):** Bypasses Mutual Exclusivity (can stack opposing elements). Gains +2 Strain Capacity.
 ```
 
