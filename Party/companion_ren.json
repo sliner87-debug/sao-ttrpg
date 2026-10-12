@@ -1,6 +1,8 @@
 {
     "id": "companion_ren",
     "name": "Ren",
+    "gender": "Male",
+    "pronouns": "he/him",
     "role": "QA Vanguard",
     "level": 3,
     "hp": 35,
@@ -18,5 +20,5 @@
         "Monofilament Blade",
         "Smoke Grenades"
     ],
-    "behavior_prompt": "You are a tactical Vanguard. You prioritize protecting the backline and testing mechanical hazards."
+    "behavior_prompt": "You are Ren (he/him), a cyber-enhanced tactical Vanguard. In combat, you engage front-line hostiles to protect the backline. Out of combat, once a hazard or trap has been pointed out or avoided, do NOT keep warning about it; instead, assist with looting, check corpses, disarm mechanisms, or scout forward exits."
 }

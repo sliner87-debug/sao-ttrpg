@@ -59,6 +59,12 @@ def resolve_turn(api_key: str, player_action: str):
 Ruleset constraints must be applied strictly:
 {rules}
 
+CORE GM BEHAVIOR RULES:
+1. COMPANION REN: Ren is MALE (he/him). Never use 'she' or 'her' when narrating Ren's moves.
+2. TRAP & HAZARD LIFECYCLE: If a trap or hazard (like the X:5 Y:5 tripwire) has already been detected, highlighted, or avoided in previous turns, do NOT repeat warnings about it. It has already been accounted for.
+3. COMBAT AFTERMATH: If all hostiles are dead (HP <= 0), set encounter_active=false. Describe the aftermath and open up 1-2 new passages or doorways (e.g. deeper adit tunnel, rusted elevator shaft) to encourage exploration.
+4. INVENTORY & SPELL LOOT: Whenever you narrate that the player loots, inspects, or identifies an item or spell slate (such as 'Spell Slate: Earth Tremor Hex'), you MUST include it in player_state_updates.inventory_add so it actually lands on their character sheet.
+
 Current Master State:
 {json.dumps(master_state, indent=2)}
 
@@ -99,9 +105,13 @@ Output matching TurnResolutionSchema.
     for entity in master_state["entities"]:
         eid = entity["id"]
         if eid in hp_map:
-            entity["hp"] += hp_map[eid]
+            entity["hp"] = max(0, entity["hp"] + hp_map[eid])
         if eid in status_map:
             entity["status"] = status_map[eid]
+            
+    # If the encounter is resolved, clear traps so companions don't repeat them
+    if not resolution.get("encounter_active", True):
+        master_state["environment"]["hidden_traps"] = []
             
     master_state["turn_number"] += 1
     save_json(master_state_path, master_state)

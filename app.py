@@ -81,6 +81,79 @@ def save_game(player_state, messages):
     except Exception:
         pass
 
+def apply_player_state_updates(state_updates):
+    if not state_updates or not isinstance(state_updates, dict):
+        return
+        
+    hp_change = state_updates.get("hp_change")
+    if hp_change:
+        try:
+            clean_hp = int(str(hp_change).replace(",", "").replace(" ", ""))
+            st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + clean_hp))
+        except (ValueError, TypeError):
+            pass
+            
+    col_change = state_updates.get("col_change")
+    if col_change:
+        try:
+            clean_col = int(str(col_change).replace(",", "").replace(" ", ""))
+            st.session_state.player["col"] = max(0, st.session_state.player["col"] + clean_col)
+            if clean_col != 0:
+                st.toast(f"{'+' if clean_col > 0 else ''}{clean_col} Col!", icon="💰")
+        except (ValueError, TypeError):
+            pass
+            
+    xp_change = state_updates.get("xp_change")
+    if xp_change:
+        try:
+            clean_xp = int(str(xp_change).replace(",", "").replace(" ", ""))
+            if clean_xp > 0:
+                st.session_state.player["xp"] += clean_xp
+                st.toast(f"✨ Gained {clean_xp} XP!")
+                
+                while st.session_state.player["xp"] >= st.session_state.player["level"] * 1000:
+                    st.session_state.player["xp"] -= st.session_state.player["level"] * 1000
+                    st.session_state.player["level"] += 1
+                    st.session_state.player["max_hp"] += 25
+                    st.session_state.player["hp"] = st.session_state.player["max_hp"]
+                    for s in st.session_state.player["stats"]:
+                        st.session_state.player["stats"][s] += 1
+                    st.balloons()
+                    st.success(f"🎉 **LEVEL UP!** You are now Level {st.session_state.player['level']}! Max HP and Core Stats increased!")
+        except (ValueError, TypeError):
+            pass
+    
+    inv_add = state_updates.get("inventory_add") or []
+    if isinstance(inv_add, list):
+        for item in inv_add:
+            if isinstance(item, dict) and "name" in item:
+                st.session_state.player["inventory"].append(item)
+                st.toast(f"📦 Acquired: {item['name']}!", icon="🎁")
+            elif isinstance(item, str) and item.strip():
+                st.session_state.player["inventory"].append({"name": item, "rarity": "Common", "durability": 100, "max_durability": 100, "qty": 1, "desc": ""})
+                st.toast(f"📦 Acquired: {item}!", icon="🎁")
+                
+    inv_remove = state_updates.get("inventory_remove") or []
+    if isinstance(inv_remove, list):
+        for item_to_remove in inv_remove:
+            name_to_remove = item_to_remove.get("name", "").lower() if isinstance(item_to_remove, dict) else str(item_to_remove).lower()
+            for existing_item in st.session_state.player["inventory"][:]:
+                if isinstance(existing_item, dict) and name_to_remove in existing_item.get("name", "").lower():
+                    st.session_state.player["inventory"].remove(existing_item)
+                    break
+                elif isinstance(existing_item, str) and name_to_remove in existing_item.lower():
+                    st.session_state.player["inventory"].remove(existing_item)
+                    break
+
+    for k in ["spells_add", "feats_add", "racial_abilities_add"]:
+        adds = state_updates.get(k) or []
+        if isinstance(adds, list):
+            target_list = k.replace("_add", "")
+            for a in adds:
+                if a not in st.session_state.player.get(target_list, []):
+                    st.session_state.player.setdefault(target_list, []).append(a)
+                    st.toast(f"🔮 Learned {target_list[:-1].capitalize()}: {a}!")
+
 # --- INITIALIZE SESSION STATE ---
 saved_data = load_game()
 
@@ -330,10 +403,7 @@ with st.sidebar:
                             if "player" in hp_changes:
                                 state_updates["hp_change"] = hp_changes["player"]
                                 
-                            # Apply HP delta to player
-                            if "hp_change" in state_updates:
-                                st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + state_updates["hp_change"]))
-                                
+                            apply_player_state_updates(state_updates)
                             st.session_state.messages.append({"role": "assistant", "content": narrative})
                         else:
                             st.session_state.messages.append({"role": "system", "content": f"**[LIVE COMPANION LOG]**\n\n{result_text}"})
@@ -635,53 +705,7 @@ if prompt := (dev_prompt or chat_prompt):
                                 
                     map_engine.save_map_state(ms)
 
-                hp_change = state_updates.get("hp_change")
-                if hp_change:
-                    try:
-                        clean_hp = str(hp_change).replace(",", "").replace(" ", "")
-                        st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + int(clean_hp)))
-                    except ValueError:
-                        pass
-                        
-                xp_change = state_updates.get("xp_change")
-                if xp_change:
-                    try:
-                        clean_xp = int(str(xp_change).replace(",", "").replace(" ", ""))
-                        if clean_xp > 0:
-                            st.session_state.player["xp"] += clean_xp
-                            st.toast(f"✨ Gained {clean_xp} XP!")
-                            
-                            while st.session_state.player["xp"] >= st.session_state.player["level"] * 1000:
-                                st.session_state.player["xp"] -= st.session_state.player["level"] * 1000
-                                st.session_state.player["level"] += 1
-                                st.session_state.player["max_hp"] += 25
-                                st.session_state.player["hp"] = st.session_state.player["max_hp"]
-                                for s in st.session_state.player["stats"]:
-                                    st.session_state.player["stats"][s] += 1
-                                st.balloons()
-                                st.success(f"🎉 **LEVEL UP!** You are now Level {st.session_state.player['level']}! Max HP and Core Stats increased!")
-                    except ValueError:
-                        pass
-                
-                inv_add = state_updates.get("inventory_add") or []
-                if isinstance(inv_add, list):
-                    for item in inv_add:
-                        if isinstance(item, dict) and "name" in item:
-                            st.session_state.player["inventory"].append(item)
-                        elif isinstance(item, str):
-                            st.session_state.player["inventory"].append({"name": item, "rarity": "Common", "durability": 100, "max_durability": 100, "qty": 1, "desc": ""})
-                            
-                inv_remove = state_updates.get("inventory_remove") or []
-                if isinstance(inv_remove, list):
-                    for item_to_remove in inv_remove:
-                        name_to_remove = item_to_remove.get("name", "").lower() if isinstance(item_to_remove, dict) else str(item_to_remove).lower()
-                        for existing_item in st.session_state.player["inventory"][:]:
-                            if isinstance(existing_item, dict) and name_to_remove in existing_item.get("name", "").lower():
-                                st.session_state.player["inventory"].remove(existing_item)
-                                break
-                            elif isinstance(existing_item, str) and name_to_remove in existing_item.lower():
-                                st.session_state.player["inventory"].remove(existing_item)
-                                break
+                apply_player_state_updates(state_updates)
                                 
                 if state_updates.get("race"): st.session_state.player["race"] = state_updates["race"]
                 if state_updates.get("class"): st.session_state.player["class"] = state_updates["class"]
@@ -782,7 +806,7 @@ if prompt := (dev_prompt or chat_prompt):
             image_data = None
             
     new_msg = {
-        "role": "system", 
+        "role": "assistant", 
         "content": narrative,
         "image_data": image_data
     }
