@@ -652,12 +652,28 @@ with st.sidebar:
             "master_state": cur_master,
             "last_saved": time.time()
         }
+        try:
+            save_json_str = json.dumps(save_payload, indent=4, default=str)
+        except Exception:
+            save_json_str = json.dumps({"error": "Failed to serialize state"}, indent=4)
+
+        # Immediate Disk Flush
+        if st.button("💾 Force Instant Save to Disk", key="btn_quick_save_disk"):
+            save_game(st.session_state.player, st.session_state.messages)
+            st.toast("Campaign state saved to disk!", icon="💾")
+            st.success("Successfully saved `save_game.json`, `world_state.json`, and rolling chat backup.")
+
         st.download_button(
             label="📥 Export Full Campaign State (.json)",
-            data=json.dumps(save_payload, indent=4),
-            file_name=f"crucible_campaign_save_{int(time.time())}.json",
-            mime="application/json"
+            data=save_json_str,
+            file_name="crucible_campaign_save.json",
+            mime="application/json",
+            key="btn_download_campaign_json"
         )
+
+        with st.expander("📋 View / Copy Raw Save JSON (Clipboard Backup)"):
+            st.caption("If your mobile browser or network blocks file downloads, copy this raw JSON directly to your notes.")
+            st.text_area("Raw Save JSON", value=save_json_str, height=180, key="save_json_raw_area")
 
         # 2. Readable Transcript Backup (Markdown)
         transcript_lines = ["# 🗡️ Campaign Transcript: The Fractured Overlay\n\n"]
@@ -675,15 +691,17 @@ with st.sidebar:
         st.download_button(
             label="📜 Download Campaign Transcript (.md)",
             data=transcript_md,
-            file_name=f"campaign_transcript_{int(time.time())}.md",
-            mime="text/markdown"
+            file_name="campaign_transcript.md",
+            mime="text/markdown",
+            key="btn_download_campaign_transcript_md"
         )
         
-        # 3. Import & Restore
+        # 3. Import & Restore (File or Direct Paste)
         st.divider()
-        uploaded_file = st.file_uploader("📤 Import Save from Device", type="json")
+        st.markdown("**Restore Campaign**")
+        uploaded_file = st.file_uploader("📤 Import Save File (.json)", type="json", key="save_file_uploader")
         if uploaded_file is not None:
-            if st.button("Restore Save"):
+            if st.button("Restore from Uploaded File", key="btn_restore_uploaded_file"):
                 try:
                     loaded_data = json.load(uploaded_file)
                     st.session_state.player = loaded_data["player"]
@@ -700,6 +718,26 @@ with st.sidebar:
                     st.rerun()
                 except Exception as e:
                     st.error(f"Failed to load save: {e}")
+
+        paste_restore = st.text_area("Or Paste Raw Save JSON Here:", height=90, key="paste_restore_json_input", placeholder='{"player": ...}')
+        if st.button("Restore from Pasted JSON", key="btn_restore_pasted_json"):
+            if paste_restore.strip():
+                try:
+                    loaded_data = json.loads(paste_restore.strip())
+                    st.session_state.player = loaded_data["player"]
+                    st.session_state.messages = loaded_data["messages"]
+                    if "world_state" in loaded_data:
+                        st.session_state.world_state = loaded_data["world_state"]
+                    if "master_state" in loaded_data and loaded_data["master_state"]:
+                        os.makedirs(os.path.dirname(m_path), exist_ok=True)
+                        with open(m_path, "w", encoding="utf-8") as f:
+                            json.dump(loaded_data["master_state"], f, indent=4)
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.success("Save restored from text! Refreshing...")
+                    time.sleep(1)
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Failed to parse pasted save: {e}")
 
 # --- MAIN UI: THE CHAT WINDOW ---
 st.title("🗡️ The Fractured Overlay")

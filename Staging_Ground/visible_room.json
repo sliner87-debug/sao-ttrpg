@@ -1,19 +1,22 @@
 {
-    "turn_number": 1,
+    "turn_number": 19,
     "environment": {
-        "location": "Oxford Mine Adits",
-        "description": "A damp, rusted out mine shaft. The ceiling is unstable.",
+        "location": "Oxford Mine Adits - Lower Collapse Zone",
+        "description": "Splintered oak supports creak under immense weight. Geothermal steam hisses from floor fissures, shrouding the corridor in scalding vapor.",
         "environmental_effects": [
-            "Dim Light"
+            "Dim Light",
+            "Superheated Steam Venting"
         ]
     },
     "entities": [
         {
             "id": "enemy_01",
-            "name": "Runic Quarry Golem",
+            "name": "Silt-Marrow the Unhewn",
             "type": "hostile",
             "status": [
-                "Intact"
+                "Critically Compromised",
+                "Exposed Core",
+                "Shattered Lumbar"
             ]
         }
     ]
