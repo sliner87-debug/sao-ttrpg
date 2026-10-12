@@ -238,7 +238,7 @@ with st.sidebar:
     
     if mic_active:
         voice_mode = st.radio("Voice Mode", ["GM Companion Log", "Player Action"], horizontal=True)
-        audio_val = st.audio_input("🎙️ Record Voice", key="companion_mic")
+        audio_val = st.audio_input("🎙️ Record Voice", key="companion_mic", sample_rate=None)
         
         if audio_val is not None:
             audio_bytes = audio_val.getvalue()
