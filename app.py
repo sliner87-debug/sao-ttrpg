@@ -317,8 +317,20 @@ with st.sidebar:
         st.caption("Bypass the AI and edit the database directly.")
         st.session_state.player['hp'] = st.number_input("Set HP", value=player['hp'], step=10)
         st.session_state.player['max_hp'] = st.number_input("Set Max HP", value=player['max_hp'], step=10)
-        st.session_state.player['level'] = st.number_input("Set Level", value=player['level'], step=1)
+        st.session_state.player['level'] = st.number_input("Set Level", value=player.get('level', 1), step=1)
+        st.session_state.player['xp'] = st.number_input("Set XP", value=player.get('xp', 0), step=100)
         st.session_state.player['col'] = st.number_input("Set Col", value=player['col'], step=100)
+        
+        st.write("**Set Core Stats**")
+        c1, c2, c3 = st.columns(3)
+        st.session_state.player['stats']['STR'] = c1.number_input("STR", value=player['stats']['STR'], step=1)
+        st.session_state.player['stats']['DEX'] = c2.number_input("DEX", value=player['stats']['DEX'], step=1)
+        st.session_state.player['stats']['CON'] = c3.number_input("CON", value=player['stats']['CON'], step=1)
+        
+        c4, c5, c6 = st.columns(3)
+        st.session_state.player['stats']['INT'] = c4.number_input("INT", value=player['stats']['INT'], step=1)
+        st.session_state.player['stats']['WIS'] = c5.number_input("WIS", value=player['stats']['WIS'], step=1)
+        st.session_state.player['stats']['CHA'] = c6.number_input("CHA", value=player['stats']['CHA'], step=1)
         
         dev_cmd = st.text_input("Execute Root Command (Optional)")
         
