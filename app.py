@@ -89,23 +89,62 @@ def save_game(player_state, messages):
     except Exception:
         pass
 
-def extract_subagent_log(msg: dict) -> tuple:
+def extract_turn_components(msg: dict) -> tuple:
     """
-    Returns (cleaned_content, subagent_log) from a message dictionary.
-    Handles newly structured messages with 'subagent_log' and legacy
-    messages where thoughts were embedded in 'content'.
+    Returns (cleaned_narrative, mechanics_log, subagent_log) from a message dictionary.
+    Handles:
+    1. Newly structured messages with explicit 'mechanics_log' and 'subagent_log'.
+    2. Legacy messages with embedded SubAgent monologues.
+    3. Legacy messages with bracketed dice rolls / DC checks / damage math or prepended > 🎲 rolls.
     """
     content = msg.get("content", "") or ""
+    mechanics_log = msg.get("mechanics_log", "") or ""
     subagent_log = msg.get("subagent_log", "") or ""
     
+    # 1. Extract SubAgent thoughts if not already isolated
     if not subagent_log and content:
         match = re.search(r'(?:\r?\n)+(?:\*\*\[.*?SubAgent Mind\]\*\*|\*\*\[Ren\'s Tactical Logic\]\*\*)', content)
         if match:
             split_idx = match.start()
             subagent_log = content[split_idx:].strip()
             content = content[:split_idx].strip()
+
+    # 2. Extract Dice Rolls / Mechanics if not already isolated
+    if not mechanics_log and content:
+        mechanics_items = []
+        
+        # Check for prepended blockquote rolls like: > 🎲 `...`
+        clean_lines = []
+        for line in content.split("\n"):
+            line_str = line.strip()
+            if line_str.startswith("> 🎲") or (line_str.startswith(">") and "🎲" in line_str):
+                cleaned = line_str.replace("> 🎲", "").replace(">", "").strip(" `*")
+                if cleaned:
+                    mechanics_items.append(f"* 🎲 `{cleaned}`")
+            elif line_str == ">":
+                continue
+            else:
+                clean_lines.append(line)
+        content = "\n".join(clean_lines).strip()
+        
+        # Check for bracketed rolls/checks: [Attack: 1d20+5 = 17 vs AC 14 | Hit!]
+        bracket_pattern = re.compile(r'\s*\[([^\]]*(?:d20|d4|d6|d8|d10|d12|\bAC\b|\bDC\b|\bHit\b|\bFail\b|\bSave\b|\bRoll\b|\bdamage\b)[^\]]*)\]', re.IGNORECASE)
+        found_brackets = bracket_pattern.findall(content)
+        if found_brackets:
+            content = bracket_pattern.sub('', content).strip()
+            for b in found_brackets:
+                clean_b = b.strip()
+                if clean_b:
+                    mechanics_items.append(f"* 🎲 `{clean_b}`")
+                    
+        if mechanics_items:
+            mechanics_log = "\n".join(mechanics_items)
             
-    return content, subagent_log
+    return content, mechanics_log, subagent_log
+
+def extract_subagent_log(msg: dict) -> tuple:
+    c, m, s = extract_turn_components(msg)
+    return c, s
 
 def apply_player_state_updates(state_updates):
     if not state_updates or not isinstance(state_updates, dict):
@@ -545,10 +584,23 @@ with st.sidebar:
                             turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=result_text)
                             narrative = turn_data.get("narrative_recap", "")
                             
+                            combat_logs = turn_data.get("combat_logs", [])
+                            hp_changes = turn_data.get("hp_changes", {})
+                            mechanics_entries = []
+                            if combat_logs and isinstance(combat_logs, list):
+                                for log in combat_logs:
+                                    mechanics_entries.append(f"* 🎲 `{log}`")
+                            if hp_changes and isinstance(hp_changes, dict):
+                                for eid, delta in hp_changes.items():
+                                    sign = "+" if delta > 0 else ""
+                                    icon = "🩹" if delta > 0 else "🩸"
+                                    clean_eid = eid.replace("companion_", "").capitalize()
+                                    mechanics_entries.append(f"* {icon} **{clean_eid}:** {sign}{delta} HP")
+                            mechanics_log = "\n".join(mechanics_entries) if mechanics_entries else ""
+                            
                             state_updates = turn_data.get("player_state_updates", {})
                             if state_updates is None:
                                 state_updates = {}
-                            hp_changes = turn_data.get("hp_changes", {})
                             if "player" in hp_changes:
                                 state_updates["hp_change"] = hp_changes["player"]
                                 
@@ -557,6 +609,7 @@ with st.sidebar:
                             st.session_state.messages.append({
                                 "role": "assistant", 
                                 "content": narrative,
+                                "mechanics_log": mechanics_log,
                                 "subagent_log": subagent_log
                             })
                         else:
@@ -709,13 +762,15 @@ with st.sidebar:
         transcript_lines = ["# 🗡️ Campaign Transcript: The Fractured Overlay\n\n"]
         for idx, m in enumerate(st.session_state.messages):
             role = m.get("role", "system")
-            content, subagent_log = extract_subagent_log(m)
+            content, mechanics_log, subagent_log = extract_turn_components(m)
             if role == "user":
                 transcript_lines.append(f"### 👤 Turn {idx}: Player Action\n{content}\n\n")
             elif role in ["assistant", "system"]:
                 icon = "🤖" if role == "assistant" else "📡"
                 title = "Resolution" if role == "assistant" else "System Announcement"
                 entry = f"### {icon} Turn {idx}: {title}\n{content}\n"
+                if mechanics_log:
+                    entry += f"\n<details>\n<summary>🎲 Dice Rolls & Game Mechanics (Click to open/close)</summary>\n\n{mechanics_log}\n\n</details>\n"
                 if subagent_log:
                     entry += f"\n<details>\n<summary>🧠 SubAgent Thoughts & Planned Actions (Click to open/close)</summary>\n\n{subagent_log}\n\n</details>\n"
                 transcript_lines.append(entry + "\n")
@@ -780,8 +835,11 @@ st.caption("A Death-Game TTRPG powered by the Cardinal System AI.")
 for msg in st.session_state.messages:
     avatar = "👾" if msg.get("role") in ["assistant", "system"] else "👤"
     with st.chat_message(msg["role"], avatar=avatar):
-        content, subagent_log = extract_subagent_log(msg)
+        content, mechanics_log, subagent_log = extract_turn_components(msg)
         st.markdown(content)
+        if mechanics_log:
+            with st.expander("🎲 Dice Rolls & Game Mechanics (Click to open/close)", expanded=False):
+                st.markdown(mechanics_log)
         if subagent_log:
             with st.expander("🧠 SubAgent Thoughts & Planned Actions (Click to open/close)", expanded=False):
                 st.markdown(subagent_log)
@@ -992,23 +1050,23 @@ if prompt := (dev_prompt or chat_prompt):
                             break
 
             combat_logs = turn_data.get("combat_logs", [])
-            log_markdown = ""
+            hp_changes = turn_data.get("hp_changes", {})
+            mechanics_entries = []
             if combat_logs and isinstance(combat_logs, list):
                 for log in combat_logs:
-                    if "CRITICAL" in log.upper() or "FAIL" in log.upper() or "MISS" in log.upper():
-                        st.error(f"💥 **{log}**")
-                    elif "DAMAGE" in log.upper() or "DMG" in log.upper():
-                        st.warning(f"🩸 {log}")
-                    elif "ROLL" in log.upper():
-                        st.info(f"🎲 {log}")
-                    else:
-                        st.info(f"⚔️ {log}")
-                    log_markdown += f"> 🎲 `{log}`\n>\n"
-                
-                if log_markdown:
-                    narrative = log_markdown + "\n\n" + narrative
-            
+                    mechanics_entries.append(f"* 🎲 `{log}`")
+            if hp_changes and isinstance(hp_changes, dict):
+                for eid, delta in hp_changes.items():
+                    sign = "+" if delta > 0 else ""
+                    icon = "🩹" if delta > 0 else "🩸"
+                    clean_eid = eid.replace("companion_", "").capitalize()
+                    mechanics_entries.append(f"* {icon} **{clean_eid}:** {sign}{delta} HP")
+            mechanics_log = "\n".join(mechanics_entries) if mechanics_entries else ""
+
             st.markdown(narrative)
+            if mechanics_log:
+                with st.expander("🎲 Dice Rolls & Game Mechanics (Click to open/close)", expanded=False):
+                    st.markdown(mechanics_log)
             if subagent_log:
                 with st.expander("🧠 SubAgent Thoughts & Planned Actions (Click to open/close)", expanded=False):
                     st.markdown(subagent_log)
@@ -1018,6 +1076,7 @@ if prompt := (dev_prompt or chat_prompt):
     new_msg = {
         "role": "assistant", 
         "content": narrative,
+        "mechanics_log": mechanics_log,
         "subagent_log": subagent_log,
         "image_data": image_data
     }

@@ -65,6 +65,7 @@ CORE GM BEHAVIOR RULES:
 3. COMBAT AFTERMATH: If all hostiles are dead (HP <= 0), set encounter_active=false. Describe the aftermath and open up 1-2 new passages or doorways (e.g. deeper adit tunnel, rusted elevator shaft) to encourage exploration.
 4. INVENTORY & SPELL LOOT: Whenever you narrate that the player loots, inspects, or identifies an item or spell slate (such as 'Spell Slate: Earth Tremor Hex'), you MUST include it in player_state_updates.inventory_add so it actually lands on their character sheet.
 5. AUTONOMOUS SUBAGENTS: Each entity in the queue (Companions, Monsters, NPCs) is an autonomous SubAgent with their own quirks, fears, and tactical goals. Resolve how their queued actions collide with each other and with the Human Player's action.
+6. MECHANICAL TRANSPARENCY & CLEAN NARRATIVE: Explicitly simulate all dice rolls, attacks vs AC, saving throws vs DC, and damage math in the `combat_logs` array (e.g. 'Attack: 1d20+5 = 17 vs AC 14 | Hit!', 'Damage: 1d10+3 = 9 Slashing', 'Ren DEX Save: 1d20+4 = 11 vs DC 13 | Fail! 7 Bludgeoning/Fire damage'). In `narrative_recap`, tell a dramatic, cinematic story WITHOUT embedding bracketed formulas like '[Attack: 1d20+5...]' in the story prose. Put all crunch into `combat_logs`.
 
 Current Master State:
 {json.dumps(master_state, indent=2)}
@@ -136,6 +137,7 @@ Output matching TurnResolutionSchema.
     # Expose hp_changes as dict for app.py compatibility
     resolution["hp_changes"] = hp_map
     resolution["status_updates"] = status_map
+    resolution["combat_logs"] = resolution.get("combat_logs", [])
     
     # Clear action queue for next turn
     save_json(queue_path, [])

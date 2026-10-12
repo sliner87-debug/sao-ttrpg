@@ -40,7 +40,8 @@ class EntityStatusUpdate(BaseModel):
     statuses: List[str] = Field(description="Current list of status conditions")
 
 class TurnResolutionSchema(BaseModel):
-    narrative_recap: str = Field(description="Exciting narrative paragraph describing how the turn played out")
+    narrative_recap: str = Field(description="Exciting narrative paragraph describing how the turn played out without raw math formulas")
+    combat_logs: List[str] = Field(default=[], description="List of all mechanical dice rolls, saving throws, AC checks, and damage calculations (e.g. 'Attack: 1d20+5 = 17 vs AC 14 | Hit!', 'Damage: 1d10+3 = 9 Slashing')")
     hp_changes: List[EntityHpChange] = Field(description="List of HP changes for entities")
     status_updates: List[EntityStatusUpdate] = Field(description="List of updated statuses for entities")
     encounter_active: bool = Field(description="True if the fight continues, False if it is over")
