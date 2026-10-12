@@ -233,25 +233,59 @@ with st.sidebar:
 
     st.divider()
     st.subheader("🎙️ Live Table Companion")
-    st.caption("Stream your mic to the AI GM.")
-    if st.toggle("Activate Microphone Module", value=False):
-        with st.spinner("Minting secure token..."):
-            import backend.auth as auth
-            token = auth.get_ephemeral_token(api_key)
-            
-        import streamlit.components.v1 as components
-        live_companion = components.declare_component("live_companion", path=os.path.join(BASE_DIR, "frontend"))
+    st.caption("Record voice commands or GM narration.")
+    mic_active = st.toggle("Activate Microphone Module", value=False, help="Enable native voice recording")
+    
+    if mic_active:
+        voice_mode = st.radio("Voice Mode", ["GM Companion Log", "Player Action"], horizontal=True)
+        audio_val = st.audio_input("🎙️ Record Voice", key="companion_mic")
         
-        # Pass the token down to the JS component. When the user stops recording, it returns a dict with {text, id}.
-        out_data = live_companion(token=token, default=None)
-        
-        if out_data and isinstance(out_data, dict):
-            out_id = out_data.get("id")
-            out_text = out_data.get("text", "")
+        if audio_val is not None:
+            audio_bytes = audio_val.getvalue()
+            audio_hash = str(hash(audio_bytes))
             
-            if out_id != st.session_state.get("last_live_log_id") and out_text:
-                st.session_state["last_live_log_id"] = out_id
-                st.session_state.messages.append({"role": "system", "content": f"**[LIVE COMPANION LOG]**\n{out_text}"})
+            if audio_hash != st.session_state.get("last_processed_audio_hash"):
+                st.session_state["last_processed_audio_hash"] = audio_hash
+                with st.spinner("Cardinal System analyzing audio..."):
+                    import backend.voice_engine as voice_engine
+                    is_action = (voice_mode == "Player Action")
+                    result_text = voice_engine.process_voice_input(api_key, audio_bytes, action_mode=is_action)
+                    
+                    if is_action:
+                        # Append player's spoken action
+                        st.session_state.messages.append({"role": "user", "content": f"🗣️ [Voice Action] {result_text}"})
+                        
+                        # Execute the full V2 actor pipeline
+                        import backend.gm_engine as gm_engine
+                        import backend.actor_engine as actor_engine
+                        
+                        # 1. Staging ground
+                        gm_engine.generate_visible_state(api_key=api_key)
+                        
+                        # 2. Companion action
+                        ren_action = actor_engine.get_companion_action(api_key=api_key, character_id="companion_ren")
+                        ren_intent = ren_action.get("intended_action", "Ren stands ready.")
+                        ren_thought = ren_action.get("internal_thought", "")
+                        ren_log = f"\n\n**[Ren's Tactical Logic]**\n> *{ren_thought}*\n> **Action:** {ren_intent}"
+                        
+                        # 3. GM resolution
+                        turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=result_text)
+                        narrative = turn_data.get("narrative_recap", "") + ren_log
+                        
+                        state_updates = turn_data.get("player_state_updates", {})
+                        if state_updates is None:
+                            state_updates = {}
+                        hp_changes = turn_data.get("hp_changes", {})
+                        if "player" in hp_changes:
+                            state_updates["hp_change"] = hp_changes["player"]
+                            
+                        # Apply HP delta to player
+                        if "hp_change" in state_updates:
+                            st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + state_updates["hp_change"]))
+                            
+                        st.session_state.messages.append({"role": "assistant", "content": narrative})
+                    else:
+                        st.session_state.messages.append({"role": "system", "content": f"**[LIVE COMPANION LOG]**\n\n{result_text}"})
                 st.rerun()
             
     st.divider()
