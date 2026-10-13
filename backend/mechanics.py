@@ -153,7 +153,7 @@ def calculate_encumbrance(player_state):
     }
 
 def calculate_ac(player_state, encumbrance=None):
-    """Calculates Armor Class based on DEX, equipped armor, and encumbrance penalties."""
+    """Calculates Armor Class based on DEX, equipped armor, durability state, and encumbrance penalties."""
     if encumbrance is None:
         encumbrance = calculate_encumbrance(player_state)
         
@@ -166,12 +166,17 @@ def calculate_ac(player_state, encumbrance=None):
     
     base_ac = 10 + dex_mod
     
+    # Durability penalty calculations
+    dur_pens = calculate_durability_penalties(player_state) if "gear_durability" in player_state else {}
+    
     # Armor checks
     equipped = player_state.get("equipped", {})
     chest = equipped.get("chest", "").lower()
     
     armor_bonus = 0
-    if "einherjar" in chest or "plate" in chest or "gr. 5" in chest:
+    if dur_pens.get("chest_broken", False):
+        armor_bonus = 0
+    elif "einherjar" in chest or "plate" in chest or "gr. 5" in chest:
         armor_bonus = 8
     elif "chain" in chest or "hauberk" in chest:
         armor_bonus = 5
@@ -180,9 +185,12 @@ def calculate_ac(player_state, encumbrance=None):
         
     # Off-hand shield checks
     off_hand = equipped.get("off_hand", "").lower()
-    shield_bonus = 2 if "shield" in off_hand else 0
+    shield_bonus = 0
+    if "shield" in off_hand:
+        shield_bonus = 0 if dur_pens.get("shield_broken", False) else 2
     
-    return max(10, base_ac + armor_bonus + shield_bonus)
+    ac_pen = dur_pens.get("ac_penalty", 0)
+    return max(10, base_ac + armor_bonus + shield_bonus - ac_pen)
 
 
 # =====================================================================
@@ -1569,3 +1577,749 @@ def apply_class_evolution(player, evolution_choice):
         "evolved_resource": res,
         "unlocked_feat": evo_feat
     }
+
+
+# =====================================================================
+# PHASE M3: DURABILITY DEGRADATION, FIELD CRAFTING & TRAP-RIGGING
+# =====================================================================
+
+ITEM_GRADE_SCALING = {
+    1: {
+        "name": "Common Scrap",
+        "multiplier": 1.0,
+        "default_durability": 50,
+        "gem_slots": 0,
+        "badge": "⚪ Grade 1 (Common Scrap)",
+        "rarity": "Common"
+    },
+    2: {
+        "name": "Reinforced",
+        "multiplier": 1.25,
+        "default_durability": 75,
+        "gem_slots": 0,
+        "badge": "🟢 Grade 2 (Reinforced)",
+        "rarity": "Uncommon"
+    },
+    3: {
+        "name": "Aether-Forged",
+        "multiplier": 1.5,
+        "default_durability": 100,
+        "gem_slots": 1,
+        "badge": "🔵 Grade 3 (Aether-Forged)",
+        "rarity": "Rare"
+    },
+    4: {
+        "name": "Runic Masterwork",
+        "multiplier": 2.0,
+        "default_durability": 150,
+        "gem_slots": 2,
+        "badge": "🟣 Grade 4 (Runic Masterwork)",
+        "rarity": "Epic"
+    },
+    5: {
+        "name": "Einherjar / Boss Tier",
+        "multiplier": 2.5,
+        "default_durability": 200,
+        "gem_slots": 3,
+        "badge": "🟠 Grade 5 (Einherjar)",
+        "rarity": "Legendary"
+    }
+}
+
+def get_item_grade(item):
+    """Determines item grade (1-5) from item name or object."""
+    if isinstance(item, dict):
+        if "grade" in item:
+            try:
+                return max(1, min(5, int(item["grade"])))
+            except (ValueError, TypeError):
+                pass
+        name = item.get("name", "").lower()
+        desc = item.get("desc", "").lower()
+        rarity = item.get("rarity", "").lower()
+    elif isinstance(item, str):
+        name = item.lower()
+        desc = ""
+        rarity = ""
+    else:
+        return 1
+
+    text = f"{name} {desc} {rarity}"
+    if any(k in text for k in ["gr. 5", "grade 5", "einherjar", "fenrir", "mjölnir", "boss tier", "mythic", "unique"]):
+        return 5
+    if any(k in text for k in ["gr. 4", "grade 4", "runic", "masterwork", "epic"]):
+        return 4
+    if any(k in text for k in ["gr. 3", "grade 3", "aether-forged", "aetheric", "rare"]):
+        return 3
+    if any(k in text for k in ["gr. 2", "grade 2", "reinforced", "uncommon"]):
+        return 2
+    return 1
+
+def normalize_gear_durability(player_state):
+    """
+    Ensures player_state['gear_durability'] is present and synced with equipped items.
+    Initializes max durability according to item grade.
+    """
+    if "gear_durability" not in player_state or not isinstance(player_state["gear_durability"], dict):
+        player_state["gear_durability"] = {}
+
+    gear_dur = player_state["gear_durability"]
+    equipped = player_state.get("equipped", {})
+
+    for slot in ["head", "chest", "main_hand", "off_hand", "accessory"]:
+        item_val = equipped.get(slot, "None")
+        if item_val and item_val != "None":
+            grade = get_item_grade(item_val)
+            default_max = ITEM_GRADE_SCALING[grade]["default_durability"]
+            
+            # Special case for heavy rigs/boss armor
+            item_str = str(item_val).lower()
+            if "rig" in item_str and grade >= 5:
+                default_max = 250
+
+            if slot not in gear_dur or not isinstance(gear_dur[slot], dict):
+                gear_dur[slot] = {"cur": default_max, "max": default_max, "grade": grade}
+            else:
+                s_dict = gear_dur[slot]
+                max_d = s_dict.get("max", default_max)
+                cur_d = s_dict.get("cur", max_d)
+                s_dict["max"] = max_d
+                s_dict["cur"] = max(0, min(max_d, cur_d))
+                s_dict["grade"] = grade
+        else:
+            if slot not in gear_dur:
+                gear_dur[slot] = {"cur": 100, "max": 100, "grade": 1}
+
+    return gear_dur
+
+def get_durability_state(cur, max_dur):
+    """
+    Evaluates equipment wear state:
+    - Pristine (>75%): 100% performance
+    - Worn (25% - 74%): Minor visual wear
+    - Dulled/Cracked (1% - 24%): -2 Attack / -2 AC penalty
+    - Broken (0%): Ineffective in combat
+    """
+    cur = max(0, int(cur))
+    max_dur = max(1, int(max_dur))
+    pct = cur / max_dur
+
+    if cur == 0:
+        return {
+            "state": "Broken",
+            "label": "🔴 BROKEN (Ineffective)",
+            "penalty_atk": 5,
+            "penalty_ac": 5,
+            "is_broken": True,
+            "is_dulled": True,
+            "pct": 0.0
+        }
+    elif pct < 0.25:
+        return {
+            "state": "Dulled/Cracked",
+            "label": "🟠 Dulled/Cracked (-2)",
+            "penalty_atk": 2,
+            "penalty_ac": 2,
+            "is_broken": False,
+            "is_dulled": True,
+            "pct": pct
+        }
+    elif pct < 0.75:
+        return {
+            "state": "Worn",
+            "label": "🟡 Worn",
+            "penalty_atk": 0,
+            "penalty_ac": 0,
+            "is_broken": False,
+            "is_dulled": False,
+            "pct": pct
+        }
+    else:
+        return {
+            "state": "Pristine",
+            "label": "🟢 Pristine",
+            "penalty_atk": 0,
+            "penalty_ac": 0,
+            "is_broken": False,
+            "is_dulled": False,
+            "pct": pct
+        }
+
+def calculate_durability_penalties(player_state):
+    """
+    Calculates total penalties applied from damaged/broken equipped gear.
+    """
+    gear_dur = player_state.get("gear_durability", {})
+    equipped = player_state.get("equipped", {})
+
+    atk_penalty = 0
+    ac_penalty = 0
+    chest_broken = False
+    shield_broken = False
+    broken_items = []
+    dulled_items = []
+
+    for slot in ["main_hand", "off_hand"]:
+        item = equipped.get(slot, "None")
+        if item != "None" and slot in gear_dur:
+            d = gear_dur[slot]
+            state_info = get_durability_state(d.get("cur", 0), d.get("max", 100))
+            if state_info["is_broken"]:
+                if "shield" in str(item).lower():
+                    shield_broken = True
+                else:
+                    atk_penalty += 4
+                broken_items.append(f"{slot} ({item})")
+            elif state_info["is_dulled"]:
+                if "shield" in str(item).lower():
+                    ac_penalty += 1
+                else:
+                    atk_penalty += 2
+                dulled_items.append(f"{slot} ({item})")
+
+    # Armor slots
+    for slot in ["chest", "head"]:
+        item = equipped.get(slot, "None")
+        if item != "None" and slot in gear_dur:
+            d = gear_dur[slot]
+            state_info = get_durability_state(d.get("cur", 0), d.get("max", 100))
+            if state_info["is_broken"]:
+                if slot == "chest":
+                    chest_broken = True
+                ac_penalty += 2
+                broken_items.append(f"{slot} ({item})")
+            elif state_info["is_dulled"]:
+                ac_penalty += 2
+                dulled_items.append(f"{slot} ({item})")
+
+    return {
+        "atk_penalty": atk_penalty,
+        "ac_penalty": ac_penalty,
+        "chest_broken": chest_broken,
+        "shield_broken": shield_broken,
+        "broken_items": broken_items,
+        "dulled_items": dulled_items
+    }
+
+def apply_durability_damage(player_state, slot_or_name, amount=1):
+    """
+    Reduces durability for an equipped slot or named inventory item.
+    Returns status record and combat log string.
+    """
+    normalize_gear_durability(player_state)
+    gear_dur = player_state.get("gear_durability", {})
+    equipped = player_state.get("equipped", {})
+
+    target_slot = None
+    item_name = "Unknown Item"
+
+    # Match by slot name
+    if slot_or_name in gear_dur:
+        target_slot = slot_or_name
+        item_name = equipped.get(target_slot, slot_or_name)
+    else:
+        # Match by item name across equipped slots
+        query = str(slot_or_name).lower()
+        for s, iname in equipped.items():
+            if iname and query in iname.lower():
+                target_slot = s
+                item_name = iname
+                break
+
+    if target_slot and target_slot in gear_dur:
+        entry = gear_dur[target_slot]
+        old_cur = entry.get("cur", entry.get("max", 100))
+        max_d = entry.get("max", 100)
+        new_cur = max(0, old_cur - amount)
+        entry["cur"] = new_cur
+
+        state_info = get_durability_state(new_cur, max_d)
+        log = f"[DURABILITY: {item_name} {new_cur}/{max_d} (-{amount}) - {state_info['label']}]"
+        
+        return {
+            "slot": target_slot,
+            "item": item_name,
+            "old_cur": old_cur,
+            "new_cur": new_cur,
+            "max": max_d,
+            "loss": amount,
+            "state": state_info["state"],
+            "is_broken": state_info["is_broken"],
+            "is_dulled": state_info["is_dulled"],
+            "log": log
+        }
+
+    # Fallback to backpack item search
+    for item in player_state.get("inventory", []):
+        if isinstance(item, dict) and str(slot_or_name).lower() in item.get("name", "").lower():
+            old_cur = item.get("durability", item.get("max_durability", 100))
+            max_d = item.get("max_durability", 100)
+            new_cur = max(0, old_cur - amount)
+            item["durability"] = new_cur
+            state_info = get_durability_state(new_cur, max_d)
+            log = f"[DURABILITY: {item.get('name')} {new_cur}/{max_d} (-{amount}) - {state_info['label']}]"
+            return {
+                "slot": "inventory",
+                "item": item.get("name"),
+                "old_cur": old_cur,
+                "new_cur": new_cur,
+                "max": max_d,
+                "loss": amount,
+                "state": state_info["state"],
+                "is_broken": state_info["is_broken"],
+                "is_dulled": state_info["is_dulled"],
+                "log": log
+            }
+
+    return {"slot": None, "item": slot_or_name, "log": f"[DURABILITY: {slot_or_name} not found]"}
+
+def repair_item(player_state, slot_or_name, repair_amount=None, col_per_point=1):
+    """
+    Repairs an equipped item or inventory item back to full (or by repair_amount).
+    Deducts Col if player has sufficient funds.
+    """
+    normalize_gear_durability(player_state)
+    gear_dur = player_state.get("gear_durability", {})
+    equipped = player_state.get("equipped", {})
+
+    target_entry = None
+    item_name = str(slot_or_name)
+
+    if slot_or_name in gear_dur:
+        target_entry = gear_dur[slot_or_name]
+        item_name = equipped.get(slot_or_name, slot_or_name)
+    else:
+        query = str(slot_or_name).lower()
+        for s, iname in equipped.items():
+            if iname and query in iname.lower():
+                target_entry = gear_dur[s]
+                item_name = iname
+                break
+
+    if not target_entry:
+        for item in player_state.get("inventory", []):
+            if isinstance(item, dict) and str(slot_or_name).lower() in item.get("name", "").lower():
+                target_entry = item
+                item_name = item.get("name")
+                break
+
+    if not target_entry:
+        return {"success": False, "message": f"Item '{slot_or_name}' not found."}
+
+    cur_key = "cur" if "cur" in target_entry else "durability"
+    max_key = "max" if "max" in target_entry else "max_durability"
+
+    cur_d = target_entry.get(cur_key, 0)
+    max_d = target_entry.get(max_key, 100)
+    needed = max_d - cur_d
+
+    if needed <= 0:
+        return {"success": True, "repaired": 0, "col_cost": 0, "message": f"{item_name} is already pristine ({max_d}/{max_d})."}
+
+    actual_repair = needed if repair_amount is None else min(needed, repair_amount)
+    total_cost = actual_repair * col_per_point
+
+    player_col = player_state.get("col", 0)
+    if player_col < total_cost:
+        # Partial repair with whatever Col is available
+        if col_per_point > 0:
+            actual_repair = player_col // col_per_point
+            total_cost = actual_repair * col_per_point
+        if actual_repair <= 0:
+            return {"success": False, "repaired": 0, "col_cost": 0, "message": f"Insufficient Col to repair {item_name} (Requires {needed * col_per_point} Col)."}
+
+    target_entry[cur_key] = cur_d + actual_repair
+    player_state["col"] = player_col - total_cost
+
+    return {
+        "success": True,
+        "repaired": actual_repair,
+        "new_durability": target_entry[cur_key],
+        "max_durability": max_d,
+        "col_cost": total_cost,
+        "message": f"Repaired {item_name} (+{actual_repair} dur) to {target_entry[cur_key]}/{max_d} for {total_cost} Col."
+    }
+
+# =====================================================================
+# FIELD CRAFTING, SCAVENGING & TRAP-RIGGING ENGINE
+# =====================================================================
+
+CANONICAL_TRAPS = {
+    "serrated_tripwire": {
+        "key": "serrated_tripwire",
+        "name": "Serrated Monofilament Tripwire",
+        "base_dc": 12,
+        "prep_turns": 1,
+        "damage_dice": "2d6",
+        "condition": "Bleed & Prone",
+        "description": "Ultra-sharp monofilament strung across natural choke-points. Trips target prone and inflicts 2d6 slashing damage plus Bleed.",
+        "materials": {
+            "Serrated Tripwire Coils": 1,
+            "Anchors and Tension Pins": 1
+        }
+    },
+    "heavy_highway_snare": {
+        "key": "heavy_highway_snare",
+        "name": "Heavy Highway Snare",
+        "base_dc": 14,
+        "prep_turns": 1,
+        "damage_dice": "1d8",
+        "condition": "Tethered",
+        "description": "High-tension braided cable hoist. Yanks target into suspension, inflicting Tethered condition (0 movement, attacks against target have advantage).",
+        "materials": {
+            "Heavy Highway Snares": 1,
+            "Carbon Line Spools": 1
+        }
+    },
+    "marrow_aggro_corridor": {
+        "key": "marrow_aggro_corridor",
+        "name": "Rendered Marrow Scent Corridor",
+        "base_dc": 13,
+        "prep_turns": 2,
+        "damage_dice": "None",
+        "condition": "Aggro Lure & Surprise Ambush",
+        "description": "Smears 500m pheromone corridor to funnel beasts directly into pre-sighted kill zones. Grants automatic Surprise Round (+5 initiative, guaranteed critical strike).",
+        "materials": {
+            "Crate of Marrow-Jars": 1,
+            "Carbon Line Spools": 1
+        }
+    },
+    "emp_shock_mine": {
+        "key": "emp_shock_mine",
+        "name": "Improvised EMP Shock-Mine",
+        "base_dc": 15,
+        "prep_turns": 1,
+        "damage_dice": "3d8",
+        "condition": "Stunned & Ionized",
+        "description": "Repurposed micro-capacitor detonating on pressure. Inflicts 3d8 electrical damage in a 10ft radius; DC 14 CON save or Stunned for 1 turn.",
+        "materials": {
+            "Corroded Micro-Capacitor": 1,
+            "Frayed Copper Wiring": 1
+        }
+    }
+}
+
+def _find_inventory_item(inventory, query_name):
+    """Helper to locate an inventory entry matching query_name and return (item, index)."""
+    q = query_name.lower().strip()
+    for idx, item in enumerate(inventory):
+        if isinstance(item, str):
+            clean_name = item.split(" x")[0].lower().strip()
+            if q in clean_name or clean_name in q:
+                return item, idx
+        elif isinstance(item, dict):
+            name = item.get("name", "").lower().strip()
+            if q in name or name in q:
+                return item, idx
+    return None, -1
+
+def can_craft_trap(player_state, trap_key):
+    """
+    Checks if player has all required materials in inventory to craft/rig the specified trap.
+    """
+    if trap_key not in CANONICAL_TRAPS:
+        return False, f"Unknown trap key '{trap_key}'", {}
+
+    trap_def = CANONICAL_TRAPS[trap_key]
+    required = trap_def["materials"]
+    inv = player_state.get("inventory", [])
+    
+    missing = {}
+    available = {}
+
+    for mat_name, req_qty in required.items():
+        found_item, _ = _find_inventory_item(inv, mat_name)
+        if not found_item:
+            missing[mat_name] = req_qty
+        else:
+            # Check qty
+            qty = 1
+            if isinstance(found_item, str) and " x" in found_item:
+                try:
+                    qty = int(found_item.rsplit(" x", 1)[1])
+                except ValueError:
+                    qty = 1
+            elif isinstance(found_item, dict):
+                qty = found_item.get("qty", 1)
+
+            if qty < req_qty:
+                missing[mat_name] = req_qty - qty
+            else:
+                available[mat_name] = qty
+
+    if missing:
+        missing_str = ", ".join([f"{k} (need {v})" for k, v in missing.items()])
+        return False, f"Missing materials: {missing_str}", missing
+
+    return True, "All materials present.", available
+
+def consume_trap_materials(player_state, trap_key):
+    """
+    Deducts the required materials for a trap from the player's inventory.
+    """
+    can_craft, msg, _ = can_craft_trap(player_state, trap_key)
+    if not can_craft:
+        return False, msg
+
+    trap_def = CANONICAL_TRAPS[trap_key]
+    inv = player_state.get("inventory", [])
+
+    for mat_name, req_qty in trap_def["materials"].items():
+        found_item, idx = _find_inventory_item(inv, mat_name)
+        if idx != -1:
+            if isinstance(found_item, str):
+                cur_qty = 1
+                base_name = found_item
+                if " x" in found_item:
+                    parts = found_item.rsplit(" x", 1)
+                    base_name = parts[0]
+                    try:
+                        cur_qty = int(parts[1])
+                    except ValueError:
+                        cur_qty = 1
+                new_qty = cur_qty - req_qty
+                if new_qty <= 0:
+                    inv.pop(idx)
+                else:
+                    inv[idx] = f"{base_name} x{new_qty}"
+            elif isinstance(found_item, dict):
+                cur_qty = found_item.get("qty", 1)
+                new_qty = cur_qty - req_qty
+                if new_qty <= 0:
+                    inv.pop(idx)
+                else:
+                    found_item["qty"] = new_qty
+
+    return True, f"Consumed materials for {trap_def['name']}."
+
+def rig_field_trap(player_state, trap_key, prep_time_turns=1, d20_roll=None):
+    """
+    Deploys a field trap:
+    - Verifies and consumes materials
+    - Rolls 1d20 + DEX mod + Field Trapping Mastery bonus vs Base DC
+    - On success: deploys active trap with dynamic Stealth DC and damage
+    - Awards Field Trapping skill mastery
+    """
+    if trap_key not in CANONICAL_TRAPS:
+        return {"success": False, "log": f"[TRAP ERROR: Unknown trap '{trap_key}']"}
+
+    trap_def = CANONICAL_TRAPS[trap_key]
+
+    can_craft, msg, _ = can_craft_trap(player_state, trap_key)
+    if not can_craft:
+        return {"success": False, "log": f"[TRAP RIGGING FAILED: {msg}]"}
+
+    # Consume components
+    consume_trap_materials(player_state, trap_key)
+
+    # Get Field Trapping skill mastery
+    skills = player_state.get("skills", {})
+    trapping_mastery = 1
+    for s_name, s_data in skills.items():
+        if "trapping" in s_name.lower() or "survival" in s_name.lower():
+            if isinstance(s_data, dict):
+                trapping_mastery = max(trapping_mastery, int(s_data.get("mastery", 1)))
+            elif isinstance(s_data, (int, float)):
+                trapping_mastery = max(trapping_mastery, int(s_data))
+
+    stats = player_state.get("stats", {})
+    dex_mod = (stats.get("DEX", 10) - 10) // 2
+    mastery_bonus = trapping_mastery // 100
+
+    import random
+    roll = random.randint(1, 20) if d20_roll is None else int(d20_roll)
+    total_check = roll + dex_mod + mastery_bonus
+    base_dc = trap_def["base_dc"]
+
+    success = (total_check >= base_dc)
+    stealth_dc = 10 + dex_mod + mastery_bonus + max(0, total_check - base_dc)
+
+    # Update Field Trapping Skill Mastery
+    update_skill_mastery(
+        player_state=player_state,
+        skill_name="Field Trapping",
+        gain_or_dc=base_dc,
+        is_dc=True,
+        desc="Deployment of tactical combat snare",
+        critical=(roll == 20)
+    )
+
+    deployed_trap = {
+        "key": trap_key,
+        "name": trap_def["name"],
+        "stealth_dc": stealth_dc,
+        "damage_dice": trap_def["damage_dice"],
+        "condition": trap_def["condition"],
+        "effect": trap_def["description"],
+        "deployed_turn": player_state.get("turn_count", 1)
+    }
+
+    if "active_traps" not in player_state or not isinstance(player_state["active_traps"], list):
+        player_state["active_traps"] = []
+
+    player_state["active_traps"].append(deployed_trap)
+
+    log = (
+        f"[TRAP RIGGED: {trap_def['name']} | Roll 1d20({roll}) + DEX({dex_mod}) + Mastery({mastery_bonus}) = {total_check} "
+        f"vs DC {base_dc} - SUCCESS! Concealment Stealth DC: {stealth_dc}]"
+    )
+
+    return {
+        "success": True,
+        "trap": deployed_trap,
+        "roll": roll,
+        "total_check": total_check,
+        "stealth_dc": stealth_dc,
+        "log": log
+    }
+
+def trigger_field_trap(player_state, trap_idx_or_key, target_name="Mutated Stalker", target_passive_perception=12):
+    """
+    Evaluates whether an enemy triggers an active field trap.
+    """
+    active_traps = player_state.get("active_traps", [])
+    if not active_traps:
+        return {"triggered": False, "log": "[TRAP: No active traps deployed]"}
+
+    target_trap = None
+    target_idx = -1
+
+    if isinstance(trap_idx_or_key, int) and 0 <= trap_idx_or_key < len(active_traps):
+        target_trap = active_traps[trap_idx_or_key]
+        target_idx = trap_idx_or_key
+    else:
+        for idx, t in enumerate(active_traps):
+            if t.get("key") == trap_idx_or_key or t.get("name", "").lower() == str(trap_idx_or_key).lower():
+                target_trap = t
+                target_idx = idx
+                break
+
+    if not target_trap:
+        target_trap = active_traps[0]
+        target_idx = 0
+
+    stealth_dc = target_trap.get("stealth_dc", 12)
+    ambushed = (stealth_dc >= target_passive_perception)
+
+    # Pop active trap
+    active_traps.pop(target_idx)
+
+    log = (
+        f"[TRAP SPRING: {target_name} stepped into {target_trap['name']}! "
+        f"Trap Stealth DC {stealth_dc} vs Target Perception {target_passive_perception} -> "
+        f"{'SURPRISE AMBUSH TRIGGERED!' if ambushed else 'DETECTED AT LAST MOMENT!'} "
+        f"Damage: {target_trap['damage_dice']} | Condition: {target_trap['condition']}]"
+    )
+
+    return {
+        "triggered": True,
+        "ambushed": ambushed,
+        "trap": target_trap,
+        "target": target_name,
+        "log": log
+    }
+
+def salvage_materials(player_state, target_type="construct", d20_roll=None):
+    """
+    Scavenges raw materials from fallen constructs, mutated beasts, or structural ruins.
+    Scales with Field Smithing or Scavenging mastery.
+    """
+    SALVAGE_TABLES = {
+        "construct": [
+            {"name": "Frayed Copper Wiring", "qty": 2, "weight": 0.5},
+            {"name": "Corroded Micro-Capacitor", "qty": 1, "weight": 0.2},
+            {"name": "Titanium Wire Scrap", "qty": 1, "weight": 1.0}
+        ],
+        "beast": [
+            {"name": "Rendered Chimera Marrow", "qty": 1, "weight": 1.5},
+            {"name": "Hardened Chitin Plates", "qty": 2, "weight": 3.0},
+            {"name": "Mutated Sinew Cord", "qty": 1, "weight": 0.8}
+        ],
+        "ruins": [
+            {"name": "Carbon Line Spools", "qty": 1, "weight": 2.0},
+            {"name": "Anchors and Tension Pins", "qty": 1, "weight": 1.0},
+            {"name": "Scrap Iron Plate", "qty": 1, "weight": 4.0}
+        ]
+    }
+
+    t_key = target_type.lower()
+    table_key = "construct"
+    if "beast" in t_key or "chimera" in t_key or "monster" in t_key or "wolf" in t_key or "boar" in t_key:
+        table_key = "beast"
+    elif "ruin" in t_key or "scrap" in t_key or "cache" in t_key:
+        table_key = "ruins"
+
+    import random
+    roll = random.randint(1, 20) if d20_roll is None else int(d20_roll)
+    
+    # Get skill bonus
+    skills = player_state.get("skills", {})
+    scav_mastery = 1
+    for s_name, s_data in skills.items():
+        if any(w in s_name.lower() for w in ["smithing", "scaveng", "salvage", "survival"]):
+            if isinstance(s_data, dict):
+                scav_mastery = max(scav_mastery, int(s_data.get("mastery", 1)))
+            elif isinstance(s_data, (int, float)):
+                scav_mastery = max(scav_mastery, int(s_data))
+
+    stats = player_state.get("stats", {})
+    wis_mod = (stats.get("WIS", 10) - 10) // 2
+    mastery_bonus = scav_mastery // 100
+    total_roll = roll + wis_mod + mastery_bonus
+
+    items_to_add = []
+    pool = SALVAGE_TABLES[table_key]
+
+    if total_roll >= 15:
+        # Full salvage: 2 items
+        items_to_add.extend(pool[:2])
+    elif total_roll >= 10:
+        # Standard salvage: 1 item
+        items_to_add.append(pool[0])
+    else:
+        # Low roll: basic scrap
+        items_to_add.append({"name": "Tainted Metallic Scrap", "qty": 1, "weight": 1.0})
+
+    # Add to player inventory
+    inv = player_state.setdefault("inventory", [])
+    added_names = []
+    for item in items_to_add:
+        found_item, idx = _find_inventory_item(inv, item["name"])
+        if idx != -1:
+            if isinstance(found_item, dict):
+                found_item["qty"] = found_item.get("qty", 1) + item["qty"]
+            elif isinstance(found_item, str):
+                cur_qty = 1
+                base_name = found_item
+                if " x" in found_item:
+                    base_name, qstr = found_item.rsplit(" x", 1)
+                    try: cur_qty = int(qstr)
+                    except ValueError: cur_qty = 1
+                inv[idx] = f"{base_name} x{cur_qty + item['qty']}"
+        else:
+            inv.append({"name": item["name"], "qty": item["qty"], "rarity": "Common", "durability": 100, "max_durability": 100, "desc": "Field salvaged component."})
+        added_names.append(f"{item['name']} (x{item['qty']})")
+
+    # Award skill mastery
+    update_skill_mastery(
+        player_state=player_state,
+        skill_name="Field Smithing",
+        gain_or_dc=12,
+        is_dc=True,
+        desc="Field salvage of defeated target",
+        critical=(roll == 20)
+    )
+
+    log = (
+        f"[SALVAGE: {target_type} | Roll 1d20({roll}) + WIS({wis_mod}) + Mastery({mastery_bonus}) = {total_roll} "
+        f"-> Harvested: {', '.join(added_names)}]"
+    )
+
+    return {
+        "success": True,
+        "items": items_to_add,
+        "roll": roll,
+        "total_roll": total_roll,
+        "log": log
+    }
+

@@ -874,15 +874,67 @@ with st.sidebar:
             else:
                 st.success("✅ **Unburdened:** Full agility and movement speed.")
             
-        with st.expander("⚔️ Equipped Gear", expanded=False):
-            gear_dur = player.get("gear_durability", {})
+        with st.expander("⚔️ Equipped Gear & Durability", expanded=False):
+            if hasattr(mechanics, "normalize_gear_durability"):
+                gear_dur = mechanics.normalize_gear_durability(player)
+            else:
+                gear_dur = player.get("gear_durability", {})
+
+            # Summary of active durability penalties
+            if hasattr(mechanics, "calculate_durability_penalties"):
+                pens = mechanics.calculate_durability_penalties(player)
+                if pens["atk_penalty"] > 0 or pens["ac_penalty"] > 0:
+                    st.warning(f"⚠️ **Wear Penalties Active:** ATK -{pens['atk_penalty']} | AC -{pens['ac_penalty']}")
+                if pens["broken_items"]:
+                    st.error(f"🚨 **Broken Gear:** {', '.join(pens['broken_items'])} (Ineffective!)")
+
             for slot in ["head", "chest", "main_hand", "off_hand", "accessory"]:
                 item = player['equipped'].get(slot, "None")
-                dur_info = ""
-                if item != "None" and slot in gear_dur:
-                    d = gear_dur[slot]
-                    dur_info = f" `[{d['cur']}/{d['max']} dur]`"
-                st.write(f"- **{slot.replace('_', ' ').title()}:** {item}{dur_info}")
+                slot_label = slot.replace('_', ' ').title()
+                if item and item != "None":
+                    grade = mechanics.get_item_grade(item) if hasattr(mechanics, "get_item_grade") else 1
+                    grade_badge = mechanics.ITEM_GRADE_SCALING.get(grade, {}).get("badge", f"Grade {grade}") if hasattr(mechanics, "ITEM_GRADE_SCALING") else f"Grade {grade}"
+                    
+                    d = gear_dur.get(slot, {"cur": 100, "max": 100})
+                    cur_d = d.get("cur", 100)
+                    max_d = d.get("max", 100)
+                    
+                    state_info = mechanics.get_durability_state(cur_d, max_d) if hasattr(mechanics, "get_durability_state") else {"label": f"{cur_d}/{max_d}", "pct": cur_d / max_d if max_d > 0 else 1.0, "is_broken": cur_d <= 0, "is_dulled": cur_d < max_d * 0.25}
+                    
+                    st.markdown(f"**{slot_label}:** {item}")
+                    st.caption(f"{grade_badge} | {state_info['label']}")
+                    
+                    pct_val = max(0.0, min(1.0, float(state_info.get("pct", cur_d / max_d if max_d > 0 else 1.0))))
+                    st.progress(pct_val, text=f"{cur_d} / {max_d} Durability ({int(pct_val * 100)}%)")
+                    
+                    if state_info.get("is_broken"):
+                        st.error("🛑 BROKEN: Weapon/Armor has fractured and lost its effectiveness!")
+                    elif state_info.get("is_dulled"):
+                        st.warning("🟠 DULLED/CRACKED: Imposing -2 penalty to checks!")
+                    st.divider()
+                else:
+                    st.caption(f"- **{slot_label}:** None")
+
+            # Safe Zone Forge Repair: The Scrap-Yard Anvil
+            loc_str = str(player.get("location", "")).lower()
+            is_safe_settlement = any(w in loc_str for w in ["borough", "safe", "town", "taphouse", "anvil", "forge", "haven", "settlement"])
+            
+            st.markdown("##### 🔨 The Scrap-Yard Anvil (Forge Repairs)")
+            total_dur_needed = sum(max(0, d.get("max", 100) - d.get("cur", 100)) for d in gear_dur.values())
+            
+            if total_dur_needed > 0:
+                cost_estimate = total_dur_needed  # 1 Col per durability point
+                st.caption(f"Maintenance Required: **{total_dur_needed} pts** of wear | Cost: **{cost_estimate} Col** (Current Col: {player.get('col', 0):,})")
+                if st.button("🔨 Repair All Equipped Gear", key="btn_repair_all_gear_hud", use_container_width=True):
+                    for slot_k in ["head", "chest", "main_hand", "off_hand", "accessory"]:
+                        if slot_k in gear_dur and hasattr(mechanics, "repair_item"):
+                            mechanics.repair_item(player, slot_k)
+                    save_game(player, st.session_state.messages)
+                    st.toast("🔨 All equipped gear fully repaired at the Scrap-Yard Anvil!", icon="✨")
+                    st.success("All equipped gear restored to pristine condition!")
+                    st.rerun()
+            else:
+                st.success("✅ All equipped gear is in pristine condition.")
         
         with st.expander("✨ Skills, Spells & Feats", expanded=False):
             # 1. Racial Traits
@@ -1020,6 +1072,42 @@ with st.sidebar:
                 else:
                     st.write(f"- {item}")
                 
+        with st.expander("🪤 Field Prep & Tactical Trap-Rigging", expanded=False):
+            st.write("Deploy specialized combat snares, tripwires, and scent corridors using scavenged materials and your **Field Trapping** mastery.")
+            
+            # Show Active Traps Deployed
+            active_traps = player.get("active_traps", [])
+            if active_traps:
+                st.markdown("##### 🚩 Currently Deployed Traps:")
+                for t_idx, t_data in enumerate(active_traps):
+                    st.info(f"🔹 **{t_data.get('name')}** (Stealth DC: {t_data.get('stealth_dc')}) — *{t_data.get('condition')}* | Dmg: {t_data.get('damage_dice')}")
+                st.divider()
+                
+            st.markdown("##### ⚙️ Available Field Rigging Schematics:")
+            if hasattr(mechanics, "CANONICAL_TRAPS"):
+                for t_key, t_info in mechanics.CANONICAL_TRAPS.items():
+                    can_craft, msg, avail = mechanics.can_craft_trap(player, t_key)
+                    st.markdown(f"**{t_info['name']}** `[DC {t_info['base_dc']}]`")
+                    st.caption(f"↳ {t_info['description']}")
+                    
+                    mat_str_list = []
+                    for m_name, m_req in t_info["materials"].items():
+                        m_have = avail.get(m_name, 0)
+                        icon = "✅" if m_have >= m_req else "❌"
+                        mat_str_list.append(f"{icon} {m_name} ({m_have}/{m_req})")
+                    st.caption("Materials: " + " | ".join(mat_str_list))
+                    
+                    if can_craft:
+                        if st.button(f"Rig & Conceal: {t_info['name']}", key=f"btn_rig_trap_hud_{t_key}"):
+                            res = mechanics.rig_field_trap(player, t_key)
+                            save_game(player, st.session_state.messages)
+                            st.toast(f"🪤 Deployed {t_info['name']}! (Concealment DC: {res['stealth_dc']})", icon="🪤")
+                            st.success(res["log"])
+                            st.rerun()
+                    else:
+                        st.caption(f"🔒 *{msg}*")
+                    st.markdown("---")
+
         with st.expander("📜 Active Quests & Bounties", expanded=True):
             if not player.get("quests"):
                 st.caption("No active directives.")
@@ -1218,6 +1306,52 @@ with st.sidebar:
                     save_game(st.session_state.player, st.session_state.messages)
                     st.success(f"Updated '{target_skill_name}' to Mastery {new_m_val}! Saved to database.")
                     time.sleep(0.5)
+                    st.rerun()
+
+        # --- Phase M3 Dev Test Bench: Durability, Traps & Salvage ---
+        with st.expander("🛠️ Phase M3 Bench: Durability, Traps & Salvage", expanded=False):
+            st.markdown("##### 🛡️ Gear Durability & Wear Testing")
+            d_slots = ["main_hand", "off_hand", "chest", "head", "accessory"]
+            sel_d_slot = st.selectbox("Select Equipped Slot to Damage/Repair:", d_slots, key="dev_sel_dur_slot")
+            
+            d_col1, d_col2, d_col3 = st.columns(3)
+            if d_col1.button("Damage -25 Dur", key=f"dev_btn_dmg_25_{sel_d_slot}"):
+                if hasattr(mechanics, "apply_durability_damage"):
+                    res = mechanics.apply_durability_damage(st.session_state.player, sel_d_slot, 25)
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.toast(res["log"], icon="⚠️")
+                    st.rerun()
+            if d_col2.button("Break Item (0 Dur)", key=f"dev_btn_break_{sel_d_slot}"):
+                if hasattr(mechanics, "apply_durability_damage"):
+                    res = mechanics.apply_durability_damage(st.session_state.player, sel_d_slot, 999)
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.toast(res["log"], icon="🚨")
+                    st.rerun()
+            if d_col3.button("Full Repair", key=f"dev_btn_repair_{sel_d_slot}"):
+                if hasattr(mechanics, "repair_item"):
+                    res = mechanics.repair_item(st.session_state.player, sel_d_slot, col_per_point=0)
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.toast(res["message"], icon="✨")
+                    st.rerun()
+                    
+            st.markdown("##### 🪤 Field Trap Force-Deployment")
+            t_keys = list(mechanics.CANONICAL_TRAPS.keys()) if hasattr(mechanics, "CANONICAL_TRAPS") else []
+            sel_trap = st.selectbox("Select Trap to Deploy:", t_keys, key="dev_sel_trap_bench")
+            if st.button("🎲 Deploy Trap (Simulate Natural 20)", key="dev_btn_deploy_trap_bench"):
+                if hasattr(mechanics, "rig_field_trap"):
+                    t_res = mechanics.rig_field_trap(st.session_state.player, sel_trap, d20_roll=20)
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.success(t_res.get("log", "Trap rigged."))
+                    st.rerun()
+                    
+            st.markdown("##### 🧪 Field Salvage Simulator")
+            salvage_types = ["cyber_construct", "mutated_beast", "environmental_ruins"]
+            sel_salv = st.selectbox("Target to Scavenge:", salvage_types, key="dev_sel_salv_type")
+            if st.button("⛏️ Harvest Salvage (Roll DC 16)", key="dev_btn_salv_harvest"):
+                if hasattr(mechanics, "salvage_materials"):
+                    s_res = mechanics.salvage_materials(st.session_state.player, sel_salv, d20_roll=16)
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.success(s_res.get("log", "Salvaged."))
                     st.rerun()
 
         st.divider()
@@ -1543,6 +1677,30 @@ if prompt := (dev_prompt or chat_prompt):
                     for slot, item in equip.items():
                         if slot in st.session_state.player["equipped"]:
                             st.session_state.player["equipped"][slot] = item
+                            if hasattr(mechanics, "normalize_gear_durability"):
+                                mechanics.normalize_gear_durability(st.session_state.player)
+
+                # Durability Updates
+                dur_updates = state_updates.get("durability_updates") or {}
+                if isinstance(dur_updates, dict):
+                    for item_or_slot, val in dur_updates.items():
+                        try:
+                            loss_amt = abs(int(str(val).replace(",", "").replace(" ", "")))
+                            if hasattr(mechanics, "apply_durability_damage"):
+                                dur_res = mechanics.apply_durability_damage(st.session_state.player, item_or_slot, loss_amt)
+                                if dur_res.get("is_broken"):
+                                    st.error(f"🚨 **GEAR CRITICAL:** {dur_res['item']} has fractured and is now BROKEN!")
+                                elif dur_res.get("is_dulled"):
+                                    st.warning(f"⚠️ **GEAR WEAR:** {dur_res['item']} is dulled/cracked (-2 penalty)!")
+                        except (ValueError, TypeError):
+                            pass
+
+                # Field Traps Triggered by Enemies
+                triggered_traps = state_updates.get("triggered_traps") or []
+                if isinstance(triggered_traps, list):
+                    for t_ref in triggered_traps:
+                        if hasattr(mechanics, "trigger_field_trap"):
+                            mechanics.trigger_field_trap(st.session_state.player, t_ref)
                             
                 # Handle Skill Mastery updates with Milestone Auto-Unlocker
                 skill_updates = state_updates.get("skill_updates") or []

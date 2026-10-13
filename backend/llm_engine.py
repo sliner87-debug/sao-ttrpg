@@ -637,9 +637,12 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     current_location = player_state.get('location', 'Unknown')
 
     # Calculate live mechanical parameters
+    if hasattr(mechanics, "normalize_gear_durability"):
+        mechanics.normalize_gear_durability(player_state)
     encumbrance = mechanics.calculate_encumbrance(player_state)
     armor_class = mechanics.calculate_ac(player_state, encumbrance)
     res_info = mechanics.get_combat_resource_display(player_state) if hasattr(mechanics, "get_combat_resource_display") else {"name": "Resource", "display": "N/A"}
+    dur_pens = mechanics.calculate_durability_penalties(player_state) if hasattr(mechanics, "calculate_durability_penalties") else {}
 
     # Locate active entities and secrets for the Encounter Director
     entities_in_room = []
@@ -680,6 +683,8 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     Player: {player_state['name']} (HP: {player_state['hp']}/{player_state['max_hp']} | Level: {player_state.get('level', 1)} | AC: {armor_class})
     Class Doctrine: {player_state.get('class', 'Warrior')} (Tier {player_state.get('class_tier', 1)}) | Resource: {res_info['name']} ({res_info['display']})
     Encumbrance: {encumbrance['current_weight_lbs']}/{encumbrance['max_weight_lbs']} lbs ({encumbrance['tier']}) - Penalties: {json.dumps(encumbrance['penalties'])}
+    Gear Durability: {json.dumps(player_state.get('gear_durability', {}))} (Active Wear Penalties: ATK -{dur_pens.get('atk_penalty', 0)}, AC -{dur_pens.get('ac_penalty', 0)})
+    Active Traps Deployed: {json.dumps(player_state.get('active_traps', []))}
     Location: {current_location}
     GPS Coordinates: X: {map_state.get('player_x', 50)}, Y: {map_state.get('player_y', 50)}
     Equipped: {json.dumps(player_state.get('equipped', {}))}
@@ -779,6 +784,28 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
                     res_tx = mechanics.update_combat_resource(player_state, int(res_change))
                     if res_tx.get("warning"):
                         result.setdefault("combat_logs", []).append(f"⚠️ [SYSTEM: {res_tx['warning']}]")
+
+            # Apply durability updates
+            dur_updates = state_updates.get("durability_updates")
+            if dur_updates and isinstance(dur_updates, dict):
+                for item_or_slot, val in dur_updates.items():
+                    try:
+                        amt = abs(int(str(val).replace(",", "").replace(" ", "")))
+                        if hasattr(mechanics, "apply_durability_damage"):
+                            d_tx = mechanics.apply_durability_damage(player_state, item_or_slot, amt)
+                            if d_tx.get("log"):
+                                result.setdefault("combat_logs", []).append(d_tx["log"])
+                    except (ValueError, TypeError):
+                        pass
+
+            # Handle triggered traps
+            trig_traps = state_updates.get("triggered_traps")
+            if trig_traps and isinstance(trig_traps, list):
+                for t_key in trig_traps:
+                    if hasattr(mechanics, "trigger_field_trap"):
+                        t_tx = mechanics.trigger_field_trap(player_state, t_key)
+                        if t_tx.get("log"):
+                            result.setdefault("combat_logs", []).append(t_tx["log"])
 
         return result
     except Exception as e:
