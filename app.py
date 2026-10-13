@@ -1319,6 +1319,230 @@ with st.sidebar:
                         st.caption(f"🔒 *{msg}*")
                     st.markdown("---")
 
+        # 🏰 Labyrinth Dungeon: The Pohatcong Depths
+        if hasattr(mechanics, "POHATCONG_LABYRINTH"):
+            d_state = player.get("dungeon_state")
+            in_dungeon = d_state is not None and "pohatcong" in str(d_state.get("dungeon_id", "")).lower()
+            
+            with st.expander("🏰 Labyrinth Dungeon: The Pohatcong Depths", expanded=in_dungeon):
+                if not in_dungeon:
+                    st.caption("⛰️ *Sector 1 Instanced Labyrinth located beneath Pohatcong Mountain.*")
+                    st.write(mechanics.POHATCONG_LABYRINTH["description"])
+                    if st.button("⚔️ Enter The Pohatcong Depths", key="btn_enter_pohatcong_labyrinth", use_container_width=True):
+                        mechanics.initialize_dungeon_state(player)
+                        player["location"] = "The Pohatcong Depths: Subsurface Ingress"
+                        save_game(player, st.session_state.messages)
+                        st.toast("Entered The Pohatcong Depths!", icon="🏰")
+                        st.rerun()
+                else:
+                    cur_room = mechanics.get_current_dungeon_room(player)
+                    st.markdown(f"#### {cur_room.get('badge', 'Chamber')} {cur_room['name']}")
+                    st.caption(f"**Room ID:** `{cur_room['id']}` | **Status:** {'✅ Cleared' if cur_room.get('cleared') else '⚠️ Uncleared'}")
+                    st.write(cur_room.get("description", ""))
+                    
+                    # Room Actions
+                    r_type = cur_room.get("type")
+                    if r_type == "trapped_corridor" and "trap" in cur_room:
+                        trap = cur_room["trap"]
+                        if not trap.get("disarmed", False):
+                            st.warning(f"🚨 **ACTIVE TRAP:** {trap['name']} (Disarm DC: {trap['disarm_dc']})\n\n*{trap.get('description', '')}*")
+                            if st.button(f"🪤 Disarm Trap ({trap.get('disarm_skill', 'Field Trapping')})", key="btn_disarm_trap_hud", use_container_width=True):
+                                d_res = mechanics.disarm_dungeon_trap(player)
+                                save_game(player, st.session_state.messages)
+                                if d_res["success"]:
+                                    st.toast(d_res["message"], icon="✨")
+                                    st.success(d_res["log"])
+                                else:
+                                    st.toast(d_res["message"], icon="💥")
+                                    st.error(d_res["log"])
+                                st.rerun()
+                        else:
+                            st.success(f"✅ **Trap Neutralized:** {trap['name']}")
+                            
+                    elif r_type == "puzzle_chamber" and "puzzle" in cur_room:
+                        puzzle = cur_room["puzzle"]
+                        if not puzzle.get("solved", False):
+                            st.info(f"🧩 **PUZZLE VAULT:** {puzzle['name']}\n\n*{puzzle.get('description', '')}*")
+                            p_col1, p_col2 = st.columns(2)
+                            with p_col1:
+                                if st.button("Harmonize Dial [3 - 1 - 4]", key="btn_solve_puzzle_seq", use_container_width=True):
+                                    pz_res = mechanics.solve_dungeon_puzzle(player, sequence=[3, 1, 4])
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(pz_res["message"], icon="🔓")
+                                    st.success(pz_res["log"])
+                                    st.rerun()
+                            with p_col2:
+                                if st.button("🧠 Auto-Solve (INT / Ren Slate)", key="btn_solve_puzzle_auto", use_container_width=True):
+                                    pz_res = mechanics.solve_dungeon_puzzle(player)
+                                    save_game(player, st.session_state.messages)
+                                    if pz_res["success"]:
+                                        st.toast(pz_res["message"], icon="🔓")
+                                        st.success(pz_res["log"])
+                                    else:
+                                        st.toast(pz_res["message"], icon="⚠️")
+                                        st.error(pz_res["log"])
+                                    st.rerun()
+                        else:
+                            st.success("✅ **Harmonic Resonance Achieved:** The Boss Gate is unsealed!")
+                            
+                    elif r_type == "sanctuary":
+                        st.info("🏕️ **Sanctuary Haven:** Leyline dampening matrix active. You are safe from roaming monsters.")
+                        if st.button("🏕️ Rest & Field Repair (+50% HP, +10 Durability, Ren Morale)", key="btn_sanctuary_rest", use_container_width=True):
+                            r_res = mechanics.rest_in_sanctuary(player)
+                            save_game(player, st.session_state.messages)
+                            st.toast(r_res["message"], icon="✨")
+                            st.success(r_res["log"])
+                            st.rerun()
+                            
+                    elif r_type == "monster_den" and cur_room.get("monsters"):
+                        st.markdown("##### 👾 Hostile Entities Present:")
+                        for mob in cur_room["monsters"]:
+                            st.warning(f"⚔️ **{mob['name']}** (HP: {mob.get('hp')}/{mob.get('max_hp', mob.get('hp'))} | AC: {mob.get('ac')} | ATK: +{mob.get('atk')})")
+                    
+                    st.divider()
+                    st.markdown("##### 🚪 Passages & Archways:")
+                    conns = cur_room.get("connections", [])
+                    all_rooms = d_state.get("rooms", {})
+                    for conn_id in conns:
+                        dest_room = all_rooms.get(conn_id, {})
+                        dest_name = dest_room.get("name", conn_id)
+                        dest_badge = dest_room.get("badge", "Door")
+                        is_cleared = "✅" if dest_room.get("cleared") else "🔹"
+                        
+                        btn_label = f"{is_cleared} {dest_badge}: {dest_name}"
+                        if st.button(btn_label, key=f"btn_move_room_{conn_id}", use_container_width=True):
+                            mv_res = mechanics.move_dungeon_room(player, conn_id)
+                            if mv_res["success"]:
+                                player["location"] = f"The Pohatcong Depths: {dest_name}"
+                                save_game(player, st.session_state.messages)
+                                st.toast(mv_res["message"], icon="🚪")
+                                st.rerun()
+                            else:
+                                st.error(mv_res["message"])
+                                
+                    if st.button("⬅️ Exit Labyrinth (Return to Surface)", key="btn_exit_labyrinth", use_container_width=True):
+                        player["location"] = "Washington Borough, NJ (Sector 1 Safe Zone)"
+                        save_game(player, st.session_state.messages)
+                        st.toast("Returned to the surface!", icon="🌄")
+                        st.rerun()
+
+        # 👑 Sector Boss Encounter: The Gilded Spire Overlord
+        if hasattr(mechanics, "SECTOR_BOSSES"):
+            boss_enc = player.get("boss_encounter")
+            has_boss = boss_enc is not None
+            cur_r_type = mechanics.get_current_dungeon_room(player).get("type") if hasattr(mechanics, "get_current_dungeon_room") else ""
+            in_arena = cur_r_type == "boss_arena"
+            
+            if has_boss or in_arena:
+                with st.expander("👑 Sector Boss: The Gilded Spire Overlord", expanded=True):
+                    if not has_boss and in_arena:
+                        boss_enc = mechanics.initialize_boss_encounter(player)
+                        
+                    boss_name = boss_enc.get("name", "The Gilded Spire Overlord")
+                    b_hp = boss_enc.get("current_hp", 0)
+                    b_max_hp = boss_enc.get("max_hp", 300)
+                    b_phase = boss_enc.get("phase", 1)
+                    p_info = boss_enc.get("phases", {}).get(b_phase, {})
+                    p_name = p_info.get("name", f"Phase {b_phase}")
+                    
+                    st.markdown(f"### {boss_name}")
+                    st.caption(f"**{boss_enc.get('title', 'Sector 1 Apex Construct')}**")
+                    st.markdown(f"🏷️ **Active Phase:** `{p_name}` *(AC: {p_info.get('ac', 18)}, DR: {p_info.get('dr', 3)})*")
+                    st.caption(f"*{p_info.get('description', '')}*")
+                    
+                    # HP Bar
+                    hp_pct = max(0.0, min(1.0, b_hp / b_max_hp)) if b_max_hp > 0 else 0.0
+                    st.write(f"❤️ **Boss Health:** `{b_hp} / {b_max_hp} HP` ({int(hp_pct*100)}%)")
+                    st.progress(hp_pct)
+                    
+                    # Break Gauge
+                    b_break = boss_enc.get("current_break", 100)
+                    b_max_break = boss_enc.get("max_break", 100)
+                    break_pct = max(0.0, min(1.0, b_break / b_max_break)) if b_max_break > 0 else 0.0
+                    st.write(f"🛡️ **Stance Break Gauge:** `{b_break} / {b_max_break}`")
+                    st.progress(break_pct)
+                    
+                    if boss_enc.get("is_staggered"):
+                        st.error("💥 **BOSS STAGGERED!** System recoil active! DR bypassed & takes +50% Critical Damage for 1 round!")
+                    
+                    # Active Telegraph Warning
+                    telegraph = boss_enc.get("active_telegraph")
+                    if telegraph and b_hp > 0:
+                        st.warning(f"⚠️ **TELEGRAPH INCOMING:** {telegraph.get('warning', telegraph.get('name'))}\n\n*Save DC {telegraph.get('dc', 15)} {telegraph.get('stat', 'DEX')} or take {telegraph.get('damage', 'Force Dmg')}!*")
+                        st.markdown("##### 🛡️ Counter-Tactics:")
+                        c_col1, c_col2 = st.columns(2)
+                        with c_col1:
+                            if st.button("🏃 Evasive Dive (DEX)", key="btn_tele_dodge", use_container_width=True):
+                                tc = mechanics.counter_boss_telegraph(player, "dodge")
+                                save_game(player, st.session_state.messages)
+                                if tc["success"]: st.toast(tc["message"], icon="💨"); st.success(tc["log"])
+                                else: st.toast(tc["message"], icon="💥"); st.error(tc["log"])
+                                st.rerun()
+                            if st.button("🛡️ Shield Block (CON)", key="btn_tele_block", use_container_width=True):
+                                tc = mechanics.counter_boss_telegraph(player, "shield_block")
+                                save_game(player, st.session_state.messages)
+                                st.toast(tc["message"], icon="🛡️")
+                                st.info(tc["log"])
+                                st.rerun()
+                        with c_col2:
+                            if st.button("🌫️ Ren: Phase-Veil", key="btn_tele_ren", use_container_width=True):
+                                tc = mechanics.counter_boss_telegraph(player, "ren_phase_veil")
+                                save_game(player, st.session_state.messages)
+                                st.toast(tc["message"], icon="🌫️")
+                                st.success(tc["log"])
+                                st.rerun()
+                            if st.button("🔨 Stagger Interrupt", key="btn_tele_interrupt", use_container_width=True):
+                                tc = mechanics.counter_boss_telegraph(player, "stagger_interrupt")
+                                save_game(player, st.session_state.messages)
+                                st.toast(tc["message"], icon="🔨")
+                                st.success(tc["log"])
+                                st.rerun()
+                    
+                    # Attack Boss Direct Controls
+                    if b_hp > 0:
+                        st.divider()
+                        st.markdown("##### ⚔️ Strike Sector Boss:")
+                        atk_col1, atk_col2, atk_col3 = st.columns(3)
+                        with atk_col1:
+                            if st.button("⚔️ Axe Cleave (Normal)", key="btn_atk_boss_normal", use_container_width=True):
+                                dmg_roll = 18
+                                res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=False)
+                                boss_action = mechanics.get_boss_turn_action(player)
+                                save_game(player, st.session_state.messages)
+                                st.toast(f"Struck {boss_name} for {res_dmg['damage_dealt']} DMG!", icon="⚔️")
+                                st.info(res_dmg["log"])
+                                if boss_action.get("log"): st.warning(boss_action["log"])
+                                st.rerun()
+                        with atk_col2:
+                            if st.button("🔨 Hammer Smash (Heavy)", key="btn_atk_boss_heavy", use_container_width=True):
+                                dmg_roll = 26
+                                res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=True, is_stagger_hit=True)
+                                boss_action = mechanics.get_boss_turn_action(player)
+                                save_game(player, st.session_state.messages)
+                                st.toast(f"Heavy Hammer Smash -> {res_dmg['damage_dealt']} DMG!", icon="🔨")
+                                st.info(res_dmg["log"])
+                                if boss_action.get("log"): st.warning(boss_action["log"])
+                                st.rerun()
+                        with atk_col3:
+                            if st.button("⚡ Ren: EMP Salvo", key="btn_atk_boss_ren", use_container_width=True):
+                                dmg_roll = 22
+                                res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=True, is_stagger_hit=True)
+                                boss_action = mechanics.get_boss_turn_action(player)
+                                save_game(player, st.session_state.messages)
+                                st.toast(f"Ren fired MageTech EMP Salvo -> {res_dmg['damage_dealt']} DMG!", icon="⚡")
+                                st.info(res_dmg["log"])
+                                if boss_action.get("log"): st.warning(boss_action["log"])
+                                st.rerun()
+                    else:
+                        st.balloons()
+                        st.success(f"👑 **{boss_name} HAS BEEN DEFEATED!**")
+                        if st.button("🏆 Claim Sector 1 Victory & Unseal Teleport Gate!", key="btn_claim_boss_victory", use_container_width=True):
+                            v_res = mechanics.claim_boss_victory(player)
+                            save_game(player, st.session_state.messages)
+                            st.toast("Sector 1 Cleared! Sector 2 Teleport Gate Activated!", icon="👑")
+                            st.success(v_res["log"])
+                            st.rerun()
+
         # 🏛️ Safe-Zone Settlement: Washington Borough
         loc_str = str(player.get("location", "")).lower()
         is_safe_zone = any(w in loc_str for w in ["borough", "safe", "town", "taphouse", "anvil", "haven", "outpost", "clinic", "washington"])
@@ -2111,6 +2335,44 @@ if prompt := (dev_prompt or chat_prompt):
                                     c_obj["hp"] = max(0, min(c_obj.get("max_hp", 35), c_obj.get("hp", 35) + chp_delta))
                                 except (ValueError, TypeError):
                                     pass
+
+                # Boss Damage processing
+                boss_dmg = state_updates.get("boss_damage")
+                if boss_dmg is not None:
+                    try:
+                        bd_int = int(str(boss_dmg).replace(",", "").replace(" ", ""))
+                        is_h = bool(state_updates.get("boss_is_heavy", False))
+                        if hasattr(mechanics, "apply_damage_to_boss") and bd_int > 0:
+                            b_res = mechanics.apply_damage_to_boss(st.session_state.player, bd_int, is_heavy=is_h)
+                            if b_res.get("stagger_triggered"):
+                                st.warning("💥 **BOSS STAGGERED!** System recoil active! DR bypassed!")
+                            if b_res.get("phase_transition"):
+                                st.error(f"🚨 **BOSS PHASE TRANSITION!** Overlord has entered Phase {b_res['phase']}!")
+                            if b_res.get("boss_hp", 1) <= 0 and hasattr(mechanics, "claim_boss_victory"):
+                                st.balloons()
+                                mechanics.claim_boss_victory(st.session_state.player)
+                    except (ValueError, TypeError):
+                        pass
+
+                # Boss Telegraph Counter processing
+                tele_counter = state_updates.get("boss_telegraph_counter")
+                if tele_counter and hasattr(mechanics, "counter_boss_telegraph"):
+                    mechanics.counter_boss_telegraph(st.session_state.player, str(tele_counter))
+
+                # Dungeon Movement
+                d_move = state_updates.get("dungeon_move")
+                if d_move and hasattr(mechanics, "move_dungeon_room"):
+                    mechanics.move_dungeon_room(st.session_state.player, str(d_move))
+
+                # Dungeon Trap Disarming
+                if state_updates.get("dungeon_trap_disarm") and hasattr(mechanics, "disarm_dungeon_trap"):
+                    mechanics.disarm_dungeon_trap(st.session_state.player)
+
+                # Dungeon Puzzle Solving
+                d_puzzle = state_updates.get("dungeon_puzzle_solve")
+                if d_puzzle is not None and hasattr(mechanics, "solve_dungeon_puzzle"):
+                    seq = d_puzzle if isinstance(d_puzzle, list) else None
+                    mechanics.solve_dungeon_puzzle(st.session_state.player, sequence=seq)
                             
                 # Handle Skill Mastery updates with Milestone Auto-Unlocker
                 skill_updates = state_updates.get("skill_updates") or []

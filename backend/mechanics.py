@@ -3449,4 +3449,839 @@ def accept_bounty_directive(player_state, bounty_id):
     }
 
 
+# =====================================================================
+# PHASE 6: LABYRINTH DUNGEON CRAWLING & SECTOR BOSS ARCHITECTURE
+# =====================================================================
+
+POHATCONG_LABYRINTH = {
+    "id": "pohatcong_labyrinth",
+    "name": "The Pohatcong Depths",
+    "sector": "Sector 1 (Warren County / Washington Regional Grid)",
+    "description": "An ancient subterranean aether-excavation winding deep beneath Pohatcong Mountain. Guarded by automated runic defense matrixes and culminating in the sealed throne room of the Sector 1 Overlord.",
+    "entry_room": "entry_hall",
+    "rooms": {
+        "entry_hall": {
+            "id": "entry_hall",
+            "name": "Subsurface Ingress & Descent",
+            "type": "sanctuary",
+            "badge": "🏕️ Sanctuary Gate",
+            "description": "A massive arched basalt portal carved with dampening runes. Ambient leylines hum with protective frequencies, preventing hostile incursions.",
+            "connections": ["calcified_mine_gallery"],
+            "cleared": True,
+            "can_rest": True
+        },
+        "calcified_mine_gallery": {
+            "id": "calcified_mine_gallery",
+            "name": "Calcified Mine Gallery",
+            "type": "monster_den",
+            "badge": "⚔️ Monster Den",
+            "description": "Abandoned narrow-gauge rail tracks choked with calcified aether-stalagmites. Glitched burrower constructs and iron-jawed crawler chimeras skulk between the collapsed timber supports.",
+            "connections": ["entry_hall", "runic_trip_corridor"],
+            "cleared": False,
+            "monsters": [
+                {"name": "Glitched Excavator Drone", "hp": 40, "max_hp": 40, "ac": 13, "atk": 5, "dmg": "1d8+2 Piercing"},
+                {"name": "Aether-Corrupted Cave Stalker", "hp": 48, "max_hp": 48, "ac": 14, "atk": 6, "dmg": "1d10+3 Slashing"}
+            ],
+            "reward_col": 350,
+            "reward_xp": 250
+        },
+        "runic_trip_corridor": {
+            "id": "runic_trip_corridor",
+            "name": "Runic Tripwire Corridor",
+            "type": "trapped_corridor",
+            "badge": "🪤 Trapped Corridor",
+            "description": "A claustrophobic corridor embedded with luminescent cyan tripwires, recessed pendulum-scythe slots, and pressure-sensitive pressure plates wired to mana-dart ports.",
+            "connections": ["calcified_mine_gallery", "drainage_junction"],
+            "cleared": False,
+            "trap": {
+                "name": "Cyan Mana-Dart & Pendulum Matrix",
+                "disarm_dc": 14,
+                "damage_dice": "2d10 Force",
+                "disarmed": False,
+                "disarm_skill": "Field Trapping or Cartography",
+                "description": "Interlocking runic pressure cords primed to discharge localized force-shock waves."
+            }
+        },
+        "drainage_junction": {
+            "id": "drainage_junction",
+            "name": "Subterranean Drainage Junction",
+            "type": "hub",
+            "badge": "🏛️ Central Hub",
+            "description": "A colossal octagonal reservoir hall where mineral water cascades through massive bronze iron grates. Heavy adamant archways branch toward the reservoir, the sanctuary, and the deeper vault.",
+            "connections": ["runic_trip_corridor", "echoing_reservoir", "crystal_sanctuary", "puzzle_chamber"],
+            "cleared": True
+        },
+        "echoing_reservoir": {
+            "id": "echoing_reservoir",
+            "name": "Echoing Subterranean Reservoir",
+            "type": "monster_den",
+            "badge": "⚔️ Monster Den",
+            "description": "Black reflective water ripples around sunken stone pillars. An aetheric mire-beast lurks beneath the surface, guarding an ancient runic chest.",
+            "connections": ["drainage_junction"],
+            "cleared": False,
+            "monsters": [
+                {"name": "Mire-Titan Carapace Lurker", "hp": 75, "max_hp": 75, "ac": 15, "atk": 7, "dmg": "2d8+4 Crushing"}
+            ],
+            "reward_col": 600,
+            "reward_xp": 450,
+            "loot": [
+                {"name": "Resonator Tuning Prism", "rarity": "Rare", "grade": 3, "qty": 1, "desc": "A faceted prism tuned to ancient Dwarven leyline frequencies. Facilitates puzzle alignment in the vault."}
+            ]
+        },
+        "crystal_sanctuary": {
+            "id": "crystal_sanctuary",
+            "name": "Crystal Antechamber (Haven)",
+            "type": "sanctuary",
+            "badge": "🏕️ Sanctuary Haven",
+            "description": "Warm golden light radiates from a cluster of harmonic amber leylines. The air smells of ozone and clean rain; hostile entities cannot breach this threshold.",
+            "connections": ["drainage_junction"],
+            "cleared": True,
+            "can_rest": True
+        },
+        "puzzle_chamber": {
+            "id": "puzzle_chamber",
+            "name": "Harmonic Frequency Vault",
+            "type": "puzzle_chamber",
+            "badge": "🧩 Runic Puzzle Chamber",
+            "description": "Three monolithic Dwarven resonator pillars dominate the chamber before a towering crystalline seal. Dial runes (Alpha, Delta, Omega) must be harmonized to match the local tectonic harmonic (Frequency: 3 - 1 - 4).",
+            "connections": ["drainage_junction", "overlord_throne_gate"],
+            "cleared": False,
+            "puzzle": {
+                "name": "Tri-Resonant Leyline Alignment",
+                "target_sequence": [3, 1, 4],
+                "current_sequence": [0, 0, 0],
+                "solved": False,
+                "solve_dc": 14,
+                "description": "Align the 3 Resonator Pillars to frequencies [3, 1, 4] to break the crystalline seal."
+            }
+        },
+        "overlord_throne_gate": {
+            "id": "overlord_throne_gate",
+            "name": "The Gilded Overlord's Threshold",
+            "type": "boss_gate",
+            "badge": "🚪 Boss Gate",
+            "description": "A monumental gate of blackened cold-iron reinforced with gilded filigree. Immense magical runes seal the threshold shut, vibrating with titanic aetheric pressure.",
+            "connections": ["puzzle_chamber", "gilded_overlord_arena"],
+            "cleared": False,
+            "unlocked": False
+        },
+        "gilded_overlord_arena": {
+            "id": "gilded_overlord_arena",
+            "name": "The Gilded Spire Throne Room",
+            "type": "boss_arena",
+            "badge": "👑 Sector Boss Arena",
+            "description": "A soaring subterranean cathedral beneath the roots of Pohatcong Mountain. Suspended above an aetheric rift floats the apex guardian of Sector 1: The Gilded Spire Overlord.",
+            "connections": ["overlord_throne_gate"],
+            "cleared": False,
+            "boss_id": "gilded_overlord"
+        }
+    }
+}
+
+SECTOR_BOSSES = {
+    "gilded_overlord": {
+        "id": "gilded_overlord",
+        "name": "The Gilded Spire Overlord",
+        "title": "Sector 1 Apex Construct (Aether-Titan)",
+        "max_hp": 300,
+        "current_hp": 300,
+        "phase": 1,
+        "max_break": 100,
+        "current_break": 100,
+        "is_staggered": False,
+        "stagger_rounds_remaining": 0,
+        "active_telegraph": None,
+        "phases": {
+            1: {
+                "name": "Phase 1: Runic Bulwark",
+                "hp_range": "100% – 60% HP (300 – 180 HP)",
+                "ac": 18,
+                "dr": 3,
+                "description": "Heavy gilded aegis active. Gilded armor plating deflects glancing attacks. Wields a colossal twin-headed maul with sweeping 180-degree cleaves.",
+                "attacks": [
+                    {"name": "Gilded Maul Cleave", "atk": 8, "dmg": "2d10+4 Physical", "type": "single"},
+                    {"name": "Bulwark Shield Bash", "atk": 7, "dmg": "1d12+4 Force", "type": "stagger"}
+                ],
+                "telegraph_pool": [
+                    {
+                        "name": "Colossal Seismic Cleave",
+                        "dc": 15,
+                        "stat": "DEX",
+                        "damage": "3d10+6 Force",
+                        "warning": "Raises titanic gilded maul high overhead, channeling kinetic leyline pressure in a sweeping 180° frontal arc!"
+                    }
+                ]
+            },
+            2: {
+                "name": "Phase 2: Aetheric Core Overload",
+                "hp_range": "60% – 20% HP (180 – 60 HP)",
+                "ac": 15,
+                "dr": 1,
+                "description": "Outer armor shatters with an explosive shockwave! The glowing blue aetheric core exposes itself, radiating lightning arcs and summoning repair-drone conduits.",
+                "attacks": [
+                    {"name": "Arcane Lightning Discharge", "atk": 9, "dmg": "3d8+5 Lightning", "type": "ranged"},
+                    {"name": "Aether-Infused Greatsword Swipe", "atk": 8, "dmg": "2d8+5 Slashing", "type": "single"}
+                ],
+                "telegraph_pool": [
+                    {
+                        "name": "Aetheric Overload Cascade",
+                        "dc": 16,
+                        "stat": "DEX",
+                        "damage": "4d8+8 Lightning",
+                        "warning": "Core pulses with blinding cyan voltage! Ground floor grids begin crackling with lethal electrical discharge!"
+                    }
+                ]
+            },
+            3: {
+                "name": "Phase 3: Desperation Spatial Tear",
+                "hp_range": "20% – 0% HP (60 – 0 HP)",
+                "ac": 13,
+                "dr": 0,
+                "description": "Enraged and disintegrating! Attack speed doubles, its collision mesh fractures into glitching red polygons, and spatial vortexes tear through the arena pulling combatants inward.",
+                "attacks": [
+                    {"name": "Frenzied Glitch Slash", "atk": 11, "dmg": "3d10+6 Chaos", "type": "dual"},
+                    {"name": "Spatial Rift Pulse", "atk": 10, "dmg": "2d12+6 Force", "type": "gravity"}
+                ],
+                "telegraph_pool": [
+                    {
+                        "name": "Cataclysmic Spatial Collapse",
+                        "dc": 17,
+                        "stat": "STR",
+                        "damage": "5d10+10 Chaos",
+                        "warning": "Unleashes an uncontrollable gravitational singularity that fractures the arena ceiling downward!"
+                    }
+                ]
+            }
+        },
+        "rewards": {
+            "xp": 2500,
+            "col": 5000,
+            "items": [
+                {
+                    "name": "Overlord's Gilded Core",
+                    "rarity": "Legendary",
+                    "grade": 5,
+                    "durability": 200,
+                    "max_durability": 200,
+                    "qty": 1,
+                    "desc": "The pulsating apex heart of the Floor 1 Sector Boss. Used at the Deepforged Master-Anvil to forge Grade 6 Mythic armaments."
+                },
+                {
+                    "name": "Gilded Spire Great-Axe",
+                    "rarity": "Legendary",
+                    "grade": 5,
+                    "durability": 200,
+                    "max_durability": 200,
+                    "qty": 1,
+                    "desc": "A colossal golden-crested battleaxe forged from aether-infused adamant. Grants +4 to Attack rolls and innate Shockwave Cleave."
+                }
+            ],
+            "unlocked_zone": "Sector 2: The Musconetcong & Delaware Water Gap Expanse",
+            "title": "Sector 1 Conqueror"
+        }
+    }
+}
+
+
+def initialize_dungeon_state(player_state, dungeon_id="pohatcong_labyrinth"):
+    """
+    Initializes the labyrinth dungeon state in player_state if not already present.
+    """
+    if "dungeon_state" not in player_state or not isinstance(player_state["dungeon_state"], dict):
+        import copy
+        dungeon_def = copy.deepcopy(POHATCONG_LABYRINTH)
+        player_state["dungeon_state"] = {
+            "dungeon_id": dungeon_id,
+            "name": dungeon_def["name"],
+            "current_room_id": dungeon_def["entry_room"],
+            "rooms": dungeon_def["rooms"],
+            "cleared_rooms": [dungeon_def["entry_room"]],
+            "visited_rooms": [dungeon_def["entry_room"]],
+            "dungeon_completed": False
+        }
+    return player_state["dungeon_state"]
+
+
+def get_current_dungeon_room(player_state):
+    """
+    Returns the player's active dungeon room dictionary.
+    """
+    d_state = initialize_dungeon_state(player_state)
+    cur_id = d_state.get("current_room_id", "entry_hall")
+    rooms = d_state.get("rooms", {})
+    return rooms.get(cur_id, POHATCONG_LABYRINTH["rooms"]["entry_hall"])
+
+
+def move_dungeon_room(player_state, target_room_id):
+    """
+    Attempts to move the player to an adjacent dungeon room:
+    - Verifies connectivity
+    - Checks for locked gates or uncleared traps blocking passage
+    - Updates visited and current room
+    """
+    d_state = initialize_dungeon_state(player_state)
+    cur_room = get_current_dungeon_room(player_state)
+    cur_id = cur_room["id"]
+
+    connections = cur_room.get("connections", [])
+    if target_room_id not in connections:
+        return {
+            "success": False,
+            "message": f"Cannot reach {target_room_id} from {cur_room['name']}. No passage exists.",
+            "current_room": cur_room
+        }
+
+    target_room = d_state.get("rooms", {}).get(target_room_id)
+    if not target_room:
+        return {
+            "success": False,
+            "message": f"Dungeon room {target_room_id} does not exist.",
+            "current_room": cur_room
+        }
+
+    # Boss gate lock check
+    if target_room.get("type") == "boss_gate" and not target_room.get("unlocked", False):
+        # Check if puzzle was solved
+        puzzle_room = d_state.get("rooms", {}).get("puzzle_chamber", {})
+        if puzzle_room.get("puzzle", {}).get("solved", False) or puzzle_room.get("cleared", False):
+            target_room["unlocked"] = True
+        else:
+            return {
+                "success": False,
+                "message": f"The monumental Boss Gate is sealed shut! The crystalline runes require solving the Harmonic Frequency Vault.",
+                "current_room": cur_room
+            }
+
+    # Boss arena check
+    if target_room.get("type") == "boss_arena":
+        gate_room = d_state.get("rooms", {}).get("overlord_throne_gate", {})
+        if not gate_room.get("unlocked", False):
+            return {
+                "success": False,
+                "message": "The Overlord's Throne Gate must be unlocked first!",
+                "current_room": cur_room
+            }
+
+    # Perform move
+    d_state["current_room_id"] = target_room_id
+    if target_room_id not in d_state["visited_rooms"]:
+        d_state["visited_rooms"].append(target_room_id)
+
+    log = f"[DUNGEON: Moved to '{target_room['name']}' ({target_room.get('badge', '')})]"
+
+    # If moving into boss arena, automatically initialize boss encounter if needed
+    if target_room.get("type") == "boss_arena":
+        initialize_boss_encounter(player_state)
+
+    return {
+        "success": True,
+        "message": f"Navigated to {target_room['name']}.",
+        "new_room": target_room,
+        "log": log
+    }
+
+
+def disarm_dungeon_trap(player_state):
+    """
+    Attempts to disarm the trap in the current trapped corridor using Field Trapping or Cartography.
+    Ren's Leyline Overwatch stance provides a +3 tactical bonus.
+    """
+    cur_room = get_current_dungeon_room(player_state)
+    if cur_room.get("type") != "trapped_corridor" or "trap" not in cur_room:
+        return {"success": False, "message": "There are no active traps to disarm in this chamber."}
+
+    trap = cur_room["trap"]
+    if trap.get("disarmed", False):
+        return {"success": False, "message": "This trap has already been neutralized."}
+
+    dc = trap.get("disarm_dc", 14)
+
+    # Calculate player modifier
+    stats = player_state.get("stats", {})
+    dex_mod = (stats.get("DEX", 10) - 10) // 2
+    int_mod = (stats.get("INT", 10) - 10) // 2
+
+    # Skill bonus from Field Trapping or Cartography
+    skills = player_state.get("skills", {})
+    trapping_mastery = 0
+    for sk in ["Field Trapping", "Cartography", "trapping", "scavenging"]:
+        if sk in skills:
+            s_data = skills[sk]
+            m_val = s_data.get("mastery", 1) if isinstance(s_data, dict) else int(s_data)
+            trapping_mastery = max(trapping_mastery, m_val)
+
+    # 1-1000 mastery translation to check bonus
+    skill_bonus = min(8, trapping_mastery // 50)
+
+    # Ren Tactical Stance Bonus
+    ren_bonus = 0
+    comp_ren = get_companion(player_state, "Ren") if "get_companion" in globals() else {}
+    if comp_ren.get("stance") == "overwatch_hacking":
+        ren_bonus = 3
+
+    # Simulated deterministic roll
+    import random
+    roll = random.randint(1, 20)
+    total = roll + dex_mod + skill_bonus + ren_bonus
+
+    if total >= dc:
+        trap["disarmed"] = True
+        cur_room["cleared"] = True
+        d_state = initialize_dungeon_state(player_state)
+        if cur_room["id"] not in d_state["cleared_rooms"]:
+            d_state["cleared_rooms"].append(cur_room["id"])
+
+        log = f"[TRAP DISARMED: Roll {roll} + DEX({dex_mod}) + Skill({skill_bonus}) + RenOverwatch({ren_bonus}) = {total} vs DC {dc} -> SUCCESS! Disarmed {trap['name']}!]"
+        return {
+            "success": True,
+            "disarmed": True,
+            "roll": total,
+            "dc": dc,
+            "log": log,
+            "message": f"Successfully neutralized {trap['name']}!"
+        }
+    else:
+        # Trap sprung!
+        dmg_val = random.randint(5, 15)
+        player_state["hp"] = max(1, player_state.get("hp", 100) - dmg_val)
+        log = f"[TRAP TRIGGERED: Roll {roll} + MODs({dex_mod + skill_bonus + ren_bonus}) = {total} vs DC {dc} -> FAILED! {trap['name']} sprung for {dmg_val} Force DMG! (HP: {player_state['hp']})]"
+        return {
+            "success": False,
+            "disarmed": False,
+            "roll": total,
+            "dc": dc,
+            "damage_taken": dmg_val,
+            "log": log,
+            "message": f"Triggered {trap['name']}! Suffered {dmg_val} Force damage."
+        }
+
+
+def solve_dungeon_puzzle(player_state, sequence=None):
+    """
+    Attempts to harmonize the three resonator pillars in the Harmonic Frequency Vault.
+    Sequence should be [int, int, int] (e.g. [3, 1, 4]).
+    Can also be auto-solved with an INT / Arcana check (DC 14) or Ren's Runic Scribe Slate.
+    """
+    cur_room = get_current_dungeon_room(player_state)
+    if cur_room.get("type") != "puzzle_chamber" or "puzzle" not in cur_room:
+        return {"success": False, "message": "There is no runic puzzle in this chamber."}
+
+    puzzle = cur_room["puzzle"]
+    if puzzle.get("solved", False):
+        return {"success": False, "message": "The harmonic frequency is already aligned and the seal is broken."}
+
+    target = puzzle.get("target_sequence", [3, 1, 4])
+
+    if sequence is not None:
+        puzzle["current_sequence"] = list(sequence)
+        if puzzle["current_sequence"] == target:
+            puzzle["solved"] = True
+            cur_room["cleared"] = True
+            d_state = initialize_dungeon_state(player_state)
+            if cur_room["id"] not in d_state["cleared_rooms"]:
+                d_state["cleared_rooms"].append(cur_room["id"])
+
+            # Also unlock boss gate
+            gate_room = d_state.get("rooms", {}).get("overlord_throne_gate", {})
+            gate_room["unlocked"] = True
+
+            log = f"[PUZZLE SOLVED: Resonators aligned to [{target[0]}-{target[1]}-{target[2]}]! The crystalline seal fractures, unlocking the Overlord's Throne Gate!]"
+            return {
+                "success": True,
+                "solved": True,
+                "log": log,
+                "message": "Harmonic alignment achieved! The Boss Gate is unsealed."
+            }
+        else:
+            return {
+                "success": False,
+                "solved": False,
+                "message": f"Frequencies [{sequence[0]}-{sequence[1]}-{sequence[2]}] dissonant. The obelisks hum sharply in disharmony."
+            }
+
+    # Auto-solve via INT / Arcana check
+    stats = player_state.get("stats", {})
+    int_mod = (stats.get("INT", 10) - 10) // 2
+    ren_bonus = 2  # Ren's Runic Scribe Slate assistance
+
+    # Check for Resonator Tuning Prism from Echoing Reservoir
+    inv = player_state.get("inventory", [])
+    has_prism = any("Resonator Tuning Prism" in (item.get("name", "") if isinstance(item, dict) else str(item)) for item in inv)
+    prism_bonus = 4 if has_prism else 0
+
+    import random
+    roll = random.randint(1, 20)
+    total = roll + int_mod + ren_bonus + prism_bonus
+    dc = puzzle.get("solve_dc", 14)
+
+    if total >= dc:
+        puzzle["current_sequence"] = target
+        puzzle["solved"] = True
+        cur_room["cleared"] = True
+        d_state = initialize_dungeon_state(player_state)
+        if cur_room["id"] not in d_state["cleared_rooms"]:
+            d_state["cleared_rooms"].append(cur_room["id"])
+
+        gate_room = d_state.get("rooms", {}).get("overlord_throne_gate", {})
+        gate_room["unlocked"] = True
+
+        log = f"[PUZZLE SOLVED: Intelligence check {roll} + INT({int_mod}) + RenSlate({ren_bonus}) + Prism({prism_bonus}) = {total} vs DC {dc} -> SUCCESS! Resonator aligned to 3-1-4! Gate unsealed!]"
+        return {
+            "success": True,
+            "solved": True,
+            "roll": total,
+            "dc": dc,
+            "log": log,
+            "message": "Calculated the resonant leyline harmonics! The Overlord's Throne Gate swings open."
+        }
+    else:
+        log = f"[PUZZLE CHECK FAILED: Roll {roll} + MODs({int_mod + ren_bonus + prism_bonus}) = {total} vs DC {dc} -> Resonator feedback discharged!]"
+        return {
+            "success": False,
+            "solved": False,
+            "roll": total,
+            "dc": dc,
+            "log": log,
+            "message": "Failed to deduce the resonant frequency. The obelisks hum dissonantly."
+        }
+
+
+def rest_in_sanctuary(player_state):
+    """
+    Rests in a designated sanctuary room:
+    - Restores 50% max HP
+    - Repairs damaged equipped gear slightly (+10 durability)
+    - Restores Ren's morale to 'Confident'
+    """
+    cur_room = get_current_dungeon_room(player_state)
+    if not cur_room.get("can_rest", False) and cur_room.get("type") != "sanctuary":
+        return {"success": False, "message": "Cannot rest here! The environment is hostile and unprotected."}
+
+    max_hp = player_state.get("max_hp", 100)
+    heal_amount = max(25, max_hp // 2)
+    old_hp = player_state.get("hp", max_hp)
+    player_state["hp"] = min(max_hp, old_hp + heal_amount)
+    actual_heal = player_state["hp"] - old_hp
+
+    # Field-repair equipped gear (+10 durability)
+    gear_dur = player_state.setdefault("gear_durability", {})
+    repaired_items = []
+    for slot, d_info in gear_dur.items():
+        if isinstance(d_info, dict) and d_info.get("cur", 100) < d_info.get("max", 100):
+            d_info["cur"] = min(d_info["max"], d_info["cur"] + 10)
+            repaired_items.append(slot)
+
+    # Ren morale restoration
+    if "update_companion_morale" in globals():
+        update_companion_morale(player_state, "Ren", "Confident")
+
+    log = f"[SANCTUARY REST: Recovered +{actual_heal} HP (now {player_state['hp']}/{max_hp}), field-patched gear ({len(repaired_items)} items), Ren's morale restored to Confident!]"
+    return {
+        "success": True,
+        "healed": actual_heal,
+        "current_hp": player_state["hp"],
+        "repaired_slots": repaired_items,
+        "log": log,
+        "message": f"Rested safely in {cur_room['name']}."
+    }
+
+
+def initialize_boss_encounter(player_state, boss_id="gilded_overlord"):
+    """
+    Initializes a multi-phase sector boss encounter in player_state["boss_encounter"].
+    """
+    if "boss_encounter" not in player_state or not isinstance(player_state["boss_encounter"], dict) or player_state["boss_encounter"].get("id") != boss_id:
+        import copy
+        boss_def = copy.deepcopy(SECTOR_BOSSES.get(boss_id, SECTOR_BOSSES["gilded_overlord"]))
+        player_state["boss_encounter"] = boss_def
+        # Set initial telegraph
+        p1 = boss_def["phases"][1]
+        if p1.get("telegraph_pool"):
+            player_state["boss_encounter"]["active_telegraph"] = copy.deepcopy(p1["telegraph_pool"][0])
+    return player_state["boss_encounter"]
+
+
+def apply_damage_to_boss(player_state, damage_amount, is_heavy=False, is_stagger_hit=False):
+    """
+    Applies incoming damage to the active Sector Boss:
+    - Calculates Phase-based Damage Reduction (DR)
+    - If boss is STAGGERED: bypasses DR, inflicts +50% critical damage
+    - Reduces 100-pt Break Gauge (-10 on normal, -25 on heavy, -35 on hammer/stagger skills)
+    - Triggers Stagger state when Break Gauge hits 0
+    - Checks for phase transitions (100-60% -> 60-20% -> 20-0%)
+    """
+    boss = initialize_boss_encounter(player_state)
+    if boss.get("current_hp", 0) <= 0:
+        return {"success": False, "message": f"{boss['name']} has already been defeated!"}
+
+    current_phase = boss.get("phase", 1)
+    phase_info = boss["phases"].get(current_phase, boss["phases"][1])
+    dr = phase_info.get("dr", 0)
+
+    # Stagger calculations
+    is_staggered = boss.get("is_staggered", False)
+    if is_staggered:
+        dr = 0
+        damage_amount = int(damage_amount * 1.5)  # 50% critical bonus during stagger
+
+    actual_dmg = max(1, damage_amount - dr)
+    boss["current_hp"] = max(0, boss["current_hp"] - actual_dmg)
+
+    # Break Gauge handling
+    break_dmg = 25 if is_heavy else 10
+    if is_stagger_hit:
+        break_dmg = 35
+
+    stagger_triggered = False
+    if not is_staggered:
+        boss["current_break"] = max(0, boss.get("current_break", 100) - break_dmg)
+        if boss["current_break"] == 0:
+            boss["is_staggered"] = True
+            boss["stagger_rounds_remaining"] = 1
+            stagger_triggered = True
+
+    # Phase transition checks
+    hp_pct = boss["current_hp"] / boss["max_hp"]
+    new_phase = current_phase
+    phase_transition = False
+
+    if hp_pct <= 0.20 and current_phase < 3:
+        new_phase = 3
+        phase_transition = True
+    elif hp_pct <= 0.60 and current_phase < 2:
+        new_phase = 2
+        phase_transition = True
+
+    if phase_transition:
+        boss["phase"] = new_phase
+        new_p_info = boss["phases"][new_phase]
+        # Refresh telegraph to new phase move
+        if new_p_info.get("telegraph_pool"):
+            import copy
+            boss["active_telegraph"] = copy.deepcopy(new_p_info["telegraph_pool"][0])
+        # Reset break gauge on phase transition
+        boss["current_break"] = 100
+        boss["is_staggered"] = False
+
+    log_parts = []
+    log_parts.append(f"[BOSS COMBAT: Dealt {damage_amount} DMG - DR({dr}) = {actual_dmg} to {boss['name']}! (HP: {boss['current_hp']}/{boss['max_hp']})]")
+    if not is_staggered and not stagger_triggered:
+        log_parts.append(f"[BREAK GAUGE: Chipped -{break_dmg} Break -> {boss['current_break']}/{boss['max_break']}]")
+
+    if stagger_triggered:
+        log_parts.append(f"💥 [BOSS STAGGERED: Break Gauge collapsed! {boss['name']} is STUNNED for 1 round! +50% Crit DMG & DR bypassed!]")
+
+    if phase_transition:
+        log_parts.append(f"🚨 [BOSS PHASE TRANSITION: Crossed HP threshold -> Entering {boss['phases'][new_phase]['name']}! {boss['phases'][new_phase]['description']}]")
+
+    return {
+        "success": True,
+        "damage_dealt": actual_dmg,
+        "boss_hp": boss["current_hp"],
+        "boss_max_hp": boss["max_hp"],
+        "phase": boss["phase"],
+        "phase_transition": phase_transition,
+        "is_staggered": boss["is_staggered"],
+        "stagger_triggered": stagger_triggered,
+        "current_break": boss["current_break"],
+        "log": " | ".join(log_parts)
+    }
+
+
+def get_boss_turn_action(player_state):
+    """
+    Resolves the Sector Boss's turn:
+    - If STAGGERED: skips turn, decrements stagger counter, resets break gauge on recovery.
+    - If active telegraph exists: fires the telegraphed attack (unless countered).
+    - Otherwise: picks a phase attack and primes the next telegraphed move.
+    """
+    boss = initialize_boss_encounter(player_state)
+    if boss.get("current_hp", 0) <= 0:
+        return {"action": "defeated", "log": f"[{boss['name']} lies shattered upon the aetheric floor.]"}
+
+    # Handle Staggered state
+    if boss.get("is_staggered", False):
+        boss["stagger_rounds_remaining"] = max(0, boss.get("stagger_rounds_remaining", 1) - 1)
+        if boss["stagger_rounds_remaining"] == 0:
+            boss["is_staggered"] = False
+            boss["current_break"] = boss["max_break"]  # Reset break gauge
+            return {
+                "action": "recover",
+                "log": f"[BOSS STAGGER RECOVERY: {boss['name']} recovers balance and re-energizes its Break Shield!]"
+            }
+        return {
+            "action": "staggered",
+            "log": f"[BOSS STAGGERED: {boss['name']} is paralyzed by system recoil and cannot act this turn!]"
+        }
+
+    phase = boss.get("phase", 1)
+    phase_info = boss["phases"].get(phase, boss["phases"][1])
+
+    # If a telegraph was active, execute it!
+    telegraph = boss.get("active_telegraph")
+    if telegraph:
+        # Clear telegraph after executing
+        boss["active_telegraph"] = None
+        return {
+            "action": "telegraph_execute",
+            "name": telegraph["name"],
+            "dc": telegraph.get("dc", 15),
+            "stat": telegraph.get("stat", "DEX"),
+            "damage": telegraph.get("damage", "3d10 Force"),
+            "log": f"[BOSS TELEGRAPH DETONATION: {boss['name']} releases {telegraph['name']}! Save DC {telegraph['dc']} {telegraph['stat']} or take {telegraph['damage']}!]"
+        }
+
+    # Standard turn: execute basic attack and prime next telegraph
+    import random
+    attacks = phase_info.get("attacks", [])
+    atk = random.choice(attacks) if attacks else {"name": "Gilded Strike", "atk": 8, "dmg": "2d10+4 Physical"}
+
+    # Prime next telegraph
+    pool = phase_info.get("telegraph_pool", [])
+    if pool:
+        boss["active_telegraph"] = random.choice(pool)
+
+    tele_msg = f" ⚠️ [BOSS TELEGRAPH WARNING: {boss['active_telegraph']['warning']}]" if boss.get("active_telegraph") else ""
+
+    log = f"[BOSS ATTACK: {boss['name']} strikes with {atk['name']} (ATK +{atk['atk']}, {atk['dmg']})!]{tele_msg}"
+    return {
+        "action": "attack",
+        "attack": atk,
+        "primed_telegraph": boss.get("active_telegraph"),
+        "log": log
+    }
+
+
+def counter_boss_telegraph(player_state, counter_action="dodge"):
+    """
+    Player counter-action against an active boss telegraph:
+    - 'dodge': DEX save vs DC to take 0 damage
+    - 'shield_block': CON check to reduce damage by 75%
+    - 'ren_phase_veil': Ren consumes stance to phase party out of reality (Guaranteed Avoidance)
+    - 'stagger_interrupt': Execute heavy weapon strike to break remaining Break Gauge
+    """
+    boss = initialize_boss_encounter(player_state)
+    telegraph = boss.get("active_telegraph")
+    if not telegraph:
+        return {"success": False, "message": "There is no active boss telegraph to counter."}
+
+    dc = telegraph.get("dc", 15)
+    stats = player_state.get("stats", {})
+    dex_mod = (stats.get("DEX", 10) - 10) // 2
+    con_mod = (stats.get("CON", 10) - 10) // 2
+
+    import random
+    roll = random.randint(1, 20)
+
+    if counter_action == "ren_phase_veil":
+        comp_ren = get_companion(player_state, "Ren") if "get_companion" in globals() else {}
+        boss["active_telegraph"] = None
+        log = f"[COUNTER SUCCESS: Ren Sasaki deploys Aetheric Phase-Veil! The party blinks between dimensions, completely negating {telegraph['name']}!]"
+        return {"success": True, "damage_avoided": True, "log": log, "message": "Ren's Phase-Veil neutralized the boss attack!"}
+
+    elif counter_action == "shield_block":
+        total = roll + con_mod
+        boss["active_telegraph"] = None
+        if total >= dc:
+            log = f"[COUNTER SUCCESS: Shield Block roll {roll} + CON({con_mod}) = {total} vs DC {dc}! Absorbed 75% of {telegraph['name']}!]"
+            return {"success": True, "damage_reduced": True, "reduction_pct": 0.75, "log": log, "message": "Blocked the brunt of the kinetic impact!"}
+        else:
+            log = f"[COUNTER PARTIAL: Shield Block roll {roll} + CON({con_mod}) = {total} vs DC {dc}. Absorbed 25% of impact.]"
+            return {"success": False, "damage_reduced": True, "reduction_pct": 0.25, "log": log, "message": "Shield buckled under the force."}
+
+    elif counter_action == "stagger_interrupt":
+        # Heavy interrupt strike against break gauge
+        boss["current_break"] = max(0, boss.get("current_break", 100) - 40)
+        boss["active_telegraph"] = None
+        if boss["current_break"] == 0:
+            boss["is_staggered"] = True
+            boss["stagger_rounds_remaining"] = 1
+            log = f"[COUNTER CRITICAL: Interrupted telegraph with a brutal Hammer/Axe strike! Break Gauge hit 0 -> {boss['name']} is STAGGERED!]"
+            return {"success": True, "interrupted": True, "staggered": True, "log": log, "message": "Interrupted the attack and shattered the boss's stance!"}
+        else:
+            log = f"[COUNTER HIT: Interrupted telegraph for -40 Break Gauge (now {boss['current_break']}/100)! Telegraph discharged.]"
+            return {"success": True, "interrupted": False, "log": log, "message": "Chipped the boss's stance."}
+
+    else:
+        # Default: Dodge
+        total = roll + dex_mod
+        boss["active_telegraph"] = None
+        if total >= dc:
+            log = f"[COUNTER SUCCESS: Evasive Dive roll {roll} + DEX({dex_mod}) = {total} vs DC {dc} -> DODGED! Took 0 damage from {telegraph['name']}!]"
+            return {"success": True, "damage_avoided": True, "log": log, "message": f"Successfully evaded {telegraph['name']}!"}
+        else:
+            log = f"[COUNTER FAILED: Evasive Dive roll {roll} + DEX({dex_mod}) = {total} vs DC {dc} -> Direct hit!]"
+            return {"success": False, "damage_avoided": False, "log": log, "message": f"Failed to dodge {telegraph['name']}."}
+
+
+def claim_boss_victory(player_state):
+    """
+    Claims victory rewards upon defeating the Sector 1 Overlord:
+    - Verifies current_hp <= 0
+    - Awards 2,500 XP and 5,000 Col
+    - Awards Legendary loot (Overlord's Gilded Core, Gilded Spire Great-Axe)
+    - Unseals Sector 2 Teleport Gate
+    - Adds title/feat 'Sector 1 Conqueror'
+    - Updates dungeon state completed = True
+    """
+    boss = initialize_boss_encounter(player_state)
+    if boss.get("current_hp", 1) > 0:
+        return {"success": False, "message": f"{boss['name']} is still standing with {boss['current_hp']} HP!"}
+
+    rewards = boss.get("rewards", {})
+    xp_reward = rewards.get("xp", 2500)
+    col_reward = rewards.get("col", 5000)
+    items_reward = rewards.get("items", [])
+    title = rewards.get("title", "Sector 1 Conqueror")
+
+    # Award Col
+    player_state["col"] = player_state.get("col", 0) + col_reward
+
+    # Award XP
+    player_state["xp"] = player_state.get("xp", 0) + xp_reward
+    award_companion_xp(player_state, "Ren", xp_reward // 2)
+
+    # Award Loot
+    inv = player_state.setdefault("inventory", [])
+    import copy
+    for item in items_reward:
+        inv.append(copy.deepcopy(item))
+
+    # Add Conqueror Feat/Title
+    feats = player_state.setdefault("feats", [])
+    feat_str = f"Title: {title} (Defeated Floor 1 Apex Titan; Floor 2 Teleport Gate unsealed)"
+    if feat_str not in feats:
+        feats.append(feat_str)
+
+    # Mark dungeon as completed
+    d_state = initialize_dungeon_state(player_state)
+    d_state["dungeon_completed"] = True
+    arena_room = d_state.get("rooms", {}).get("gilded_overlord_arena", {})
+    arena_room["cleared"] = True
+
+    # Mark quest completion if bounty exists
+    quests = player_state.setdefault("quests", [])
+    for q in quests:
+        q_title = q.get("title", "") if isinstance(q, dict) else str(q)
+        if "overlord" in q_title.lower() or "spire" in q_title.lower():
+            q["completed"] = True
+
+    log = (
+        f"👑 [SECTOR BOSS SLAIN: {boss['name']} shattered into glittering crystal shards!]\n"
+        f"🎁 [REWARDS: +{xp_reward} XP, +{col_reward:,} Col, Claimed 'Overlord's Gilded Core' & 'Gilded Spire Great-Axe'!]\n"
+        f"🌐 [PORTAL UNSEALED: Floor Teleport Gate activated! Unlocked {rewards.get('unlocked_zone')}]"
+    )
+
+    return {
+        "success": True,
+        "xp_awarded": xp_reward,
+        "col_awarded": col_reward,
+        "items_awarded": items_reward,
+        "title": title,
+        "log": log,
+        "message": f"Congratulations! You have cleared Sector 1 and unsealed the Teleport Gate to Sector 2."
+    }
+
+
+
 

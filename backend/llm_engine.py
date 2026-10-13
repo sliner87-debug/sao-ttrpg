@@ -677,6 +677,17 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
         else:
             skills_display[sname] = str(sdata)
 
+    # Dungeon and Sector Boss Awareness
+    d_room = mechanics.get_current_dungeon_room(player_state) if hasattr(mechanics, "get_current_dungeon_room") else {}
+    boss_enc = player_state.get("boss_encounter")
+    boss_info_str = "None"
+    if boss_enc and isinstance(boss_enc, dict) and boss_enc.get("current_hp", 0) > 0:
+        boss_phase = boss_enc.get("phase", 1)
+        p_name = boss_enc.get("phases", {}).get(boss_phase, {}).get("name", f"Phase {boss_phase}")
+        tele = boss_enc.get("active_telegraph")
+        tele_str = tele.get("warning", tele.get("name", "None")) if isinstance(tele, dict) else "None"
+        boss_info_str = f"{boss_enc.get('name', 'Boss')} [Phase {boss_phase}: {p_name}] HP: {boss_enc.get('current_hp')}/{boss_enc.get('max_hp')} | Break: {boss_enc.get('current_break')}/{boss_enc.get('max_break')} (Staggered: {boss_enc.get('is_staggered', False)}) | Active Telegraph: {tele_str}"
+
     system_instruction = f"""You are the 'Cardinal System', the Encounter Director for a Death-Game TTRPG set in a 'Fractured Earth' overlay.
     
     WORLD-BUILDING & THEME (CRITICAL):
@@ -702,6 +713,8 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     Active Traps Deployed: {json.dumps(player_state.get('active_traps', []))}
     Companion Party: Ren Sasaki (Level: {comp_ren.get('level', 3)} | HP: {comp_ren.get('hp', 35)}/{comp_ren.get('max_hp', 35)} | Morale: {comp_ren.get('morale', 'Steady')})
     Active Companion Stance: {ren_stance_info.get('label', 'Overwatch Hacking')} — {ren_stance_info.get('tactical_effect', '')}
+    Labyrinth Dungeon Room: {d_room.get('name', 'N/A')} ({d_room.get('badge', '')}) | Cleared: {d_room.get('cleared', False)}
+    Active Sector Boss: {boss_info_str}
     Location: {current_location}
     GPS Coordinates: X: {map_state.get('player_x', 50)}, Y: {map_state.get('player_y', 50)}
     Equipped: {json.dumps(player_state.get('equipped', {}))}
@@ -748,13 +761,23 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
           * Aetheric Phase-Veil: output '[REN EVASION: Weaves an aetheric phase-veil into the ruins -> Untargetable this turn]'.
           * Arcane Artificing & Mending: output '[REN UTILITY: Channels mending runes or gathers aether-crystallite (+15 durability restored)]'.
         - When Banki earns XP ('xp_change'), the Cardinal System awards Ren 50% companion XP. You can also output explicit companion updates in 'companion_updates'!
+    17. DUNGEON CRAWLING & MULTI-PHASE SECTOR BOSSES:
+        - The Pohatcong Depths is an 8-room subterranean instanced labyrinth beneath Pohatcong Mountain. When in the labyrinth, ground the narrative in the chamber's architectural layout, environmental hazards, and active traps.
+        - The Gilded Spire Overlord (Sector 1 Boss) has 3 distinct combat phases:
+          * Phase 1 (100%–60% HP): Runic Bulwark, AC 18, DR 3, gilded maul sweeping cleaves.
+          * Phase 2 (60%–20% HP): Aetheric Core Overload, AC 15, DR 1, core exposed, lightning corridors, summoned repair drones.
+          * Phase 3 (20%–0% HP): Desperation Spatial Tear, AC 13, DR 0, doubled attack speed, glitching red polygons, gravitational rift pulses.
+        - TELEGRAPHS & BREAK GAUGE:
+          * Before devastating abilities, the Boss telegraphs: output '[BOSS TELEGRAPH: <Warning Description>]' in `combat_logs` and narrative, giving the player a round to react!
+          * When the player lands heavy blunt strikes (Trench Hammers, heavy axes, heavy spells, Ren EMP discharge), chip the Break Gauge. When Break Gauge reaches 0, describe the boss collapsing into Staggered Stun (+50% bonus crit damage, DR bypassed for 1 turn)!
+          * Output boss damage in 'boss_damage' (int) in `state_updates`, or report in `combat_logs` using '[BOSS COMBAT: ...]'.
     
     Format your response EXACTLY as a JSON object with FIVE keys:
     - "narrative": The markdown formatted story/dialogue. 
     - "combat_logs": A list of strings showing the exact dice math and damage for the turn. Leave empty if no combat or skill check occurred.
     - "global_news_add": A list of strings showing macro world events (e.g. continental faction movements). MUST BE POPULATED IF THE PLAYER SKIPS TIME OR SLEEPS.
     - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged warrior with a short beard and undercut hair, wearing heavy black-iron runic armor and a massive dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a lean, bookish young man with messy dark hair, wire-rimmed glasses, wearing a weathered leyline duster over scholar's garb, wielding an ornate brass-and-crystal MageTech caster firearm (magic-powered, not gunpowder) and carrying a glowing runic slate grimoire.
-    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates", "graft_installs", "ability_slots", "companion_updates". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
+    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates", "graft_installs", "ability_slots", "companion_updates", "boss_damage", "boss_is_heavy", "boss_telegraph_counter", "dungeon_move", "dungeon_trap_disarm", "dungeon_puzzle_solve". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
       Additionally, use the following complex schemas for skills, inventory, factions, and quests:
       - "inventory_add": List of dicts, e.g. [{{"name": "Rusted Iron Sword", "rarity": "Common", "durability": 45, "max_durability": 50, "qty": 1, "desc": "A chipped blade scavenged from the ruins."}}]
       - "inventory_remove": List of strings (item names to delete).
@@ -863,6 +886,51 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
                             mechanics.update_companion_morale(player_state, c_name, c_data["morale"])
                         if "stance" in c_data and hasattr(mechanics, "set_companion_stance"):
                             mechanics.set_companion_stance(player_state, c_name, c_data["stance"])
+
+            # Boss Damage processing
+            boss_dmg = state_updates.get("boss_damage")
+            if boss_dmg is not None:
+                try:
+                    bd_int = int(str(boss_dmg).replace(",", "").replace(" ", ""))
+                    is_h = bool(state_updates.get("boss_is_heavy", False))
+                    if hasattr(mechanics, "apply_damage_to_boss") and bd_int > 0:
+                        b_res = mechanics.apply_damage_to_boss(player_state, bd_int, is_heavy=is_h)
+                        if b_res.get("log"):
+                            result.setdefault("combat_logs", []).append(b_res["log"])
+                        if b_res.get("boss_hp", 1) <= 0 and hasattr(mechanics, "claim_boss_victory"):
+                            v_res = mechanics.claim_boss_victory(player_state)
+                            if v_res.get("log"):
+                                result.setdefault("combat_logs", []).append(v_res["log"])
+                except (ValueError, TypeError):
+                    pass
+
+            # Boss Telegraph Counter processing
+            tele_counter = state_updates.get("boss_telegraph_counter")
+            if tele_counter and hasattr(mechanics, "counter_boss_telegraph"):
+                tc_res = mechanics.counter_boss_telegraph(player_state, str(tele_counter))
+                if tc_res.get("log"):
+                    result.setdefault("combat_logs", []).append(tc_res["log"])
+
+            # Dungeon Movement
+            d_move = state_updates.get("dungeon_move")
+            if d_move and hasattr(mechanics, "move_dungeon_room"):
+                m_res = mechanics.move_dungeon_room(player_state, str(d_move))
+                if m_res.get("log"):
+                    result.setdefault("combat_logs", []).append(m_res["log"])
+
+            # Dungeon Trap Disarming
+            if state_updates.get("dungeon_trap_disarm") and hasattr(mechanics, "disarm_dungeon_trap"):
+                t_res = mechanics.disarm_dungeon_trap(player_state)
+                if t_res.get("log"):
+                    result.setdefault("combat_logs", []).append(t_res["log"])
+
+            # Dungeon Puzzle Solving
+            d_puzzle = state_updates.get("dungeon_puzzle_solve")
+            if d_puzzle is not None and hasattr(mechanics, "solve_dungeon_puzzle"):
+                seq = d_puzzle if isinstance(d_puzzle, list) else None
+                p_res = mechanics.solve_dungeon_puzzle(player_state, sequence=seq)
+                if p_res.get("log"):
+                    result.setdefault("combat_logs", []).append(p_res["log"])
 
         return result
     except Exception as e:
