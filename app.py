@@ -761,7 +761,7 @@ def extract_turn_components(msg: dict) -> tuple:
     
     # 1. Extract SubAgent thoughts if not already isolated
     if not subagent_log and content:
-        match = re.search(r'(?:\r?\n)+(?:\*\*\[.*?SubAgent Mind\]\*\*|\*\*\[Ren\'s Tactical Logic\]\*\*)', content)
+        match = re.search(r'(?:^|\r?\n)+(?:\*\*\[.*?SubAgent Mind\]\*\*|\*\*\[Ren\'s Tactical Logic\]\*\*)', content)
         if match:
             split_idx = match.start()
             subagent_log = content[split_idx:].strip()

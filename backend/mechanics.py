@@ -5,6 +5,7 @@ Handles mathematical crunch, dice logic, encumbrance physics, and equipment stat
 
 import math
 import copy
+import re
 
 # --- ITEM WEIGHT HEURISTICS ---
 DEFAULT_WEIGHT_MAP = {
@@ -100,7 +101,14 @@ def calculate_encumbrance(player_state):
     stats = player_state.get("stats", {})
     str_val = stats.get("STR", 10)
     
-    max_weight = round(str_val * 15.0, 1)
+    # Check for racial / feat carry capacity bonus (e.g. MageTech Cyborg Pneumatic Endoskeleton)
+    bonus_capacity = 0.0
+    race_str = str(player_state.get("race", "")).lower()
+    feats_str = " ".join([str(f).lower() for f in player_state.get("feats", [])])
+    if "cyborg" in race_str or "pneumatic endoskeleton" in feats_str:
+        bonus_capacity += 25.0
+        
+    max_weight = round(str_val * 15.0 + bonus_capacity, 1)
     max_slots = 10 + (str_val // 2)
     
     current_weight = 0.0
@@ -118,9 +126,10 @@ def calculate_encumbrance(player_state):
     for item in inventory:
         w = get_item_weight(item)
         current_weight += w
-        # Stacking slots: each entry takes 1 slot, or 1 slot per 5 units for small items
+        # Stacking slots: each entry takes 1 slot, or 1 slot per 5 units for lightweight bundled items (< 2.0 lbs per unit)
         qty = item.get("qty", 1) if isinstance(item, dict) else 1
-        slots_taken = max(1, math.ceil(qty / 5)) if w < 2.0 else qty
+        unit_w = (w / qty) if qty > 0 else w
+        slots_taken = max(1, math.ceil(qty / 5)) if unit_w < 2.0 else qty
         used_slots += slots_taken
         
     current_weight = round(current_weight, 1)
@@ -158,7 +167,7 @@ def calculate_encumbrance(player_state):
     }
 
 def calculate_ac(player_state, encumbrance=None):
-    """Calculates Armor Class based on DEX, equipped armor, durability state, and encumbrance penalties."""
+    """Calculates Armor Class based on DEX, equipped armor, durability state, natural armor, and encumbrance penalties."""
     if encumbrance is None:
         encumbrance = calculate_encumbrance(player_state)
         
@@ -194,15 +203,31 @@ def calculate_ac(player_state, encumbrance=None):
     if "shield" in off_hand:
         shield_bonus = 0 if dur_pens.get("shield_broken", False) else 2
     
-    # Golem-Grafts AC Bonus
+    # Natural AC from Lineage Traits
+    natural_ac = 0
+    race_str = str(player_state.get("race", "")).lower()
+    feats_str = " ".join([str(f).lower() for f in player_state.get("feats", [])])
+    if any(k in race_str for k in ["golem reborn", "mantid"]):
+        natural_ac += 2
+    elif any(k in race_str for k in ["cyborg", "draconic", "dragonborn"]):
+        natural_ac += 1
+    elif "pneumatic endoskeleton" in feats_str:
+        natural_ac += 1
+    elif "dragon-scale armor" in feats_str:
+        natural_ac += 1
+        
+    # Golem & Biological Grafts AC Bonus
     graft_ac_bonus = 0
     installed_grafts = player_state.get("graft_system", {}).get("installed_grafts", {})
-    if isinstance(installed_grafts, dict) and "dermal" in installed_grafts:
-        if installed_grafts["dermal"].get("key") == "subdermal_carapace_weave":
-            graft_ac_bonus += 2
+    if isinstance(installed_grafts, dict):
+        for g_val in installed_grafts.values():
+            if isinstance(g_val, dict):
+                g_k = g_val.get("key", "")
+                if g_k in ["subdermal_carapace_weave", "basalt_carapace_plating", "wyrm_scale_sheath"]:
+                    graft_ac_bonus += 2
             
     ac_pen = dur_pens.get("ac_penalty", 0)
-    return max(10, base_ac + armor_bonus + shield_bonus + graft_ac_bonus - ac_pen)
+    return max(10, base_ac + armor_bonus + shield_bonus + natural_ac + graft_ac_bonus - ac_pen)
 
 
 
@@ -711,6 +736,8 @@ def update_skill_mastery(player_state: dict, skill_name: str, gain_or_dc: int = 
         gain_or_dc = kwargs["task_dc"]
     if kwargs.get("mastery_change") is not None and not is_dc:
         gain_or_dc = kwargs["mastery_change"]
+    if kwargs.get("amount") is not None and not is_dc:
+        gain_or_dc = kwargs["amount"]
     if kwargs.get("description"):
         desc = kwargs["description"]
     elif kwargs.get("desc"):
@@ -845,6 +872,7 @@ def update_skill_mastery(player_state: dict, skill_name: str, gain_or_dc: int = 
         "tier_changed": (old_tier != new_tier),
         "unlocked_milestones": unlocked,
         "milestones_unlocked": [m["name"] for m in unlocked],
+        "milestones_triggered": unlocked,
         "skill_data": skill_entry
     }
 
@@ -1854,10 +1882,12 @@ def apply_durability_damage(player_state, slot_or_name, amount=1):
             "item": item_name,
             "old_cur": old_cur,
             "new_cur": new_cur,
+            "current": new_cur,
             "max": max_d,
             "loss": amount,
             "state": state_info["state"],
             "is_broken": state_info["is_broken"],
+            "broken": state_info["is_broken"],
             "is_dulled": state_info["is_dulled"],
             "log": log
         }
@@ -1876,10 +1906,12 @@ def apply_durability_damage(player_state, slot_or_name, amount=1):
                 "item": item.get("name"),
                 "old_cur": old_cur,
                 "new_cur": new_cur,
+                "current": new_cur,
                 "max": max_d,
                 "loss": amount,
                 "state": state_info["state"],
                 "is_broken": state_info["is_broken"],
+                "broken": state_info["is_broken"],
                 "is_dulled": state_info["is_dulled"],
                 "log": log
             }
@@ -2522,12 +2554,19 @@ def ensure_graft_system(player_state):
 
 def get_max_graft_strain(player_state):
     """
-    Max Graft Capacity = (CON * 2) + (Level * 3).
+    Max Graft Capacity = (CON * 2) + (Level * 3) + Racial/Feat Tolerance Bonus.
     """
     stats = player_state.get("stats", {})
     con_val = stats.get("CON", 10)
     level_val = player_state.get("level", 1)
-    return (con_val * 2) + (level_val * 3)
+    
+    bonus = 0
+    race_str = str(player_state.get("race", "")).lower()
+    feats_str = " ".join([str(f).lower() for f in player_state.get("feats", [])])
+    if "cyborg" in race_str or "innate graft-tolerance" in feats_str:
+        bonus += 15
+        
+    return (con_val * 2) + (level_val * 3) + bonus
 
 def get_current_graft_strain(player_state):
     """
@@ -2575,6 +2614,20 @@ def get_graft_rejection_status(player_state):
             "save_penalty": save_penalty,
             "description": f"Excessive cybernetic strain is poisoning organic flesh! Suffering -{hp_drain} Max HP and -{save_penalty} to all saving throws."
         }
+
+def calculate_player_strain(player_state):
+    """
+    Convenience method calculating current strain, max capacity, and rejection status.
+    """
+    max_strain = get_max_graft_strain(player_state)
+    cur_strain = get_current_graft_strain(player_state)
+    rejection = get_graft_rejection_status(player_state)
+    return {
+        "max_strain": max_strain,
+        "current_strain": cur_strain,
+        "is_overloaded": rejection["is_rejecting"],
+        "rejection": rejection
+    }
 
 def install_graft(player_state, graft_key, body_slot, surgeon_fee_col=None):
     """
@@ -5883,6 +5936,9 @@ def cook_campfire_meal(player_state, recipe_id):
         "message": f"Successfully cooked {recipe['name']}! Gained {buff_data['name']}."
     }
 
+ensure_factions_system = ensure_faction_system
+check_frost_hazard = check_frostbite_protection
+cook_campfire_recipe = cook_campfire_meal
 
 def pitch_wilderness_camp(player_state, watch_companion="Ren"):
     """
@@ -6570,8 +6626,8 @@ def get_commodity_prices(player_state):
     Returns current market prices for commodities based on player reputation,
     cleared trade routes, and regional market indices.
     """
-    reps = player_state.get("factions", {})
-    iron_rep = reps.get("iron_syndicate", 0)
+    reps = player_state.get("faction_reputation", player_state.get("faction_system", {}).get("reputations", player_state.get("factions", {})))
+    iron_rep = reps.get("iron_syndicate", 0) if isinstance(reps, dict) else 0
 
     # Iron Syndicate discount: up to 15% discount at 50+ rep
     discount_mult = 1.0
@@ -6853,7 +6909,8 @@ def get_game_time_info(player_state):
     t_data = get_game_time(player_state)
     hour = t_data.get("hour", 6)
     period = get_time_period(hour)
-    p_info = CHRONO_PERIODS.get(period, {"label": period.capitalize(), "desc": "Standard light conditions."})
+    p_key = period.get("key", "day") if isinstance(period, dict) else str(period)
+    p_info = CHRONO_PERIODS.get(p_key, {"label": p_key.capitalize(), "desc": "Standard light conditions."})
     t_data["period_info"] = p_info
     return t_data
 
@@ -6867,9 +6924,71 @@ def get_dungeon_room(player_state, room_id=None):
 
 def get_overlord_status(player_state):
     """Convenience alias for Sector Overlord status."""
-    return player_state.get("boss_encounter", SECTOR_BOSSES.get("gilded_spire_overlord", {}))
+    return player_state.get("boss_encounter", SECTOR_BOSSES.get("gilded_overlord", {}))
 
 ensure_factions_system = ensure_faction_system
+
+def extract_turn_components(msg: dict) -> tuple:
+    """
+    Returns (cleaned_narrative, mechanics_log, subagent_log) from a message dictionary.
+    Supports structured messages, section headers (🎲 / 🧠), blockquotes, and inline rolls.
+    """
+    content = msg.get("content", "") or ""
+    mechanics_log = msg.get("mechanics_log", "") or ""
+    subagent_log = msg.get("subagent_log", "") or ""
+    
+    # 1. Extract SubAgent thoughts if not already isolated
+    if not subagent_log and content:
+        subagent_pattern = re.compile(
+            r'(?:^|\r?\n)+(?:(?:🧠|\U0001f9e0)\s*)?(?:\*\*\[.*?SubAgent Mind\]\*\*|\*\*\[Ren\'s Tactical Logic\]\*\*|SubAgent Thoughts & Planned Actions:[\s\S]*)',
+            re.IGNORECASE
+        )
+        m = subagent_pattern.search(content)
+        if m:
+            subagent_log = content[m.start():].strip()
+            content = content[:m.start()].strip()
+
+    # 2. Extract Dice Rolls / Mechanics if not already isolated
+    if not mechanics_log and content:
+        section_pattern = re.compile(
+            r'(?:^|\r?\n)+(?:(?:🎲|\U0001f3b2)\s*)?Dice Rolls & Game Mechanics:[\s\S]*?(?=(?:^|\r?\n)+(?:🧠|\U0001f9e0|\*\*\[)|$)',
+            re.IGNORECASE
+        )
+        m = section_pattern.search(content)
+        if m:
+            mechanics_log = m.group(0).strip()
+            content = (content[:m.start()] + "\n" + content[m.end():]).strip()
+        else:
+            mechanics_items = []
+            
+            # Check for prepended blockquote rolls like: > 🎲 `...`
+            clean_lines = []
+            for line in content.split("\n"):
+                line_str = line.strip()
+                if line_str.startswith("> 🎲") or (line_str.startswith(">") and "🎲" in line_str):
+                    cleaned = line_str.replace("> 🎲", "").replace(">", "").strip(" `*")
+                    if cleaned:
+                        mechanics_items.append(f"* 🎲 `{cleaned}`")
+                elif line_str == ">":
+                    continue
+                else:
+                    clean_lines.append(line)
+            content = "\n".join(clean_lines).strip()
+            
+            # Check for bracketed rolls/checks: [Attack: 1d20+5 = 17 vs AC 14 | Hit!]
+            bracket_pattern = re.compile(r'\s*\[([^\]]*(?:d20|d4|d6|d8|d10|d12|\bAC\b|\bDC\b|\bHit\b|\bFail\b|\bSave\b|\bRoll\b|\bdamage\b)[^\]]*)\]', re.IGNORECASE)
+            found_brackets = bracket_pattern.findall(content)
+            if found_brackets:
+                content = bracket_pattern.sub('', content).strip()
+                for b in found_brackets:
+                    clean_b = b.strip()
+                    if clean_b:
+                        mechanics_items.append(f"* 🎲 `{clean_b}`")
+                        
+            if mechanics_items:
+                mechanics_log = "\n".join(mechanics_items)
+                
+    return content, mechanics_log, subagent_log
 
 
 

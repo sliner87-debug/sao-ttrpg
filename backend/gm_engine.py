@@ -12,8 +12,29 @@ def save_json(filepath, data):
     with open(filepath, "w") as f:
         json.dump(data, f, indent=4)
 
-def generate_visible_state(api_key: str):
-    """Reads secret_master_state.json and writes sanitized version to visible_room.json"""
+def generate_visible_state(api_key: str = None, player_state: dict = None, world_state: dict = None):
+    """Reads secret_master_state.json or passed state and writes sanitized version to visible_room.json"""
+    # If called as generate_visible_room(player_state, world_state)
+    if isinstance(api_key, dict) and player_state is not None and world_state is None:
+        world_state = player_state
+        player_state = api_key
+        api_key = None
+
+    if player_state is not None and world_state is not None and not api_key:
+        # Local deterministic extraction without requiring LLM call
+        sanitized_locs = []
+        for loc in world_state.get("map_locations", []):
+            clean_loc = {k: v for k, v in loc.items() if k not in ("secrets", "hidden_traps", "enemy_intents")}
+            sanitized_locs.append(clean_loc)
+        return {
+            "turn_number": player_state.get("turn_count", 1),
+            "environment": {
+                "location": player_state.get("location", "Sector 1"),
+                "map_locations": sanitized_locs
+            },
+            "entities": world_state.get("entities", [])
+        }
+
     client = genai.Client(api_key=api_key)
     master_state_path = os.path.join(".game_state", "secret_master_state.json")
     visible_room_path = os.path.join("Staging_Ground", "visible_room.json")

@@ -154,26 +154,36 @@ Output strictly matching ActorActionSchema.
     action["actor_name"] = persona.get("name", entity_id)
     return action
 
-def run_all_room_subagents(api_key: str, visible_room: dict) -> list:
+def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list = None) -> list:
     """
-    Iterates through all entities in the visible room (Companions, Monsters, NPCs).
-    Each SubAgent decides their move autonomously.
+    Iterates through all entities in the visible room (Active Vanguard Companions, Monsters, NPCs).
+    Each SubAgent decides their move autonomously based on their persona, stance, and visible threats.
     Writes all actions to Staging_Ground/action_queue.json and returns the list.
     """
     action_queue_path = os.path.join(STAGING_DIR, "action_queue.json")
     all_actions = []
 
-    # 1. Companion Ren (Always present in party)
-    try:
-        ren_action = get_subagent_action(api_key, "companion_ren", visible_room)
-        all_actions.append(ren_action)
-    except Exception as e:
-        print(f"[SUBAGENT ERROR] Ren action failed: {e}", flush=True)
+    # 1. Process all active party companions (Ren, Elora, Torvald, Kibs)
+    party_members = active_party if active_party else ["companion_ren"]
+    party_ids = []
+    
+    for member in party_members:
+        if isinstance(member, dict):
+            c_id = member.get("id", member.get("entity_id", "companion_ren"))
+        else:
+            c_id = str(member)
+        party_ids.append(c_id)
+        
+        try:
+            c_action = get_subagent_action(api_key, c_id, visible_room)
+            all_actions.append(c_action)
+        except Exception as e:
+            print(f"[SUBAGENT ERROR] Companion {c_id} action failed: {e}", flush=True)
 
     # 2. All visible entities (Monsters, NPCs)
     for entity in visible_room.get("entities", []):
         eid = entity.get("id")
-        if not eid or eid in ["player", "companion_ren"]:
+        if not eid or eid in ["player"] or eid in party_ids:
             continue
             
         # Skip dead or inert slag entities
