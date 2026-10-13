@@ -1966,6 +1966,13 @@ WORLD_ATLAS_ZONES: Dict[str, Dict[str, Any]] = {
     }
 }
 
+# Enrich each zone entry with dispersed D&D / Pathfinder / Fantasy Series races, monsters & grafts
+try:
+    from backend.bestiary_compendium import enrich_world_atlas_zones
+    enrich_world_atlas_zones(WORLD_ATLAS_ZONES)
+except Exception:
+    pass
+
 # Enrich each zone entry with convenient normalized alias keys for UI & GM consumers
 for _zid, _z in WORLD_ATLAS_ZONES.items():
     _z.setdefault("id", _zid)
@@ -2177,6 +2184,8 @@ def format_zone_gm_briefing(zone: Optional[Dict[str, Any]]) -> str:
     }
     cat_str = cat_labels.get(zone.get("category", ""), "REGIONAL ZONE")
     monsters_str = ", ".join(zone.get("monsters", [])) or "None (Warded Sanctuary)"
+    disp_monsters_str = ", ".join(zone.get("dispersed_monsters", [])) or "None"
+    races_str = ", ".join(zone.get("resident_races", [])) or "Pure Human, Deepforged Dwarf, Aether-Touched Elf"
     res_str = ", ".join(zone.get("resources", [])) or "Standard Salvage"
     grafts_str = ", ".join(zone.get("signature_grafts", [])) or "None"
     comps_str = ", ".join(zone.get("stationed_companions", [])) or "None"
@@ -2187,11 +2196,13 @@ def format_zone_gm_briefing(zone: Optional[Dict[str, Any]]) -> str:
 - Classification: {cat_str} | Quadrant: {zone.get('quadrant', '')} ({zone.get('distance_miles', 0)} mi {zone.get('compass_dir', '')} of Washington Borough)
 - Recommended Level Range: Lv. {zone.get('level_min', 1)}–{zone.get('level_max', 10)} | Safe-Zone Status: {zone.get('is_safe_zone', False)}
 - Controlling Faction: {zone.get('controlling_faction', 'Unclaimed')}
+- Resident Fantasy Races & Enclaves (D&D / Pathfinder / Fantasy Series): {races_str}
 - Real-World Geography & History: {zone.get('real_world_lore', '')}
 - Cardinal System Merge Architecture: {zone.get('system_merge_lore', '')}
 - Special Zone Mechanics: {zone.get('special_mechanics', '')}
-- Local Monster Ecology: {monsters_str} | Zone Boss: {zone.get('boss') or 'None'}
+- Local & Dispersed Monster Ecology (D&D 3.5e/5E, Pathfinder 1E/2E, Witcher, FF, Monster Hunter, SAO): {monsters_str} (Dispersed Highlights: {disp_monsters_str})
+- Zone Boss / Apex Spawn: {zone.get('boss') or zone.get('apex_fantasy_spawn') or 'None'} (Apex Multi-Universe Threat: {zone.get('apex_fantasy_spawn', 'None')})
 - Harvestable Regional Ores & Resources: {res_str}
-- Signature Golem-Grafts: {grafts_str}
+- Signature Golem & Monster Grafts: {grafts_str}
 - Known Companion Sightings at Node: {comps_str}
 """

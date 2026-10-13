@@ -1844,3 +1844,77 @@ When the Cardinal System executed the **Fractured Earth Overlay**, the rugged Ri
 
 ---
 
+
+
+---
+
+# SECTION VII: MULTI-UNIVERSE FANTASY RACES, CREATURES & ECOLOGY DISPERSION MATRIX
+
+Following the Planetary Integration of Sector 01, the Cardinal System compiled genetic, mythic, and planar templates from **D&D 3.0x / 3.5e & 5E**, **Pathfinder 1E & 2E (Golarion)**, and **Major Fantasy Series** (*The Witcher*, *Final Fantasy*, *Monster Hunter*, *Sword Art Online*, *Tolkien / Lord of the Rings*, *Warhammer Fantasy*, *The Elder Scrolls*, and *Soulsborne*), dispersing them across the 58 zones of the 100-Mile Washington, NJ World Atlas according to geology, elevation, hydrology, and leyline density.
+
+## 1. Dispersed Fantasy Races & Enclaves (45 Playable & World Lineages)
+
+| Lineage / Ancestry | Source Tradition | Primary Regional Enclaves & Strongholds (100-Mile Radius) |
+| :--- | :--- | :--- |
+| **Underdark Drow (Obsidian Deep-Elf)** | D&D 3.5e / 5E | Sterling Hill & Franklin UV-Fluorescent Mines, Lost River Caverns, Manhattan Undercity, New Hope Black-Market |
+| **Ashen Duergar (Gray Dwarf Mind-Forger)** | D&D 3.5e / 5E | Lansford No. 9 (800-ft Sump), Lackawanna #190 Slope, Hibernia/Mount Hope Mines, Centralia |
+| **Svirfneblin (Deep Gnome Gem-Delver)** | D&D 3.5e / 5E | Sterling Hill Rainbow Tunnel, Crystal Cave, Rosendale Widow Jane Mine, Hopewell French Creek Skarn |
+| **Deepforged Dwarf** | D&D / Pathfinder / Crucible | Washington Borough, Jim Thorpe, Scranton Steamtown, Oxford Furnace, Bethlehem Steel |
+| **Lightfoot Halfling (Shire-Born)** | D&D 3.5e / 5E & Tolkien | Washington Borough, Hackettstown, Blairstown, Kingston Rondout Harbor |
+| **Clockwork Tinker Gnome (Lantan / Golarion)** | D&D 5E & Pathfinder 2E | Washington Borough, Edison Ogden Mine, Princeton Conclave, Mercer Mile Castles |
+| **Goliath Crag-Walker (Half-Giant)** | D&D 3.5e / 5E | Catskill High Peaks (Slide Mt.), Delaware Water Gap, Hickory Run Boulder Field, Shawangunk Cliffs |
+| **Firbolg Primeval Warden** | D&D 5E | Ricketts Glen 22-Falls Gorge, Wissahickon Gorge, Batsto & NJ Pine Barrens, Harriman Wilds |
+| **Tabaxi / Amurrun (Felid Stalker)** | D&D 5E / PF2E / Elder Scrolls | Hackettstown Caravans, New Hope-Lambertville Bazaar, Bushkill Falls, Kingston Harbor |
+| **Tengu / Kenku (Storm-Crow & Jinx-Eater)** | D&D 5E & Pathfinder 1E/2E | Hawk Mountain Sanctuary, Delaware Water Gap, Bannerman's Castle, Palisades Cliffs |
+| **Kitsune (Nine-Tailed Starlight Fox)** | Pathfinder 1E & 2E | New Hope-Lambertville Bazaar, Princeton Conclave, Jenny Jump Ghost Lake, Mohonk Citadel |
+| **Leshy (Immortal Nature Spirit-Vessel)** | Pathfinder 2E | Ricketts Glen, NJ Pine Barrens, Batsto Bog-Iron Pits, Hacklebarney Gorge |
+| **Githyanki (Astral Silver-Blade Warrior)** | D&D 3.5e / 5E | Brookhaven RHIC Collider, Princeton Tokamak (PPPL), Bell Labs Horn Antenna, Manhattan Spire |
+| **Githzerai (Zerth Cenobite of Limbo)** | D&D 3.5e / 5E | Mohonk Sky-Citadel, Bell Labs Horn Antenna, Ong's Hat Dimensional Anomaly |
+| **Tortle / Kappa (Razorback Shell-Guard)** | D&D 5E & Folklore | Phillipsburg-Easton Confluence, Round Valley Reservoir, Sandy Hook, Philly Navy Yard |
+| **Aarakocra / Strix (Raptor-Born Sky-Scout)** | D&D 5E & Pathfinder 2E | Hawk Mountain Aerie, Delaware Water Gap, Shawangunk Ridge, Lakehurst Hangar No. 1 |
+| **Yuan-Ti / Vishkanya (Serpent-Blooded)** | D&D 3.5e / 5E & Pathfinder | Overlook Mountain Ruins (Catskills), Vera Cruz Jasper Quarries |
+| **Trial-Mutated Monster Slayer (Vatt'ghern)** | The Witcher Series | Jenny Jump & Shades of Death Road, Blairstown, Stroudsburg, Batsto Village, Fort Mifflin |
+| **Viera / Cait Sith Wood-Warden** | Final Fantasy & SAO ALO | Ricketts Glen, Bushkill & Promised Land, Wissahickon Gorge, Clinton Red Mill |
+| **Ashen Dunmer / Eldar Star-Weaver** | Elder Scrolls & Tolkien | Centralia Hellfire Breach, Princeton Arcane Conclave, Warren Grove Crater |
+| **Ysoki / Skaven Warp-Tinker** | Pathfinder 1E/2E & Warhammer | Manhattan Subway Undercity, Morris Canal Tunnels, Camp Evans Bunkers, Tobyhanna Depot |
+| **Dhampir / Strigoi Scion** | D&D 5E / PF2E / Witcher | Mercer Mile Fonthill Castle, Hibernia Bat Caves, Eastern State Penitentiary, Merrill Creek |
+| **Conrasu / Modron (Cosmic Aeon-Shard)** | Pathfinder 2E & Planescape | Ringing Rocks Park, Brookhaven Collider, Princeton Tokamak, Belvidere Bastion |
+| **Anadi / Arachne (Star-Silk Weaver)** | Pathfinder 2E | Sterling Hill Mines, Crystal Cave, Hopewell French Creek Skarn |
+| **Hobgoblin Iron-Legionnaire** | D&D 3.5e / 5E & PF2E | Valley Forge Star-Redoubt, West Point USMA, Morristown Jockey Hollow, Picatinny Arsenal |
+| **Kobold Dragon-Wrought Trapwright** | D&D 3.5e / 5E & PF2E | Oxford Furnace Mines, Pohatcong Labyrinth, Lehigh Tunnel Bore, Watchung Copper Mines |
+
+---
+
+## 2. Multi-Universe Monster & Apex Boss Dispersion Table
+
+| Creature / Boss | Origin Universe | CR / Lv | Primary 100-Mile Habitats | Harvestable Organ / Graft |
+| :--- | :--- | :---: | :--- | :--- |
+| **Beholder (Eye Tyrant)** | D&D 3.5e / 5E | 22 | Sterling Hill UV Rainbow Tunnel, Manhattan Undercity | `Beholder Central Anti-Magic Ocular` |
+| **Mind Flayer (Illithid) & Elder Brain** | D&D 3.5e / 5E | 18–35 | Brookhaven RHIC Collider, Princeton Tokamak, Sterling Hill | `Illithid Psionic Tentacle Cortex` |
+| **Primeval Aboleth / Alghollthu Master** | D&D 5E & Pathfinder 2E | 18 | Round Valley Reservoir, Merrill Creek (225-ft), Rosendale Mines | `Pneuma-Filter Gill-Lung` |
+| **Displacer Beast** | D&D 3.5e / 5E | 9 | Jenny Jump Ghost Lake, Ricketts Glen, Pine Barrens, Wissahickon | `Displacer Tentacle Mantle` |
+| **Primeval Owlbear** | D&D 3.5e / 5E & PF2E | 5 | Pohatcong Mountain, Delaware Water Gap, Bushkill Falls | `Chimeric Beast Claws` |
+| **Rust Monster** | D&D 3.5e / 5E & PF2E | 6 | Route 31 Pileups, Oxford Furnace, Phoenixville Foundry | `Rust Monster Feeler Whip` |
+| **Bulette ('The Landshark')** | D&D 3.5e / 5E & PF2E | 12 | Hickory Run Boulder Field, Ringing Rocks, Sourland Mountain | `Bulette Dorsal Carapace` |
+| **Umber Hulk, Hook Horror & Roper** | D&D 3.5e / 5E | 10–14 | Hibernia/Mount Hope Mines, Lansford No. 9, Crystal Cave | `Aether-Resonant Ocular` |
+| **Gelatinous Cube, Black Pudding & Mimic** | D&D 3.5e / 5E | 7–8 | Pohatcong Labyrinth, Picatinny Bunkers, Mercer Museum | Alchemical Acid / Relic Cache |
+| **Phase Spider & Drider** | D&D 3.5e / 5E | 8–12 | Hacklebarney Gorge, Camp Evans, Hopewell Skarn Mines | `Phase Spider Ethereal Spinneret` |
+| **Chromatic & Metallic Dragons** | D&D 3.5e / 5E | 24–30 | Centralia (Red), Edison/Lakehurst (Blue), Pine Barrens (Green/Black), Sam's Point (White), West Point (Silver) | `Wyrm-Scale Sheath` |
+| **Primeval Linnorms (Crag, Ice, Tarn)** | Pathfinder 1E & 2E | 24 | Sunfish Pond (Water Gap), Lehigh Gorge, Sam's Point Ice Caves | `Primeval Linnorm Curse-Heart` |
+| **Psychopomps (Vanth, Morrigna, Nosoi)** | Pathfinder 1E & 2E | 16 | Eastern State Penitentiary, Feltville, Fort Mifflin | Vanth Adamantine Shard |
+| **The Jabberwock (Tane) & Proteans** | Pathfinder 1E & 2E | 27 | Ong's Hat & Blue Hole Portal Anomaly (Pine Barrens) | `Aether-Resonant Ocular` |
+| **Ancient Wendigo** | Pathfinder 1E / 2E | 22 | High Point Obelisk, Catskill High Peaks, Promised Land | Wendigo Permafrost Antler |
+| **Ancient Leshen (Woodland Spirit)** | The Witcher Series | 18 | Ricketts Glen, Jenny Jump, Pine Barrens, Wissahickon Gorge | `Leshen Ancient Heartwood` |
+| **Fiend (Bies), Chort & Archgriffin** | The Witcher Series | 15–16 | Bushkill Falls, Harriman Bear Mountain, Shawangunk Cliffs | `Aether-Resonant Ocular` |
+| **Higher Vampire, Bruxa & Noonwraith** | The Witcher Series | 8–21 | Fonthill Concrete Castle, Hibernia Bat Caves, Shades of Death | `Stalker Shadow-Tendon` |
+| **King Behemoth** | Final Fantasy Series | 34 | Princeton Tokamak, Warren Grove Crater, Manhattan Monolith | `Silt-Marrow Geothermal Core` |
+| **Master Tonberry** | Final Fantasy Series | 20 | Eastern State Penitentiary, Pohatcong Labyrinth, Lansford No. 9 | `Tonberry Grudge Lantern` |
+| **Great Malboro** | Final Fantasy Series | 19 | Great Swamp Fen, NJ Pine Barrens, Batsto Bog-Iron Pits | `Malboro Bad-Breath Gland` |
+| **Gigantuar, Coeurl & Iron Giant** | Final Fantasy Series | 17 | Warren Grove Sand-Crater, Sourland Mountain, Bethlehem Steel | `Leyline Conduit Spine` |
+| **Rathalos & Rathian** | Monster Hunter Series | 20 | Hawk Mountain Sanctuary, Delaware Water Gap, Lakehurst Hangar | `Rathalos Flame-Marrow Sac` |
+| **Zinogre (Thunderlord Fulgur-Wolf)** | Monster Hunter Series | 21 | Edison 480-Gauss Ogden Mine, Yards Creek Hydro-Siphon | `Zinogre Fulgur-Capacitor` |
+| **Nergigante, Deviljho & Rajang** | Monster Hunter Series | 30 | Three Mile Island / Limerick Reactors, Centralia, Warren Grove | `Basalt Carapace Plating` |
+| **The Gleam Eyes & The Skull Reaper** | Sword Art Online (SAO) | 35 | Manhattan Crystalline Monolith, Picatinny Citadel, Pohatcong Vault | `Gleam Eyes Demonic Horn` |
+| **Balrog / Valaraukar & Nazgûl** | Tolkien / LotR | 28–36 | Centralia 1,000°F Coal Seam, Bannerman's Castle, Concrete City | `Silt-Marrow Geothermal Core` |
+| **Skaven Warlock-Engineer & Doomwheel** | Warhammer Fantasy | 15 | NYC Subway Undercity, Morris Canal Tunnels, Camp Evans | `Neural Overclock Cortex` |
+| **Dwemer Steam-Centurion** | The Elder Scrolls | 18 | Friedensville Engine House, Scranton Steamtown, Phoenixville | `Golem Hydraulic Arm` |

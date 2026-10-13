@@ -737,6 +737,284 @@ RACIAL_LINEAGES = {
             "Logic-Core Discipline: Emotional suppression grants complete immunity to fear, intimidation, and charm/confusion spells. Grants +2 on tactical deduction, cryptography, and complex system query checks.",
             "Flaw - Empathy Void & Core Flush: Suffers a -2 penalty on Charisma (Persuasion, Animal Handling, and Empathy) checks with organic survivors. Requires a 4-hour stationary diagnostic stasis during long rests to cycle internal coolant and vent memory buffers."
         ]
+    },
+
+    # --- D&D 3.5e / 5E, PATHFINDER 1E / 2E & MAJOR FANTASY SERIES LINEAGES ---
+    "underdark_drow": {
+        "name": "Underdark Drow (Obsidian Deep-Elf)",
+        "genre": "D&D 3.5e / 5E",
+        "desc": "Subterranean elven scions from the fluorescent UV-caverns of Sterling Hill and the Underdark rifts. Obsidian skin, stark white hair, and innate mastery of shadow and faerie-light magic.",
+        "stat_mods": {"DEX": 3, "CHA": 2, "INT": 1, "STR": 0, "CON": -1, "WIS": 0},
+        "racial_abilities": [
+            "Drow High Magic (Faerie Fire & Darkness): Once per encounter, outline foes in violet luminescence (granting allies Advantage on attacks against them) or conjure a 15ft globe of impenetrable Underdark darkness.",
+            "Superior Darkvision (120ft): Pierce complete subterranean darkness up to 120 feet and gain +2 on Perception checks in cavern or night environments.",
+            "Spider-Venom Affinity: Weapon coatings and poison effects applied by you have their Save DC increased by +2.",
+            "Flaw - Sunlight Sensitivity: Suffers a -1 penalty on attack rolls and visual Perception checks when fighting in direct, unfiltered midday sunlight."
+        ]
+    },
+    "duergar_deep_dwarf": {
+        "name": "Ashen Duergar (Gray Dwarf Mind-Forger)",
+        "genre": "D&D 3.5e / 5E",
+        "desc": "Grim, ash-skinned subterranean dwarves tempered by psionic enslavement and the 800-foot anthracite sumps of Pennsylvania. Masters of psionic size-shifting and relentless foundry labor.",
+        "stat_mods": {"CON": 3, "STR": 2, "WIS": 1, "DEX": -1, "INT": 0, "CHA": -1},
+        "racial_abilities": [
+            "Psionic Enlarge (Giant-Might): Once per combat encounter as a bonus action, double in stature for 3 rounds, gaining +1d6 melee weapon damage, +2 AC from dense bone mass, and Advantage on Strength checks.",
+            "Invisibility Shroud: Vanish from sight for 1 round or until you attack, allowing an automatic Ambush strike (+4 to hit).",
+            "Duergar Mind-Fortress: Advantage on all saving throws against illusions, psionic mind-blasts, charm, and paralysis."
+        ]
+    },
+    "svirfneblin_deep_gnome": {
+        "name": "Svirfneblin (Deep Gnome Gem-Delver)",
+        "genre": "D&D 3.5e / 5E",
+        "desc": "Wiry, slate-skinned subterranean gnomes native to the crystalline zinc and skarn labyrinths. Unmatched at blending into living rock and deflecting arcane scrying.",
+        "stat_mods": {"DEX": 3, "INT": 2, "WIS": 1, "STR": -1, "CON": 0, "CHA": 0},
+        "racial_abilities": [
+            "Stone Camouflage: Gain a +5 bonus to Stealth checks when hiding among rocky terrain, concrete ruins, or subterranean caverns.",
+            "Gnome Cunning: Gain Advantage on all Intelligence, Wisdom, and Charisma saving throws against magic and system hexes.",
+            "Nondetection Ward: Naturally shielded from divination, scrying sensors, and automated turret target-locks."
+        ]
+    },
+    "halfling_shireborn": {
+        "name": "Lightfoot Halfling (Shire-Born Wanderer)",
+        "genre": "D&D 3.5e / 5E & Tolkien",
+        "desc": "Small-statured, unshakably cheerful survivors with uncanny fate-bending luck, silent footfalls, and a refusal to bow to apocalyptic despair.",
+        "stat_mods": {"DEX": 3, "CHA": 2, "WIS": 1, "STR": -2, "CON": 1, "INT": 0},
+        "racial_abilities": [
+            "Halfling Luck: Whenever you roll a natural 1 on an attack roll, ability check, or saving throw, you automatically reroll the die and take the new result.",
+            "Brave Heart of the Shire: Gain Advantage on saving throws against being Frightened, terrified, or morale-broken by boss auras.",
+            "Nimble Underfoot: You can move freely through the space of any creature that is Medium or larger without provoking opportunity attacks."
+        ]
+    },
+    "rock_gnome_tinker": {
+        "name": "Clockwork Tinker Gnome (Golarion / Lantan)",
+        "genre": "D&D 5E & Pathfinder 2E",
+        "desc": "Eccentric, vibrant-haired inventors obsessed with aetheric clockwork, alchemical fuses, and resonant crystal matrices.",
+        "stat_mods": {"INT": 3, "DEX": 2, "CON": 1, "STR": -2, "WIS": 0, "CHA": 1},
+        "racial_abilities": [
+            "Master Tinker's Intuition: Gain a +3 bonus on all Field Smithing, Magi-Tech Hacking, and clockwork trap disarm checks.",
+            "Gnome Cunning: Advantage on Intelligence, Wisdom, and Charisma saving throws against arcane and psionic spells.",
+            "Vivacious First-World Surge: Once per rest, channel Fey-world vitality to recover 15 Combat Resource or 10 HP as a bonus action."
+        ]
+    },
+    "goliath_cragborn": {
+        "name": "Goliath Crag-Walker (Half-Giant)",
+        "genre": "D&D 3.5e / 5E",
+        "desc": "Eight-foot-tall lithic nomads with granite-mottled skin and natural bony dermal ridges, descending from the Catskill High Peaks and Kittatinny Ridge.",
+        "stat_mods": {"STR": 4, "CON": 3, "WIS": 0, "DEX": -1, "INT": -1, "CHA": 0},
+        "racial_abilities": [
+            "Stone's Endurance: Once per encounter as a reaction when taking damage, roll 1d12 + CON modifier and reduce the incoming damage by that total.",
+            "Powerful Build (Titan Frame): Count as one size larger for carrying capacity (+60 lbs max encumbrance) and for grappling or shoving large monsters.",
+            "Mountain Born: Naturally acclimated to high altitude and immune to extreme cold weather penalties (+25% Cold damage resistance)."
+        ]
+    },
+    "firbolg_forest_keeper": {
+        "name": "Firbolg Primeval Warden",
+        "genre": "D&D 5E",
+        "desc": "Gentle, towering fey-blooded forest guardians with furry ears and deep earthy voices who guard the ancient hemlock gorges of Ricketts Glen and the Pine Barrens.",
+        "stat_mods": {"WIS": 3, "STR": 2, "CON": 1, "DEX": -1, "INT": 0, "CHA": 0},
+        "racial_abilities": [
+            "Hidden Step: Once per encounter as a bonus action, turn magically invisible until the start of your next turn or until you make an attack.",
+            "Primeval Disguise & Detect: Passively sense active leyline magic within 30 feet and alter your appearance to blend in with humans or elves.",
+            "Speech of Beast and Leaf: Communicate directly with woodland beasts and flora to gather scouting intelligence or calm hostile animals."
+        ]
+    },
+    "tabaxi_catfolk": {
+        "name": "Tabaxi / Amurrun (Felid Stalker)",
+        "genre": "D&D 5E / Pathfinder 2E / Elder Scrolls",
+        "desc": "Sleek, leopard- and lynx-furred feline humanoids gifted with explosive sprint bursts, retractable climbing claws, and insatiable curiosity for ancient relics.",
+        "stat_mods": {"DEX": 4, "CHA": 2, "WIS": 0, "STR": 0, "CON": -1, "INT": 0},
+        "racial_abilities": [
+            "Feline Agility: Double your movement speed for 1 full round during combat, allowing instant flanking or disengage maneuvers.",
+            "Cat's Claws & Pounce: Climb sheer surfaces at full speed and deliver 1d6 + DEX slashing claw strikes in close quarters.",
+            "Cat's Talent (Night-Eye): Low-light vision and a permanent +2 bonus to Perception and Stealth checks."
+        ]
+    },
+    "kenku_tengu": {
+        "name": "Tengu / Kenku (Storm-Crow & Jinx-Eater)",
+        "genre": "D&D 5E & Pathfinder 1E / 2E",
+        "desc": "Raven-feathered corvid swordmasters and scouts nesting along the Kittatinny raptor ridges and ruined cathedral spires. Masters of swordplay and storm-omens.",
+        "stat_mods": {"DEX": 3, "WIS": 2, "INT": 1, "STR": -1, "CON": 0, "CHA": 0},
+        "racial_abilities": [
+            "Jinx-Eater (Curse Swallow): Once per rest, devour a hostile hex, curse, or bad-luck effect targeting you or an ally, converting it into +2 on your next attack roll.",
+            "Tengu Sword-Trained: Innately proficient with all katana, daggers, and finessee blades (+1 crit threat range with bladed weapons).",
+            "Squall-Wing Glide & Mimicry: Perfectly replicate any voice or sound heard, and use feathered mantle-arms toarrest falls and leap +15 feet horizontally."
+        ]
+    },
+    "kitsune_nine_tails": {
+        "name": "Kitsune (Nine-Tailed Starlight Fox)",
+        "genre": "Pathfinder 1E & 2E",
+        "desc": "Shapeshifting vulpine mystics who weave star-fire illusions and shift seamlessly between human, hybrid fox-ear vanguard, and swift woodland fox forms.",
+        "stat_mods": {"CHA": 3, "DEX": 2, "INT": 1, "STR": -1, "CON": 0, "WIS": 0},
+        "racial_abilities": [
+            "Foxfire Tail-Bolt: Project cold-burning blue foxfire from your tails as a ranged spell attack (60ft) dealing 1d8 radiant/electric damage without consuming mana.",
+            "Change Shape (Vulpine Guile): Shift freely between Human guise, Hybrid Kitsune form, and a swift Pest/Scout Fox form (+4 Stealth and Deception).",
+            "Star-Orb Resonance: Enchantment, illusion, and spirit spells you cast gain +1 to their Save DC."
+        ]
+    },
+    "leshy_botanical_spirit": {
+        "name": "Leshy (Immortal Nature Spirit-Vessel)",
+        "genre": "Pathfinder 2E",
+        "desc": "Immortal primal nature spirits housed inside small, hand-woven bodies of living gourd, crimson autumn leaf, pine-cone, or bioluminescent cavern fungus.",
+        "stat_mods": {"WIS": 3, "CON": 2, "DEX": 1, "STR": -1, "INT": 0, "CHA": 0},
+        "racial_abilities": [
+            "Seedpod / Spore Strike: Launch pressurized iron-hard seedpods or glowing fungal spores up to 30ft dealing 1d6 bludgeoning/poison damage and slowing targets on crits.",
+            "Photosynthetic Sustenance: Draw nourishment directly from sunlight, ambient mana, and clean water; immune to starvation and biological rot.",
+            "Verdant Burst: If reduced to 0 HP, release a wave of restorative pollen that heals all allies within 15ft for 2d6 HP while stabilizing your root-core."
+        ]
+    },
+    "githyanki_astral_raider": {
+        "name": "Githyanki (Astral Silver-Blade Warrior)",
+        "genre": "D&D 3.5e / 5E",
+        "desc": "Gaunt, amber-skinned astral raiders who breached the Overlay while hunting Mind Flayer nautiloids around the Brookhaven and Princeton particle accelerators.",
+        "stat_mods": {"STR": 2, "INT": 2, "DEX": 2, "CON": 0, "WIS": 0, "CHA": -1},
+        "racial_abilities": [
+            "Astral Misty Step: Once per encounter, psionically teleport up to 30 feet to an unoccupied space you can see as a bonus action.",
+            "Silver-Sword Psionics: Channel telekinetic force through melee weapons, adding +1d4 psychic damage on hits and ignoring ethereal/phase defenses.",
+            "Decadent Astral Memory: Instantly recall planar lore and gain a +2 bonus to Arcana and History checks."
+        ]
+    },
+    "githzerai_limbo_monk": {
+        "name": "Githzerai (Zerth Cenobite of Limbo)",
+        "genre": "D&D 3.5e / 5E",
+        "desc": "Ascetic psionic philosopher-monks who shape chaotic rift-matter through sheer iron discipline, turning their minds into impenetrable bastions.",
+        "stat_mods": {"WIS": 3, "DEX": 2, "INT": 1, "STR": 0, "CON": 0, "CHA": -1},
+        "racial_abilities": [
+            "Inertial Psionic Shield: Passively project a mental force-field granting +2 AC when wearing light or no armor, and cast Shield (+4 AC reaction) once per encounter.",
+            "Zerth Mental Discipline: Advantage on saving throws against Charmed, Frightened, Stunned, and psionic domination effects.",
+            "Limbo Chaos-Anchor: Ignore difficult terrain caused by rubble, gravity anomalies, or spatial glitches."
+        ]
+    },
+    "tortle_shellback": {
+        "name": "Tortle / Kappa (Razorback Shell-Guard)",
+        "genre": "D&D 5E & Folklore",
+        "desc": "Heavy-shelled chelonian guardians from the Delaware and Raritan river basins, carrying an enchanted snapping-turtle carapace thicker than forged steel.",
+        "stat_mods": {"STR": 3, "CON": 3, "WIS": 1, "DEX": -2, "INT": 0, "CHA": 0},
+        "racial_abilities": [
+            "Natural Carapace Armor: Your heavy dorsal shell provides a minimum Base Armor Class of 17 (plus shield bonuses) without needing to wear chest armor.",
+            "Shell Defense Posture: Withdraw into your shell as an action to gain +4 bonus AC and Advantage on STR and CON saves until your next turn.",
+            "River-Bottom Breath & Claws: Hold breath underwater for 1 full hour and strike with 1d6 + STR snapping claws."
+        ]
+    },
+    "aarakocra_owlin": {
+        "name": "Aarakocra / Strix (Raptor-Born Sky-Scout)",
+        "genre": "D&D 5E & Pathfinder 2E",
+        "desc": "Winged avian vanguards with red-tailed hawk or great horned owl plumage who patrol the thermal updrafts of the Delaware Water Gap and Hawk Mountain.",
+        "stat_mods": {"DEX": 3, "WIS": 2, "CHA": 0, "STR": 0, "CON": -1, "INT": 1},
+        "racial_abilities": [
+            "Thermal Raptor Flight: Soar and hover up to 30 feet per round when wearing light or medium armor, bypassing ground pits and tripwires.",
+            "Stooping Dive-Talon: When attacking from higher elevation or after flying 20ft toward a foe, deal +1d6 bonus piercing damage.",
+            "Nocturnal Raptor Sight: Darkvision (90ft) and Advantage on visual Perception checks from high ground."
+        ]
+    },
+    "yuan_ti_vishkanya": {
+        "name": "Yuan-Ti / Vishkanya (Serpent-Blooded)",
+        "genre": "D&D 3.5e / 5E & Pathfinder 1E / 2E",
+        "desc": "Graceful, golden-eyed humanoids carrying ancient ophidian bloodlines, patches of diamondback scales, forked tongues, and venoms coursing through their veins.",
+        "stat_mods": {"INT": 2, "CHA": 2, "DEX": 2, "STR": -1, "CON": 0, "WIS": 0},
+        "racial_abilities": [
+            "Ophidian Magic Resistance: Gain Advantage on saving throws against all hostile spells and magical effects.",
+            "Envenomed Blood (Toxic Coating): As a free action once per encounter, coat your weapon or ammunition in your own neurotoxic blood (+1d6 poison damage & Poisoned condition on hit).",
+            "Serpent Immunity: Complete immunity to poison damage and the Poisoned status condition."
+        ]
+    },
+    "witcher_mutant_hound": {
+        "name": "Trial-Mutated Monster Slayer (Vatt'ghern)",
+        "genre": "The Witcher Series",
+        "desc": "Survivors subjected to the Cardinal System's brutal mutagenic Trial of the Grasses—cat-slit amber eyes, slowed heart-rate, heightened alchemy tolerance, and quick-cast combat Signs.",
+        "stat_mods": {"DEX": 2, "STR": 2, "CON": 2, "WIS": 1, "INT": 0, "CHA": -2},
+        "racial_abilities": [
+            "Quick-Sign Weaving (Igni / Quen / Aard): Once per encounter as a bonus action, unleash a Quick Sign—either a protective Quen Shield (absorbs 15 damage), an Igni Fire-Spray (2d6 fire cone), or an Aard Kinetic Blast (knocks foes prone).",
+            "Trial of the Grasses Metabolism: Increases maximum Golem/Bio-Graft Strain capacity by +20 and doubles the duration and healing potency of alchemical potions and rations.",
+            "Cat-Eye Medallion Sense: Darkvision (90ft), immunity to blinding flashes, and automatic vibration detection of hidden monsters, illusions, or curses within 60ft."
+        ]
+    },
+    "viera_miqote_beastkin": {
+        "name": "Viera / Cait Sith Wood-Warden (Eorzean / ALO)",
+        "genre": "Final Fantasy & SAO Alfheim",
+        "desc": "Lithe, long-eared woodland wardens and agile beast-kin rangers attuned to the Whisper of the Wood, capable of bounding across treetops and sniping with pinpoint grace.",
+        "stat_mods": {"DEX": 3, "WIS": 2, "CHA": 1, "STR": -1, "CON": 0, "INT": 0},
+        "racial_abilities": [
+            "Whisper of the Wood (Ultrasonic Hearing): Cannot be surprised in combat; grants a permanent +3 bonus to Initiative and Perception checks.",
+            "Lapine Sky-Vault: Standing high jump and long jump distances are tripled (+15ft vertical leap), ignoring ground-level brambles and difficult terrain.",
+            "White-Draws Precision: Ranged bow, crossbow, and carbine attacks ignore half-cover and deal +2 bonus damage on the first round of combat."
+        ]
+    },
+    "dunmer_ashlander": {
+        "name": "Ashen Dunmer / Eldar Star-Weaver",
+        "genre": "Elder Scrolls & Tolkien High-Fantasy",
+        "desc": "Ash-complexioned, crimson-eyed elven battle-mages forged in volcanic badlands and Centralia's ash-winds, blending dual-blade swordplay with destructive fire sorcery.",
+        "stat_mods": {"INT": 2, "DEX": 2, "WIS": 1, "CHA": 1, "STR": 0, "CON": -1},
+        "racial_abilities": [
+            "Ancestor's Wrath (Flame Cloak): Once per encounter, wreathe yourself in a swirling mantle of ancestral fire for 3 rounds—granting +2 AC and dealing 1d6 fire damage to any enemy that strikes you in melee.",
+            "Ash-Born Fire Resistance: Passive 50% damage reduction against Fire, magma, and volcanic ash hazards.",
+            "Spellsword Harmony: Wielding a one-handed blade in your main hand and a spell in your off-hand grants +1 to both melee hit rolls and spell save DCs."
+        ]
+    },
+    "skaven_ratfolk_ysoki": {
+        "name": "Ysoki / Skaven Warp-Tinker (Under-Empire Ratfolk)",
+        "genre": "Pathfinder 1E/2E & Warhammer Fantasy",
+        "desc": "Hyper-intelligent, twitchy rodent-kin engineers and tunnel-runners from the NYC Subway Undercity and Morris Canal culverts, hoarding glowing warp-aether capacitors.",
+        "stat_mods": {"DEX": 3, "INT": 3, "WIS": 0, "STR": -2, "CON": 1, "CHA": -1},
+        "racial_abilities": [
+            "Warp-Spark Overcharge: Supercharge any ranged weapon, wand, or gadget with volatile green warp-mana to deal +2d6 bonus lightning/acid damage (once per encounter).",
+            "Swarming Underfoot & Cheek Pouches: Can occupy the same tile as an ally to automatically grant Flanking (+2 to hit), and rapidly draw/consume potions or grenades as a free action.",
+            "Tunnel-Scavenger Nose: Scent-based detection of traps, black-powder, and hidden ore caches within 30 feet (+3 to Salvage and Trap checks)."
+        ]
+    },
+    "dhampir_bloodborne": {
+        "name": "Dhampir / Strigoi Scion (Night-Blooded)",
+        "genre": "D&D 5E / Pathfinder 2E / Witcher",
+        "desc": "Half-living scions of Higher Vampires who walk the twilight border between life and undeath—pale, fang-toothed predators with supernatural speed and sanguine regeneration.",
+        "stat_mods": {"DEX": 2, "CHA": 2, "CON": 2, "STR": 1, "INT": 0, "WIS": -1},
+        "racial_abilities": [
+            "Sanguine Bite & Drain: Deliver a 1d6 + CON piercing fang attack in melee; once per encounter, empower the bite to heal yourself for 100% of the damage dealt.",
+            "Vampiric Spider-Climb: Walk effortlessly across vertical stone walls and cavern ceilings at full movement speed while keeping both hands free.",
+            "Deathless Vigour: Do not need to breathe (immune to drowning and suffocation gases) and gain 50% resistance to necrotic damage."
+        ]
+    },
+    "conrasu_aeon_shard": {
+        "name": "Conrasu / Modron (Cosmic Aeon-Shard)",
+        "genre": "Pathfinder 2E & D&D Planescape",
+        "desc": "A shard of pure cosmic Law and Pleroma Aeon consciousness housed inside a geometric orb of dark iron, surrounded by an articulated exoskeleton of living wood and brass gears.",
+        "stat_mods": {"WIS": 3, "CON": 2, "INT": 2, "STR": 0, "DEX": -1, "CHA": -1},
+        "racial_abilities": [
+            "Call to Axis (Cosmic Equilibrium): Once per encounter, replace any d20 roll you just made with an automatic mathematical '12' before modifiers, enforcing absolute law over chaos.",
+            "Sunlight & Leyline Mend: Meditate for 10 minutes in sunlight or near a leyline node to restore 2d8 + Level HP to your wooden/brass frame.",
+            "Exoskeletal Carapace: Natural +2 Armor Class and complete immunity to polymorph, petrification, and reality-glitch distortion."
+        ]
+    },
+    "anadi_weaver": {
+        "name": "Anadi / Arachne (Star-Silk Shapechanger)",
+        "genre": "Pathfinder 2E & Dark Fantasy",
+        "desc": "Scholarly, peace-loving recluses and deadly ambush weavers capable of shifting between an ornate humanoid scholar and a giant iridescent star-silk spider.",
+        "stat_mods": {"DEX": 3, "INT": 2, "WIS": 1, "STR": 0, "CON": 0, "CHA": -1},
+        "racial_abilities": [
+            "Star-Silk Tether & Web-Snare: Fire a 30ft high-tensile silk line to pull yourself to high ground or restrain a target (DC 14 STR to break).",
+            "Hybrid Arachnid Stance: Shift between humanoid form (able to wield weapons normally) and eight-legged spider form (+10ft speed, climb walls, and 1d6 + 1d4 poison fang bite).",
+            "Vibration Web-Sense: Sense the exact coordinates of any creature touching the ground or walls within 30 feet."
+        ]
+    },
+    "hobgoblin_legionnaire": {
+        "name": "Hobgoblin Iron-Legionnaire",
+        "genre": "D&D 3.5e / 5E & Pathfinder 2E",
+        "desc": "Disciplined, orange-and-crimson-skinned martial tacticians organized into phalanx centuries around fortified highway redoubts and arsenal depots.",
+        "stat_mods": {"CON": 3, "STR": 2, "INT": 2, "DEX": 0, "WIS": 0, "CHA": -1},
+        "racial_abilities": [
+            "Martial Advantage (Phalanx Strike): Once per turn, deal an extra 2d6 weapon damage when you hit a creature that is within 5 feet of one of your conscious allies.",
+            "Saving Face (Iron Discipline): If you miss an attack roll or fail a saving throw, add a bonus equal to the number of allies within 30ft (up to +3).",
+            "Legionnaire Armor Drill: Ignore movement speed penalties from heavy armor and gain +1 AC when fighting alongside at least one companion."
+        ]
+    },
+    "kobold_trapwright": {
+        "name": "Kobold Dragon-Wrought Trapwright",
+        "genre": "D&D 3.5e / 5E & Pathfinder 2E",
+        "desc": "Small, horned reptilian tunnel-delvers with draconic crest-scales who worship ancient wyrms and turn narrow mine adits into lethal gauntlets of spring-loaded snares.",
+        "stat_mods": {"DEX": 4, "INT": 2, "CHA": 1, "STR": -2, "CON": 0, "WIS": 0},
+        "racial_abilities": [
+            "Pack Tactics: Gain a +2 bonus (and Advantage on critical confirmation) on attack rolls against a target if at least one of your allies is within 5 feet of the target.",
+            "Dragon-Wrought Trapmaster: Field traps, tripwires, and alchemical bombs you deploy deal +1d6 bonus damage and have +3 added to their Save DC.",
+            "Draconic Cry: Unleash a startling yip-roar as a bonus action once per encounter, granting all party members Advantage on attacks until your next turn."
+        ]
     }
 }
 

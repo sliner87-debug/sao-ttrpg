@@ -382,6 +382,41 @@ class TestV2Integration(unittest.TestCase):
         self.assertTrue(map_engine.has_cartography_skill("Cartography I", {"Cartography": {"mastery": 55}}))
         self.assertTrue(map_engine.has_cartography_skill("Cartography II", {"Cartography": {"mastery": 120}}))
 
+    def test_multi_universe_bestiary_and_races_dispersion(self):
+        """Verifies all 45 fantasy races, multi-universe bestiary entries, 58-zone dispersion, and monster grafts."""
+        import backend.character_generator as cg
+
+        # 1. Verify 45 playable & world fantasy lineages
+        self.assertGreaterEqual(len(cg.RACIAL_LINEAGES), 45)
+        for req_race in [
+            "underdark_drow", "duergar_deep_dwarf", "svirfneblin_deep_gnome",
+            "halfling_shireborn", "rock_gnome_tinker", "goliath_cragborn",
+            "firbolg_forest_keeper", "tabaxi_catfolk", "kenku_tengu",
+            "kitsune_nine_tails", "leshy_botanical_spirit", "githyanki_astral_raider",
+            "githzerai_limbo_monk", "tortle_shellback", "aarakocra_owlin",
+            "yuan_ti_vishkanya", "witcher_mutant_hound", "viera_miqote_beastkin",
+            "dunmer_ashlander", "skaven_ratfolk_ysoki", "dhampir_bloodborne",
+            "conrasu_aeon_shard", "anadi_weaver", "hobgoblin_legionnaire", "kobold_trapwright"
+        ]:
+            self.assertIn(req_race, cg.RACIAL_LINEAGES)
+
+        # 2. Verify multi-universe Bestiary search across D&D, Pathfinder, Witcher, FF, Monster Hunter, SAO
+        for universe in ["D&D", "Pathfinder", "The Witcher", "Final Fantasy", "Monster Hunter", "Sword Art Online"]:
+            matches = mechanics.search_bestiary(origin_system=universe)
+            self.assertGreaterEqual(len(matches), 1, f"Expected creatures for universe {universe}")
+
+        # 3. Verify all 58 zones in WORLD_ATLAS_ZONES have resident_races and dispersed_monsters
+        for z_id, z_data in mechanics.WORLD_ATLAS_ZONES.items():
+            self.assertTrue(len(z_data.get("resident_races", [])) >= 2, f"Zone {z_id} missing resident_races")
+            self.assertTrue(len(z_data.get("dispersed_monsters", [])) >= 1, f"Zone {z_id} missing dispersed_monsters")
+
+        # 4. Verify installing new multi-universe monster grafts (e.g. Displacer Tentacle Mantle & Beholder Ocular)
+        p = self.player
+        res1 = mechanics.install_graft(p, "displacer_tentacle_mantle", "spine")
+        self.assertTrue(res1["success"], res1.get("message"))
+        res2 = mechanics.install_graft(p, "beholder_antimagic_ocular", "ocular")
+        self.assertTrue(res2["success"], res2.get("message"))
+
 
 if __name__ == "__main__":
     unittest.main()

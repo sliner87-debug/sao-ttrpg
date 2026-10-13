@@ -2181,10 +2181,16 @@ def render_game_hud():
                     f"🧭 **Transit Estimate:** `{telemetry['distance_miles']} mi` (~`{telemetry['travel_hours']} hrs` / `{telemetry['travel_minutes']} mins`)"
                 )
                 st.write(target_z.get("lore_summary", ""))
-                if target_z.get("monsters"):
-                    st.caption(f"🐉 **Hostiles:** {', '.join(target_z['monsters'])} | 💀 **Apex Boss:** `{target_z.get('boss', 'None')}`")
+                if target_z.get("resident_races"):
+                    st.caption(f"🧬 **Resident Races & Enclaves:** {', '.join(target_z['resident_races'])}")
+                if target_z.get("monsters") or target_z.get("dispersed_monsters"):
+                    m_list = target_z.get("monsters") or target_z.get("dispersed_monsters", [])
+                    boss_str = target_z.get("boss") or target_z.get("apex_fantasy_spawn") or "None"
+                    st.caption(f"🐉 **Dispersed Hostiles:** {', '.join(m_list)} | 💀 **Apex Boss:** `{boss_str}`")
                 if target_z.get("resources"):
                     st.caption(f"💎 **Resources & Grafts:** {', '.join(target_z['resources'])}")
+                if target_z.get("signature_grafts"):
+                    st.caption(f"🦾 **Harvestable Grafts:** {', '.join(target_z['signature_grafts'])}")
                 if target_z.get("environmental_hazards"):
                     st.caption(f"⚠️ **Hazards:** {', '.join(target_z['environmental_hazards'])}")
 
@@ -2205,6 +2211,56 @@ def render_game_hud():
                     )
                     save_game(st.session_state.player, st.session_state.messages)
                     st.rerun()
+
+    # Multi-Universe Bestiary & Fantasy Race Compendium
+    with st.expander("📖 Multi-Universe Bestiary & Race Compendium", expanded=False):
+        st.caption("Browse dispersed creatures, monsters, and playable races from D&D 3.5e/5E, Pathfinder 1E/2E, The Witcher, Final Fantasy, Monster Hunter, SAO, LotR, Warhammer & Elder Scrolls.")
+        b_tab1, b_tab2 = st.tabs(["🐉 Dispersed Monsters", "🧬 45 Fantasy Races"])
+
+        with b_tab1:
+            origin_opts = [
+                "All",
+                "D&D",
+                "Pathfinder",
+                "The Witcher",
+                "Final Fantasy",
+                "Monster Hunter",
+                "Sword Art Online",
+                "Tolkien",
+                "Warhammer",
+                "Elder Scrolls",
+            ]
+            sel_origin = st.selectbox("Filter by Source Universe:", origin_opts, key="bestiary_origin_filter")
+            matched_creatures = mechanics.search_bestiary(origin_system=sel_origin)
+            if matched_creatures:
+                c_map = {f"[Lv.{c['cr_level']}] {c['name']} ({c['origin']})": c for c in matched_creatures}
+                sel_c_label = st.selectbox("Select Creature Entry:", list(c_map.keys()), key="bestiary_creature_select")
+                c_entry = c_map[sel_c_label]
+                with st.container(border=True):
+                    st.markdown(f"**{c_entry['name']}**")
+                    st.caption(f"🌌 **Origin:** `{c_entry['origin']}` | 🏷️ **Type:** `{c_entry['type']}` | ⚔️ **CR/Lv:** `{c_entry['cr_level']}` | ❤️ **HP:** `{c_entry['hp']}` | 🛡️ **AC:** `{c_entry['ac']}`")
+                    st.write(c_entry.get("lore", ""))
+                    if c_entry.get("signature_abilities"):
+                        st.markdown("**⚡ Signature Mechanics & Abilities:**")
+                        for ab in c_entry["signature_abilities"]:
+                            st.caption(f"• {ab}")
+                    if c_entry.get("habitats"):
+                        hab_names = [mechanics.WORLD_ATLAS_ZONES[h]["name"] if h in mechanics.WORLD_ATLAS_ZONES else h for h in c_entry["habitats"]]
+                        st.caption(f"🗺️ **100-Mile Habitats:** {', '.join(hab_names)}")
+                    if c_entry.get("loot_drops"):
+                        st.caption(f"💎 **Harvestable Spoils & Grafts:** {', '.join(c_entry['loot_drops'])}")
+
+        with b_tab2:
+            race_map = {f"{r_data['name']} [{r_data.get('genre', 'Fantasy')}]": r_data for r_data in character_generator.RACIAL_LINEAGES.values()}
+            sel_r_label = st.selectbox("Inspect Lineage:", list(race_map.keys()), key="bestiary_race_select")
+            r_entry = race_map[sel_r_label]
+            with st.container(border=True):
+                st.markdown(f"**{r_entry['name']}** (`{r_entry.get('genre', 'Fantasy')}`)")
+                st.write(r_entry.get("desc", ""))
+                mods_str = ", ".join([f"{k} {v:+d}" for k, v in r_entry.get("stat_mods", {}).items() if v != 0])
+                st.caption(f"📊 **Attribute Modifiers:** `{mods_str or 'Balanced (+1 All)'}`")
+                for rab in r_entry.get("racial_abilities", []):
+                    st.caption(f"• {rab}")
 
     st.divider()
     with st.expander("💻 Root Dev Console"):

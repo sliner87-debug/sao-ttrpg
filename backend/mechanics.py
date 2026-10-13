@@ -15,6 +15,13 @@ from backend.world_atlas import (
     calculate_travel_telemetry,
     format_zone_gm_briefing,
 )
+from backend.bestiary_compendium import (
+    BESTIARY_COMPENDIUM,
+    ZONE_DISPERSED_ECOLOGY,
+    get_zone_dispersed_ecology,
+    search_bestiary,
+    roll_random_zone_encounter,
+)
 
 # --- ITEM WEIGHT HEURISTICS ---
 DEFAULT_WEIGHT_MAP = {
@@ -2524,6 +2531,172 @@ CANONICAL_GRAFTS = {
         "stat_bonuses": {"STR": 1},
         "description": "Razor-honed obsidian talon sheaths anchored directly into finger phalanges.",
         "effect": "1d8 Slashing Unarmed strike with Bleed (2 bleeding dmg/turn for 3 turns)"
+    },
+    # --- Multi-Universe Bestiary Grafts (D&D, Pathfinder, Witcher, FF, Monster Hunter, SAO) ---
+    "displacer_tentacle_mantle": {
+        "key": "displacer_tentacle_mantle",
+        "name": "Displacer Tentacle Mantle",
+        "type": "biological",
+        "allowed_slots": ["spine", "torso", "dermal"],
+        "strain": 14,
+        "col_cost": 2600,
+        "stat_bonuses": {"DEX": 2},
+        "description": "Twin barbed Feywild shoulder-tentacles and light-refracting pelt nerves harvested from a D&D Displacer Beast.",
+        "effect": "Displacement Blur (-2 penalty to enemy attack rolls against you) & 10ft Barbed Tentacle Whip (2d6 piercing)"
+    },
+    "beholder_antimagic_ocular": {
+        "key": "beholder_antimagic_ocular",
+        "name": "Beholder Central Anti-Magic Ocular",
+        "type": "biological",
+        "allowed_slots": ["ocular", "head"],
+        "strain": 18,
+        "col_cost": 4500,
+        "stat_bonuses": {"INT": 2, "WIS": 2},
+        "description": "Crystalline central lens of an Underdark Eye Tyrant wired directly into the optic chiasm.",
+        "effect": "+2 INT/WIS, All-Around Vision (cannot be flanked), and 30ft Anti-Magic / Disintegration Eye-Ray (once per encounter)"
+    },
+    "illithid_psionic_tendrils": {
+        "key": "illithid_psionic_tendrils",
+        "name": "Illithid Psionic Tentacle Cortex",
+        "type": "biological",
+        "allowed_slots": ["neural", "head"],
+        "strain": 16,
+        "col_cost": 3800,
+        "stat_bonuses": {"INT": 3},
+        "description": "Psionic Mind Flayer ganglia grafted into the brainstem, enabling telepathic projection and psychic shockwaves.",
+        "effect": "+3 INT, 120ft Telepathy, and Mind Blast (15ft cone dealing 3d8 Psychic damage + Stun DC 15 once per encounter)"
+    },
+    "troll_regenerative_liver": {
+        "key": "troll_regenerative_liver",
+        "name": "Troll Regenerative Liver",
+        "type": "biological",
+        "allowed_slots": ["torso", "dermal"],
+        "strain": 15,
+        "col_cost": 2400,
+        "stat_bonuses": {"CON": 3},
+        "description": "Hyper-mitotic emerald organ from a D&D/Pathfinder Troll that continuously knits torn muscle and bone.",
+        "effect": "+3 CON; Regenerates +5 HP at the start of every combat round (suppressed for 1 round if hit by Fire or Acid)"
+    },
+    "phase_spider_spinneret": {
+        "key": "phase_spider_spinneret",
+        "name": "Phase Spider Ethereal Spinneret",
+        "type": "biological",
+        "allowed_slots": ["arm_left", "arm_right", "left_arm", "right_arm"],
+        "strain": 11,
+        "col_cost": 2100,
+        "stat_bonuses": {"DEX": 2},
+        "description": "Sub-wrist arachnid gland from an Ethereal Phase Spider that spins dimensional anchor-silk.",
+        "effect": "Ethereal Jaunt (30ft bonus-action teleport once per encounter) & Phase-Web Snare (Restrains target, DC 14)"
+    },
+    "bulette_dorsal_carapace": {
+        "key": "bulette_dorsal_carapace",
+        "name": "Bulette Dorsal Carapace",
+        "type": "biological",
+        "allowed_slots": ["dermal", "torso"],
+        "strain": 16,
+        "col_cost": 3200,
+        "stat_bonuses": {"CON": 2, "STR": 1},
+        "description": "Layered subterranean 'Landshark' armor plates grafted across the ribcage and shoulders.",
+        "effect": "+3 Natural AC, 30ft Subterranean Tremorsense, and Deadly Leap shockwave (+2d8 bludgeoning on jump attacks)"
+    },
+    "rust_monster_feeler_whip": {
+        "key": "rust_monster_feeler_whip",
+        "name": "Rust Monster Feeler Whip",
+        "type": "biological",
+        "allowed_slots": ["arm_left", "arm_right", "left_arm", "right_arm"],
+        "strain": 9,
+        "col_cost": 1650,
+        "stat_bonuses": {"DEX": 1},
+        "description": "Ferrous-oxidizing feathery antennae grafted along the forearm to corrode enemy plating on contact.",
+        "effect": "Corrosive Touch: Melee strikes corrode enemy metal armor, permanently reducing target AC by -2 (up to -4)"
+    },
+    "linnorm_curse_heart": {
+        "key": "linnorm_curse_heart",
+        "name": "Primeval Linnorm Curse-Heart",
+        "type": "biological",
+        "allowed_slots": ["torso", "spine"],
+        "strain": 18,
+        "col_cost": 4200,
+        "stat_bonuses": {"CON": 2, "STR": 2},
+        "description": "First-World draconic ventricle from a Pathfinder Crag/Tarn Linnorm pulsing with primeval vitality.",
+        "effect": "Freedom of Movement (immune to paralysis/grapple/slow) & Retributive Linnorm Curse (attackers take 2d6 elemental recoil)"
+    },
+    "leshen_ancient_heartwood": {
+        "key": "leshen_ancient_heartwood",
+        "name": "Leshen Ancient Heartwood",
+        "type": "biological",
+        "allowed_slots": ["spine", "torso"],
+        "strain": 14,
+        "col_cost": 2900,
+        "stat_bonuses": {"WIS": 2, "CON": 1},
+        "description": "Runic ironwood heart-root from a Witcher Ancient Leshen woven into the spinal column.",
+        "effect": "Root-Spike Eruption (25ft line of roots dealing 3d8 piercing + Restrained) & Woodland Crow-Step"
+    },
+    "malboro_bad_breath_gland": {
+        "key": "malboro_bad_breath_gland",
+        "name": "Malboro Bad-Breath Gland",
+        "type": "biological",
+        "allowed_slots": ["torso", "head"],
+        "strain": 13,
+        "col_cost": 2700,
+        "stat_bonuses": {"CON": 2},
+        "description": "Fetid alchemical bile-sac from a Final Fantasy Great Malboro connected to the respiratory tract.",
+        "effect": "Bad Breath (Once per encounter, exhale a 15ft Miasma Cone inflicting Poisoned, Blinded, and Confused, DC 15 CON)"
+    },
+    "tonberry_grudge_lantern": {
+        "key": "tonberry_grudge_lantern",
+        "name": "Tonberry Grudge Lantern",
+        "type": "biological",
+        "allowed_slots": ["ocular", "arm_left", "left_arm"],
+        "strain": 12,
+        "col_cost": 3100,
+        "stat_bonuses": {"WIS": 2},
+        "description": "Bioluminescent green soul-organ harvested from a Master Tonberry that stores karmic battle-malice.",
+        "effect": "Everyone's Grudge: Adds +1d8 Karmic Psychic/True damage to melee strikes and grants +2 Critical Hit threat range"
+    },
+    "zinogre_fulgur_capacitor": {
+        "key": "zinogre_fulgur_capacitor",
+        "name": "Zinogre Fulgur-Capacitor",
+        "type": "biological",
+        "allowed_slots": ["spine", "dermal", "torso"],
+        "strain": 15,
+        "col_cost": 3400,
+        "stat_bonuses": {"DEX": 2, "STR": 1},
+        "description": "Symbiotic Thunderbug chitin shell from a Monster Hunter Zinogre that supercharges nerves with blue lightning.",
+        "effect": "Thunderlord State: +15ft Movement Speed, Lightning Immunity, and +1d10 Lightning damage on all melee attacks"
+    },
+    "rathalos_flame_marrow_sac": {
+        "key": "rathalos_flame_marrow_sac",
+        "name": "Rathalos Flame-Marrow Sac",
+        "type": "biological",
+        "allowed_slots": ["torso", "spine"],
+        "strain": 14,
+        "col_cost": 3000,
+        "stat_bonuses": {"STR": 2, "CON": 1},
+        "description": "Combustible wyvern-fire organ from a Monster Hunter Rathalos ('King of the Skies').",
+        "effect": "Wyvern-Fireball Breath (30ft range, 3d8 Fire in 10ft radius) & +50% Fire Resistance"
+    },
+    "gleam_eyes_demonic_horn": {
+        "key": "gleam_eyes_demonic_horn",
+        "name": "Gleam Eyes Demonic Horn",
+        "type": "biological",
+        "allowed_slots": ["head", "neural"],
+        "strain": 17,
+        "col_cost": 4400,
+        "stat_bonuses": {"STR": 2, "CON": 2},
+        "description": "Curved azure demon-horn harvested from the SAO Floor 74 Boss 'The Gleam Eyes'.",
+        "effect": "+2 STR/CON, Intimidating Boss Aura, and Azure Demon-Flame Wave (2d10 Force/Fire ranged slash)"
+    },
+    "pneuma_filter_gill_lung": {
+        "key": "pneuma_filter_gill_lung",
+        "name": "Pneuma-Filter Gill-Lung",
+        "type": "biological",
+        "allowed_slots": ["torso", "dermal"],
+        "strain": 10,
+        "col_cost": 1750,
+        "stat_bonuses": {"CON": 2},
+        "description": "Amphibious Aboleth/Chuul gill-filament membrane that filters underwater oxygen and toxic coal-mine gases.",
+        "effect": "Amphibious Water-Breathing & complete immunity to Centralia sulfur/carbon-monoxide and inhaled gas hazards"
     }
 }
 
