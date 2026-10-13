@@ -649,6 +649,14 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     slotted_abs = mechanics.get_slotted_abilities(player_state) if hasattr(mechanics, "get_slotted_abilities") else []
     max_slots = mechanics.get_max_ability_slots(player_state) if hasattr(mechanics, "get_max_ability_slots") else 5
 
+    # Companion Stance & Progression Info
+    if hasattr(mechanics, "ensure_companion_profile"):
+        mechanics.ensure_companion_profile(player_state)
+    comp_ren = mechanics.get_companion(player_state, "Ren") if hasattr(mechanics, "get_companion") else {}
+    ren_stance_key = comp_ren.get("stance", "overwatch_hacking")
+    ren_stance_info = mechanics.COMPANION_TACTICAL_STANCES.get(ren_stance_key, mechanics.COMPANION_TACTICAL_STANCES.get("overwatch_hacking", {})) if hasattr(mechanics, "COMPANION_TACTICAL_STANCES") else {}
+    comp_action = mechanics.get_companion_combat_action(player_state, "Ren") if hasattr(mechanics, "get_companion_combat_action") else {}
+
     # Locate active entities and secrets for the Encounter Director
     entities_in_room = []
     secrets_in_room = []
@@ -692,6 +700,8 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     Grafts & Cyber-Strain: {cur_strain}/{max_strain} Strain ({rejection.get('label', 'Stable')}) | Installed: {json.dumps(player_state.get('graft_system', {}).get('installed_grafts', {}))}
     Active Slotted Abilities ({len(slotted_abs)}/{max_slots} slots): {json.dumps(slotted_abs)}
     Active Traps Deployed: {json.dumps(player_state.get('active_traps', []))}
+    Companion Party: Ren Sasaki (Level: {comp_ren.get('level', 3)} | HP: {comp_ren.get('hp', 35)}/{comp_ren.get('max_hp', 35)} | Morale: {comp_ren.get('morale', 'Steady')})
+    Active Companion Stance: {ren_stance_info.get('label', 'Overwatch Hacking')} — {ren_stance_info.get('tactical_effect', '')}
     Location: {current_location}
     GPS Coordinates: X: {map_state.get('player_x', 50)}, Y: {map_state.get('player_y', 50)}
     Equipped: {json.dumps(player_state.get('equipped', {}))}
@@ -730,19 +740,28 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     15. GOLEM-GRAFTS & ABILITY MATRIX:
         - Golem-Grafts grant powerful biomechanical bonuses (such as +2 AC from Subdermal Carapace Weave or +1 active slot from Neural Cortex) but generate Cyber-Strain. If current strain ({cur_strain}) exceeds max ({max_strain}), the player is under System Rejection (taking HP damage per turn and suffering -2 to all saves). Mention this biological recoil in the narrative!
         - Combat Subroutine Gating: Active Sword Skills, Spells, and active tactical maneuvers can ONLY be executed if loaded in 'Active Slotted Abilities': {json.dumps(slotted_abs)}. If the player attempts an unslotted technique outside a safe zone, inform them in the narrative that their system matrix did not have the combat subroutine cached in active memory!
+    16. COMPANION TACTICAL ORDERS & XP SHARING:
+        - Ren Sasaki is Banki's active companion, operating under the tactical stance: '{ren_stance_info.get('label', 'Overwatch Hacking')}'.
+        - In `combat_logs`, narrate and resolve his specific tactical contribution:
+          * Overwatch Hacking: output '[REN OVERWATCH: Scans target hitbox -> -2 AC debuff applied to Enemy]' and factor this into attack rolls against the primary foe.
+          * Suppression Fire: output '[REN SUPPRESSION: Discharges stun burst -> Enemy makes DC 13 CON save vs Staggered]'.
+          * Full Evasion / Hide: output '[REN EVASION: Takes cover behind collision meshes -> Untargetable this turn]'.
+          * Utility & Rigging: output '[REN UTILITY: Deploys field snare or patches worn gear (+15 durability restored)]'.
+        - When Banki earns XP ('xp_change'), the Cardinal System awards Ren 50% companion XP. You can also output explicit companion updates in 'companion_updates'!
     
     Format your response EXACTLY as a JSON object with FIVE keys:
     - "narrative": The markdown formatted story/dialogue. 
     - "combat_logs": A list of strings showing the exact dice math and damage for the turn. Leave empty if no combat or skill check occurred.
     - "global_news_add": A list of strings showing macro world events (e.g. continental faction movements). MUST BE POPULATED IF THE PLAYER SKIPS TIME OR SLEEPS.
     - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged man with a short beard and undercut hair, wearing a heavy black-iron chainmail hauberk and a massive synthetic dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a gaunt, exhausted young man with messy dark hair, wearing cracked glasses and a threadbare corporate hoodie, holding a glowing cyan digital clipboard.
-    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates", "graft_installs", "ability_slots". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
+    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates", "graft_installs", "ability_slots", "companion_updates". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
       Additionally, use the following complex schemas for skills, inventory, factions, and quests:
       - "inventory_add": List of dicts, e.g. [{{"name": "Rusted Iron Sword", "rarity": "Common", "durability": 45, "max_durability": 50, "qty": 1, "desc": "A chipped blade scavenged from the ruins."}}]
       - "inventory_remove": List of strings (item names to delete).
       - "durability_updates": Dict of item_name (or slot) to new durability or negative delta (e.g. {{"Fenrir's Tusk": 98, "Einherjar Rig": -2}}).
-      - "graft_installs": List of dicts, e.g. [{{"graft_key": "subdermal_carapace_weave", "slot": "integument"}}]
+      - "graft_installs": List of dicts, e.g. [{{"graft_key": "subdermal_carapace_weave", "slot": "dermal"}}]
       - "ability_slots": List of strings (technique/spell names to slot into active memory).
+      - "companion_updates": Dict of companion updates, e.g. {{"Ren": {{"xp_change": 50, "hp_change": -5, "morale": "Confident", "stance": "suppression_fire"}}}}.
       - "skill_updates": List of dicts, e.g. [{{"name": "One-Handed Swords", "mastery_change": 3, "description": "Increases accuracy and damage with short blades."}}]
       - "combat_resource_change": Integer delta to the player's archetype resource (e.g. +15 Poise on blocking a hit, +20 Heat on gadget, +15 Strain on mental spike, -25 Flux on spell).
       - "node_updates": Dict of node_name to color, e.g. {{"Washington_Borough": "red", "Oxford_Mines": "blue"}}
@@ -819,6 +838,32 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
                         if t_tx.get("log"):
                             result.setdefault("combat_logs", []).append(t_tx["log"])
 
+            # Companion XP Sharing (50% of player XP) & Direct Companion Updates
+            xp_gained = state_updates.get("xp_change")
+            if xp_gained:
+                try:
+                    xp_int = int(str(xp_gained).replace(",", "").replace(" ", ""))
+                    if xp_int > 0 and hasattr(mechanics, "award_companion_xp"):
+                        comp_xp = max(1, xp_int // 2)
+                        comp_res = mechanics.award_companion_xp(player_state, "Ren", comp_xp)
+                        if comp_res.get("log"):
+                            result.setdefault("combat_logs", []).append(comp_res["log"])
+                except (ValueError, TypeError):
+                    pass
+
+            comp_updates = state_updates.get("companion_updates")
+            if comp_updates and isinstance(comp_updates, dict):
+                for c_name, c_data in comp_updates.items():
+                    if isinstance(c_data, dict):
+                        if "xp_change" in c_data and hasattr(mechanics, "award_companion_xp"):
+                            c_xp_res = mechanics.award_companion_xp(player_state, c_name, c_data["xp_change"])
+                            if c_xp_res.get("log"):
+                                result.setdefault("combat_logs", []).append(c_xp_res["log"])
+                        if "morale" in c_data and hasattr(mechanics, "update_companion_morale"):
+                            mechanics.update_companion_morale(player_state, c_name, c_data["morale"])
+                        if "stance" in c_data and hasattr(mechanics, "set_companion_stance"):
+                            mechanics.set_companion_stance(player_state, c_name, c_data["stance"])
+
         return result
     except Exception as e:
         return {"narrative": f"**System Error:** {str(e)}", "image_prompt": ""}
@@ -885,22 +930,36 @@ def generate_idle_summary(api_key, player_state, minutes_offline):
         }
 
 def generate_companion_intent(api_key, companion_data, player_input, chat_history):
-    """Generates the autonomous intent of a companion before the main Encounter Director processes the turn."""
+    """Generates the autonomous intent of a companion grounded in their active tactical stance."""
     client = genai.Client(api_key=api_key)
 
     comp_name = companion_data.get("name", "Unknown Companion")
+    stance_key = companion_data.get("stance", "overwatch_hacking")
+    stance_info = mechanics.COMPANION_TACTICAL_STANCES.get(stance_key, mechanics.COMPANION_TACTICAL_STANCES.get("overwatch_hacking", {})) if hasattr(mechanics, "COMPANION_TACTICAL_STANCES") else {}
+    stance_label = stance_info.get("label", "Overwatch Hacking")
+    stance_effect = stance_info.get("tactical_effect", "Scans enemy geometry and debug hitboxes via terminal.")
 
     system_instruction = f"""You are {comp_name}, an autonomous companion in a grimdark "Magic-Cyber-Fantasy" LitRPG world (The Fractured Earth).
     You travel with the Player (Banki). You are NOT the Encounter Director; you are simply deciding your own reaction and action to the current situation.
     
-    YOUR CURRENT STATE:
-    {json.dumps(companion_data, indent=2)}
+    YOUR CURRENT STATE & TACTICAL DIRECTIVE:
+    - Designation: {comp_name} ({companion_data.get('title', 'Junior QA / Hacker')})
+    - Level: {companion_data.get('level', 3)} | HP: {companion_data.get('hp', 35)}/{companion_data.get('max_hp', 35)}
+    - Morale: {companion_data.get('morale', 'Steady')}
+    - MANDATORY TACTICAL STANCE ASSIGNED BY BANKI: {stance_label}
+      Tactical Objective: {stance_effect}
+    - Loadout: {json.dumps(companion_data.get('loadout', {}))}
+    - Skills & Abilities: {json.dumps(companion_data.get('abilities', []))}
     
     ROLEPLAY INSTRUCTIONS:
     1. Look at the player's current action and the recent chat history.
-    2. Determine what your character feels and what action they take.
-    3. Are you terrified? Do you lay suppressing fire? Do you hack a door? Do you cast a heal?
-    4. Keep your output to 1-2 concise sentences written in third person (e.g. "Ren flinches at the gunfire and nervously attempts to hack the nearest security drone to provide cover.")
+    2. YOUR INTENDED ACTION MUST STRICTLY ALIGN WITH YOUR ACTIVE TACTICAL ORDER ({stance_label}):
+       - If 'Overwatch Hacking': You are glued to your cracked digital slate, frantically scanning enemy collision wireframes, exploiting logic leaks, and shouting out AC weak points to Banki.
+       - If 'Suppression Fire': You grip your corporate stun pistol with white knuckles, firing non-lethal electrical EMP bursts to pin down flankers and disrupt charges.
+       - If 'Full Evasion / Hide': You dive for cover behind concrete ruins or collision meshes, staying low, avoiding line-of-sight, and warning Banki of incoming threats while staying safe.
+       - If 'Utility & Rigging': You are rapidly rigging a tripwire snare, patching Banki's worn armor seams with conductive adhesive, or frantically harvesting core components from fallen scrap.
+    3. Factor in your morale ({companion_data.get('morale', 'Steady')}) and health.
+    4. Keep your output to 1-2 concise sentences written in third person (e.g. "Ren adjusts his cracked glasses and frantically taps his slate to exploit an unpatched hitbox leak on the lead construct, shouting the vulnerability to Banki.")
     
     Do NOT resolve the outcome. Just state your intended action and emotional state.
     """

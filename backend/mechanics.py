@@ -2788,6 +2788,7 @@ def unslot_ability(player_state, ability_name):
         "message": f"Unslotted '{removed}' from Active Memory."
     }
 
+
 def is_ability_slotted(player_state, ability_name):
     """
     Verifies if a specific ability or technique is loaded in active memory.
@@ -2795,5 +2796,657 @@ def is_ability_slotted(player_state, ability_name):
     active = get_slotted_abilities(player_state)
     target = ability_name.split("(")[0].split(":")[0].strip().lower()
     return any(a.split("(")[0].split(":")[0].strip().lower() == target for a in active)
+
+
+# =====================================================================
+# 🤝 PHASE M5: AUTONOMOUS COMPANION PROGRESSION & TACTICAL ORDERS
+# =====================================================================
+
+COMPANION_TACTICAL_STANCES = {
+    "overwatch_hacking": {
+        "key": "overwatch_hacking",
+        "name": "Overwatch Hacking",
+        "label": "📡 Overwatch Hacking",
+        "icon": "📡",
+        "short_desc": "Scans enemy geometry and debug hitboxes via terminal.",
+        "tactical_effect": "Debuffs targeted enemy AC by -2 and reveals hidden vulnerabilities.",
+        "combat_log_tag": "[REN OVERWATCH]",
+        "stat_bonus": {"target_ac_mod": -2, "crit_threat_bonus": 1}
+    },
+    "suppression_fire": {
+        "key": "suppression_fire",
+        "name": "Suppression Fire",
+        "label": "⚡ Suppression Fire",
+        "icon": "⚡",
+        "short_desc": "Lays down non-lethal electrical stun bursts with corporate pistol.",
+        "tactical_effect": "Enemies rushing into melee must make a DC 13 CON save or become Staggered.",
+        "combat_log_tag": "[REN SUPPRESSION]",
+        "stat_bonus": {"disruption_dc": 13, "condition": "Staggered"}
+    },
+    "full_evasion": {
+        "key": "full_evasion",
+        "name": "Full Evasion / Hide",
+        "label": "🛡️ Full Evasion / Hide",
+        "icon": "🛡️",
+        "short_desc": "Takes complete cover behind collision meshes and debris.",
+        "tactical_effect": "Ren is immune to single-target attacks; +4 to all defensive saves.",
+        "combat_log_tag": "[REN EVASION]",
+        "stat_bonus": {"defense_save_bonus": 4, "untargetable": True}
+    },
+    "utility_rigging": {
+        "key": "utility_rigging",
+        "name": "Utility & Rigging",
+        "label": "🔧 Utility & Rigging",
+        "icon": "🔧",
+        "short_desc": "Deploys field snares, repairs gear, or harvests combat scrap.",
+        "tactical_effect": "Restores +15 gear durability to worn weapon/armor or scavenges +1 extra crafting part.",
+        "combat_log_tag": "[REN UTILITY]",
+        "stat_bonus": {"durability_patch": 15, "salvage_bonus": 1}
+    }
+}
+
+COMPANION_LEVEL_PERKS = {
+    2: {
+        "name": "Telemetry Ping v1.0",
+        "type": "Passive",
+        "desc": "+1 to Banki's attack rolls against scanned targets."
+    },
+    3: {
+        "name": "Mesh Exploitation Mastery",
+        "type": "Technique",
+        "desc": "Ren can hack local safe-zone dispensers and reveal hidden doors."
+    },
+    4: {
+        "name": "Aetheric Shield Pulse",
+        "type": "Reaction",
+        "desc": "When Banki takes lethal damage, Ren emits a kinetic pulse granting +20 temporary HP."
+    },
+    5: {
+        "name": "Overclocked Stun Burst",
+        "type": "Active",
+        "desc": "Pistol EMP charge jumps to 2 additional adjacent targets."
+    },
+    6: {
+        "name": "Geometry Desync Hack",
+        "type": "Ultimate",
+        "desc": "Freezes 1 construct's collision mesh for 1 turn, completely immobilizing it."
+    }
+}
+
+def get_default_ren_companion():
+    """
+    Returns the canonical companion profile for Ren Sasaki.
+    """
+    return {
+        "name": "Ren Sasaki",
+        "title": "Junior Environment QA / Magi-Tech Hacker",
+        "level": 3,
+        "xp": 450,
+        "next_level_xp": 900,
+        "hp": 35,
+        "max_hp": 35,
+        "stance": "overwatch_hacking",
+        "morale": "Steady",
+        "loadout": {
+            "main_hand": "Corporate Stun-Pistol (Non-Lethal EMP)",
+            "tool": "Cracked QA Slate / Mesh Terminal",
+            "deck": "Cracked QA Slate / Mesh Terminal",
+            "armor": "Threadbare Corporate Hoodie (DR 1)",
+            "chest": "Threadbare Corporate Hoodie (DR 1)"
+        },
+        "equipped": {
+            "main_hand": "Corporate Stun-Pistol (Non-Lethal EMP)",
+            "tool": "Cracked QA Slate / Mesh Terminal",
+            "deck": "Cracked QA Slate / Mesh Terminal",
+            "armor": "Threadbare Corporate Hoodie (DR 1)",
+            "chest": "Threadbare Corporate Hoodie (DR 1)"
+        },
+        "skills": {
+            "Mesh Exploitation": {
+                "mastery": 140,
+                "tier": "Journeyman",
+                "description": "Exploiting collision leaks and debug boundaries.",
+                "milestones_unlocked": ["Logic Buffer Exploit"]
+            },
+            "Stun-Pistol Marksmanship": {
+                "mastery": 45,
+                "tier": "Novice",
+                "description": "Aiming non-lethal electrical stun charges at close range.",
+                "milestones_unlocked": []
+            },
+            "Diagnostic Triage": {
+                "mastery": 60,
+                "tier": "Apprentice",
+                "description": "Rapid patching of bio-signatures and status ailments.",
+                "milestones_unlocked": ["Patch Script v1.0"]
+            }
+        },
+        "abilities": [
+            "Overwatch Weakpoint Scan (-2 Enemy AC)",
+            "Suppression Stun Burst (DC 13 CON save vs Stun)",
+            "Emergency Collision Phasing (Immune 1 turn)",
+            "Scavenge Optimization (+25% salvage yield)"
+        ]
+    }
+
+def ensure_companion_profile(player_state):
+    """
+    Guarantees that player_state has a well-formed 'companions' dictionary.
+    Initializes Ren Sasaki if missing or empty.
+    """
+    if not isinstance(player_state, dict):
+        return {}
+
+    companions = player_state.setdefault("companions", {})
+    if not isinstance(companions, dict) or not companions:
+        companions = {"Ren": get_default_ren_companion()}
+        player_state["companions"] = companions
+    elif "Ren" not in companions:
+        companions["Ren"] = get_default_ren_companion()
+
+    # Normalize Ren's fields
+    ren = companions["Ren"]
+    if not isinstance(ren, dict):
+        ren = get_default_ren_companion()
+        companions["Ren"] = ren
+
+    ren.setdefault("name", "Ren Sasaki")
+    ren.setdefault("title", "Junior Environment QA / Magi-Tech Hacker")
+    ren.setdefault("level", 3)
+    ren.setdefault("xp", 450)
+    ren.setdefault("next_level_xp", ren.get("level", 3) * 300)
+    ren.setdefault("hp", 35)
+    ren.setdefault("max_hp", 35)
+    ren.setdefault("stance", "overwatch_hacking")
+    ren.setdefault("morale", "Steady")
+    ren.setdefault("loadout", {
+        "main_hand": "Corporate Stun-Pistol (Non-Lethal EMP)",
+        "tool": "Cracked QA Slate / Mesh Terminal",
+        "deck": "Cracked QA Slate / Mesh Terminal",
+        "armor": "Threadbare Corporate Hoodie (DR 1)",
+        "chest": "Threadbare Corporate Hoodie (DR 1)"
+    })
+    ren.setdefault("equipped", ren.get("loadout", {
+        "main_hand": "Corporate Stun-Pistol (Non-Lethal EMP)",
+        "tool": "Cracked QA Slate / Mesh Terminal",
+        "deck": "Cracked QA Slate / Mesh Terminal",
+        "armor": "Threadbare Corporate Hoodie (DR 1)",
+        "chest": "Threadbare Corporate Hoodie (DR 1)"
+    }))
+    if isinstance(ren.get("equipped"), dict):
+        ren["equipped"].setdefault("deck", ren["equipped"].get("tool", "Cracked QA Slate / Mesh Terminal"))
+        ren["equipped"].setdefault("chest", ren["equipped"].get("armor", "Threadbare Corporate Hoodie (DR 1)"))
+    ren.setdefault("skills", {
+        "Mesh Exploitation": {"mastery": 140, "tier": "Journeyman", "description": "Exploiting collision leaks.", "milestones_unlocked": ["Logic Buffer Exploit"]},
+        "Stun-Pistol Marksmanship": {"mastery": 45, "tier": "Novice", "description": "Electrical stun charges.", "milestones_unlocked": []},
+        "Diagnostic Triage": {"mastery": 60, "tier": "Apprentice", "description": "Patching bio-signatures.", "milestones_unlocked": ["Patch Script v1.0"]}
+    })
+    ren.setdefault("abilities", [
+        "Overwatch Weakpoint Scan (-2 Enemy AC)",
+        "Suppression Stun Burst (DC 13 CON save vs Stun)",
+        "Emergency Collision Phasing (Immune 1 turn)",
+        "Scavenge Optimization (+25% salvage yield)"
+    ])
+
+    return companions
+
+def get_companion_stances():
+    """Returns available tactical stances for companions."""
+    return COMPANION_TACTICAL_STANCES
+
+def get_companion(player_state, companion_name="Ren"):
+    """Safely retrieves a companion profile."""
+    companions = ensure_companion_profile(player_state)
+    return companions.get(companion_name, companions.get("Ren", get_default_ren_companion()))
+
+def set_companion_stance(player_state, companion_name="Ren", stance_key=None):
+    """
+    Sets the active tactical stance for a party companion.
+    Supports either (player_state, companion_name, stance_key) or (player_state, stance_key, companion_name).
+    """
+    # Flexibly support swapped arguments
+    if stance_key is None:
+        stance_key = companion_name
+        companion_name = "Ren"
+    elif companion_name in COMPANION_TACTICAL_STANCES or any(k in str(companion_name).lower() for k in ["overwatch", "suppression", "evasion", "utility", "hacking"]):
+        companion_name, stance_key = stance_key, companion_name
+
+    companions = ensure_companion_profile(player_state)
+    comp = companions.get(companion_name)
+    if not comp:
+        # Check if companion_name was actually the stance
+        if companion_name in COMPANION_TACTICAL_STANCES:
+            comp = companions.get("Ren")
+            stance_key = companion_name
+        else:
+            return {"success": False, "message": f"Companion '{companion_name}' not found."}
+
+    norm_str = str(stance_key).strip().lower()
+    matched_key = None
+    if any(w in norm_str for w in ["overwatch", "hack", "scan"]):
+        matched_key = "overwatch_hacking"
+    elif any(w in norm_str for w in ["suppress", "stun", "burst", "pistol"]):
+        matched_key = "suppression_fire"
+    elif any(w in norm_str for w in ["evasion", "evade", "hide", "cover"]):
+        matched_key = "full_evasion"
+    elif any(w in norm_str for w in ["utility", "rig", "repair", "patch", "scavenge"]):
+        matched_key = "utility_rigging"
+
+    if not matched_key:
+        norm_clean = norm_str.replace(" ", "_").replace("-", "_")
+        for k in COMPANION_TACTICAL_STANCES:
+            if k == norm_clean or norm_clean in k or k in norm_clean:
+                matched_key = k
+                break
+
+    if not matched_key:
+        return {"success": False, "message": f"Unknown tactical stance '{stance_key}'."}
+
+    stance_def = COMPANION_TACTICAL_STANCES[matched_key]
+    comp["stance"] = matched_key
+
+    log = f"[TACTICAL DIRECTIVE: {comp['name']} transitioned to {stance_def['label']} — {stance_def['tactical_effect']}]"
+    return {
+        "success": True,
+        "companion": comp["name"],
+        "stance": matched_key,
+        "stance_info": stance_def,
+        "log": log,
+        "message": f"Commanded {comp['name']} to assume {stance_def['name']} stance."
+    }
+
+def calculate_companion_next_level_xp(level):
+    """Next level threshold formula: Level * 300."""
+    return max(1, int(level)) * 300
+
+def award_companion_xp(player_state, companion_name="Ren", xp_amount=0):
+    """
+    Awards XP to companion and triggers level-up progression if threshold reached.
+    Supports either (player_state, companion_name, xp_amount) or (player_state, xp_amount, companion_name).
+    """
+    # Flexibly support swapped arguments
+    if isinstance(companion_name, (int, float)) or (isinstance(companion_name, str) and companion_name.isdigit()):
+        companion_name, xp_amount = (xp_amount if isinstance(xp_amount, str) else "Ren"), companion_name
+
+    companions = ensure_companion_profile(player_state)
+    comp = companions.get(companion_name)
+    if not comp:
+        return {"success": False, "message": f"Companion '{companion_name}' not found."}
+
+    amt = max(0, int(xp_amount))
+    cur_xp = comp.get("xp", 0) + amt
+    comp["xp"] = cur_xp
+    cur_lvl = comp.get("level", 1)
+    req_xp = comp.get("next_level_xp", calculate_companion_next_level_xp(cur_lvl))
+
+    leveled_up = False
+    new_perks = []
+    hp_gains = 0
+
+    while cur_xp >= req_xp:
+        cur_lvl += 1
+        leveled_up = True
+        hp_gain = 8
+        hp_gains += hp_gain
+        comp["max_hp"] = comp.get("max_hp", 35) + hp_gain
+        comp["hp"] = comp["max_hp"]
+        comp["level"] = cur_lvl
+        req_xp = calculate_companion_next_level_xp(cur_lvl)
+        comp["next_level_xp"] = req_xp
+
+        # Award level perk if defined
+        if cur_lvl in COMPANION_LEVEL_PERKS:
+            perk = COMPANION_LEVEL_PERKS[cur_lvl]
+            perk_entry = f"{perk['name']} ({perk['type']}: {perk['desc']})"
+            if perk_entry not in comp.get("abilities", []):
+                comp.setdefault("abilities", []).append(perk_entry)
+                new_perks.append(perk["name"])
+
+        # Advance companion core skill masteries
+        skills = comp.setdefault("skills", {})
+        for sname, sdata in skills.items():
+            if isinstance(sdata, dict):
+                old_m = sdata.get("mastery", 1)
+                new_m = min(1000, old_m + 25)
+                sdata["mastery"] = new_m
+                sdata["tier"] = get_mastery_tier(new_m)
+
+    log = ""
+    if leveled_up:
+        log = (
+            f"[COMPANION LEVEL UP: {comp['name']} has reached Level {cur_lvl}! "
+            f"(+{hp_gains} Max HP, Now {comp['max_hp']} HP) | Unlocks: {new_perks}]"
+        )
+
+    return {
+        "success": True,
+        "companion": comp["name"],
+        "leveled_up": leveled_up,
+        "new_level": cur_lvl,
+        "current_xp": comp["xp"],
+        "next_level_xp": comp["next_level_xp"],
+        "hp_gain": hp_gains,
+        "unlocked_perks": new_perks,
+        "log": log
+    }
+
+def update_companion_morale(player_state, companion_name, morale_state):
+    """
+    Updates companion emotional state / morale ('Panicked', 'Shaken', 'Steady', 'Confident', 'Inspired').
+    """
+    valid_morales = ["Panicked", "Shaken", "Steady", "Confident", "Inspired"]
+    companions = ensure_companion_profile(player_state)
+    comp = companions.get(companion_name)
+    if not comp:
+        return {"success": False, "message": "Companion not found."}
+
+    clean_state = morale_state.strip().title()
+    if clean_state not in valid_morales:
+        clean_state = "Steady"
+
+    comp["morale"] = clean_state
+    return {"success": True, "companion": comp["name"], "morale": clean_state}
+
+def get_companion_combat_action(player_state, companion_name="Ren"):
+    """
+    Evaluates companion's active stance and generates a deterministic mechanical combat check.
+    """
+    comp = get_companion(player_state, companion_name)
+    stance_key = comp.get("stance", "overwatch_hacking")
+    stance_info = COMPANION_TACTICAL_STANCES.get(stance_key, COMPANION_TACTICAL_STANCES["overwatch_hacking"])
+
+    if stance_key == "overwatch_hacking":
+        return {
+            "stance": stance_key,
+            "target_ac_mod": -2,
+            "tag": stance_info["combat_log_tag"],
+            "log": f"{stance_info['combat_log_tag']} Scans enemy hitbox topology: -2 AC debuff applied to primary target."
+        }
+    elif stance_key == "suppression_fire":
+        return {
+            "stance": stance_key,
+            "dc": 13,
+            "condition": "Staggered",
+            "tag": stance_info["combat_log_tag"],
+            "log": f"{stance_info['combat_log_tag']} Fires non-lethal electrical stun burst! Target DC 13 CON save vs Staggered."
+        }
+    elif stance_key == "full_evasion":
+        return {
+            "stance": stance_key,
+            "untargetable": True,
+            "tag": stance_info["combat_log_tag"],
+            "log": f"{stance_info['combat_log_tag']} Ren takes cover behind collision mesh; immune to targeted single-target attacks."
+        }
+    elif stance_key == "utility_rigging":
+        # Check if Banki has worn gear
+        patched = False
+        patch_item = "Gear"
+        dur_dict = player_state.get("gear_durability", {})
+        for slot, item_data in dur_dict.items():
+            if isinstance(item_data, dict):
+                c_dur = item_data.get("current_durability", 100)
+                m_dur = item_data.get("max_durability", 100)
+                if c_dur < m_dur:
+                    item_data["current_durability"] = min(m_dur, c_dur + 15)
+                    patch_item = item_data.get("item", slot)
+                    patched = True
+                    break
+        msg = f"{stance_info['combat_log_tag']} Field patches {patch_item} (+15 durability restored)." if patched else f"{stance_info['combat_log_tag']} Scavenges +1 extra titanium scrap from combat debris."
+        return {
+            "stance": stance_key,
+            "patched": patched,
+            "tag": stance_info["combat_log_tag"],
+            "log": msg
+        }
+
+    return {"stance": "unknown", "log": "[REN: Observing situation.]"}
+
+
+# =====================================================================
+# 🏛️ WASHINGTON BOROUGH SAFE-ZONE FACILITIES & SETTLEMENT COMMERCE
+# =====================================================================
+
+WASHINGTON_FACILITIES = {
+    "iron_spoke_taphouse": {
+        "id": "iron_spoke_taphouse",
+        "name": "The Iron Spoke Taphouse",
+        "icon": "🍺",
+        "proprietor": "Torvald Iron-Vein (Deepforged Bouncer & Barkeep)",
+        "description": "A fortified roadside tavern built into the stone foundations of an abandoned rail depot. Runic heat-pipes warm the heavy timber tables where mercenaries and scavengers trade rumors.",
+        "services": [
+            {
+                "id": "stew_and_rest",
+                "name": "Hearty Marrow Stew & Roasted Grain Draught",
+                "cost_col": 150,
+                "effect": "Restores 50 HP to Banki, cleanses fatigue, restores companion morale to 'Confident' (+10% accuracy), and grants [Well-Fed] buff."
+            },
+            {
+                "id": "bounty_board",
+                "name": "Sector 1 Regional Bounty Board",
+                "cost_col": 0,
+                "effect": "Inspect available local contracts and barony bounties for Warren County."
+            }
+        ]
+    },
+    "arcane_med_bay": {
+        "id": "arcane_med_bay",
+        "name": "The Arcane Med-Bay & Bio-Clinic",
+        "icon": "🏥",
+        "proprietor": "Dr. Varek Thorne (Displaced Cyber-Physician)",
+        "description": "A sterile, pressurized field clinic humming with life-support conduits and diagnostic holograms. Specializes in emergency flesh repair and bio-mechanical graft integration.",
+        "services": [
+            {
+                "id": "bio_purification",
+                "name": "Full Bio-Purification & Flesh Trauma Suture",
+                "cost_col": 250,
+                "effect": "Completely restores HP to Max, cleanses Bleed, Poison, and Overload conditions, and stabilizes cyber-strain."
+            },
+            {
+                "id": "cyber_surgery",
+                "name": "Deepforger Artificer Surgery (Graft Installation)",
+                "cost_col": 0,
+                "effect": "Install or extract Golem-Grafts using clinical tools."
+            }
+        ]
+    },
+    "meiji_scavenger_dump": {
+        "id": "meiji_scavenger_dump",
+        "name": "The Meiji Scavenger Dump & Material Exchange",
+        "icon": "🛒",
+        "proprietor": "Kibs 'Nine-Fingers' (Goblinoid Scrap Broker)",
+        "description": "A sprawling junkyard warehouse filled with salvaged aether-tech, chassis parts, and raw crafting commodities gathered from Highway 31 and the Oxford line.",
+        "inventory": [
+            {"name": "Serrated Tripwire Coils", "cost_col": 75, "qty": 5, "desc": "Pre-coiled high-tensile monofilament wire.", "type": "crafting"},
+            {"name": "Heavy Highway Snares", "cost_col": 120, "qty": 4, "desc": "High-durability pneumatic limb-clamp snares.", "type": "crafting"},
+            {"name": "Anchors and Tension Pins", "cost_col": 50, "qty": 8, "desc": "Steel ground spikes with locking spring-pins.", "type": "crafting"},
+            {"name": "Corroded Micro-Capacitor", "cost_col": 150, "qty": 3, "desc": "High-discharge pulse capacitor salvaged from drones.", "type": "crafting"},
+            {"name": "Frayed Copper Wiring", "cost_col": 40, "qty": 10, "desc": "Standard conductive copper wiring.", "type": "crafting"},
+            {"name": "Rendered Chimera Marrow", "cost_col": 200, "qty": 2, "desc": "Potent scented tallow that lures predatory beasts.", "type": "bait"}
+        ]
+    }
+}
+
+WARREN_COUNTY_BOUNTIES = [
+    {
+        "id": "bounty_pohatcong_construct",
+        "title": "Slay the Rogue Timber-Goliath on Pohatcong Mountain",
+        "desc": "A 14-foot corrupted logging construct has gone berserk along the Pohatcong ridge trails, smashing supply wagons.",
+        "target": "Rogue Timber-Goliath (Level 3 Field Construct)",
+        "location": "Pohatcong Mountain Ridge",
+        "reward": "1,200 Col, 450 XP, Grade 2 Titanium Plating x2"
+    },
+    {
+        "id": "bounty_oxford_cables",
+        "title": "Recover Stolen Aether-Cables from Oxford Wastes",
+        "desc": "Grafted scavengers have severed the municipal power conduits leading into Oxford. Eliminate the marauder squad and secure the cables.",
+        "target": "Grafted Scavenger Pack (4x Scrappers)",
+        "location": "Oxford Mining District",
+        "reward": "850 Col, 350 XP, High-Voltage Capacitor x1"
+    },
+    {
+        "id": "bounty_roaring_rock_stalker",
+        "title": "Cull the Glitched Razor-Hound Pack in Roaring Rock",
+        "desc": "A feral pack of cyber-mutated canines has established a den near the Roaring Rock reservoir, ambushing couriers.",
+        "target": "Alpha Razor-Hound + 3 Packmates",
+        "location": "Roaring Rock Park",
+        "reward": "1,500 Col, 500 XP, Chitin Fur Mantle x1"
+    }
+]
+
+def use_taphouse_stew_and_rest(player_state):
+    """
+    Purchases the hearty stew & draught at The Iron Spoke Taphouse:
+    Restores 50 HP, restores companion morale to 'Confident', grants 'Well-Fed'.
+    Cost: 150 Col.
+    """
+    col = player_state.get("col", 0)
+    fee = 150
+    if col < fee:
+        return {"success": False, "message": f"Insufficient Col for stew and rest (Requires {fee} Col, has {col} Col)."}
+
+    player_state["col"] = col - fee
+    old_hp = player_state.get("hp", 100)
+    max_hp = player_state.get("max_hp", 100)
+    healed_hp = min(max_hp, old_hp + 50)
+    player_state["hp"] = healed_hp
+
+    # Restore Ren's morale
+    companions = ensure_companion_profile(player_state)
+    if "Ren" in companions:
+        companions["Ren"]["morale"] = "Confident"
+
+    # Add Well-Fed status
+    buffs = player_state.setdefault("active_buffs", [])
+    if "Well-Fed" not in buffs:
+        buffs.append("Well-Fed")
+
+    log = f"[TAPHOUSE REST: Drank roasted grain draught and ate warm marrow stew. Healed to {healed_hp}/{max_hp} HP | Ren Morale: Confident | Fee: 150 Col]"
+    return {
+        "success": True,
+        "hp_healed": healed_hp - old_hp,
+        "current_hp": healed_hp,
+        "max_hp": max_hp,
+        "companion_morale": "Confident",
+        "fee": fee,
+        "log": log,
+        "message": "Ate hearty marrow stew and rested by the hearth."
+    }
+
+def use_med_bay_purification(player_state):
+    """
+    Purchases full bio-purification and flesh suture at Dr. Thorne's Arcane Med-Bay:
+    Restores HP to full, clears conditions. Cost: 250 Col.
+    """
+    col = player_state.get("col", 0)
+    fee = 250
+    if col < fee:
+        return {"success": False, "message": f"Insufficient Col for clinical treatment (Requires {fee} Col, has {col} Col)."}
+
+    player_state["col"] = col - fee
+    max_hp = player_state.get("max_hp", 100)
+    player_state["hp"] = max_hp
+
+    # Clear negative status ailments
+    player_state["conditions"] = []
+    player_state["active_buffs"] = [b for b in player_state.get("active_buffs", []) if "Poison" not in b and "Bleed" not in b]
+
+    log = f"[MED-BAY SUTURE: Dr. Thorne cleansed cellular trauma and stabilized vitals. HP fully restored ({max_hp}/{max_hp} HP) | Fee: 250 Col]"
+    return {
+        "success": True,
+        "current_hp": max_hp,
+        "max_hp": max_hp,
+        "fee": fee,
+        "log": log,
+        "message": "Underwent bio-purification. Health fully restored."
+    }
+
+def buy_scavenger_material(player_state, item_name, qty=1):
+    """
+    Purchases raw crafting materials or bait from The Meiji Scavenger Dump.
+    """
+    mat_def = None
+    for item in WASHINGTON_FACILITIES["meiji_scavenger_dump"]["inventory"]:
+        if item["name"].lower() == item_name.lower():
+            mat_def = item
+            break
+
+    if not mat_def:
+        return {"success": False, "message": f"Item '{item_name}' is not in stock at the Scavenger Dump."}
+
+    qty = max(1, int(qty))
+    total_cost = mat_def["cost_col"] * qty
+    col = player_state.get("col", 0)
+    if col < total_cost:
+        return {"success": False, "message": f"Insufficient Col to buy {qty}x {mat_def['name']} (Requires {total_cost:,} Col, has {col:,} Col)."}
+
+    player_state["col"] = col - total_cost
+
+    # Add to player inventory
+    inv = player_state.setdefault("inventory", [])
+    found = False
+    for existing in inv:
+        if isinstance(existing, dict) and existing.get("name", "").lower() == mat_def["name"].lower():
+            existing["qty"] = existing.get("qty", 1) + qty
+            found = True
+            break
+        elif isinstance(existing, str) and mat_def["name"].lower() in existing.lower():
+            pass
+
+    if not found:
+        inv.append({
+            "name": mat_def["name"],
+            "rarity": "Common",
+            "durability": 100,
+            "max_durability": 100,
+            "qty": qty,
+            "desc": mat_def["desc"]
+        })
+
+    log = f"[TRADE: Purchased {qty}x {mat_def['name']} for {total_cost:,} Col from Kibs' Scavenger Dump.]"
+    return {
+        "success": True,
+        "item": mat_def["name"],
+        "qty": qty,
+        "total_cost": total_cost,
+        "log": log,
+        "message": f"Purchased {qty}x {mat_def['name']}."
+    }
+
+def accept_bounty_directive(player_state, bounty_id):
+    """
+    Accepts a bounty directive from the Warren County Bounty Board and adds it to active quests.
+    """
+    bounty_def = None
+    for b in WARREN_COUNTY_BOUNTIES:
+        if b["id"] == bounty_id or b["title"].lower() == bounty_id.lower():
+            bounty_def = b
+            break
+
+    if not bounty_def:
+        return {"success": False, "message": f"Bounty '{bounty_id}' not found on the board."}
+
+    quests = player_state.setdefault("quests", [])
+    for q in quests:
+        q_title = q.get("title", "") if isinstance(q, dict) else str(q)
+        if q_title.lower() == bounty_def["title"].lower():
+            return {"success": False, "message": f"Bounty '{bounty_def['title']}' is already active in your directives."}
+
+    quests.append({
+        "id": bounty_def["id"],
+        "title": bounty_def["title"],
+        "desc": bounty_def["desc"],
+        "target": bounty_def["target"],
+        "location": bounty_def["location"],
+        "reward": bounty_def["reward"]
+    })
+
+    log = f"[DIRECTIVE ACCEPTED: Added '{bounty_def['title']}' to Active Quests! Reward: {bounty_def['reward']}]"
+    return {
+        "success": True,
+        "bounty": bounty_def,
+        "log": log,
+        "message": f"Accepted bounty: {bounty_def['title']}"
+    }
+
 
 

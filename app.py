@@ -251,16 +251,19 @@ p.setdefault("gear_durability", {
     "off_hand": {"cur": 200, "max": 200},
     "accessory": {"cur": 50, "max": 50}
 })
-p.setdefault("companions", {
-    "Ren": {
-        "name": "Ren",
-        "archetype": "Corporate Hacker / Magi-tech Support",
-        "hp": 40,
-        "max_hp": 40,
-        "status": "Exhausted but loyal",
-        "inventory": ["Cyan Digital Clipboard (Hacking Deck)", "Corporate Stun-Pistol"]
-    }
-})
+if hasattr(mechanics, "ensure_companion_profile"):
+    mechanics.ensure_companion_profile(p)
+else:
+    p.setdefault("companions", {
+        "Ren": {
+            "name": "Ren",
+            "archetype": "Corporate Hacker / Magi-tech Support",
+            "hp": 40,
+            "max_hp": 40,
+            "status": "Exhausted but loyal",
+            "inventory": ["Cyan Digital Clipboard (Hacking Deck)", "Corporate Stun-Pistol"]
+        }
+    })
 
 if "messages" not in st.session_state:
     if saved_data:
@@ -1191,6 +1194,94 @@ with st.sidebar:
                     st.caption(f"Durability: {item.get('durability', 0)}/{item.get('max_durability', 0)} | {item.get('desc', '')}")
                 else:
                     st.write(f"- {item}")
+
+        # 🤝 Party & Companion HUD Expander
+        comp_profile = mechanics.get_companion(player, "Ren") if hasattr(mechanics, "get_companion") else player.get("companions", {}).get("Ren", {})
+        c_name = comp_profile.get("name", "Ren Sasaki")
+        c_lvl = comp_profile.get("level", 3)
+        c_class = comp_profile.get("class", comp_profile.get("title", "Cyber-Infiltrator & Support Hacker"))
+        c_hp = comp_profile.get("hp", 35)
+        c_max_hp = comp_profile.get("max_hp", 35)
+        c_xp = comp_profile.get("xp", 450)
+        c_next_xp = comp_profile.get("next_level_xp", c_lvl * 300)
+        c_morale = comp_profile.get("morale", "Steady")
+        c_stance = comp_profile.get("stance", "overwatch_hacking")
+
+        with st.expander(f"🤝 Party & Companion: {c_name} [Lv. {c_lvl}]", expanded=False):
+            st.markdown(f"#### 👤 {c_name} `[Lv. {c_lvl} {c_class}]`")
+            
+            # Morale badge with color
+            morale_badges = {
+                "Panicked": "🔴 **Panicked** (-20% accuracy, prone to flee)",
+                "Shaken": "🟡 **Shaken** (-10% accuracy)",
+                "Steady": "⚪ **Steady** (Normal operational baseline)",
+                "Confident": "🟢 **Confident** (+10% accuracy, +1 tactical DC)",
+                "Inspired": "🟣 **Inspired** (+20% accuracy, double tactical perks)"
+            }
+            st.markdown(f"**Morale:** {morale_badges.get(c_morale, f'⚪ **{c_morale}**')}")
+
+            # Vitals Progress Bar
+            hp_pct = min(1.0, max(0.0, c_hp / c_max_hp)) if c_max_hp > 0 else 0.0
+            st.markdown(f"**Vitals:** `{c_hp} / {c_max_hp} HP`")
+            st.progress(hp_pct, text=f"Companion HP: {c_hp} / {c_max_hp}")
+
+            # XP Progress Bar
+            xp_pct = min(1.0, max(0.0, c_xp / c_next_xp)) if c_next_xp > 0 else 0.0
+            st.markdown(f"**Progression:** `{c_xp} / {c_next_xp} XP` *(Shares 50% of Combat XP)*")
+            st.progress(xp_pct, text=f"Companion XP: {c_xp} / {c_next_xp} to Level {c_lvl + 1}")
+
+            st.divider()
+            st.markdown("##### 🎯 Tactical Stance Directive")
+            
+            stance_labels = {
+                "overwatch_hacking": "📡 Overwatch Hacking (-2 Target AC)",
+                "suppression_fire": "⚡ Suppression Fire (DC 13 Stagger)",
+                "full_evasion": "🛡️ Full Evasion (Untargetable Cover)",
+                "utility_rigging": "🔧 Utility & Rigging (+15 Durability / Scrap)"
+            }
+            
+            stance_keys = list(mechanics.COMPANION_TACTICAL_STANCES.keys()) if hasattr(mechanics, "COMPANION_TACTICAL_STANCES") else ["overwatch_hacking", "suppression_fire", "full_evasion", "utility_rigging"]
+            current_stance_idx = stance_keys.index(c_stance) if c_stance in stance_keys else 0
+
+            new_stance = st.selectbox(
+                "Active Tactical Stance:",
+                options=stance_keys,
+                index=current_stance_idx,
+                format_func=lambda k: stance_labels.get(k, k),
+                key="sb_companion_stance_select"
+            )
+
+            if new_stance != c_stance:
+                if hasattr(mechanics, "set_companion_stance"):
+                    mechanics.set_companion_stance(player, "Ren", new_stance)
+                    save_game(player, st.session_state.messages)
+                    st.toast(f"Ren's tactical stance switched to: {stance_labels.get(new_stance, new_stance)}", icon="🎯")
+                    st.rerun()
+
+            stance_details = mechanics.COMPANION_TACTICAL_STANCES.get(c_stance, {}) if hasattr(mechanics, "COMPANION_TACTICAL_STANCES") else {}
+            if stance_details:
+                st.caption(f"↳ **Tactical Effect:** {stance_details.get('tactical_effect', '')}")
+                st.caption(f"↳ **Protocol:** {stance_details.get('short_desc', '')}")
+
+            st.divider()
+            st.markdown("##### 🎒 Loadout & Equipment")
+            equipped = comp_profile.get("equipped", comp_profile.get("loadout", {}))
+            st.write(f"- **Main Hand:** {equipped.get('main_hand', 'None')}")
+            st.write(f"- **Rig / Armor:** {equipped.get('armor', equipped.get('chest', 'None'))}")
+            st.write(f"- **Deck / Tool:** {equipped.get('deck', equipped.get('tool', 'None'))}")
+
+            abilities = comp_profile.get("abilities", [])
+            if abilities:
+                st.markdown("##### 💡 Tactical Perks & Protocols")
+                for ab in abilities:
+                    st.markdown(f"- 🔹 {ab}")
+
+            skills = comp_profile.get("skills", {})
+            if skills:
+                st.markdown("##### 📈 Companion Masteries")
+                for sk_name, sk_data in skills.items():
+                    if isinstance(sk_data, dict):
+                        st.caption(f"• **{sk_name}:** {sk_data.get('mastery', 1)}/1000 `[{sk_data.get('tier', 'Novice')}]`")
                 
         with st.expander("🪤 Field Prep & Tactical Trap-Rigging", expanded=False):
             st.write("Deploy specialized combat snares, tripwires, and scent corridors using scavenged materials and your **Field Trapping** mastery.")
@@ -1227,6 +1318,106 @@ with st.sidebar:
                     else:
                         st.caption(f"🔒 *{msg}*")
                     st.markdown("---")
+
+        # 🏛️ Safe-Zone Settlement: Washington Borough
+        loc_str = str(player.get("location", "")).lower()
+        is_safe_zone = any(w in loc_str for w in ["borough", "safe", "town", "taphouse", "anvil", "haven", "outpost", "clinic", "washington"])
+        if is_safe_zone and hasattr(mechanics, "WASHINGTON_FACILITIES"):
+            with st.expander("🏛️ Safe-Zone Settlement: Washington Borough", expanded=True):
+                st.caption("📍 *You are currently within the fortified perimeter of Washington Borough Safe-Zone. Weapon locks active; civilian and mercantile trade permitted.*")
+                
+                tab_taphouse, tab_medbay, tab_dump, tab_bounties = st.tabs([
+                    "🍺 Iron Spoke", 
+                    "🏥 Arcane Med-Bay", 
+                    "🛒 Scavenger Dump", 
+                    "📜 Bounty Board"
+                ])
+                
+                with tab_taphouse:
+                    tf = mechanics.WASHINGTON_FACILITIES.get("iron_spoke_taphouse", {})
+                    st.markdown(f"#### {tf.get('name', 'The Iron Spoke Taphouse')}")
+                    st.caption(f"**Proprietor:** {tf.get('proprietor', 'Torvald Iron-Vein')}")
+                    st.write(tf.get("description", ""))
+                    st.info("🍲 **Specialty:** Hearty Marrow Stew & Roasted Grain Draught (150 Col)\n\n*Heals +50 HP to Banki, cleanses fatigue, restores Ren's morale to Confident (+10% accuracy), and grants the [Well-Fed] buff.*")
+                    
+                    if st.button("Order Stew & Rest (150 Col)", key="btn_taphouse_rest", use_container_width=True):
+                        res_tap = mechanics.use_taphouse_stew_and_rest(player)
+                        if res_tap["success"]:
+                            save_game(player, st.session_state.messages)
+                            st.toast(res_tap["message"], icon="🍲")
+                            st.success(res_tap["log"])
+                            st.rerun()
+                        else:
+                            st.error(res_tap["message"])
+
+                with tab_medbay:
+                    mb = mechanics.WASHINGTON_FACILITIES.get("arcane_med_bay", {})
+                    st.markdown(f"#### {mb.get('name', 'The Arcane Med-Bay')}")
+                    st.caption(f"**Chief Surgeon:** {mb.get('proprietor', 'Dr. Varek Thorne')}")
+                    st.write(mb.get("description", ""))
+                    st.info("💉 **Bio-Purification & Flesh Trauma Suture** (250 Col)\n\n*Fully restores HP to maximum, removes Bleed/Poison conditions, and stabilizes cyber-strain.*")
+                    
+                    if st.button("Undergo Bio-Purification (250 Col)", key="btn_medbay_heal", use_container_width=True):
+                        res_med = mechanics.use_med_bay_purification(player)
+                        if res_med["success"]:
+                            save_game(player, st.session_state.messages)
+                            st.toast(res_med["message"], icon="🏥")
+                            st.success(res_med["log"])
+                            st.rerun()
+                        else:
+                            st.error(res_med["message"])
+                    st.caption("ℹ️ *For Golem-Graft surgical installation, access the Golem-Graft Biomechanical Augmentation clinic above.*")
+
+                with tab_dump:
+                    kd = mechanics.WASHINGTON_FACILITIES.get("meiji_scavenger_dump", {})
+                    st.markdown(f"#### {kd.get('name', 'The Meiji Scavenger Dump')}")
+                    st.caption(f"**Scrap Broker:** {kd.get('proprietor', 'Kibs Nine-Fingers')}")
+                    st.write(kd.get("description", ""))
+                    st.markdown(f"**Available Col:** `{player.get('col', 0):,} Col`")
+                    
+                    inv_items = kd.get("inventory", [])
+                    for idx, item in enumerate(inv_items):
+                        col_i1, col_i2 = st.columns([3, 1])
+                        col_i1.markdown(f"🔹 **{item['name']}** — `{item['cost_col']} Col`")
+                        col_i1.caption(f"{item['desc']}")
+                        if col_i2.button(f"Buy 1x", key=f"btn_buy_dump_{idx}"):
+                            res_buy = mechanics.buy_scavenger_material(player, item["name"], qty=1)
+                            if res_buy["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.toast(res_buy["message"], icon="🛒")
+                                st.success(res_buy["log"])
+                                st.rerun()
+                            else:
+                                st.error(res_buy["message"])
+                        st.divider()
+
+                with tab_bounties:
+                    st.markdown("#### 📜 Warren County Regional Bounty Board")
+                    st.caption("Official emergency contracts posted by the Washington Settlement Council and regional traders.")
+                    
+                    bounties = mechanics.WARREN_COUNTY_BOUNTIES if hasattr(mechanics, "WARREN_COUNTY_BOUNTIES") else []
+                    active_q_titles = [q.get("title", "") if isinstance(q, dict) else str(q) for q in player.get("quests", [])]
+                    
+                    for b_idx, b_info in enumerate(bounties):
+                        st.markdown(f"##### 🎯 {b_info['title']}")
+                        st.caption(f"**Target:** {b_info['target']} | **Location:** {b_info['location']}")
+                        st.write(b_info['desc'])
+                        st.markdown(f"🎁 **Reward:** `{b_info['reward']}`")
+                        
+                        is_active = any(b_info['title'].lower() in at.lower() for at in active_q_titles)
+                        if is_active:
+                            st.success("✅ **Directive Active in Quest Log**")
+                        else:
+                            if st.button(f"Accept Contract: {b_info['title']}", key=f"btn_accept_bounty_{b_idx}"):
+                                res_b = mechanics.accept_bounty_directive(player, b_info["id"])
+                                if res_b["success"]:
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(f"Accepted {b_info['title']}!", icon="📜")
+                                    st.success(res_b["log"])
+                                    st.rerun()
+                                else:
+                                    st.error(res_b["message"])
+                        st.divider()
 
         with st.expander("📜 Active Quests & Bounties", expanded=True):
             if not player.get("quests"):
@@ -1794,6 +1985,14 @@ if prompt := (dev_prompt or chat_prompt):
                             st.session_state.player["xp"] += clean_xp
                             st.toast(f"✨ Gained {clean_xp} XP!")
                             
+                            # Companion 50% XP Sharing
+                            if hasattr(mechanics, "award_companion_xp"):
+                                comp_xp = max(1, clean_xp // 2)
+                                comp_res = mechanics.award_companion_xp(st.session_state.player, "Ren", comp_xp)
+                                if comp_res.get("leveled_up"):
+                                    st.balloons()
+                                    st.success(f"🤝 **COMPANION LEVEL UP!** Ren Sasaki reached Level {comp_res['new_level']}! (+{comp_res['hp_gain']} Max HP, Perks: {', '.join(comp_res.get('unlocked_perks', []))})")
+
                             # Level up loop (Archetype Scaling + Free Attribute Points)
                             while st.session_state.player["xp"] >= st.session_state.player["level"] * 1000:
                                 st.session_state.player["xp"] -= st.session_state.player["level"] * 1000
@@ -1883,6 +2082,35 @@ if prompt := (dev_prompt or chat_prompt):
                     for ab in ability_slots:
                         if hasattr(mechanics, "slot_ability"):
                             mechanics.slot_ability(st.session_state.player, str(ab))
+
+                # Companion Tactical & State Updates
+                comp_updates = state_updates.get("companion_updates")
+                if isinstance(comp_updates, dict):
+                    for c_name, c_data in comp_updates.items():
+                        if isinstance(c_data, dict):
+                            if hasattr(mechanics, "ensure_companion_profile"):
+                                mechanics.ensure_companion_profile(st.session_state.player)
+                            if "stance" in c_data and hasattr(mechanics, "set_companion_stance"):
+                                mechanics.set_companion_stance(st.session_state.player, c_name, c_data["stance"])
+                            if "morale" in c_data and hasattr(mechanics, "update_companion_morale"):
+                                mechanics.update_companion_morale(st.session_state.player, c_name, c_data["morale"])
+                            if "xp_change" in c_data and hasattr(mechanics, "award_companion_xp"):
+                                try:
+                                    cxp_direct = int(str(c_data["xp_change"]).replace(",", "").replace(" ", ""))
+                                    if cxp_direct > 0:
+                                        c_res = mechanics.award_companion_xp(st.session_state.player, c_name, cxp_direct)
+                                        if c_res.get("leveled_up"):
+                                            st.balloons()
+                                            st.success(f"🤝 **COMPANION LEVEL UP!** {c_name} reached Level {c_res['new_level']}! (+{c_res['hp_gain']} Max HP)")
+                                except (ValueError, TypeError):
+                                    pass
+                            if "hp_change" in c_data and hasattr(mechanics, "get_companion"):
+                                c_obj = mechanics.get_companion(st.session_state.player, c_name)
+                                try:
+                                    chp_delta = int(str(c_data["hp_change"]).replace(",", "").replace(" ", ""))
+                                    c_obj["hp"] = max(0, min(c_obj.get("max_hp", 35), c_obj.get("hp", 35) + chp_delta))
+                                except (ValueError, TypeError):
+                                    pass
                             
                 # Handle Skill Mastery updates with Milestone Auto-Unlocker
                 skill_updates = state_updates.get("skill_updates") or []
