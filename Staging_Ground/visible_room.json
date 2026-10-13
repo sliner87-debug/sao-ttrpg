@@ -1,22 +1,21 @@
 {
-    "turn_number": 19,
+    "turn_number": 43,
     "environment": {
-        "location": "Oxford Mine Adits - Lower Collapse Zone",
-        "description": "Splintered oak supports creak under immense weight. Geothermal steam hisses from floor fissures, shrouding the corridor in scalding vapor.",
+        "location": "Doc Mercer's Underground Clinic (Washington Borough Catacombs)",
+        "description": "Ancient vaulted stone catacombs beneath Washington Avenue. Flickering cerulean mana-lamps illuminate brass steam pistons, marrow-siphoning conduits, and clean surgical dissection tables.",
         "environmental_effects": [
-            "Dim Light",
-            "Superheated Steam Venting"
+            "Safe-Zone Sanctuary Wards",
+            "Sterile Ether Atmosphere"
         ]
     },
     "entities": [
         {
-            "id": "enemy_01",
-            "name": "Silt-Marrow the Unhewn",
-            "type": "hostile",
+            "id": "npc_doc_mercer",
+            "name": "Doc Mercer",
+            "type": "neutral",
             "status": [
-                "Critically Compromised",
-                "Exposed Core",
-                "Shattered Lumbar"
+                "Attentive",
+                "Preparing Surgical Tools"
             ]
         }
     ]

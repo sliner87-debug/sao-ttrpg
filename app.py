@@ -1715,7 +1715,7 @@ def render_game_hud():
                             import backend.persona_engine as persona_engine
                             
                             # 1. Staging ground
-                            visible_room = gm_engine.generate_visible_state(api_key=api_key)
+                            visible_room = gm_engine.generate_visible_state(api_key=api_key, player_state=st.session_state.player)
                             
                             # 2. All Room SubAgents Act Autonomously (Companions, Monsters, NPCs)
                             subagent_actions = persona_engine.run_all_room_subagents(api_key=api_key, visible_room=visible_room)
@@ -1755,11 +1755,25 @@ def render_game_hud():
                                 
                             apply_player_state_updates(state_updates)
                             apply_companion_state_updates(hp_changes)
+
+                            # 4. Generate scene image matching Main branch styling
+                            image_data = None
+                            image_prompt = turn_data.get("image_prompt", "")
+                            if image_prompt:
+                                try:
+                                    img_bytes, img_err = gm_engine.generate_scene_image(api_key=api_key, prompt=image_prompt)
+                                    if img_bytes:
+                                        b64_img = base64.b64encode(img_bytes).decode("utf-8")
+                                        image_data = f"data:image/png;base64,{b64_img}"
+                                except Exception as e:
+                                    print(f"[VOICE IMAGE ERROR] {e}", flush=True)
+
                             st.session_state.messages.append({
                                 "role": "assistant", 
                                 "content": narrative,
                                 "mechanics_log": mechanics_log,
-                                "subagent_log": subagent_log
+                                "subagent_log": subagent_log,
+                                "image_data": image_data
                             })
                         else:
                             st.session_state.messages.append({"role": "system", "content": f"**[LIVE COMPANION LOG]**\n\n{result_text}"})
@@ -1838,15 +1852,21 @@ def render_game_hud():
             c_hub1, c_hub2 = st.columns(2)
             with c_hub1:
                 if st.button("🛏️ Safe-Zone Rest (24h)", use_container_width=True, help="Full HP recovery & triggers living world simulation."):
+                    st.session_state.player["location"] = "Sector 1 Safe-Zone: Washington Borough, NJ"
                     st.session_state.pending_dev_command = "I take a full 24-hour long rest in the Washington Borough sanctuary to recover our wounds and hear the latest regional news."
+                    save_game(st.session_state.player, st.session_state.messages)
                     st.rerun()
                 if st.button("🏥 Visit Doc Mercer", use_container_width=True, help="Visit the subterranean clinic for graft consultation & surgery."):
+                    st.session_state.player["location"] = "Doc Mercer's Underground Clinic (Washington Borough Catacombs)"
                     st.session_state.pending_dev_command = "I head down into the ancient vaulted catacombs beneath Washington Avenue to consult with Doc Mercer at his flesh-weaving and graft clinic."
+                    save_game(st.session_state.player, st.session_state.messages)
                     st.rerun()
 
             with c_hub2:
                 if st.button("🪙 Quartermaster Vane", use_container_width=True, help="Trade supplies and review Warren County Barony bounties."):
+                    st.session_state.player["location"] = "Washington Borough - Quartermaster Vane's Logistics Depot"
                     st.session_state.pending_dev_command = "I report to Quartermaster Vane at the Warren County logistics depot to trade salvage and review active bounties."
+                    save_game(st.session_state.player, st.session_state.messages)
                     st.rerun()
                 if st.button("⛏️ Travel to Oxford Mines", use_container_width=True, help="Depart the safe zone toward Oxford Adits (X:53, Y:48)."):
                     st.session_state.pending_dev_command = "I gear up with Ren and travel southeast along the ridge toward the Oxford Mining District."
@@ -1861,14 +1881,18 @@ def render_game_hud():
                 sel_graft = st.selectbox("Select Component to Graft:", graft_candidates, key="hub_graft_candidate_select")
                 sel_slot = st.selectbox("Target Anatomical Slot:", ["Spine", "Torso", "Left Arm", "Right Arm", "Legs", "Head"], key="hub_graft_slot_select")
                 if st.button(f"🦾 Pay Doc Mercer (35 Col) to Install [{sel_graft}] into [{sel_slot}]", use_container_width=True):
+                    st.session_state.player["location"] = "Doc Mercer's Underground Clinic (Washington Borough Catacombs)"
                     st.session_state.pending_dev_command = f"I pay Doc Mercer 35 Col to surgically install [{sel_graft}] into my [{sel_slot.lower().replace(' ', '_')}]. Check my strain limit and begin the operation."
+                    save_game(st.session_state.player, st.session_state.messages)
                     st.rerun()
 
         else:
             st.warning(f"📍 **Hostile Territory:** {curr_loc or 'Wilderness'}")
             st.caption("Active threat zone. Keep your weapon ready.")
             if st.button("🏛️ Return to Washington Safe-Zone", use_container_width=True, help="Navigate back to Washington Borough Safe-Zone (X:50, Y:50)."):
+                st.session_state.player["location"] = "Sector 1 Safe-Zone: Washington Borough, NJ"
                 st.session_state.pending_dev_command = "We fall back from the hazard zone and take the cleared trail back to the Washington Borough Safe-Zone."
+                save_game(st.session_state.player, st.session_state.messages)
                 st.rerun()
 
     st.divider()
@@ -2139,7 +2163,7 @@ if prompt := (dev_prompt or chat_prompt):
             import backend.persona_engine as persona_engine
             
             # a. Generate the Staging Ground (Visible Room)
-            visible_room = gm_engine.generate_visible_state(api_key=api_key)
+            visible_room = gm_engine.generate_visible_state(api_key=api_key, player_state=st.session_state.player)
             
             # b. All Room SubAgents Act Autonomously (Companions, Monsters, NPCs)
             subagent_actions = persona_engine.run_all_room_subagents(api_key=api_key, visible_room=visible_room)
@@ -2171,8 +2195,8 @@ if prompt := (dev_prompt or chat_prompt):
             # Synchronize Companion HP (e.g. Ren) across party sheet and HUD
             apply_companion_state_updates(hp_changes)
                 
-            # Fallback for old variables
-            image_prompt = "" 
+            # Extract image prompt from TurnResolutionSchema
+            image_prompt = turn_data.get("image_prompt", "") 
             
             # Living World Continental News Wire Updates (Milestone 1)
             news_add = turn_data.get("global_news_add", [])
@@ -2341,7 +2365,20 @@ if prompt := (dev_prompt or chat_prompt):
                 with st.expander("🧠 SubAgent Thoughts & Planned Actions (Click to open/close)", expanded=False):
                     st.markdown(subagent_log)
             
+            # 2. Generate Scene Image matching Main Branch styling and character canons
             image_data = None
+            if image_prompt:
+                try:
+                    with st.spinner("Rendering scene illustration..."):
+                        image_bytes, img_error = gm_engine.generate_scene_image(api_key, image_prompt)
+                        if image_bytes:
+                            b64_img = base64.b64encode(image_bytes).decode("utf-8")
+                            image_data = f"data:image/png;base64,{b64_img}"
+                            st.image(image_data, use_container_width=True)
+                        elif img_error:
+                            narrative += f"\n\n*(System Note: Image Generation Failed - {img_error})*"
+                except Exception as e:
+                    narrative += f"\n\n*(System Note: Image Generation Exception - {e})*"
             
     new_msg = {
         "role": "assistant", 

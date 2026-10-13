@@ -5,11 +5,17 @@ from google.genai import types
 from backend.schemas import VisibleRoomSchema, TurnResolutionSchema
 
 def load_json(filepath):
-    with open(filepath, "r") as f:
-        return json.load(f)
+    if os.path.exists(filepath):
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None
+    return None
 
 def save_json(filepath, data):
-    with open(filepath, "w") as f:
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
 
 def generate_visible_state(api_key: str = None, player_state: dict = None, world_state: dict = None):
@@ -35,11 +41,103 @@ def generate_visible_state(api_key: str = None, player_state: dict = None, world
             "entities": world_state.get("entities", [])
         }
 
-    client = genai.Client(api_key=api_key)
     master_state_path = os.path.join(".game_state", "secret_master_state.json")
     visible_room_path = os.path.join("Staging_Ground", "visible_room.json")
     master_state = load_json(master_state_path)
-    
+    if not master_state:
+        master_state = {
+            "campaign_name": "SAO_Sandbox",
+            "turn_number": 1,
+            "environment": {
+                "location": "Sector 1 Safe-Zone: Washington Borough, NJ",
+                "description": "A fortified civilian sanctuary shielded by ancient runic barrier wards.",
+                "hidden_traps": [],
+                "environmental_effects": ["Safe-Zone Sanctuary Wards"]
+            },
+            "entities": [],
+            "players": ["player", "companion_ren"]
+        }
+
+    # If player_state not provided, attempt reading from save_game.json to ensure sync
+    if player_state is None:
+        save_path = "save_game.json"
+        if os.path.exists(save_path):
+            try:
+                s_data = load_json(save_path)
+                if s_data and isinstance(s_data, dict) and "player" in s_data:
+                    player_state = s_data["player"]
+            except Exception:
+                pass
+
+    # Synchronize player location and environment integrity
+    if player_state and isinstance(player_state, dict):
+        p_loc = player_state.get("location", "").strip()
+        master_loc = master_state.get("environment", {}).get("location", "").strip()
+
+        is_safe = any(w in p_loc.lower() for w in ["safe-zone", "safe zone", "washington", "clinic", "catacomb", "depot", "sanctuary", "manor", "outpost"])
+
+        needs_sync = False
+        if p_loc and p_loc != master_loc:
+            needs_sync = True
+            master_state.setdefault("environment", {})["location"] = p_loc
+
+        if is_safe:
+            # Purge lingering hostile dungeon hazards when in a safe zone or town
+            curr_effects = master_state.get("environment", {}).get("environmental_effects", [])
+            hostile_cues = ["steam", "timber", "collapse", "falling", "shale", "cave-in", "hazard", "unstable", "compromised"]
+            filtered_effects = [e for e in curr_effects if not any(c in e.lower() for c in hostile_cues)]
+
+            if "clinic" in p_loc.lower() or "mercer" in p_loc.lower():
+                master_state["environment"]["description"] = "Ancient vaulted stone catacombs beneath Washington Avenue. Flickering cerulean mana-lamps cast long shadows over brass steam pistons, marrow-siphoning conduits, and surgical dissection tables."
+                if not filtered_effects:
+                    filtered_effects = ["Safe-Zone Sanctuary Wards", "Sterile Ether Atmosphere"]
+            elif "depot" in p_loc.lower() or "vane" in p_loc.lower():
+                master_state["environment"]["description"] = "A fortified timber and aether-iron logistics depot in Washington Borough, stacked with military supply crates and trade manifests."
+                if not filtered_effects:
+                    filtered_effects = ["Safe-Zone Sanctuary Wards", "Order of the Barony"]
+            else:
+                if not master_state["environment"].get("description") or any(c in master_state["environment"].get("description", "").lower() for c in hostile_cues):
+                    master_state["environment"]["description"] = f"A fortified civilian sanctuary within {p_loc} shielded by ancient runic barrier wards."
+                if not filtered_effects:
+                    filtered_effects = ["Safe-Zone Sanctuary Wards", "Calm Ambient Mana"]
+
+            master_state["environment"]["environmental_effects"] = filtered_effects
+            master_state["environment"]["hidden_traps"] = []
+
+            # Remove dead monsters and hostile combatants from room entities
+            master_state["entities"] = [e for e in master_state.get("entities", []) if e.get("type") not in ["hostile", "monster"] and e.get("hp", 1) > 0]
+
+            # Ensure local friendly NPCs exist in the room
+            if "clinic" in p_loc.lower() or "mercer" in p_loc.lower():
+                if not any(e.get("id") == "npc_doc_mercer" for e in master_state["entities"]):
+                    master_state["entities"].append({
+                        "id": "npc_doc_mercer",
+                        "name": "Doc Mercer",
+                        "type": "neutral",
+                        "hp": 40,
+                        "max_hp": 40,
+                        "ac": 12,
+                        "status": ["Attentive", "Preparing Surgical Tools"],
+                        "intent": "Consult on biological graft surgery, anatomical integration, and trade medicinal tinctures."
+                    })
+            elif "depot" in p_loc.lower() or "vane" in p_loc.lower():
+                if not any(e.get("id") == "npc_quartermaster_vane" for e in master_state["entities"]):
+                    master_state["entities"].append({
+                        "id": "npc_quartermaster_vane",
+                        "name": "Quartermaster Vane",
+                        "type": "neutral",
+                        "hp": 45,
+                        "max_hp": 45,
+                        "ac": 14,
+                        "status": ["Reviewing Manifests", "Open for Trade"],
+                        "intent": "Trade salvage, inspect bounties, and distribute barony rations."
+                    })
+            needs_sync = True
+
+        if needs_sync:
+            save_json(master_state_path, master_state)
+
+    client = genai.Client(api_key=api_key)
     prompt = f"""You are the Cardinal System (GM).
 Here is the absolute truth of the encounter:
 {json.dumps(master_state, indent=2)}
@@ -47,7 +145,7 @@ Here is the absolute truth of the encounter:
 Strip away all secret mechanics (exact HP, hidden traps, enemy intents).
 Return ONLY the data the players can clearly observe. Output EXACTLY matching the JSON schema.
 """
-    
+
     response = client.models.generate_content(
         model="gemini-3.8-flash",
         contents=prompt,
@@ -57,7 +155,7 @@ Return ONLY the data the players can clearly observe. Output EXACTLY matching th
             temperature=0.2
         )
     )
-    
+
     visible_room = json.loads(response.text)
     save_json(visible_room_path, visible_room)
     print("Staging Ground updated: visible_room.json")
@@ -73,10 +171,12 @@ def resolve_turn(api_key: str, player_action: str):
     rules_path = os.path.join("System_Core", "cardinal_rules.md")
     
     master_state = load_json(master_state_path)
-    action_queue = load_json(queue_path)
+    action_queue = load_json(queue_path) or []
     
-    with open(rules_path, "r", encoding="utf-8") as f:
-        rules = f.read()
+    rules = ""
+    if os.path.exists(rules_path):
+        with open(rules_path, "r", encoding="utf-8") as f:
+            rules = f.read()
         
     prompt = f"""You are the Cardinal System (GM). Resolve the turn.
 Ruleset constraints must be applied strictly:
@@ -125,7 +225,24 @@ CORE GM BEHAVIOR RULES:
 14. SOVEREIGN HOMESTEAD & VAULT (WASHINGTON BOROUGH):
    - When resting or utilizing facilities at the player's Washington Borough homestead, reflect vault storage, greenhouse reagent harvesting, or trophy mounting in `homestead_action`.
 
+15. LOCATION TRANSITIONS & PERSISTENT ENVIRONMENT UPDATES:
+   - Whenever the party moves, retreats, or transitions to a new location (e.g., escaping the mine, ascending the ore-cart incline, entering the Washington Borough Safe-Zone, or heading down into Doc Mercer's Clinic):
+     * Populate `environment_update` in the response schema with the new `location`, `description`, and `environmental_effects`.
+     * Set `encounter_active = false`.
+     * Set `cleared_entities` to list any dead monsters, bosses, or entities left behind in the old room (e.g. ["enemy_01"]).
+     * Set `new_entities` to list any NPCs present at the destination (e.g. Doc Mercer at the clinic, Quartermaster Vane at the depot).
+     * Ensure `player_state_updates.location` is populated with the new location string.
+   - If in a safe zone, town, or clinic, clear all dungeon hazards (collapses, falling shale, superheated steam, traps) and ensure all companion dialogue and intents reflect the calm safety of the sanctuary.
 
+16. CANONICAL SCENE IMAGE GENERATION PROMPT & CHARACTER ART VISUAL CANONS:
+   - You MUST populate `image_prompt` with a vivid, cinematic prompt for a high-quality dark anime illustration of the turn's key moment or current scene.
+   - CRITICAL VISUAL CONSISTENCY MANDATE: You MUST describe characters accurately according to their canonical visual designs:
+     * Banki (Player): Burly, rugged Nordic warrior with a short dark beard and undercut hair, clad in heavy black-iron plate armor etched with glowing cyan Elder Futhark runes, a massive dire-wolf fur mantle draped over broad shoulders, wielding an enchanted bearded war-axe and a heavy trench hammer.
+     * Ren (Companion): Lean, athletic 17-year-old high school senior and systems designer with messy dark hair, wire-rimmed brass spectacles or glowing aetheric ocular lens over one eye, wearing a midnight-blue leyline duster over scholar's garb, wielding an ornate brass-and-crystal MageTech caster firearm (magic-powered with glowing mana conduits, NOT gunpowder or lead) and carrying a glowing runic slate grimoire.
+     * Elora Thorne (Companion): Nimble elven spellblade with silver-braided hair, wearing silk starlight phase-robes, wielding a starlight aether-rapier and glowing caster gauntlet.
+     * Torvald Iron-Vein (Companion): Veteran dwarven vanguard in deepforged runic plate armor, wielding a massive adamant tower shield wide as a castle gate and a heavy war-axe.
+     * Kibs Nine-Fingers (Companion): Scrapper rogue cloaked in scavenged shrouds, serrated wrist daggers, mechanical optical goggles.
+     * Doc Mercer (NPC): Grizzled cyber-physician and flesh-weaver in a bloodstained leather surgeon's apron and brass magnifying loupes, surrounded by steam pistons, glowing blue mana vats, and articulated surgical needles in an ancient stone catacomb clinic.
 
 Current Master State:
 {json.dumps(master_state, indent=2)}
@@ -164,13 +281,68 @@ Output matching TurnResolutionSchema.
             status_map[item["entity_id"]] = item["statuses"]
             
     # Apply updates to Master State
-    for entity in master_state["entities"]:
+    for entity in master_state.get("entities", []):
         eid = entity["id"]
         if eid in hp_map:
             entity["hp"] = max(0, entity["hp"] + hp_map[eid])
         if eid in status_map:
             entity["status"] = status_map[eid]
-            
+
+    # Process Environment Update
+    env_update = resolution.get("environment_update")
+    if env_update:
+        if isinstance(env_update, dict):
+            if env_update.get("location"):
+                master_state.setdefault("environment", {})["location"] = env_update["location"]
+            if env_update.get("description"):
+                master_state.setdefault("environment", {})["description"] = env_update["description"]
+            if env_update.get("environmental_effects") is not None:
+                master_state.setdefault("environment", {})["environmental_effects"] = env_update["environmental_effects"]
+        elif hasattr(env_update, "location"):
+            if env_update.location:
+                master_state.setdefault("environment", {})["location"] = env_update.location
+            if env_update.description:
+                master_state.setdefault("environment", {})["description"] = env_update.description
+            if env_update.environmental_effects is not None:
+                master_state.setdefault("environment", {})["environmental_effects"] = env_update.environmental_effects
+
+    # Process Cleared Entities
+    cleared = resolution.get("cleared_entities") or []
+    if cleared and isinstance(cleared, list):
+        master_state["entities"] = [e for e in master_state.get("entities", []) if e.get("id") not in cleared]
+
+    # Process New Entities
+    new_ents = resolution.get("new_entities") or []
+    if new_ents and isinstance(new_ents, list):
+        existing_ids = {e.get("id") for e in master_state.get("entities", [])}
+        for ne in new_ents:
+            ne_dict = ne if isinstance(ne, dict) else (ne.dict() if hasattr(ne, "dict") else dict(ne))
+            ne_id = ne_dict.get("id")
+            if ne_id:
+                if ne_id not in existing_ids:
+                    master_state["entities"].append(ne_dict)
+                    existing_ids.add(ne_id)
+                else:
+                    for idx, e in enumerate(master_state["entities"]):
+                        if e.get("id") == ne_id:
+                            master_state["entities"][idx].update(ne_dict)
+
+    # Process Player State Updates Location Sync
+    p_updates = resolution.get("player_state_updates")
+    if p_updates:
+        p_up_dict = p_updates if isinstance(p_updates, dict) else (p_updates.dict() if hasattr(p_updates, "dict") else dict(p_updates))
+        if p_up_dict.get("location"):
+            master_state.setdefault("environment", {})["location"] = p_up_dict["location"]
+
+    # If encounter is no longer active, purge traps & dead monsters
+    if not resolution.get("encounter_active", True):
+        master_state.setdefault("environment", {})["hidden_traps"] = []
+        loc_str = master_state.get("environment", {}).get("location", "").lower()
+        if any(w in loc_str for w in ["safe-zone", "safe zone", "washington", "clinic", "catacomb", "depot", "sanctuary"]):
+            master_state["entities"] = [e for e in master_state.get("entities", []) if e.get("type") not in ["hostile", "monster"] and e.get("hp", 1) > 0]
+            hostile_cues = ["steam", "timber", "collapse", "falling", "shale", "cave-in", "hazard"]
+            master_state["environment"]["environmental_effects"] = [eff for eff in master_state["environment"].get("environmental_effects", []) if not any(c in eff.lower() for c in hostile_cues)]
+
     # Apply companion HP updates to Party/*.json files
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     party_dir = os.path.join(base_dir, "Party")
@@ -187,10 +359,6 @@ Output matching TurnResolutionSchema.
             except Exception as e:
                 print(f"[GM ENGINE] Error updating companion {eid} sheet: {e}", flush=True)
             
-    # If the encounter is resolved, clear traps so companions don't repeat them
-    if not resolution.get("encounter_active", True):
-        master_state["environment"]["hidden_traps"] = []
-            
     master_state["turn_number"] += 1
     save_json(master_state_path, master_state)
     
@@ -199,8 +367,59 @@ Output matching TurnResolutionSchema.
     resolution["status_updates"] = status_map
     resolution["combat_logs"] = resolution.get("combat_logs", [])
     resolution["global_news_add"] = resolution.get("global_news_add", [])
+    resolution["image_prompt"] = resolution.get("image_prompt", "")
     
     # Clear action queue for next turn
     save_json(queue_path, [])
     
     return resolution
+
+def generate_scene_image(api_key: str, prompt: str):
+    """
+    Generates a scene illustration matching Main branch styling and character visual canons.
+    Uses gemini-3.1-flash-lite-image with fallback to gemini-2.5-flash-image.
+    Returns (image_bytes, error_string).
+    """
+    if not api_key:
+        return None, "No API key provided"
+    if not prompt:
+        return None, "No prompt provided"
+        
+    full_prompt = f"Dark anime art style, high quality, masterpiece. {prompt}"
+    client = genai.Client(api_key=api_key)
+    
+    # 1. Attempt primary model
+    try:
+        response = client.models.generate_content(
+            model='gemini-3.1-flash-lite-image',
+            contents=full_prompt,
+            config=types.GenerateContentConfig(
+                response_modalities=["IMAGE"],
+                image_config=types.ImageConfig(
+                    aspect_ratio="16:9"
+                ),
+            )
+        )
+        for part in response.parts:
+            if part.inline_data:
+                return part.inline_data.data, None
+    except Exception as e1:
+        # 2. Attempt fallback model
+        try:
+            response = client.models.generate_content(
+                model='gemini-2.5-flash-image',
+                contents=full_prompt,
+                config=types.GenerateContentConfig(
+                    response_modalities=["IMAGE"],
+                    image_config=types.ImageConfig(
+                        aspect_ratio="16:9"
+                    ),
+                )
+            )
+            for part in response.parts:
+                if part.inline_data:
+                    return part.inline_data.data, None
+        except Exception as e2:
+            return None, f"Image generation failed: {e1} | Fallback failed: {e2}"
+            
+    return None, "No image parts returned"
