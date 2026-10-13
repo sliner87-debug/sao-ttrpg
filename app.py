@@ -2012,20 +2012,100 @@ def render_game_hud():
         # 3. Import & Restore (File or Direct Paste)
         st.divider()
         st.markdown("**Restore Campaign**")
+        def apply_restored_save_data(loaded_data):
+            st.session_state.player = loaded_data["player"]
+            st.session_state.messages = loaded_data["messages"]
+            if "world_state" in loaded_data:
+                st.session_state.world_state = loaded_data["world_state"]
+            
+            p_loc = st.session_state.player.get("location", "").strip()
+            is_safe = any(w in p_loc.lower() for w in ["safe-zone", "safe zone", "washington", "clinic", "catacomb", "depot", "sanctuary", "manor", "outpost"])
+
+            m_state = loaded_data.get("master_state")
+            if not m_state and os.path.exists(m_path):
+                try:
+                    with open(m_path, "r", encoding="utf-8") as f:
+                        m_state = json.load(f)
+                except Exception:
+                    m_state = None
+
+            if m_state and isinstance(m_state, dict):
+                # Clean up defeated/inert hostiles
+                m_state["entities"] = [
+                    e for e in m_state.get("entities", [])
+                    if e.get("type") not in ["hostile", "monster"]
+                    or (e.get("hp", 1) > 0 and not any(s in [st.lower() for st in e.get("status", [])] for s in ["defeated", "inert", "dead", "destroyed", "slag", "harvested"]))
+                ]
+                
+                # Check if hostiles remain
+                has_hostiles = any(e.get("type") in ["hostile", "monster"] for e in m_state.get("entities", []))
+                
+                if is_safe:
+                    m_state.setdefault("environment", {})["location"] = p_loc
+                    m_state["environment"]["hidden_traps"] = []
+                    curr_effs = m_state["environment"].get("environmental_effects", [])
+                    hostile_cues = ["steam", "timber", "collapse", "falling", "shale", "cave-in", "hazard", "unstable", "compromised"]
+                    m_state["environment"]["environmental_effects"] = [eff for eff in curr_effs if not any(c in eff.lower() for c in hostile_cues)] or ["Safe-Zone Sanctuary Wards", "Calm Ambient Mana"]
+                elif not has_hostiles:
+                    # Aftermath: clear collapse hazards
+                    curr_effs = m_state.get("environment", {}).get("environmental_effects", [])
+                    if any(c in " ".join(curr_effs).lower() for c in ["steam", "timber", "collapse", "falling", "shale", "compromised", "hazard"]):
+                        m_state.setdefault("environment", {})["environmental_effects"] = ["Dim Light", "Settling Dust", "Clear Escape Routes Available"]
+                    desc = m_state.get("environment", {}).get("description", "")
+                    if any(c in desc.lower() for c in ["splintered and venting", "superheated geothermal", "falling shale", "rock debris litter"]):
+                        m_state.setdefault("environment", {})["description"] = "A damp, cavernous mine shaft exit junction. The massive chassis of Silt-Marrow the Unhewn lies completely inert and harvested. The seismic rumbles have ceased, leaving the path open to ascend upward via the ore-cart track toward the Washington Borough Safe-Zone or descend toward the Morris Canal Aqueducts."
+
+                os.makedirs(os.path.dirname(m_path), exist_ok=True)
+                with open(m_path, "w", encoding="utf-8") as f:
+                    json.dump(m_state, f, indent=4)
+
+                # Synchronize Staging_Ground/visible_room.json
+                vr_path = os.path.join(BASE_DIR, "Staging_Ground", "visible_room.json")
+                os.makedirs(os.path.dirname(vr_path), exist_ok=True)
+                vis_room = {
+                    "turn_number": m_state.get("turn_number", 1),
+                    "environment": {
+                        "location": m_state.get("environment", {}).get("location", p_loc),
+                        "description": m_state.get("environment", {}).get("description", ""),
+                        "environmental_effects": m_state.get("environment", {}).get("environmental_effects", [])
+                    },
+                    "entities": [
+                        {"id": e.get("id"), "name": e.get("name"), "type": e.get("type"), "status": e.get("status")}
+                        for e in m_state.get("entities", [])
+                    ]
+                }
+                with open(vr_path, "w", encoding="utf-8") as f:
+                    json.dump(vis_room, f, indent=4)
+
+            # Clear action queue
+            q_path = os.path.join(BASE_DIR, "Staging_Ground", "action_queue.json")
+            if os.path.exists(os.path.dirname(q_path)):
+                with open(q_path, "w", encoding="utf-8") as f:
+                    json.dump([], f)
+
+            # Sync Party/companion_ren.json
+            ren_data = st.session_state.player.get("companions", {}).get("Ren")
+            if ren_data:
+                p_ren_path = os.path.join(BASE_DIR, "Party", "companion_ren.json")
+                if os.path.exists(p_ren_path):
+                    try:
+                        with open(p_ren_path, "r", encoding="utf-8") as f:
+                            ren_sheet = json.load(f)
+                        ren_sheet["hp"] = ren_data.get("hp", ren_sheet.get("hp", 28))
+                        ren_sheet["max_hp"] = ren_data.get("max_hp", ren_sheet.get("max_hp", 35))
+                        with open(p_ren_path, "w", encoding="utf-8") as f:
+                            json.dump(ren_sheet, f, indent=4)
+                    except Exception:
+                        pass
+
+            save_game(st.session_state.player, st.session_state.messages)
+
         uploaded_file = st.file_uploader("📤 Import Save File (.json)", type="json", key="save_file_uploader")
         if uploaded_file is not None:
             if st.button("Restore from Uploaded File", key="btn_restore_uploaded_file"):
                 try:
                     loaded_data = json.load(uploaded_file)
-                    st.session_state.player = loaded_data["player"]
-                    st.session_state.messages = loaded_data["messages"]
-                    if "world_state" in loaded_data:
-                        st.session_state.world_state = loaded_data["world_state"]
-                    if "master_state" in loaded_data and loaded_data["master_state"]:
-                        os.makedirs(os.path.dirname(m_path), exist_ok=True)
-                        with open(m_path, "w", encoding="utf-8") as f:
-                            json.dump(loaded_data["master_state"], f, indent=4)
-                    save_game(st.session_state.player, st.session_state.messages)
+                    apply_restored_save_data(loaded_data)
                     st.success("Save loaded successfully! Refreshing...")
                     time.sleep(1)
                     st.rerun()
@@ -2037,15 +2117,7 @@ def render_game_hud():
             if paste_restore.strip():
                 try:
                     loaded_data = json.loads(paste_restore.strip())
-                    st.session_state.player = loaded_data["player"]
-                    st.session_state.messages = loaded_data["messages"]
-                    if "world_state" in loaded_data:
-                        st.session_state.world_state = loaded_data["world_state"]
-                    if "master_state" in loaded_data and loaded_data["master_state"]:
-                        os.makedirs(os.path.dirname(m_path), exist_ok=True)
-                        with open(m_path, "w", encoding="utf-8") as f:
-                            json.dump(loaded_data["master_state"], f, indent=4)
-                    save_game(st.session_state.player, st.session_state.messages)
+                    apply_restored_save_data(loaded_data)
                     st.success("Save restored from text! Refreshing...")
                     time.sleep(1)
                     st.rerun()

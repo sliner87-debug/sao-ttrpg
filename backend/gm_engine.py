@@ -134,6 +134,33 @@ def generate_visible_state(api_key: str = None, player_state: dict = None, world
                     })
             needs_sync = True
 
+        # Post-combat & Exit Junction cleanup: if no active living hostiles remain, settle collapse hazards
+        active_hostiles = [
+            e for e in master_state.get("entities", [])
+            if e.get("type") in ["hostile", "monster"]
+            and e.get("hp", 1) > 0
+            and not any(s in [st.lower() for st in e.get("status", [])] for s in ["defeated", "inert", "dead", "destroyed", "slag", "harvested"])
+        ]
+        if not active_hostiles:
+            orig_len = len(master_state.get("entities", []))
+            master_state["entities"] = [
+                e for e in master_state.get("entities", [])
+                if e.get("type") not in ["hostile", "monster"]
+                or (e.get("hp", 1) > 0 and not any(s in [st.lower() for st in e.get("status", [])] for s in ["defeated", "inert", "dead", "destroyed", "slag", "harvested"]))
+            ]
+            if len(master_state["entities"]) != orig_len:
+                needs_sync = True
+
+            curr_effs = master_state.get("environment", {}).get("environmental_effects", [])
+            if any(c in " ".join(curr_effs).lower() for c in ["steam", "timber", "collapse", "falling", "shale", "compromised", "hazard"]):
+                master_state["environment"]["environmental_effects"] = ["Dim Light", "Settling Dust", "Clear Escape Routes Available"]
+                needs_sync = True
+
+            desc = master_state.get("environment", {}).get("description", "")
+            if any(c in desc.lower() for c in ["splintered and venting", "superheated geothermal", "falling shale", "rock debris litter"]):
+                master_state["environment"]["description"] = "A damp, cavernous mine shaft exit junction. The massive chassis of Silt-Marrow the Unhewn lies completely inert, dismantled, and harvested. The seismic rumbles have ceased, leaving the path open to ascend upward via the ore-cart track toward the Washington Borough Safe-Zone or descend toward the Morris Canal Aqueducts."
+                needs_sync = True
+
         if needs_sync:
             save_json(master_state_path, master_state)
 

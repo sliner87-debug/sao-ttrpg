@@ -1,22 +1,14 @@
 {
-    "turn_number": 43,
+    "turn_number": 33,
     "environment": {
-        "location": "Doc Mercer's Underground Clinic (Washington Borough Catacombs)",
-        "description": "Ancient vaulted stone catacombs beneath Washington Avenue. Flickering cerulean mana-lamps illuminate brass steam pistons, marrow-siphoning conduits, and clean surgical dissection tables.",
+        "location": "Oxford Mine Adits - Lower Collapse Zone (Exit Junction)",
+        "description": "A damp, cavernous mine shaft exit junction. The massive chassis of Silt-Marrow the Unhewn lies completely inert, dismantled, and harvested. The seismic rumbles have ceased, leaving the air still except for settling dust. Clear ascent routes lead upward via the ore-cart track toward the Washington Borough Safe-Zone, and downward toward the Morris Canal Aqueducts.",
+        "hidden_traps": [],
         "environmental_effects": [
-            "Safe-Zone Sanctuary Wards",
-            "Sterile Ether Atmosphere"
+            "Dim Light",
+            "Settling Dust",
+            "Clear Escape Routes Available"
         ]
     },
-    "entities": [
-        {
-            "id": "npc_doc_mercer",
-            "name": "Doc Mercer",
-            "type": "neutral",
-            "status": [
-                "Attentive",
-                "Preparing Surgical Tools"
-            ]
-        }
-    ]
+    "entities": []
 }
