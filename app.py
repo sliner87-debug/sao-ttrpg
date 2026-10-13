@@ -2022,17 +2022,18 @@ def render_game_hud():
                 deduped_inv = []
                 seen_unique = set()
                 unique_keys = [
-                    "[graft component] silt-marrow's geothermal core piston",
-                    "basalt carapace plating x2",
-                    "[graft component] intact runic mind-matrix"
+                    "geothermal core piston",
+                    "basalt carapace plating",
+                    "intact runic mind-matrix"
                 ]
                 for item in inv:
                     item_str = item.get("name", str(item)) if isinstance(item, dict) else str(item)
                     low_str = item_str.strip().lower()
-                    if any(uk in low_str for uk in unique_keys):
-                        if low_str in seen_unique:
+                    matched_uk = next((uk for uk in unique_keys if uk in low_str), None)
+                    if matched_uk:
+                        if matched_uk in seen_unique:
                             continue
-                        seen_unique.add(low_str)
+                        seen_unique.add(matched_uk)
                     deduped_inv.append(item)
                 player_obj["inventory"] = deduped_inv
 
