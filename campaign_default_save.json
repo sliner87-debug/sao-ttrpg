@@ -46,6 +46,14 @@
             "off_hand": "Free (Somatic Futhark Casting)",
             "accessory": "None"
         },
+        "grafts": {
+            "head": null,
+            "torso": null,
+            "left_arm": null,
+            "right_arm": null,
+            "legs": null,
+            "spine": null
+        },
         "inventory": [
             {
                 "name": "Enchanted Bearded Axe",
@@ -99,6 +107,14 @@
                     "Smoke Grenades"
                 ]
             }
+        },
+        "grafts": {
+            "head": null,
+            "torso": null,
+            "left_arm": null,
+            "right_arm": null,
+            "legs": null,
+            "spine": null
         }
     },
     "messages": [

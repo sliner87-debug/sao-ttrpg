@@ -62,10 +62,32 @@ Ruleset constraints must be applied strictly:
 CORE GM BEHAVIOR RULES:
 1. COMPANION REN: Ren is MALE (he/him). Never use 'she' or 'her' when narrating Ren's moves.
 2. TRAP & HAZARD LIFECYCLE: If a trap or hazard (like the X:5 Y:5 tripwire) has already been detected, highlighted, or avoided in previous turns, do NOT repeat warnings about it. It has already been accounted for.
-3. COMBAT AFTERMATH: If all hostiles are dead (HP <= 0), set encounter_active=false. Describe the aftermath and open up 1-2 new passages or doorways (e.g. deeper adit tunnel, rusted elevator shaft) to encourage exploration.
-4. INVENTORY & SPELL LOOT: Whenever you narrate that the player loots, inspects, or identifies an item or spell slate (such as 'Spell Slate: Earth Tremor Hex'), you MUST include it in player_state_updates.inventory_add so it actually lands on their character sheet.
+3. COMBAT AFTERMATH & GRAFT HARVESTING: When all hostiles are dead (HP <= 0), set encounter_active=false. 
+   - Award significant encounter XP (e.g. 250 XP for Silt-Marrow) and Col (e.g. +75 Col) in player_state_updates.
+   - Drop harvesting graft components into player_state_updates.inventory_add (e.g., "[Graft Component] Silt-Marrow's Geothermal Core Piston", "Basalt Carapace Plating x2").
+   - Describe the collapse settling and open 1-2 clear exits: an emergency ore-cart incline ascending to the surface toward Washington Borough Safe-Zone, and a lower adit leading toward the Morris Canal Aqueducts.
+4. INVENTORY & SPELL LOOT: Whenever you narrate that the player loots, inspects, or identifies an item or spell slate, you MUST include it in player_state_updates.inventory_add so it actually lands on their character sheet.
 5. AUTONOMOUS SUBAGENTS: Each entity in the queue (Companions, Monsters, NPCs) is an autonomous SubAgent with their own quirks, fears, and tactical goals. Resolve how their queued actions collide with each other and with the Human Player's action.
-6. MECHANICAL TRANSPARENCY & CLEAN NARRATIVE: Explicitly simulate all dice rolls, attacks vs AC, saving throws vs DC, and damage math in the `combat_logs` array (e.g. 'Attack: 1d20+5 = 17 vs AC 14 | Hit!', 'Damage: 1d10+3 = 9 Slashing', 'Ren DEX Save: 1d20+4 = 11 vs DC 13 | Fail! 7 Bludgeoning/Fire damage'). In `narrative_recap`, tell a dramatic, cinematic story WITHOUT embedding bracketed formulas like '[Attack: 1d20+5...]' in the story prose. Put all crunch into `combat_logs`.
+6. MECHANICAL TRANSPARENCY & CLEAN NARRATIVE: Explicitly simulate all dice rolls, attacks vs AC, saving throws vs DC, and damage math in the `combat_logs` array. In `narrative_recap`, tell a dramatic, cinematic story WITHOUT embedding bracketed formulas like '[Attack: 1d20+5...]' in the story prose. Put all crunch into `combat_logs`.
+7. SAFE-ZONE & LIVING WORLD (WASHINGTON BOROUGH): When players rest or interact in the Washington Borough Safe-Zone:
+   - A 24-Hour Safe-Zone Rest fully restores HP for player and companions, clearing surgery and combat fatigue.
+   - Generate 1-2 continental or regional news blurbs in `global_news_add` reflecting off-screen faction maneuvers, and update nearby nodes.
+   - Highlight the local hub: Doc Mercer's Underground Clinic (surgery/grafts) and Quartermaster Vane's Barony Outpost (bounties/gear).
+8. GRAFT SURGERY & STRAIN (DOC MERCER'S CLINIC): When players request graft surgery at Doc Mercer's clinic:
+   - Verify anatomical slots ('head', 'torso', 'left_arm', 'right_arm', 'legs', 'spine').
+   - Remove the installed graft item from `player_state_updates.inventory_remove`.
+   - Deduct Doc Mercer's surgical fee (e.g. 25-50 Col) in `player_state_updates.col_change`.
+   - Output installed graft into `player_state_updates.grafts_installed` with slot, name, strain (1-3), and mechanical effect.
+   - If player's total Strain exceeds Strain Capacity (CON Mod + Level // 2), roleplay Doc Mercer's stern warning regarding Cyber-Psychosis / Necrotic Rejection.
+9. 1-1000 SKILL MASTERY & MILESTONES: Skills progress along the 1-1000 mastery continuum (Novice 1-49, Apprentice 50-99, Journeyman 100-249, Adept 250-499, Master 500-749, Grandmaster 750-999, Transcendence 1000).
+   - Award +1 to +5 mastery gains in `player_state_updates.skill_updates` when players practice or use skills.
+   - When crossing milestone thresholds, reward unique milestone perks in the description.
+10. ABILITY FUSION PROTOCOL: When the player invokes the Ability Fusion protocol to combine two components (skills, spells, or feats):
+   - Forge a distinct, synergistic hybrid technique (e.g. combining 'Battleaxe Mastery' + 'Earth Tremor Hex' yields 'Tremor-Quake Cleave').
+   - Place the new technique into `player_state_updates.spells_add` or `player_state_updates.feats_add`.
+   - Award +15 XP and +5-10 mastery points in relevant skills via `player_state_updates.skill_updates`.
+   - Narrate the Cardinal System matrix resonance, holographic crystallization, and the player unlocking the combined technique!
+
 
 Current Master State:
 {json.dumps(master_state, indent=2)}
@@ -138,6 +160,7 @@ Output matching TurnResolutionSchema.
     resolution["hp_changes"] = hp_map
     resolution["status_updates"] = status_map
     resolution["combat_logs"] = resolution.get("combat_logs", [])
+    resolution["global_news_add"] = resolution.get("global_news_add", [])
     
     # Clear action queue for next turn
     save_json(queue_path, [])

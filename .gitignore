@@ -3,3 +3,5 @@
 __pycache__/
 gdrive_tokens.json
 drive_credentials.json
+current_map.jpg
+

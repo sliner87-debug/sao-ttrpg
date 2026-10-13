@@ -146,6 +146,40 @@ def extract_subagent_log(msg: dict) -> tuple:
     c, m, s = extract_turn_components(msg)
     return c, s
 
+def get_strain_capacity(player_state: dict) -> int:
+    con = player_state.get("stats", {}).get("CON", 10)
+    con_mod = (con - 10) // 2
+    level = player_state.get("level", 1)
+    return max(1, con_mod + (level // 2))
+
+def get_current_strain(player_state: dict) -> int:
+    grafts = player_state.get("grafts", {})
+    strain = 0
+    if isinstance(grafts, dict):
+        for slot, item in grafts.items():
+            if item and isinstance(item, dict):
+                strain += item.get("strain", 1)
+            elif item and isinstance(item, str):
+                strain += 1
+    return strain
+
+def get_mastery_tier_info(mastery: int) -> tuple:
+    """Returns (tier_name, next_threshold)"""
+    if mastery < 50:
+        return "Novice", 50
+    elif mastery < 100:
+        return "Apprentice", 100
+    elif mastery < 250:
+        return "Journeyman", 250
+    elif mastery < 500:
+        return "Adept", 500
+    elif mastery < 750:
+        return "Master", 750
+    elif mastery < 1000:
+        return "Grandmaster", 1000
+    else:
+        return "Transcendence", 1000
+
 def apply_player_state_updates(state_updates):
     if not state_updates or not isinstance(state_updates, dict):
         return
@@ -218,6 +252,44 @@ def apply_player_state_updates(state_updates):
                 if a not in st.session_state.player.get(target_list, []):
                     st.session_state.player.setdefault(target_list, []).append(a)
                     st.toast(f"🔮 Learned {target_list[:-1].capitalize()}: {a}!")
+
+    grafts_installed = state_updates.get("grafts_installed") or []
+    if isinstance(grafts_installed, list):
+        if "grafts" not in st.session_state.player:
+            st.session_state.player["grafts"] = {}
+        for g in grafts_installed:
+            if isinstance(g, dict) and "slot" in g:
+                slot = g["slot"].lower().replace(" ", "_")
+                st.session_state.player["grafts"][slot] = g
+                st.toast(f"🦾 Installed Graft ({slot.capitalize()}): {g.get('name', 'Graft')}!", icon="💉")
+
+    grafts_update = state_updates.get("grafts_update")
+    if grafts_update and isinstance(grafts_update, dict):
+        if "grafts" not in st.session_state.player:
+            st.session_state.player["grafts"] = {}
+        for slot, g_data in grafts_update.items():
+            st.session_state.player["grafts"][slot] = g_data
+            g_name = g_data.get("name", str(g_data)) if isinstance(g_data, dict) else str(g_data)
+            st.toast(f"🦾 Installed Graft ({slot.capitalize()}): {g_name}!", icon="💉")
+
+    skill_updates = state_updates.get("skill_updates") or []
+    if isinstance(skill_updates, list):
+        for su in skill_updates:
+            if isinstance(su, dict) and "name" in su:
+                name = su["name"]
+                change = int(su.get("mastery_change", 1))
+                desc = su.get("description", "")
+                if name in st.session_state.player.get("skills", {}):
+                    old_m = st.session_state.player["skills"][name].get("mastery", 1)
+                    new_m = min(1000, old_m + change)
+                    st.session_state.player["skills"][name]["mastery"] = new_m
+                    if desc:
+                        st.session_state.player["skills"][name]["description"] = desc
+                    st.toast(f"📈 {name} Mastery: {old_m} ➔ {new_m} (+{change})", icon="⚡")
+                else:
+                    st.session_state.player.setdefault("skills", {})[name] = {"mastery": max(1, change), "description": desc}
+                    st.toast(f"✨ Unlocked New Skill: {name} (Mastery: {change})", icon="🌟")
+
 
 def apply_companion_state_updates(hp_changes: dict):
     """Synchronizes companion damage/healing across session state and Party/*.json sheets."""
@@ -304,6 +376,7 @@ p.setdefault("skills", {})
 p.setdefault("spells", [])
 p.setdefault("feats", [])
 p.setdefault("quests", [])
+p.setdefault("grafts", {"head": None, "torso": None, "left_arm": None, "right_arm": None, "legs": None, "spine": None})
 
 # Migrate old inventory (list of strings) to complex objects
 new_inv = []
@@ -412,6 +485,27 @@ with st.sidebar:
         st.write(f"- **Off:** {player['equipped']['off_hand']}")
         st.write(f"- **Acc:** {player['equipped']['accessory']}")
         
+    with st.expander("🦾 Cybernetic & Bio-Grafts", expanded=False):
+        cap = get_strain_capacity(player)
+        cur = get_current_strain(player)
+        st.write(f"**Strain Capacity:** `{cur} / {cap}`")
+        if cur > cap:
+            st.error(f"⚠️ **OVER-STRAIN:** Exceeded capacity! Subject to Cyber-Psychosis / Necrotic Rejection.")
+            st.progress(1.0)
+        else:
+            st.progress(min(1.0, cur / max(1, cap)))
+        st.caption("Strain limit = CON Mod + Floor(Level / 2). One graft per slot.")
+        
+        grafts = player.get("grafts", {})
+        slots = [("head", "Head"), ("torso", "Torso"), ("left_arm", "Left Arm"), ("right_arm", "Right Arm"), ("legs", "Legs"), ("spine", "Spine / Internal")]
+        for s_key, s_label in slots:
+            g_val = grafts.get(s_key)
+            if g_val:
+                g_name = g_val.get("name", str(g_val)) if isinstance(g_val, dict) else str(g_val)
+                st.write(f"- **{s_label}:** 🟢 `{g_name}`")
+            else:
+                st.write(f"- **{s_label}:** *Empty*")
+        
     with st.expander("✨ Skills, Spells & Feats", expanded=False):
         if player['racial_abilities']:
             st.write("**Racial Traits:**")
@@ -419,7 +513,6 @@ with st.sidebar:
             st.divider()
             
         for s_name, s_data in player.get('skills', {}).items():
-            # Fallback in case of weird data structures
             if isinstance(s_data, dict):
                 mastery = s_data.get('mastery', 1)
                 desc = s_data.get('description', '')
@@ -427,12 +520,27 @@ with st.sidebar:
                 mastery = 1
                 desc = str(s_data)
                 
-            st.write(f"**{s_name}** ({mastery}/1000)")
-            st.progress(min(1.0, mastery / 1000.0))
-            st.caption(desc)
+            tier_name, next_th = get_mastery_tier_info(mastery)
+            st.write(f"**{s_name}** `[{tier_name}]` ({mastery}/1000)")
+            pct = min(1.0, mastery / float(next_th)) if next_th > 0 else 1.0
+            st.progress(pct, text=f"{mastery}/{next_th} to next milestone")
+            if desc: st.caption(desc)
             
         for s in player.get('spells', []) + player.get('feats', []):
             st.write(f"- {s}")
+
+    with st.expander("🔮 Ability Fusion Chamber", expanded=False):
+        st.caption("Combine 2 abilities to forge a new synergistic technique (Rule 10).")
+        all_pool = list(player.get("skills", {}).keys()) + player.get("spells", []) + player.get("feats", [])
+        if len(all_pool) >= 2:
+            f_col1, f_col2 = st.columns(2)
+            ab1 = f_col1.selectbox("Component A", all_pool, key="fusion_select_a")
+            ab2 = f_col2.selectbox("Component B", [x for x in all_pool if x != ab1] or all_pool, key="fusion_select_b")
+            if st.button("✨ Initiate Ability Fusion", use_container_width=True):
+                st.session_state.pending_dev_command = f"I invoke the Cardinal System Ability Fusion protocol to combine [{ab1}] and [{ab2}] into a new synergistic technique. Calculate the logic and register the fusion."
+                st.rerun()
+        else:
+            st.caption("Need at least 2 abilities to fuse.")
             
     with st.expander("🎒 Backpack Inventory", expanded=False):
         rarity_colors = {"Common": "⚪", "Uncommon": "🟢", "Rare": "🔵", "Epic": "🟣", "Legendary": "🟠", "Mythic": "🔴", "Unique": "✨"}
@@ -669,6 +777,57 @@ with st.sidebar:
         
     st.write(f"**GPS Coordinates:** X: {map_state['player_x']}, Y: {map_state['player_y']}")
     st.write(f"**Status:** {world_state['world_status']}")
+
+    # Continental & Faction News Wire
+    news_list = world_state.get("global_news", [])
+    if news_list:
+        with st.expander("📡 Continental News Wire", expanded=False):
+            for n in reversed(news_list[-5:]):
+                st.caption(f"• {n}")
+
+    # Regional Hub & Fast Actions (Milestone 1)
+    curr_loc = st.session_state.player.get("location", "")
+    is_in_safe_zone = "washington" in curr_loc.lower() or (map_state.get("player_x") == 50 and map_state.get("player_y") == 50)
+    
+    with st.expander("🏛️ Regional Hub & Navigation", expanded=is_in_safe_zone):
+        if is_in_safe_zone:
+            st.success("📍 **Sanctuary: Washington Borough Safe-Zone**")
+            st.caption("A fortified civilian sanctuary ruled by the Warren County Barony.")
+            
+            c_hub1, c_hub2 = st.columns(2)
+            with c_hub1:
+                if st.button("🛏️ Safe-Zone Rest (24h)", use_container_width=True, help="Full HP recovery & triggers living world simulation."):
+                    st.session_state.pending_dev_command = "I take a full 24-hour long rest in the Washington Borough sanctuary to recover our wounds and hear the latest regional news."
+                    st.rerun()
+                if st.button("🏥 Visit Doc Mercer", use_container_width=True, help="Visit the underground clinic for graft consultation & surgery."):
+                    st.session_state.pending_dev_command = "I head down into the fortified fallout bunker beneath Washington Avenue to consult with Doc Mercer at his surgical clinic."
+                    st.rerun()
+            with c_hub2:
+                if st.button("🪙 Quartermaster Vane", use_container_width=True, help="Trade supplies and review Warren County Barony bounties."):
+                    st.session_state.pending_dev_command = "I report to Quartermaster Vane at the Warren County logistics depot to trade salvage and review active bounties."
+                    st.rerun()
+                if st.button("⛏️ Travel to Oxford Mines", use_container_width=True, help="Depart the safe zone toward Oxford Adits (X:53, Y:48)."):
+                    st.session_state.pending_dev_command = "I gear up with Ren and travel southeast along the ridge toward the Oxford Mining District."
+                    st.rerun()
+
+            # Fast Surgical Action if graft candidate in inventory (Milestone 2)
+            inv_items = [item.get("name", str(item)) if isinstance(item, dict) else str(item) for item in st.session_state.player.get("inventory", [])]
+            graft_candidates = [i for i in inv_items if any(k in i.lower() for k in ["graft", "core", "carapace", "piston", "optic", "bio", "implant", "plate"])]
+            if graft_candidates:
+                st.divider()
+                st.caption("💉 **Doc Mercer's Clinic: Fast Surgical Graft Installation**")
+                sel_graft = st.selectbox("Select Component to Graft:", graft_candidates, key="hub_graft_candidate_select")
+                sel_slot = st.selectbox("Target Anatomical Slot:", ["Spine", "Torso", "Left Arm", "Right Arm", "Legs", "Head"], key="hub_graft_slot_select")
+                if st.button(f"🦾 Pay Doc Mercer (35 Col) to Install [{sel_graft}] into [{sel_slot}]", use_container_width=True):
+                    st.session_state.pending_dev_command = f"I pay Doc Mercer 35 Col to surgically install [{sel_graft}] into my [{sel_slot.lower().replace(' ', '_')}]. Check my strain limit and begin the operation."
+                    st.rerun()
+
+        else:
+            st.warning(f"📍 **Hostile Territory:** {curr_loc or 'Wilderness'}")
+            st.caption("Active threat zone. Keep your weapon ready.")
+            if st.button("🏛️ Return to Washington Safe-Zone", use_container_width=True, help="Navigate back to Washington Borough Safe-Zone (X:50, Y:50)."):
+                st.session_state.pending_dev_command = "We fall back from the hazard zone and take the cleared trail back to the Washington Borough Safe-Zone."
+                st.rerun()
 
     st.divider()
     with st.expander("💻 Root Dev Console"):
@@ -914,6 +1073,21 @@ if prompt := (dev_prompt or chat_prompt):
             # Fallback for old variables
             image_prompt = "" 
             
+            # Living World Continental News Wire Updates (Milestone 1)
+            news_add = turn_data.get("global_news_add", [])
+            if state_updates and isinstance(state_updates, dict):
+                news_add = news_add or state_updates.get("global_news_add", [])
+            if news_add and isinstance(news_add, list):
+                if "global_news" not in world_state: world_state["global_news"] = []
+                for n in news_add:
+                    if n not in world_state["global_news"]:
+                        world_state["global_news"].append(n)
+                try:
+                    with open("world_state.json", "w", encoding="utf-8") as f:
+                        json.dump(world_state, f, indent=4)
+                except Exception:
+                    pass
+
             # Apply State Updates
             if state_updates and isinstance(state_updates, dict):
                 loc = state_updates.get("location")
@@ -921,19 +1095,14 @@ if prompt := (dev_prompt or chat_prompt):
                     st.session_state.player["location"] = loc
                     
                 w_status = state_updates.get("world_status")
-                news_add = state_updates.get("global_news_add", [])
-                if not news_add:
-                    news_add = turn_data.get("global_news_add", [])
-                
-                if w_status or news_add:
-                    if w_status and isinstance(w_status, str):
-                        world_state["world_status"] = w_status
-                    if news_add and isinstance(news_add, list):
-                        if "global_news" not in world_state: world_state["global_news"] = []
-                        world_state["global_news"].extend(news_add)
-                        
-                    with open("world_state.json", "w") as f:
-                        json.dump(world_state, f)
+                if w_status and isinstance(w_status, str):
+                    world_state["world_status"] = w_status
+                    try:
+                        with open("world_state.json", "w", encoding="utf-8") as f:
+                            json.dump(world_state, f, indent=4)
+                    except Exception:
+                        pass
+
                     
                 col_change = state_updates.get("col_change")
                 if col_change:
