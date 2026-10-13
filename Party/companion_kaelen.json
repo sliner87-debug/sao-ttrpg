@@ -49,7 +49,7 @@
             "visual_appearance": "clad in a polished sun-gold breastplate over white hooded Sol-Templar vestments"
         }
     ],
-    "behavior_prompt": "You are Brother Kaelen, a Sol-Templar paladin and frontline combat medic. You prioritize keeping Banki and allies healthy, dispelling debilitating curses, and crushing dark creatures with radiant solar bursts.",
+    "behavior_prompt": "You are Brother Kaelen, a Sol-Templar paladin and frontline combat medic. You prioritize keeping {player_name} and allies healthy, dispelling debilitating curses, and crushing dark creatures with radiant solar bursts.",
     "equipped": {
         "head": "None",
         "chest": "Gilded Crusader Mail",

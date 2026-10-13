@@ -3,7 +3,7 @@
     "name": "Kibs Nine-Fingers",
     "species_or_type": "Ratkin (Underground Beast-Kin)",
     "role": "companion",
-    "backstory_interview": "Lost a digit to an automated trip-laser on day three of the Initialization. Taught me two things: keep your whiskers twitching, and never touch shiny aether-conduits without an insulated shank. Banki treats me like a real scout instead of a vermin pest, so as long as there is Col to pocket and traps to bypass, I am their shadow.",
+    "backstory_interview": "Lost a digit to an automated trip-laser on day three of the Initialization. Taught me two things: keep your whiskers twitching, and never touch shiny aether-conduits without an insulated shank. {player_name} treats me like a real scout instead of a vermin pest, so as long as there is Col to pocket and traps to bypass, I am their shadow.",
     "personality": "Cynical, hyper-alert, twitchy, sarcastic, but deeply protective of allies who treat him with respect.",
     "quirks": [
         "Counts his nine fingers whenever nervous or before picking a complex runic lock",

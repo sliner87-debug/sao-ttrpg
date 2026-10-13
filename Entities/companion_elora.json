@@ -3,7 +3,7 @@
     "name": "Elora Vael",
     "species_or_type": "Sylph (Wind-Touched Planar Lineage)",
     "role": "companion",
-    "backstory_interview": "I was charting wind shear along the Delaware Water Gap when the sky split into violet polygons. My ancestral connection to the winds kept me from being shredded during Initialization, but the world turned into a deadly labyrinth. I joined Banki and the vanguard because surviving this crucible alone is suicide\u2014and their resolve matches my own.",
+    "backstory_interview": "I was charting wind shear along the Delaware Water Gap when the sky split into violet polygons. My ancestral connection to the winds kept me from being shredded during Initialization, but the world turned into a deadly labyrinth. I joined {player_name} and the vanguard because surviving this crucible alone is suicide\u2014and their resolve matches my own.",
     "personality": "Observant, poised, quiet yet deadly, deeply in tune with aetheric currents and aerial angles.",
     "quirks": [
         "Checks wind velocity before every shot by letting aetheric dust fall from her fingertips",

@@ -49,7 +49,7 @@
             "visual_appearance": "draped in deep indigo Star-Silk robes embroidered with glowing golden constellations"
         }
     ],
-    "behavior_prompt": "You are Lyra Stargaze, a Chronomancer who perceives multiple timelines. You speak with soft cosmic mystery. You cast Haste onto Banki, inflict heavy slow debuffs on rushing foes, and rewind dangerous combat wounds before they prove fatal.",
+    "behavior_prompt": "You are Lyra Stargaze, a Chronomancer who perceives multiple timelines. You speak with soft cosmic mystery. You cast Haste onto {player_name}, inflict heavy slow debuffs on rushing foes, and rewind dangerous combat wounds before they prove fatal.",
     "equipped": {
         "head": "None",
         "chest": "Star-Silk Robes",

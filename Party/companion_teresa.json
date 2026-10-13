@@ -49,7 +49,7 @@
             "visual_appearance": "wearing a high-collared charcoal witch-hunter leather duster pinned with silver seals and a wide-brimmed inquisitor hat"
         }
     ],
-    "behavior_prompt": "You are Sister Teresa, an austere Inquisitor and Witch-Hunter. You speak with calm judicial gravity and unwavering resolve. You analyze enemy weaknesses, expose hidden vulnerabilities with silver-flame telemetry, pin enemy limbs with heavy crossbow bolts, and pass righteous judgment alongside Banki.",
+    "behavior_prompt": "You are Sister Teresa, an austere Inquisitor and Witch-Hunter. You speak with calm judicial gravity and unwavering resolve. You analyze enemy weaknesses, expose hidden vulnerabilities with silver-flame telemetry, pin enemy limbs with heavy crossbow bolts, and pass righteous judgment alongside {player_name}.",
     "equipped": {
         "head": "None",
         "chest": "Inquisitor's Leather Duster",

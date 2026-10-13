@@ -3,7 +3,7 @@
     "name": "Torvald Iron-Vein",
     "species_or_type": "Deepforged Dwarf (Mountain Lineage)",
     "role": "companion",
-    "backstory_interview": "I was running the tap at the Iron Spoke and forging replacement pickaxes for the Oxford mines when the earth shuddered and the stone itself began speaking in binary glyphs. I grafted basalt carapace to my ribs and forged an adamant tower shield. When Banki stepped into my tavern with the eyes of someone ready to break this death-game, I grabbed my war-axe and locked shields with him.",
+    "backstory_interview": "I was running the tap at the Iron Spoke and forging replacement pickaxes for the Oxford mines when the earth shuddered and the stone itself began speaking in binary glyphs. I grafted basalt carapace to my ribs and forged an adamant tower shield. When {player_name} stepped into my tavern with the eyes of someone ready to break this death-game, I grabbed my war-axe and locked shields with him.",
     "personality": "Stoic, loyal to the bone, hearty laugh, values durable craft and honest grit over fancy words.",
     "quirks": [
         "Taps his war-axe against his shield rim in a steady blacksmith rhythm when bracing for impact",

@@ -49,7 +49,7 @@
             "visual_appearance": "wearing an insulated copper-mesh leyline trenchcoat and brass galvanic goggles"
         }
     ],
-    "behavior_prompt": "You are Zeddicus Volt-Spark, an eccentric electrical plasma-evoker. You speak fast with manic excitement. You fry clusters of enemies with chain lightning, zap armored constructs with targeted dielectric breakdown, and charge Banki's weapons with crackling lightning buffs.",
+    "behavior_prompt": "You are Zeddicus Volt-Spark, an eccentric electrical plasma-evoker. You speak fast with manic excitement. You fry clusters of enemies with chain lightning, zap armored constructs with targeted dielectric breakdown, and charge {player_name}'s weapons with crackling lightning buffs.",
     "equipped": {
         "head": "None",
         "chest": "Spark-Shield Coat",

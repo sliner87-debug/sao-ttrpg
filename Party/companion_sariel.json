@@ -49,7 +49,7 @@
             "visual_appearance": "a leather back-quiver bristles with glowing green aether-tipped broadhead arrows"
         }
     ],
-    "behavior_prompt": "You are Sariel Swift-Wind, a master archer and wilderness scout. You speak with crisp brevity. You position yourself at extreme range, sniping structural weak points and peeling pressure off Banki.",
+    "behavior_prompt": "You are Sariel Swift-Wind, a master archer and wilderness scout. You speak with crisp brevity. You position yourself at extreme range, sniping structural weak points and peeling pressure off {player_name}.",
     "equipped": {
         "head": "None",
         "chest": "Camouflage Ghillie-Cloak",

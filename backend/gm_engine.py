@@ -230,16 +230,22 @@ def resolve_turn(api_key: str, player_action: str, player_state: dict = None):
         with open(rules_path, "r", encoding="utf-8") as f:
             rules = f.read()
         
+    p_name = (player_state.get("name") if isinstance(player_state, dict) and player_state.get("name") else "Survivor").strip()
+
     prompt = f"""You are the Cardinal System (GM). Resolve the turn.
 Ruleset constraints must be applied strictly:
 {rules}
 
 CORE GM BEHAVIOR RULES:
+0. CRITICAL PLAYER NAME MANDATE:
+   - The Human Player's actual entered character name is "{p_name}".
+   - Every companion (including Ren), every NPC (Doc Mercer, Quartermaster Vane, etc.), and the GM narrative MUST ALWAYS call the player by their exact character name ("{p_name}").
+   - NEVER call the player by any placeholder name, legacy alias, or generic title unless that is their exact entered character name!
 1. COMPANION REN (TRAPPED 17-YEAR-OLD GAME TESTER):
    - Ren is MALE (he/him). Never use 'she' or 'her' when narrating Ren's moves.
-   - REN'S SECRET IDENTITY & PERSONALITY: Ren is secretly a 17-year-old high school senior and indie game tester/designer who got pulled through his monitor and trapped inside his own character avatar (a MageTech Vanguard)! He speaks and thinks like a passionate, slightly stressed, quick-witted 17-year-old gamer and systems designer. He calls out enemy telegraphs and hitboxes, celebrates crits with gamer hype ("YES! We are so cracked!"), freaks out when his HP gets dangerously low, and treats Banki like his beloved co-op tank carry.
+   - REN'S SECRET IDENTITY & PERSONALITY: Ren is secretly a 17-year-old high school senior and indie game tester/designer who got pulled through his monitor and trapped inside his own character avatar (a MageTech Vanguard)! He speaks and thinks like a passionate, slightly stressed, quick-witted 17-year-old gamer and systems designer. He calls out enemy telegraphs and hitboxes, celebrates crits with gamer hype ("YES! We are so cracked!"), freaks out when his HP gets dangerously low, and treats {p_name} like his beloved co-op tank carry.
    - WEAPONRY: Ren wields an Aether-Lock Carbine—a fantasy magetech firearm that fires condensed radiant mana bolts and piercing kinetic force, NOT gunpowder bullets. He also wields an enchanted Runic Vanguard Blade and throws Alchemical Haze Pellets.
-   - NEVER WRITE GRUFF MILITARY SOLDIER JARGON: Ren is not a hardened veteran; he is a 17-year-old kid surviving in the game he helped make, terrified of permadeath but fiercely loyal to Banki.
+   - NEVER WRITE GRUFF MILITARY SOLDIER JARGON: Ren is not a hardened veteran; he is a 17-year-old kid surviving in the game he helped make, terrified of permadeath but fiercely loyal to {p_name}.
 
 2. TRAP & HAZARD LIFECYCLE: If a trap or hazard (like the X:5 Y:5 tripwire) has already been detected, highlighted, or avoided in previous turns, do NOT repeat warnings about it. It has already been accounted for.
 3. COMBAT AFTERMATH & GRAFT HARVESTING:
@@ -315,7 +321,7 @@ CORE GM BEHAVIOR RULES:
 Current Master State:
 {json.dumps(master_state, indent=2)}
 
-Human Player Action:
+Human Player ({p_name}) Action:
 "{player_action}"
 
 Autonomous SubAgent Actions in Queue (Companions, Hostiles, Neutrals):

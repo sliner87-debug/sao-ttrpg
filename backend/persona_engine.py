@@ -71,12 +71,27 @@ Output strictly conforming to the EntityPersonaSchema.
     print(f"[SUBAGENT FORGED] {persona['name']} ({persona['id']}) awakened with full persona.", flush=True)
     return persona
 
-def get_subagent_action(api_key: str, entity_id: str, visible_room: dict, player_action: str = "") -> dict:
+def get_subagent_action(api_key: str, entity_id: str, visible_room: dict, player_action: str = "", player_state: dict = None) -> dict:
     """
     Prompts a specific SubAgent (Companion, NPC, or Monster) to decide their next action.
     They read ONLY their persona sheet, visible_room.json, and the player's current action/speech.
+    Ensures all companions and NPCs know and address the human player by their actual entered name.
     """
     client = genai.Client(api_key=api_key)
+
+    # Determine the human player's active name
+    p_name = "Survivor"
+    if player_state and isinstance(player_state, dict) and player_state.get("name"):
+        p_name = str(player_state["name"]).strip()
+    else:
+        save_path = "save_game.json"
+        if os.path.exists(save_path):
+            try:
+                s_d = load_json(save_path)
+                if s_d and isinstance(s_d, dict) and "player" in s_d and s_d["player"].get("name"):
+                    p_name = str(s_d["player"]["name"]).strip()
+            except Exception:
+                pass
     
     # 1. Load Persona
     persona_path = os.path.join(ENTITIES_DIR, f"{entity_id}.json")
@@ -93,6 +108,18 @@ def get_subagent_action(api_key: str, entity_id: str, visible_room: dict, player
     if not persona:
         # Forge on the fly if missing
         persona = forge_entity_persona(api_key, entity_id, raw_name=entity_id, environment=visible_room.get("environment"))
+
+    # Sanitize any legacy placeholder names ("Banki", "{player_name}") into the player's real name
+    def _sanitize_player_refs(val):
+        if isinstance(val, str):
+            return val.replace("Banki", p_name).replace("{player_name}", p_name).replace("[Player Name]", p_name)
+        elif isinstance(val, list):
+            return [_sanitize_player_refs(x) for x in val]
+        elif isinstance(val, dict):
+            return {k: _sanitize_player_refs(v) for k, v in val.items()}
+        return val
+
+    persona = _sanitize_player_refs(persona)
 
     # 2. Build mechanical gear & physical status context if available
     mech_lines = []
@@ -119,9 +146,12 @@ def get_subagent_action(api_key: str, entity_id: str, visible_room: dict, player
     if mech_lines:
         mechanical_section = "\nYOUR CURRENT PHYSICAL STATUS & TACTICAL LOADOUT:\n" + "\n".join(mech_lines) + "\n"
 
-    player_action_section = ""
-    if player_action:
-        player_action_section = f"\nHUMAN PLAYER'S CURRENT ACTION / SPEECH THIS TURN:\n\"{player_action}\"\n"
+    player_action_section = f"""
+HUMAN PLAYER IDENTITY & CURRENT TURN ACTION:
+- Human Player Name: {p_name}
+- Human Player's Speech / Action This Turn:
+"{player_action or 'Observes and stands ready.'}"
+"""
 
     # 3. Build the persona's subjective perception prompt
     prompt = f"""You are an autonomous SubAgent in a dark fantasy, aether-punk LitRPG death-game.
@@ -144,9 +174,12 @@ YOUR PSYCHE:
 WHAT YOU CAN CURRENTLY SEE (Visible Room):
 {json.dumps(visible_room, indent=2)}
 {player_action_section}
-CRITICAL GROUNDING RULE:
-- Ground your thoughts and intended action strictly in `Visible Room.environment.location` and `Visible Room.environment.environmental_effects`.
-- If there are NO hostile entities in `Visible Room.entities` and no active collapse in `environmental_effects`, do NOT hallucinate cave-ins, falling shale, or active combat! Follow or coordinate with the Human Player's current action/speech naturally.
+CRITICAL GROUNDING & NAMING RULES:
+1. GROUNDING: Ground your thoughts and intended action strictly in `Visible Room.environment.location` and `Visible Room.environment.environmental_effects`.
+   - If there are NO hostile entities in `Visible Room.entities` and no active collapse in `environmental_effects`, do NOT hallucinate cave-ins, falling shale, or active combat! Follow or coordinate with the Human Player's current action/speech naturally.
+2. ABSOLUTE PLAYER NAME MANDATE: The human player's entered character name is "{p_name}".
+   - In your internal thoughts, tactical plans, and spoken dialogue, ALWAYS refer to the human player as "{p_name}".
+   - NEVER call them any placeholder name, legacy alias, or generic title!
 
 Decide your next action based on your instincts, physical condition, available gear, fear level, and tactical goals.
 Do not break character. Speak from your internal thought and declare your action.
@@ -167,7 +200,7 @@ Output strictly matching ActorActionSchema.
     action["actor_name"] = persona.get("name", entity_id)
     return action
 
-def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list = None, player_action: str = "") -> list:
+def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list = None, player_action: str = "", player_state: dict = None) -> list:
     """
     Iterates through all entities in the visible room (Active Vanguard Companions, Monsters, NPCs).
     Each SubAgent decides their move autonomously based on their persona, stance, and visible threats.
@@ -178,6 +211,7 @@ def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list 
 
     # 1. Process all active party companions (Ren, Elora, Torvald, Kibs)
     party_members = active_party if active_party else ["companion_ren"]
+
     party_ids = []
     
     for member in party_members:
@@ -188,7 +222,7 @@ def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list 
         party_ids.append(c_id)
         
         try:
-            c_action = get_subagent_action(api_key, c_id, visible_room, player_action=player_action)
+            c_action = get_subagent_action(api_key, c_id, visible_room, player_action=player_action, player_state=player_state)
             all_actions.append(c_action)
         except Exception as e:
             print(f"[SUBAGENT ERROR] Companion {c_id} action failed: {e}", flush=True)
@@ -214,7 +248,7 @@ def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list 
                 environment=visible_room.get("environment")
             )
             # Get their action
-            sub_action = get_subagent_action(api_key, eid, visible_room, player_action=player_action)
+            sub_action = get_subagent_action(api_key, eid, visible_room, player_action=player_action, player_state=player_state)
             all_actions.append(sub_action)
         except Exception as e:
             print(f"[SUBAGENT ERROR] Action for {eid} failed: {e}", flush=True)

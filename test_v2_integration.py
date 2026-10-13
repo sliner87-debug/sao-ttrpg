@@ -7,7 +7,9 @@ Validates Hybrid Grafting (Biological + Golem), Ability Fusion Protocol,
 import json
 import os
 import unittest
+from unittest.mock import patch, MagicMock
 import backend.mechanics as mechanics
+
 
 class TestV2Integration(unittest.TestCase):
     def setUp(self):
@@ -223,6 +225,110 @@ class TestV2Integration(unittest.TestCase):
                 self.assertTrue(len(det["description"]) > 15, f"Missing description for racial ability {rab}")
                 self.assertTrue(len(det["mechanics"]) > 15, f"Missing mechanics for racial ability {rab}")
 
+    def test_system_initialization_welcome_message(self):
+        """Verifies V2's new System Initialization welcome message meets all LitRPG criteria."""
+        import backend.character_generator as cg
+        test_player = {
+            "name": "Caelen",
+            "race": "MageTech Cyborg",
+            "class": "Aether-Slinger",
+            "hp": 95,
+            "max_hp": 95,
+            "col": 100,
+            "skills": {
+                "Arcane Ballistics": {"mastery": 55, "tier": "Apprentice"},
+                "Software Architecture": {"mastery": 45, "tier": "Novice"}
+            },
+            "equipped": {
+                "main_hand": "Aether-Lock Carbine",
+                "off_hand": "None",
+                "chest": "Reinforced Leather",
+                "accessory": "Titanium Multi-Tool"
+            },
+            "inventory": [
+                {
+                    "name": "Titanium Multi-Tool",
+                    "category": "Keepsake Relic",
+                    "desc": "Nineteen tools in one aerospace titanium chassis.",
+                    "mechanics": "Bypasses standard tool requirements for field repairs."
+                }
+            ]
+        }
+
+        msg = cg.build_system_initialization_welcome_message(test_player)
+
+        # 1. System Apocalypse Tone & Geography
+        self.assertIn("SYSTEM INITIALIZATION: PLANETARY INTEGRATION COMPLETE", msg)
+        self.assertIn("SECTOR 01: NORTH AMERICAN CONTINENTAL ZONE // NODE 07882: WASHINGTON BOROUGH, NEW JERSEY", msg)
+        self.assertIn("Route 31 and Route 57", msg)
+        self.assertIn("Oxford Furnace", msg)
+        self.assertIn("Pohatcong Mountain", msg)
+
+        # 2. Biometric & Relic Ledger with exact entered Character Name
+        self.assertIn("**Caelen**", msg)
+        self.assertIn("MageTech Cyborg", msg)
+        self.assertIn("Aether-Slinger", msg)
+        self.assertIn("Titanium Multi-Tool", msg)
+        self.assertIn("Arcane Ballistics", msg)
+
+        # 3. Sardonic Architect Broadcast (DCC style)
+        self.assertIn("SYSTEM ARCHITECT EVALUATION", msg)
+        self.assertIn("Software", msg)
+        self.assertIn("Calculated Survival Index", msg)
+
+        # 4. Initial Scenario #001 & In-Universe Interface Directives
+        self.assertIn("INITIAL SCENARIO #001: SURVIVE THE FIRST CALIBRATION WAVE", msg)
+        self.assertIn("CARDINAL INTERFACE DIRECTIVES", msg)
+        self.assertIn("Autonomous Battle-Companions", msg)
+        self.assertIn("Cardinal Ability Fusion Chamber", msg)
+        self.assertIn("Bio-Surgical Grafting & Strain Tolerance", msg)
+        self.assertIn("Neural Voice Link", msg)
+
+    @patch("google.genai.Client")
+    def test_npc_player_name_dynamic_binding(self, mock_client_cls):
+        """Verifies that all SubAgent persona prompts bind the exact entered player name and purge Banki."""
+        import backend.persona_engine as persona_engine
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+        mock_response = MagicMock()
+        mock_response.text = json.dumps({
+            "actor_id": "companion_ren",
+            "internal_thought": "Vesper needs cover on the perimeter.",
+            "intended_action": "Draws carbine and watches the entrance."
+        })
+        mock_client.models.generate_content.return_value = mock_response
+
+        p = {"name": "Vesper", "race": "Pure Human", "class": "Bulwark Vanguard"}
+        
+        # Test raw persona file
+        persona_path = os.path.join(os.path.dirname(__file__), "Entities", "companion_ren.json")
+        with open(persona_path, "r", encoding="utf-8") as f:
+            raw_text = f.read()
+        
+        # Raw file should not contain hardcoded Banki
+        self.assertNotIn("Banki", raw_text)
+
+        # In run_all_room_subagents / get_subagent_action, player_name Vesper must be bound
+        subagent_actions = persona_engine.run_all_room_subagents(
+            api_key="mock_key_test",
+            visible_room={
+                "environment": {"location": "Washington Borough Safe-Zone", "environmental_effects": ["Safe-Zone Sanctuary Wards"]},
+                "entities": []
+            },
+            active_party=["companion_ren"],
+            player_action="I check my weapons.",
+            player_state=p
+        )
+        self.assertGreaterEqual(len(subagent_actions), 1)
+
+        # Inspect the prompt passed to Gemini: must contain 'Vesper' and zero occurrences of 'Banki'
+        call_kwargs = mock_client.models.generate_content.call_args[1]
+        sent_prompt = call_kwargs["contents"]
+        self.assertIn("Vesper", sent_prompt)
+        self.assertNotIn("Banki", sent_prompt)
+
 if __name__ == "__main__":
     unittest.main()
+
+
 

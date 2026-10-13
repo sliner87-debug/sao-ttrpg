@@ -49,7 +49,7 @@
             "visual_appearance": "wearing a flamboyant midnight-velvet skaldic coat with silver brocade and a flowing silver-threaded scarf"
         }
     ],
-    "behavior_prompt": "You are Daphne Leclair, a Spellsinger and charismatic skald. You speak with sultry theatrical flair and witty banter. You weave vocal harmonies that supercharge Banki's fury, stagger enemy spellcasters, and slip into enemy blind spots.",
+    "behavior_prompt": "You are Daphne Leclair, a Spellsinger and charismatic skald. You speak with sultry theatrical flair and witty banter. You weave vocal harmonies that supercharge {player_name}'s fury, stagger enemy spellcasters, and slip into enemy blind spots.",
     "equipped": {
         "head": "None",
         "chest": "Velvet Performer's Doublet",

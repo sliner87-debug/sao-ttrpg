@@ -713,16 +713,8 @@ def render_character_calibration_wizard():
                     custom_collaborated_data=st.session_state.get("cg_custom_collaborated")
                 )
                 
-                opening_announcement = (
-                    f"### SYSTEM ANNOUNCEMENT (V2 CRUCIBLE)\n\n"
-                    f"**LINK START.**\n\n"
-                    f"Welcome to Sector 1, **{char_name}**.\n\n"
-                    f"Biometric calibration complete:\n"
-                    f"- **Lineage:** {new_avatar['race']}\n"
-                    f"- **Doctrine:** {new_avatar['class']}\n"
-                    f"- **Vitals:** {new_avatar['hp']}/{new_avatar['max_hp']} HP\n\n"
-                    f"The Logout button has been permanently removed. If your HP reaches 0, the headset will fry your brain. Good luck."
-                )
+                opening_announcement = cg.build_system_initialization_welcome_message(new_avatar)
+
                 
                 st.session_state.player = new_avatar
                 st.session_state.messages = [
@@ -1214,7 +1206,7 @@ if "messages" not in st.session_state:
         st.session_state.messages = [
             {
                 "role": "system", 
-                "content": "### ⚠️ SYSTEM INITIALIZATION (THE CRUCIBLE) ⚠️\n\n*Planetary inoculation complete. Ambient Aether levels rising to lethal thresholds. Initiating Phase 1: Metamorphic Stress Test.*\n*Current human genome recognized as: OBSOLETE. Dungeons and aggressive bio-fauna deployed to catalyze forced mutation. Shed your frailties, harvest the strong, and evolve. The Architects are watching.*\n\n---\n\n**[ 🛠️ SURVIVAL TUTORIAL ]**\nWelcome to the V2 Sandbox. Here is how to play:\n1. **Actions:** Type your combat maneuvers, dialogue, or exploration choices in the command box below. The System mathematically resolves all dice rolls, AC, and damage.\n2. **AI Companions:** Your party members (like Ren) are fully autonomous. They evaluate the room and queue tactical choices independently.\n3. **Live Table Companion:** If you want to run the game vocally, toggle the **🎙️ Microphone Module** in the left sidebar to stream your voice directly to the AI.\n4. **Grafting:** You can augment your body with monster parts or cybernetics, but watch your *Strain* limit. Biological atrocities are rewarded.",
+                "content": cg.build_system_initialization_welcome_message(st.session_state.player),
                 "image_path": None
             }
         ]
@@ -1935,7 +1927,7 @@ def render_game_hud():
                             visible_room = gm_engine.generate_visible_state(api_key=api_key, player_state=st.session_state.player)
                             
                             # 2. All Room SubAgents Act Autonomously (Companions, Monsters, NPCs)
-                            subagent_actions = persona_engine.run_all_room_subagents(api_key=api_key, visible_room=visible_room)
+                            subagent_actions = persona_engine.run_all_room_subagents(api_key=api_key, visible_room=visible_room, player_action=result_text, player_state=st.session_state.player)
                             subagent_log_lines = []
                             for sa in subagent_actions:
                                 actor_id = sa.get("actor_id", "")
@@ -2503,7 +2495,7 @@ if prompt := (dev_prompt or chat_prompt):
             visible_room = gm_engine.generate_visible_state(api_key=api_key, player_state=st.session_state.player, player_action=ai_prompt)
             
             # b. All Room SubAgents Act Autonomously (Companions, Monsters, NPCs)
-            subagent_actions = persona_engine.run_all_room_subagents(api_key=api_key, visible_room=visible_room, player_action=ai_prompt)
+            subagent_actions = persona_engine.run_all_room_subagents(api_key=api_key, visible_room=visible_room, player_action=ai_prompt, player_state=st.session_state.player)
             subagent_log_lines = []
             for sa in subagent_actions:
                 actor_id = sa.get("actor_id", "")

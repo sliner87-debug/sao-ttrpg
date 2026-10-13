@@ -1590,3 +1590,263 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
     }
     
     return player_sheet
+
+
+def build_system_initialization_welcome_message(player_state: dict) -> str:
+    """
+    Constructs the immersive V2 System Initialization welcome message.
+    Blending:
+    1. 'The System Apocalypse' (Tao Wong) as the Main Tone:
+       Universal blue screen freezing human electronics, initializing baseline attributes,
+       and declaring Earth an active monster-spawning zone where pre-integration technology
+       fails unless mana-adapted, grounded in real-world geography (Route 31, Route 57,
+       Oxford Furnace, Pohatcong Depths, Washington Borough, NJ 07882).
+    2. Interactive System AI (Sardonic Architect Broadcast - Dungeon Crawler Carl + The Crucible):
+       Cold planetary reclamation notice paired with a darkly witty, observant System AI / Architect
+       voice that specifically evaluates the player's pre-integration vocation, keepsake relic,
+       and calculates their chilling survival odds.
+    3. Biometric & Relic Ledger:
+       Dynamic readout of the calibrated Avatar, Vocation, Equipped Gear, Keepsake Relic, and
+       a Dungeon Crawler Carl-style System evaluation note on their build.
+    4. Tutorial (Initial Scenario #001 & In-Universe Cardinal Interface Briefing):
+       Action input, Autonomous Companions (Ren), Ability Fusion (Rule 10), Graft Strain,
+       and Voice Link onboarding replacing out-of-character tutorial bullets.
+    """
+    if not isinstance(player_state, dict):
+        player_state = {}
+
+    char_name = str(player_state.get("name") or "Survivor").strip()
+    race = str(player_state.get("race") or "Pure Human").strip()
+    class_doctrine = str(player_state.get("class") or "Pathless (Freeform)").strip()
+    hp = player_state.get("hp", 100)
+    max_hp = player_state.get("max_hp", 100)
+    col = player_state.get("col", 100)
+    stats = player_state.get("stats", {"STR": 10, "DEX": 10, "CON": 10, "INT": 10, "WIS": 10, "CHA": 10})
+
+    # Derive AC
+    import backend.mechanics as mechanics
+    ac_info = mechanics.calculate_ac(player_state) if hasattr(mechanics, "calculate_ac") else {"ac": 12}
+    ac_val = ac_info.get("ac", 12) if isinstance(ac_info, dict) else 12
+
+    # Identify Pre-Integration Vocation / Skills
+    skills_dict = player_state.get("skills", {})
+    skill_lines = []
+    vocation_title = "Civilian Survivor"
+
+    if isinstance(skills_dict, dict) and skills_dict:
+        for s_n, s_d in list(skills_dict.items())[:3]:
+            m_val = s_d.get("mastery", 1) if isinstance(s_d, dict) else 1
+            t_val = s_d.get("tier", "Novice") if isinstance(s_d, dict) else "Novice"
+            skill_lines.append(f"  - `{s_n}`: Mastery {m_val}/1000 [{t_val}]")
+    else:
+        skill_lines.append("  - `Survival Conditioning`: Mastery 45/1000 [Novice]")
+        skill_lines.append("  - `Tactical Reflexes`: Mastery 40/1000 [Novice]")
+
+    skills_display = "\n".join(skill_lines)
+
+    # Detect Vocation flavor from skills or background
+    skills_keys_lower = " ".join(skills_dict.keys()).lower()
+    feats_str_lower = " ".join(str(f) for f in player_state.get("feats", [])).lower()
+
+    if any(k in skills_keys_lower for k in ["code", "software", "network", "system architecture"]):
+        vocation_title = "Software Engineer / System Architect"
+        arch_vocation_quip = (
+            "Ah, a Software Engineer. The System observes: 'Fascinating. A specimen whose primary Earth survival skill "
+            "involved converting cold brew into unhandled runtime exceptions. Unfortunately for you, the physical laws of New Jersey "
+            "have just been hard-recompiled into arcane C++, and your mechanical keyboard has been swapped for cold iron. "
+            "Try not to segfault when a troglodyte bites through your carpal tunnel.'"
+        )
+        survival_odds = 6.8
+        survival_verdict = "Statistically tragic. Elevated slightly if you can debug enemy attack telegraphs."
+    elif any(k in skills_keys_lower for k in ["triage", "medicine", "nursing", "trauma", "first aid"]):
+        vocation_title = "Emergency Trauma Nurse / First Responder"
+        arch_vocation_quip = (
+            "A Trauma First Responder. The System observes: 'Someone who actually understands arterial bleeding and panic control. "
+            "How refreshing. You will soon discover that staunching wounds caused by corrupted aether-beasts is remarkably similar to "
+            "night-shift ER triage, except the patients have teeth on their ribs and the insurance billing is conducted in blood.'"
+        )
+        survival_odds = 16.4
+        survival_verdict = "Remarkably high for an unaugmented mammalian bi-ped."
+    elif any(k in skills_keys_lower for k in ["weld", "fabricat", "blacksmith", "machin", "metalwork"]):
+        vocation_title = "Industrial Welder / Metal Fabricator"
+        arch_vocation_quip = (
+            "A Heavy Trades Metal Fabricator. The System observes: 'Calloused palms, arc-eye tolerance, and an appreciation for structural integrity. "
+            "You might actually survive the afternoon. The Oxford mine shafts are rich in raw aether-iron, provided you don't mind "
+            "mining around the hibernating slag-golems.'"
+        )
+        survival_odds = 14.1
+        survival_verdict = "Promising blunt-force survivability."
+    elif any(k in skills_keys_lower for k in ["timber", "forag", "homestead", "trapper", "bushcraft"]):
+        vocation_title = "Off-Grid Homesteader / Wilderness Bushcrafter"
+        arch_vocation_quip = (
+            "An Off-Grid Homesteader. The System observes: 'You already hated the electrical grid and modern civilization. "
+            "Rejoice: both have been obliterated! Now you just have to contend with the local timber wolves growing six extra sets of eyes.'"
+        )
+        survival_odds = 15.2
+        survival_verdict = "Well-suited for environmental hostility."
+    elif any(k in skills_keys_lower for k in ["barista", "espresso", "latte", "coffee"]):
+        vocation_title = "Third-Wave Specialty Barista"
+        arch_vocation_quip = (
+            "A Specialty Barista. The System observes: 'You spent four years mastering dial-in ratios and oat milk microfoam. "
+            "The bad news: the espresso machine at the Washington diner is now an enchanted conduit of pressurized magma. "
+            "The good news: caffeine withdrawal will probably kill you before the goblins do.'"
+        )
+        survival_odds = 4.3
+        survival_verdict = "Severe lack of bludgeoning potential."
+    elif any(k in skills_keys_lower for k in ["athletics", "sprinter", "quarterback", "rugby", "martial"]):
+        vocation_title = "Athletic Competitor / Martial Practitioner"
+        arch_vocation_quip = (
+            "An Earth Athlete. The System observes: 'Cardiovascular conditioning and fast-twitch kinetic reflexes. "
+            "You are physically equipped to run away from danger very quickly, which is easily 80% of surviving your first week.'"
+        )
+        survival_odds = 12.9
+        survival_verdict = "High kinetic agility index."
+    else:
+        vocation_title = "Adaptive Civilian Survivor"
+        arch_vocation_quip = (
+            f"An Adaptive Earth Civilian. The System observes: 'Biometric neural scan parsed. A versatile background characterized "
+            f"by improvised problem solving and stubborn persistence. Let us see if that civilian tenacity holds when the mountain shudders.'"
+        )
+        survival_odds = 9.5
+        survival_verdict = "Moderate. High variance based on tactical intelligence."
+
+    # Identify Equipped Loadout
+    equipped = player_state.get("equipped", {})
+    main_hand = equipped.get("main_hand", "Bare Hands")
+    off_hand = equipped.get("off_hand", "None")
+    chest_armor = equipped.get("chest", "Threadbare Scavenger Tunic")
+
+    # Detect Keepsake Relic
+    relic_name = "Shattered Smartphone"
+    relic_effect = "Chronicles the final unread text messages of Earth before cell towers calcified into humming mana-spires."
+    arch_relic_quip = "A glass-and-aluminum brick with a cracked screen that will never connect to 5G again. At least you can use it as a blunt mirror to watch your own dismay."
+
+    # Search inventory or accessory for relic
+    inv = player_state.get("inventory", [])
+    found_relic = None
+    if isinstance(inv, list):
+        for item in inv:
+            if isinstance(item, dict):
+                cat = str(item.get("category", "")).lower()
+                i_name = str(item.get("name", ""))
+                if "relic" in cat or any(w in i_name.lower() for w in [
+                    "smartphone", "multi-tool", "lighter", "novel", "carabiner", "polaroid",
+                    "flashlight", "tuning fork", "thermos", "santoku", "usb", "compass",
+                    "stopwatch", "monocular", "walkie", "whistle", "keepsake"
+                ]):
+                    found_relic = item
+                    break
+
+    if found_relic:
+        relic_name = found_relic.get("name", relic_name)
+        relic_desc = found_relic.get("desc", "")
+        relic_mech = found_relic.get("mechanics", "")
+        relic_effect = f"{relic_desc} — *{relic_mech}*" if relic_mech else relic_desc
+        r_low = relic_name.lower()
+
+        if "smartphone" in r_low:
+            arch_relic_quip = (
+                "Keepsake Relic: Shattered Smartphone. System Note: 'A black-glass slab with a cracked screen that will never receive "
+                "another push notification. Truly, an artifact of immense sentimental tragedy. At least you can use the dead screen to check if your eyes have started glowing blue.'"
+            )
+        elif "multi-tool" in r_low or "leatherman" in r_low:
+            arch_relic_quip = (
+                "Keepsake Relic: Titanium Multi-Tool. System Note: 'Nineteen precision tools, exactly zero of which are rated for parrying "
+                "a ten-foot tectonic automaton. But hey, you can strip copper wiring and tighten screws while your teammate gets crushed.'"
+            )
+        elif "lighter" in r_low or "zippo" in r_low:
+            arch_relic_quip = (
+                "Keepsake Relic: Brass Windproof Lighter. System Note: 'Fire: humanity\\'s oldest and most pathetic security blanket. "
+                "Keep that flint dry; down in the Pohatcong adits, the dark has teeth.'"
+            )
+        elif "thermos" in r_low or "coffee" in r_low:
+            arch_relic_quip = (
+                "Keepsake Relic: Vacuum Thermos. System Note: 'Three sips of pre-integration drip roast preserved by double-walled steel. "
+                "Savor it like liquid gold. You are never tasting convenience store hazelnut again.'"
+            )
+        elif "novel" in r_low or "paperback" in r_low:
+            arch_relic_quip = (
+                "Keepsake Relic: Dog-Eared Paperback. System Note: 'Reading speculative fiction about the apocalypse while living inside "
+                "one is either profound artistic irony or a cry for help. Either way, the pages make excellent tinder.'"
+            )
+        elif "flashlight" in r_low or "strobe" in r_low:
+            arch_relic_quip = (
+                "Keepsake Relic: Tactical Strobe Flashlight. System Note: 'Two thousand lumens of blinding LED white light. "
+                "Terrific for disorienting subterranean cave stalkers. Less terrific when the battery dies in the middle of a pitch-black labyrinth adit.'"
+            )
+        elif "polaroid" in r_low or "camera" in r_low:
+            arch_relic_quip = (
+                "Keepsake Relic: Vintage Polaroid Camera. System Note: 'Three exposures left. Try not to waste one taking a selfie with the thing "
+                "that eats you.'"
+            )
+        else:
+            arch_relic_quip = (
+                f"Keepsake Relic: {relic_name}. System Note: 'A physical anchor to an extinct civilization. "
+                "Clutch it tightly when the seismic alarms sound.'"
+            )
+
+    return f"""# 🟦 [SYSTEM INITIALIZATION: PLANETARY INTEGRATION COMPLETE] 🟦
+**SECTOR 01: NORTH AMERICAN CONTINENTAL ZONE // NODE 07882: WASHINGTON BOROUGH, NEW JERSEY**
+*Ambient Aetheric Saturation: 94.7% (Lethal Threshold Exceeded)*
+*Status: Pre-Integration Silicon Infrastructure Decommissioned // Organic Rewrites Enacted*
+
+---
+
+> **ATTENTION, RESIDENT OF NODE 07882:**
+>
+> If you are reading this floating cerulean display, congratulations: your biological matrix did not spontaneously liquefy during the initial mana rupture!
+>
+> At precisely 03:00 hours, the planetary free-trial period for Earth expired. The fundamental laws of physics you grew comfortable with—combustion engines, silicon microprocessors, and long-distance electrical grids along Route 31 and Route 57—have experienced an unrecoverable runtime termination. Internal combustion is dead. The cell towers on Pohatcong Mountain have calcified into humming mana-spires. The municipal parks, abandoned iron mines at Oxford Furnace, and drainage tributaries have been designated as leveled hostile breach zones and subterranean labyrinths.
+>
+> Washington Borough has been partitioned as the **Sector 1 Initial Calibration Sanctuary Wards**. Step beyond the warded perimeter, and you are officially registered as free-range harvest material for the indigenous and newly spawned megafauna.
+
+---
+
+### 📋 BIOMETRIC & RELIC LEDGER
+- **Designation:** **{char_name}**
+- **Genetic Lineage:** `{race}`
+- **Combat Doctrine:** `{class_doctrine}`
+- **Baseline Vitals:** `{hp}/{max_hp} HP` | **Armor Class:** `{ac_val}`
+- **Pre-Integration Discipline:** `{vocation_title}`
+- **Calibrated Skill Matrix (1–1000):**
+{skills_display}
+- **Equipped Tactical Loadout:**
+  - *Main Hand:* `{main_hand}`
+  - *Off Hand:* `{off_hand}`
+  - *Chest Armor:* `{chest_armor}`
+- **Soul-Bound Keepsake Relic:** `{relic_name}`
+  - *Manifestation:* {relic_effect}
+
+> 🎙️ **SYSTEM ARCHITECT EVALUATION:**
+> *"{arch_vocation_quip}"*
+> *"{arch_relic_quip}"*
+> **Calculated Survival Index:** `{survival_odds}%` — *{survival_verdict}*
+
+---
+
+### 📜 INITIAL SCENARIO #001: SURVIVE THE FIRST CALIBRATION WAVE
+- **Classification:** Regional Genesis Directive
+- **Objective:** Establish situational awareness within the Washington Borough Safe-Zone, rendezvous with local survivors and key node operatives (Ren, Doc Mercer, Quartermaster Vane), and prepare for incoming environmental Aetheric surges.
+- **Time Limit:** Continuous / Real-Time Progression
+- **Clear Rewards:** +100 Col, 50 XP, Sector 1 Safe-Zone Clearance
+- **Failure Condition:** Total Biological De-Registration (Permadeath)
+
+---
+
+### ⚙️ CARDINAL INTERFACE DIRECTIVES (TACTICAL ONBOARDING)
+*The Cardinal System observes and enforces all interactions under absolute deterministic logic:*
+
+1. **Tactical Commands & Narrative Manifestation:**
+   Type your physical strikes, tactical repositioning, incantations, or speech into the command prompt. The Cardinal System calculates all weapon reach, Armor Class (AC), Saving Throws (DC), and kinetic impact damage behind the curtain.
+2. **Autonomous Battle-Companions:**
+   Companions like **Ren** are fully autonomous subagents with independent neural logic, tactical stances, and psychological thresholds. They react to enemy telegraphs, protect flanks, celebrate victories, or retreat when bloodied. Coordinate with them; they are living allies, not scripted minions.
+3. **Cardinal Ability Fusion Chamber (Rule 10):**
+   When your mastery reaches sufficient thresholds, you may merge two active skills into a superior **`[Fusion]` Skill** with combined mastery along the 1–1000 scale. Consumed base skills are archived and can be relearned from Novice (1/1000) whenever foundational retraining is needed.
+4. **Bio-Surgical Grafting & Strain Tolerance:**
+   Monsters and golems yield harvestable organs and kinetic servos. Doc Mercer's subterranean clinic can graft them to your anatomy, but heed your **Strain Capacity** (`CON Mod + Floor(Level / 2)`). Exceeding this threshold induces Necrotic Rejection and Arcane Dissonance.
+5. **Neural Voice Link:**
+   Toggle the **🎙️ Microphone Module** in the sidebar to stream vocal commands and dialogue directly into the Cardinal Matrix.
+
+*The Crucible does not negotiate. Adapt, harvest the fallen, and climb.*
+"""
+
