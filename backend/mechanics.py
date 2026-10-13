@@ -5,6 +5,7 @@ Handles mathematical crunch, dice logic, encumbrance physics, and equipment stat
 
 import math
 import copy
+import re
 
 # --- ITEM WEIGHT HEURISTICS ---
 DEFAULT_WEIGHT_MAP = {
@@ -100,7 +101,14 @@ def calculate_encumbrance(player_state):
     stats = player_state.get("stats", {})
     str_val = stats.get("STR", 10)
     
-    max_weight = round(str_val * 15.0, 1)
+    # Check for racial / feat carry capacity bonus (e.g. MageTech Cyborg Pneumatic Endoskeleton)
+    bonus_capacity = 0.0
+    race_str = str(player_state.get("race", "")).lower()
+    feats_str = " ".join([str(f).lower() for f in player_state.get("feats", [])])
+    if "cyborg" in race_str or "pneumatic endoskeleton" in feats_str:
+        bonus_capacity += 25.0
+        
+    max_weight = round(str_val * 15.0 + bonus_capacity, 1)
     max_slots = 10 + (str_val // 2)
     
     current_weight = 0.0
@@ -118,9 +126,10 @@ def calculate_encumbrance(player_state):
     for item in inventory:
         w = get_item_weight(item)
         current_weight += w
-        # Stacking slots: each entry takes 1 slot, or 1 slot per 5 units for small items
+        # Stacking slots: each entry takes 1 slot, or 1 slot per 5 units for lightweight bundled items (< 2.0 lbs per unit)
         qty = item.get("qty", 1) if isinstance(item, dict) else 1
-        slots_taken = max(1, math.ceil(qty / 5)) if w < 2.0 else qty
+        unit_w = (w / qty) if qty > 0 else w
+        slots_taken = max(1, math.ceil(qty / 5)) if unit_w < 2.0 else qty
         used_slots += slots_taken
         
     current_weight = round(current_weight, 1)
@@ -158,7 +167,7 @@ def calculate_encumbrance(player_state):
     }
 
 def calculate_ac(player_state, encumbrance=None):
-    """Calculates Armor Class based on DEX, equipped armor, durability state, and encumbrance penalties."""
+    """Calculates Armor Class based on DEX, equipped armor, durability state, natural armor, and encumbrance penalties."""
     if encumbrance is None:
         encumbrance = calculate_encumbrance(player_state)
         
@@ -194,15 +203,31 @@ def calculate_ac(player_state, encumbrance=None):
     if "shield" in off_hand:
         shield_bonus = 0 if dur_pens.get("shield_broken", False) else 2
     
-    # Golem-Grafts AC Bonus
+    # Natural AC from Lineage Traits
+    natural_ac = 0
+    race_str = str(player_state.get("race", "")).lower()
+    feats_str = " ".join([str(f).lower() for f in player_state.get("feats", [])])
+    if any(k in race_str for k in ["golem reborn", "mantid"]):
+        natural_ac += 2
+    elif any(k in race_str for k in ["cyborg", "draconic", "dragonborn"]):
+        natural_ac += 1
+    elif "pneumatic endoskeleton" in feats_str:
+        natural_ac += 1
+    elif "dragon-scale armor" in feats_str:
+        natural_ac += 1
+        
+    # Golem & Biological Grafts AC Bonus
     graft_ac_bonus = 0
     installed_grafts = player_state.get("graft_system", {}).get("installed_grafts", {})
-    if isinstance(installed_grafts, dict) and "dermal" in installed_grafts:
-        if installed_grafts["dermal"].get("key") == "subdermal_carapace_weave":
-            graft_ac_bonus += 2
+    if isinstance(installed_grafts, dict):
+        for g_val in installed_grafts.values():
+            if isinstance(g_val, dict):
+                g_k = g_val.get("key", "")
+                if g_k in ["subdermal_carapace_weave", "basalt_carapace_plating", "wyrm_scale_sheath"]:
+                    graft_ac_bonus += 2
             
     ac_pen = dur_pens.get("ac_penalty", 0)
-    return max(10, base_ac + armor_bonus + shield_bonus + graft_ac_bonus - ac_pen)
+    return max(10, base_ac + armor_bonus + shield_bonus + natural_ac + graft_ac_bonus - ac_pen)
 
 
 
@@ -711,6 +736,8 @@ def update_skill_mastery(player_state: dict, skill_name: str, gain_or_dc: int = 
         gain_or_dc = kwargs["task_dc"]
     if kwargs.get("mastery_change") is not None and not is_dc:
         gain_or_dc = kwargs["mastery_change"]
+    if kwargs.get("amount") is not None and not is_dc:
+        gain_or_dc = kwargs["amount"]
     if kwargs.get("description"):
         desc = kwargs["description"]
     elif kwargs.get("desc"):
@@ -845,6 +872,7 @@ def update_skill_mastery(player_state: dict, skill_name: str, gain_or_dc: int = 
         "tier_changed": (old_tier != new_tier),
         "unlocked_milestones": unlocked,
         "milestones_unlocked": [m["name"] for m in unlocked],
+        "milestones_triggered": unlocked,
         "skill_data": skill_entry
     }
 
@@ -1854,10 +1882,12 @@ def apply_durability_damage(player_state, slot_or_name, amount=1):
             "item": item_name,
             "old_cur": old_cur,
             "new_cur": new_cur,
+            "current": new_cur,
             "max": max_d,
             "loss": amount,
             "state": state_info["state"],
             "is_broken": state_info["is_broken"],
+            "broken": state_info["is_broken"],
             "is_dulled": state_info["is_dulled"],
             "log": log
         }
@@ -1876,10 +1906,12 @@ def apply_durability_damage(player_state, slot_or_name, amount=1):
                 "item": item.get("name"),
                 "old_cur": old_cur,
                 "new_cur": new_cur,
+                "current": new_cur,
                 "max": max_d,
                 "loss": amount,
                 "state": state_info["state"],
                 "is_broken": state_info["is_broken"],
+                "broken": state_info["is_broken"],
                 "is_dulled": state_info["is_dulled"],
                 "log": log
             }
@@ -2402,10 +2434,90 @@ CANONICAL_GRAFTS = {
         "stat_bonuses": {"WIS": 1, "INT": 1},
         "description": "Gold-threaded spinal shunt maintaining pure mana flow around metallic limbs, shielding spellcasters from graft interference.",
         "effect": "Harmonizes 2 installed grafts (negates spellcaster penalty), +15 Max Combat Resource"
+    },
+    # Biological & Chimera Creature Grafts (The Crucible / Doc Mercer Clinic)
+    "basalt_carapace_plating": {
+        "key": "basalt_carapace_plating",
+        "name": "Basalt Carapace Plating",
+        "type": "biological",
+        "allowed_slots": ["dermal", "torso"],
+        "strain": 12,
+        "col_cost": 1500,
+        "stat_bonuses": {"CON": 2},
+        "description": "Dense calcified scales harvested from quarry behemoths, providing earth-attuned blunt resistance.",
+        "effect": "+2 AC, DR 2 Physical, immune to subterranean tremors"
+    },
+    "silt_marrow_geothermal_core": {
+        "key": "silt_marrow_geothermal_core",
+        "name": "Silt-Marrow Geothermal Core",
+        "type": "biological",
+        "allowed_slots": ["spine", "torso", "dermal"],
+        "strain": 15,
+        "col_cost": 2000,
+        "stat_bonuses": {"STR": 1, "CON": 1},
+        "description": "An energetic beast heart ventricle pulsing with geothermal steam and volcanic vitality.",
+        "effect": "Thermal venting: 1d6 fire retaliation on melee attackers, +10 Fire Resistance"
+    },
+    "basilisk_venom_gland": {
+        "key": "basilisk_venom_gland",
+        "name": "Basilisk Venom Gland",
+        "type": "biological",
+        "allowed_slots": ["arm_left", "arm_right", "left_arm", "right_arm"],
+        "strain": 10,
+        "col_cost": 1800,
+        "stat_bonuses": {"DEX": 1},
+        "description": "A harvested serpentine gland wired into arterial ducts to coat blades with necrotic venom.",
+        "effect": "Envenomed Strikes: Weapon attacks inflict 1d8 poison damage (DC 14 CON or Poisoned)"
+    },
+    "wyrm_scale_sheath": {
+        "key": "wyrm_scale_sheath",
+        "name": "Wyrm-Scale Sheath",
+        "type": "biological",
+        "allowed_slots": ["dermal", "torso"],
+        "strain": 14,
+        "col_cost": 2800,
+        "stat_bonuses": {"CON": 1, "CHA": 1},
+        "description": "Iridescent draconic epidermal grafting that refracts elemental spells.",
+        "effect": "+2 AC, +15 Fire/Lightning resistance, Intimidation advantage"
+    },
+    "stalker_shadow_tendon": {
+        "key": "stalker_shadow_tendon",
+        "name": "Stalker Shadow-Tendon",
+        "type": "biological",
+        "allowed_slots": ["leg_left", "leg_right", "legs"],
+        "strain": 10,
+        "col_cost": 1600,
+        "stat_bonuses": {"DEX": 2},
+        "description": "Elongated predatory muscle fibers woven into leg joints for silent sprint leaps.",
+        "effect": "+15ft speed, +4 to Stealth checks, Silent Step perk"
+    },
+    "chimeric_beast_claws": {
+        "key": "chimeric_beast_claws",
+        "name": "Chimeric Beast Claws",
+        "type": "biological",
+        "allowed_slots": ["arm_left", "arm_right", "left_arm", "right_arm"],
+        "strain": 8,
+        "col_cost": 1200,
+        "stat_bonuses": {"STR": 1},
+        "description": "Razor-honed obsidian talon sheaths anchored directly into finger phalanges.",
+        "effect": "1d8 Slashing Unarmed strike with Bleed (2 bleeding dmg/turn for 3 turns)"
     }
 }
 
-BODY_GRAFT_SLOTS = ["arm_left", "arm_right", "leg_left", "leg_right", "spine", "ocular", "dermal", "neural"]
+BODY_GRAFT_SLOTS = [
+    "arm_left", "arm_right", "leg_left", "leg_right", "spine", "ocular", "dermal", "neural",
+    "head", "torso", "left_arm", "right_arm", "legs"
+]
+
+SLOT_ALIASES = {
+    "head": "neural",
+    "eyes": "ocular",
+    "torso": "dermal",
+    "chest": "dermal",
+    "left_arm": "arm_left",
+    "right_arm": "arm_right",
+    "legs": "leg_left"
+}
 
 HARMONIZATION_FEATS = {
     "leyline_conduits": {
@@ -2442,12 +2554,19 @@ def ensure_graft_system(player_state):
 
 def get_max_graft_strain(player_state):
     """
-    Max Graft Capacity = (CON * 2) + (Level * 3).
+    Max Graft Capacity = (CON * 2) + (Level * 3) + Racial/Feat Tolerance Bonus.
     """
     stats = player_state.get("stats", {})
     con_val = stats.get("CON", 10)
     level_val = player_state.get("level", 1)
-    return (con_val * 2) + (level_val * 3)
+    
+    bonus = 0
+    race_str = str(player_state.get("race", "")).lower()
+    feats_str = " ".join([str(f).lower() for f in player_state.get("feats", [])])
+    if "cyborg" in race_str or "innate graft-tolerance" in feats_str:
+        bonus += 15
+        
+    return (con_val * 2) + (level_val * 3) + bonus
 
 def get_current_graft_strain(player_state):
     """
@@ -2496,6 +2615,20 @@ def get_graft_rejection_status(player_state):
             "description": f"Excessive cybernetic strain is poisoning organic flesh! Suffering -{hp_drain} Max HP and -{save_penalty} to all saving throws."
         }
 
+def calculate_player_strain(player_state):
+    """
+    Convenience method calculating current strain, max capacity, and rejection status.
+    """
+    max_strain = get_max_graft_strain(player_state)
+    cur_strain = get_current_graft_strain(player_state)
+    rejection = get_graft_rejection_status(player_state)
+    return {
+        "max_strain": max_strain,
+        "current_strain": cur_strain,
+        "is_overloaded": rejection["is_rejecting"],
+        "rejection": rejection
+    }
+
 def install_graft(player_state, graft_key, body_slot, surgeon_fee_col=None):
     """
     Surgically installs a Golem-Graft into a designated body slot during safe-zone clinic downtime.
@@ -2505,12 +2638,16 @@ def install_graft(player_state, graft_key, body_slot, surgeon_fee_col=None):
 
     graft_def = CANONICAL_GRAFTS[graft_key]
 
-    if body_slot not in BODY_GRAFT_SLOTS:
+    canonical_slot = SLOT_ALIASES.get(body_slot.lower(), body_slot.lower())
+    if body_slot not in BODY_GRAFT_SLOTS and canonical_slot not in BODY_GRAFT_SLOTS:
         return {"success": False, "message": f"Invalid body slot '{body_slot}'."}
 
-    if body_slot not in graft_def["allowed_slots"]:
+    allowed = [s.lower() for s in graft_def["allowed_slots"]]
+    allowed_canonical = [SLOT_ALIASES.get(s, s) for s in allowed]
+    if body_slot.lower() not in allowed and canonical_slot not in allowed and canonical_slot not in allowed_canonical:
         allowed_str = ", ".join(graft_def["allowed_slots"])
         return {"success": False, "message": f"{graft_def['name']} can only be installed in: {allowed_str}."}
+    body_slot = canonical_slot
 
     # Ensure graft_system data container
     if "graft_system" not in player_state or not isinstance(player_state["graft_system"], dict):
@@ -2539,6 +2676,7 @@ def install_graft(player_state, graft_key, body_slot, surgeon_fee_col=None):
     graft_record = {
         "key": graft_key,
         "name": graft_def["name"],
+        "type": graft_def.get("type", "golem"),
         "slot": body_slot,
         "strain": graft_def["strain"],
         "stat_bonuses": graft_def["stat_bonuses"],
@@ -2642,10 +2780,12 @@ def calculate_spellcasting_graft_penalty(player_state):
     is_caster = p_class in ["mage", "cleric", "psion", "aether_slinger"]
 
     if not is_caster:
-        return {"penalty": 0, "net_grafts": 0, "harmonized": 0}
+        return {"penalty": 0, "total_grafts": 0, "net_grafts": 0, "harmonized": 0, "net_unharmonized": 0}
 
     installed = player_state.get("graft_system", {}).get("installed_grafts", {})
-    count = len(installed)
+
+    # Only count metallic/golem/tech grafts for spellcaster penalty (biological grafts do not induce Arcane Spell Failure)
+    count = sum(1 for g in installed.values() if isinstance(g, dict) and g.get("type") != "biological")
 
     if count == 0:
         return {"penalty": 0, "net_grafts": 0, "harmonized": 0}
@@ -2653,8 +2793,8 @@ def calculate_spellcasting_graft_penalty(player_state):
     # Check for harmonization feats / spinal conduit
     harmonized = 0
     feats = [str(f).lower() for f in player_state.get("feats", [])]
-    if any("leyline conduit" in f for f in feats):
-        harmonized += 1
+    if any("leyline conduit" in f for f in feats) or any("bio-arcane conduit" in f for f in feats) or any("synthetic somatics" in f for f in feats):
+        harmonized += 2
 
     # Check if Leyline Conduit Spine installed
     if "spine" in installed and installed["spine"].get("key") == "leyline_conduit_spine":
@@ -2669,6 +2809,81 @@ def calculate_spellcasting_graft_penalty(player_state):
         "harmonized": harmonized,
         "net_unharmonized": net_unharmonized
     }
+
+
+# =====================================================================
+# ABILITY FUSION PROTOCOL (THE DUAL SYSTEM)
+# =====================================================================
+
+def fuse_abilities(player_state, component_a_name, component_b_name, custom_fused_name=None, custom_desc=None):
+    """
+    Implements V2's Ability Fusion Protocol:
+    Combines two active abilities (skills, spells, or feats) into a synergistic hybrid ability.
+    Validates components, awards +15 XP, updates mastery, and registers the technique in player['fused_abilities'].
+    """
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+        
+    fused_abilities = player_state.setdefault("fused_abilities", [])
+    
+    clean_a = str(component_a_name).strip()
+    clean_b = str(component_b_name).strip()
+    
+    if not clean_a or not clean_b:
+        return {"success": False, "message": "Ability Fusion requires two distinct components."}
+        
+    if clean_a.lower() == clean_b.lower():
+        return {"success": False, "message": "Cannot fuse an ability with itself."}
+        
+    if not custom_fused_name:
+        first_word = clean_a.split()[0] if clean_a else "Aether"
+        second_word = clean_b.split()[-1] if clean_b else "Burst"
+        fused_name = f"{first_word}-{second_word} Convergence"
+    else:
+        fused_name = custom_fused_name.strip()
+        
+    if not custom_desc:
+        fused_desc = f"Synergistic fusion of [{clean_a}] and [{clean_b}]. Unleashes resonant hybrid arcane-tactical force."
+    else:
+        fused_desc = custom_desc.strip()
+        
+    # Check if already fused
+    for fa in fused_abilities:
+        if isinstance(fa, dict) and fa.get("name", "").lower() == fused_name.lower():
+            return {"success": False, "message": f"Technique '{fused_name}' has already been forged in the Matrix."}
+            
+    record = {
+        "name": fused_name,
+        "components": [clean_a, clean_b],
+        "description": fused_desc,
+        "tier": "Fused",
+        "power_rating": 3
+    }
+    fused_abilities.append(record)
+    
+    # Add to feats or spells
+    feats = player_state.setdefault("feats", [])
+    feat_entry = f"[{fused_name}]"
+    if feat_entry not in feats and fused_name not in feats:
+        feats.append(feat_entry)
+        
+    # Award XP & Skill mastery
+    player_state["xp"] = player_state.get("xp", 0) + 15
+    
+    return {
+        "success": True,
+        "fused_name": fused_name,
+        "technique": record,
+        "xp_awarded": 15,
+        "log": f"🔮 [ABILITY FUSION SUCCESS: Fused '{clean_a}' + '{clean_b}' -> '{fused_name}'! (+15 XP)]"
+    }
+
+def get_fused_abilities(player_state):
+    """Returns list of all fused abilities registered on player."""
+    if not isinstance(player_state, dict):
+        return []
+    return player_state.get("fused_abilities", [])
+
 
 
 # =====================================================================
@@ -5721,6 +5936,9 @@ def cook_campfire_meal(player_state, recipe_id):
         "message": f"Successfully cooked {recipe['name']}! Gained {buff_data['name']}."
     }
 
+ensure_factions_system = ensure_faction_system
+check_frost_hazard = check_frostbite_protection
+cook_campfire_recipe = cook_campfire_meal
 
 def pitch_wilderness_camp(player_state, watch_companion="Ren"):
     """
@@ -6408,8 +6626,8 @@ def get_commodity_prices(player_state):
     Returns current market prices for commodities based on player reputation,
     cleared trade routes, and regional market indices.
     """
-    reps = player_state.get("factions", {})
-    iron_rep = reps.get("iron_syndicate", 0)
+    reps = player_state.get("faction_reputation", player_state.get("faction_system", {}).get("reputations", player_state.get("factions", {})))
+    iron_rep = reps.get("iron_syndicate", 0) if isinstance(reps, dict) else 0
 
     # Iron Syndicate discount: up to 15% discount at 50+ rep
     discount_mult = 1.0
@@ -6680,5 +6898,98 @@ def forge_mythic_equipment(player_state, recipe_key):
         "log": log,
         "message": f"Successfully forged {new_gear_name}!"
     }
+
+
+# =====================================================================
+# INTEGRATION CONVENIENCE ALIASES (FOR CROSS-PHASE & V2 COUPLING)
+# =====================================================================
+
+def get_game_time_info(player_state):
+    """Convenience alias for time info with period details."""
+    t_data = get_game_time(player_state)
+    hour = t_data.get("hour", 6)
+    period = get_time_period(hour)
+    p_key = period.get("key", "day") if isinstance(period, dict) else str(period)
+    p_info = CHRONO_PERIODS.get(p_key, {"label": p_key.capitalize(), "desc": "Standard light conditions."})
+    t_data["period_info"] = p_info
+    return t_data
+
+def get_all_companions(player_state):
+    """Returns dictionary of all known companions for Vanguard recruitment."""
+    return RECRUITABLE_COMPANIONS
+
+def get_dungeon_room(player_state, room_id=None):
+    """Convenience alias to retrieve dungeon room data."""
+    return get_current_dungeon_room(player_state)
+
+def get_overlord_status(player_state):
+    """Convenience alias for Sector Overlord status."""
+    return player_state.get("boss_encounter", SECTOR_BOSSES.get("gilded_overlord", {}))
+
+ensure_factions_system = ensure_faction_system
+
+def extract_turn_components(msg: dict) -> tuple:
+    """
+    Returns (cleaned_narrative, mechanics_log, subagent_log) from a message dictionary.
+    Supports structured messages, section headers (🎲 / 🧠), blockquotes, and inline rolls.
+    """
+    content = msg.get("content", "") or ""
+    mechanics_log = msg.get("mechanics_log", "") or ""
+    subagent_log = msg.get("subagent_log", "") or ""
+    
+    # 1. Extract SubAgent thoughts if not already isolated
+    if not subagent_log and content:
+        subagent_pattern = re.compile(
+            r'(?:^|\r?\n)+(?:(?:🧠|\U0001f9e0)\s*)?(?:\*\*\[.*?SubAgent Mind\]\*\*|\*\*\[Ren\'s Tactical Logic\]\*\*|SubAgent Thoughts & Planned Actions:[\s\S]*)',
+            re.IGNORECASE
+        )
+        m = subagent_pattern.search(content)
+        if m:
+            subagent_log = content[m.start():].strip()
+            content = content[:m.start()].strip()
+
+    # 2. Extract Dice Rolls / Mechanics if not already isolated
+    if not mechanics_log and content:
+        section_pattern = re.compile(
+            r'(?:^|\r?\n)+(?:(?:🎲|\U0001f3b2)\s*)?Dice Rolls & Game Mechanics:[\s\S]*?(?=(?:^|\r?\n)+(?:🧠|\U0001f9e0|\*\*\[)|$)',
+            re.IGNORECASE
+        )
+        m = section_pattern.search(content)
+        if m:
+            mechanics_log = m.group(0).strip()
+            content = (content[:m.start()] + "\n" + content[m.end():]).strip()
+        else:
+            mechanics_items = []
+            
+            # Check for prepended blockquote rolls like: > 🎲 `...`
+            clean_lines = []
+            for line in content.split("\n"):
+                line_str = line.strip()
+                if line_str.startswith("> 🎲") or (line_str.startswith(">") and "🎲" in line_str):
+                    cleaned = line_str.replace("> 🎲", "").replace(">", "").strip(" `*")
+                    if cleaned:
+                        mechanics_items.append(f"* 🎲 `{cleaned}`")
+                elif line_str == ">":
+                    continue
+                else:
+                    clean_lines.append(line)
+            content = "\n".join(clean_lines).strip()
+            
+            # Check for bracketed rolls/checks: [Attack: 1d20+5 = 17 vs AC 14 | Hit!]
+            bracket_pattern = re.compile(r'\s*\[([^\]]*(?:d20|d4|d6|d8|d10|d12|\bAC\b|\bDC\b|\bHit\b|\bFail\b|\bSave\b|\bRoll\b|\bdamage\b)[^\]]*)\]', re.IGNORECASE)
+            found_brackets = bracket_pattern.findall(content)
+            if found_brackets:
+                content = bracket_pattern.sub('', content).strip()
+                for b in found_brackets:
+                    clean_b = b.strip()
+                    if clean_b:
+                        mechanics_items.append(f"* 🎲 `{clean_b}`")
+                        
+            if mechanics_items:
+                mechanics_log = "\n".join(mechanics_items)
+                
+    return content, mechanics_log, subagent_log
+
+
 
 
