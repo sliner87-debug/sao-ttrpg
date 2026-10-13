@@ -4,6 +4,7 @@ Handles mathematical crunch, dice logic, encumbrance physics, and equipment stat
 """
 
 import math
+import copy
 
 # --- ITEM WEIGHT HEURISTICS ---
 DEFAULT_WEIGHT_MAP = {
@@ -43,7 +44,8 @@ DEFAULT_WEIGHT_MAP = {
     "usb": 0.1,
     "scroll": 0.5,
     "ore": 5.0,
-    "scrap": 1.0
+    "scrap": 1.0,
+    "anchor": 35.0
 }
 
 def get_item_weight(item):
@@ -67,9 +69,12 @@ def get_item_weight(item):
 
     if isinstance(item, dict):
         qty = item.get("qty", 1)
-        if "weight" in item and item["weight"] is not None:
+        w_val = item.get("weight")
+        if w_val is None:
+            w_val = item.get("weight_lbs")
+        if w_val is not None:
             try:
-                return round(float(item["weight"]) * qty, 1)
+                return round(float(w_val) * qty, 1)
             except (ValueError, TypeError):
                 pass
         
@@ -2220,6 +2225,7 @@ def trigger_field_trap(player_state, trap_idx_or_key, target_name="Mutated Stalk
     )
 
     return {
+        "success": True,
         "triggered": True,
         "ambushed": ambushed,
         "trap": target_trap,
@@ -2421,6 +2427,18 @@ HARMONIZATION_FEATS = {
         "effect": "Once per encounter, spend 10 Graft Strain to cast an active spell without consuming mana/flux."
     }
 }
+
+def ensure_graft_system(player_state):
+    """Initializes or returns graft_system dict on player_state."""
+    if not isinstance(player_state, dict):
+        return {"installed_grafts": {}, "harmonized_grafts": []}
+    graft_sys = player_state.setdefault("graft_system", {})
+    if not isinstance(graft_sys, dict):
+        graft_sys = {}
+        player_state["graft_system"] = graft_sys
+    graft_sys.setdefault("installed_grafts", {})
+    graft_sys.setdefault("harmonized_grafts", [])
+    return graft_sys
 
 def get_max_graft_strain(player_state):
     """
@@ -2656,6 +2674,22 @@ def calculate_spellcasting_graft_penalty(player_state):
 # =====================================================================
 # ABILITY & SPELL SLOTTING / MATRIX MEMORY ENGINE
 # =====================================================================
+
+def ensure_ability_matrix(player_state):
+    """Initializes or returns slotted_abilities dict on player_state."""
+    if not isinstance(player_state, dict):
+        return {"max_slots": 5, "active": []}
+    max_slots = get_max_ability_slots(player_state)
+    matrix = player_state.setdefault("slotted_abilities", {
+        "max_slots": max_slots,
+        "active": []
+    })
+    if not isinstance(matrix, dict):
+        matrix = {"max_slots": max_slots, "active": []}
+        player_state["slotted_abilities"] = matrix
+    matrix.setdefault("max_slots", max_slots)
+    matrix.setdefault("active", [])
+    return matrix
 
 def get_max_ability_slots(player_state):
     """
@@ -3173,6 +3207,7 @@ def get_companion_combat_action(player_state, companion_name="Ren"):
     if stance_key == "overwatch_hacking":
         return {
             "stance": stance_key,
+            "stance_key": stance_key,
             "target_ac_mod": -2,
             "tag": stance_info["combat_log_tag"],
             "log": f"{stance_info['combat_log_tag']} Scans enemy aura & structural leylines: -2 AC debuff applied to primary target."
@@ -3180,6 +3215,7 @@ def get_companion_combat_action(player_state, companion_name="Ren"):
     elif stance_key == "suppression_fire":
         return {
             "stance": stance_key,
+            "stance_key": stance_key,
             "dc": 13,
             "condition": "Staggered",
             "tag": stance_info["combat_log_tag"],
@@ -3188,6 +3224,7 @@ def get_companion_combat_action(player_state, companion_name="Ren"):
     elif stance_key == "full_evasion":
         return {
             "stance": stance_key,
+            "stance_key": stance_key,
             "untargetable": True,
             "tag": stance_info["combat_log_tag"],
             "log": f"{stance_info['combat_log_tag']} Weaves an aetheric phase-veil into the ruins; immune to single-target attacks."
@@ -3209,12 +3246,13 @@ def get_companion_combat_action(player_state, companion_name="Ren"):
         msg = f"{stance_info['combat_log_tag']} Channels mending runes into {patch_item} (+15 durability restored)." if patched else f"{stance_info['combat_log_tag']} Scavenges +1 extra aether-crystallite from combat debris."
         return {
             "stance": stance_key,
+            "stance_key": stance_key,
             "patched": patched,
             "tag": stance_info["combat_log_tag"],
             "log": msg
         }
 
-    return {"stance": "unknown", "log": "[REN: Observing situation.]"}
+    return {"stance": "unknown", "stance_key": "unknown", "log": "[REN: Observing situation.]"}
 
 
 # =====================================================================
@@ -5766,4 +5804,881 @@ def pitch_wilderness_camp(player_state, watch_companion="Ren"):
         "log": camp_log,
         "message": f"Rested for 8 hours. Time is now {time_res['time_str']}."
     }
+
+
+# ==============================================================================
+# 🏰 PHASE 9: SOVEREIGN HOMESTEAD, PLAYER ECONOMY & MYTHIC CRAFTING ENGINE
+# ==============================================================================
+
+HOMESTEAD_ESTATES = {
+    "washington_manor": {
+        "id": "washington_manor",
+        "name": "The Iron-Spoke Sovereign Estate",
+        "location": "Washington Borough Safe Zone (Sector 1 Ridge)",
+        "purchase_cost_col": 3500,
+        "description": "An expansive pre-Integration stone manor on the southern ridge of Washington Borough, fortified with ancient dwarven ward-stones, deep cellars, and an aether-well."
+    }
+}
+
+HOMESTEAD_TROPHIES = {
+    "gilded_overlord_core": {
+        "id": "gilded_overlord_core",
+        "name": "Overlord's Gilded Core",
+        "buff_name": "[Aegis of the Spire]",
+        "desc": "+2 Armor Class and +5% Col drop rate across all encounters.",
+        "ac_bonus": 2,
+        "col_drop_pct": 5
+    },
+    "alpha_razorhound_skull": {
+        "id": "alpha_razorhound_skull",
+        "name": "Alpha Razor-Hound Plated Skull",
+        "buff_name": "[Apex Pack-Instinct]",
+        "desc": "+2 Initiative and +10% Movement speed.",
+        "initiative_bonus": 2,
+        "speed_pct": 10
+    },
+    "clockwork_golem_heart": {
+        "id": "clockwork_golem_heart",
+        "name": "Clockwork Golem Geared Heart",
+        "buff_name": "[Clockwork Fortitude]",
+        "desc": "+15 Maximum HP and +1 Damage Resistance.",
+        "hp_bonus": 15,
+        "dr_bonus": 1
+    },
+    "direwolf_alpha_pelt": {
+        "id": "direwolf_alpha_pelt",
+        "name": "Roaring Rock Dire-Wolf Alpha Pelt",
+        "buff_name": "[Primal Ferocity]",
+        "desc": "+10% Critical Strike Chance on Melee Attacks.",
+        "crit_pct": 10
+    }
+}
+
+GREENHOUSE_TIERS = {
+    1: {"yield": {"Wild Roots": 2, "Aether-Herb": 1}, "upgrade_cost": 1000},
+    2: {"yield": {"Wild Roots": 3, "Aether-Herb": 2, "Salted Moss": 2}, "upgrade_cost": 2500},
+    3: {"yield": {"Wild Roots": 4, "Aether-Herb": 3, "Salted Moss": 3, "Runic Lichen": 2}, "upgrade_cost": 5000}
+}
+
+VAULT_TIERS = {
+    1: {"capacity_lbs": 1000, "slots": 50, "upgrade_cost": 0},
+    2: {"capacity_lbs": 2500, "slots": 100, "upgrade_cost": 2000},
+    3: {"capacity_lbs": 10000, "slots": 250, "upgrade_cost": 5000}
+}
+
+COMMODITY_MARKET = {
+    "refined_aether_alloy": {"name": "Refined Aether-Alloy", "base_price": 250, "category": "Ore & Ingot"},
+    "scrap_metal": {"name": "Scrap Metal & Wiring", "base_price": 50, "category": "Scrap & Salvage"},
+    "aether_herb": {"name": "Wild Aether-Herbs", "base_price": 75, "category": "Botanical"},
+    "wolf_marrow": {"name": "Wolf Marrow", "base_price": 100, "category": "Monster Part"},
+    "repair_flux": {"name": "Aetheric Repair Flux", "base_price": 120, "category": "Alchemy"}
+}
+
+MYTHIC_RECIPES = {
+    "fenrirs_howl": {
+        "id": "fenrirs_howl",
+        "name": "Fenrir's Howl (Grade 6 Mythic Great-Axe)",
+        "grade": 6,
+        "slot": "main_hand",
+        "durability": 350,
+        "atk_bonus": 6,
+        "damage_dice": "2d12",
+        "active_technique": {
+            "name": "Crystalline Frost Wave",
+            "type": "Active Sword Skill",
+            "desc": "Unleashes a 20ft cone of sub-zero frost dealing 3d8 cold damage and freezing targets for 1 turn (0 movement, -2 AC)."
+        },
+        "base_item_query": "Fenrir's Tusk",
+        "boss_core_query": "Overlord's Gilded Core",
+        "materials": {"Refined Aether-Alloy": 2, "Carbon Line Spools": 1},
+        "fee_col": 2000,
+        "description": "A legendary black-iron bearded greataxe infused with frozen aetheric frost and the resonance of the Gilded Overlord."
+    },
+    "mjolnir_prime": {
+        "id": "mjolnir_prime",
+        "name": "Mjölnir-Prime (Grade 6 Mythic Titan-Hammer)",
+        "grade": 6,
+        "slot": "off_hand",
+        "durability": 350,
+        "atk_bonus": 5,
+        "damage_dice": "3d8",
+        "active_technique": {
+            "name": "Kinetic Armor Shatter",
+            "type": "Active Sword Skill",
+            "desc": "Shatters target defenses: -4 AC debuff and disables construct Damage Resistance for 2 turns."
+        },
+        "base_item_query": "Mjöllnir-Null",
+        "boss_core_query": "Overlord's Gilded Core",
+        "materials": {"Corroded Micro-Capacitor": 2, "Refined Aether-Alloy": 1},
+        "fee_col": 2000,
+        "description": "An earth-shattering trench hammer surging with overcharged magnetic kinetic conduits."
+    },
+    "einherjar_sovereign_aegis": {
+        "id": "einherjar_sovereign_aegis",
+        "name": "Einherjar Sovereign Aegis (Grade 6 Mythic Power-Rig)",
+        "grade": 6,
+        "slot": "chest",
+        "durability": 400,
+        "ac_bonus": 10,
+        "dr": 3,
+        "active_technique": {
+            "name": "Aetheric Citadel Fortress",
+            "type": "Active Stance",
+            "desc": "Stance: Gain +4 AC, Advantage on CON saves, and reflect 1d10 force damage to melee attackers for 3 turns."
+        },
+        "base_item_query": "Einherjar Rig",
+        "boss_core_query": "Overlord's Gilded Core",
+        "materials": {"Refined Aether-Alloy": 3},
+        "fee_col": 2500,
+        "description": "Impenetrable masterwork runic plate engineered with living aether-conduits and sovereign ward lattices."
+    }
+}
+
+
+def ensure_homestead_system(player_state):
+    """
+    Initializes or returns homestead container in player_state.
+    """
+    if not isinstance(player_state, dict):
+        return {}
+
+    homestead = player_state.setdefault("homestead", {})
+    if not isinstance(homestead, dict):
+        homestead = {}
+        player_state["homestead"] = homestead
+
+    homestead.setdefault("owned", False)
+    homestead.setdefault("estate_id", "washington_manor")
+    homestead.setdefault("vault_tier", 1)
+    homestead.setdefault("greenhouse_tier", 1)
+    homestead.setdefault("has_master_anvil", False)
+    homestead.setdefault("mounted_trophies", [])
+    homestead.setdefault("vault_items", [])
+    homestead.setdefault("vault_col", 0)
+    homestead.setdefault("last_harvest_day", 0)
+
+    return homestead
+
+
+def purchase_homestead(player_state, estate_id="washington_manor"):
+    """
+    Purchases the Washington Manor estate for player_state using Col.
+    """
+    homestead = ensure_homestead_system(player_state)
+    if homestead.get("owned"):
+        return {"success": False, "message": "You already own the Sovereign Estate in Washington Borough."}
+
+    estate_def = HOMESTEAD_ESTATES.get(estate_id, HOMESTEAD_ESTATES["washington_manor"])
+    cost = estate_def["purchase_cost_col"]
+    cur_col = player_state.get("col", 0)
+
+    if cur_col < cost:
+        return {"success": False, "message": f"Insufficient Col to purchase estate (Cost: {cost:,} Col, Current: {cur_col:,} Col)."}
+
+    player_state["col"] = cur_col - cost
+    homestead["owned"] = True
+    homestead["estate_id"] = estate_id
+    homestead["name"] = estate_def["name"]
+
+    log = f"[HOMESTEAD ACQUIRED: Purchased {estate_def['name']} for {cost:,} Col! Base of operations established in Washington Borough.]"
+    return {
+        "success": True,
+        "estate": estate_def["name"],
+        "cost": cost,
+        "remaining_col": player_state["col"],
+        "log": log,
+        "message": f"Successfully purchased {estate_def['name']}!"
+    }
+
+
+def upgrade_homestead_facility(player_state, facility_key):
+    """
+    Upgrades vault, greenhouse, or master anvil in the homestead.
+    """
+    homestead = ensure_homestead_system(player_state)
+    if not homestead.get("owned"):
+        return {"success": False, "message": "You must purchase the Sovereign Estate before upgrading facilities."}
+
+    cur_col = player_state.get("col", 0)
+
+    if facility_key == "vault":
+        cur_tier = homestead.get("vault_tier", 1)
+        if cur_tier >= 3:
+            return {"success": False, "message": "Subsurface Vault is already at maximum Tier 3 capacity."}
+        next_tier = cur_tier + 1
+        cost = VAULT_TIERS[next_tier]["upgrade_cost"]
+        if cur_col < cost:
+            return {"success": False, "message": f"Insufficient Col for Vault Tier {next_tier} (Requires {cost:,} Col)."}
+        player_state["col"] = cur_col - cost
+        homestead["vault_tier"] = next_tier
+        log = f"[HOMESTEAD UPGRADE: Subsurface Vault upgraded to Tier {next_tier} ({VAULT_TIERS[next_tier]['capacity_lbs']:,} lbs capacity, {VAULT_TIERS[next_tier]['slots']} slots)!]"
+        return {"success": True, "facility": "vault", "new_tier": next_tier, "cost": cost, "log": log, "message": f"Vault upgraded to Tier {next_tier}."}
+
+    elif facility_key == "greenhouse":
+        cur_tier = homestead.get("greenhouse_tier", 1)
+        if cur_tier >= 3:
+            return {"success": False, "message": "Alchemical Greenhouse is already at maximum Tier 3 yield."}
+        next_tier = cur_tier + 1
+        cost = GREENHOUSE_TIERS[next_tier]["upgrade_cost"]
+        if cur_col < cost:
+            return {"success": False, "message": f"Insufficient Col for Greenhouse Tier {next_tier} (Requires {cost:,} Col)."}
+        player_state["col"] = cur_col - cost
+        homestead["greenhouse_tier"] = next_tier
+        log = f"[HOMESTEAD UPGRADE: Alchemical Greenhouse upgraded to Tier {next_tier} (Yield expanded)!]"
+        return {"success": True, "facility": "greenhouse", "new_tier": next_tier, "cost": cost, "log": log, "message": f"Greenhouse upgraded to Tier {next_tier}."}
+
+    elif facility_key == "master_anvil":
+        if homestead.get("has_master_anvil"):
+            return {"success": False, "message": "Deepforged Master-Anvil is already constructed."}
+        cost = 3000
+        if cur_col < cost:
+            return {"success": False, "message": f"Insufficient Col for Deepforged Master-Anvil (Requires {cost:,} Col)."}
+        player_state["col"] = cur_col - cost
+        homestead["has_master_anvil"] = True
+        log = "[HOMESTEAD UPGRADE: Deepforged Master-Anvil installed! Grade 6 and 7 Mythic Weapon Forging is now UNLOCKED!]"
+        return {"success": True, "facility": "master_anvil", "cost": cost, "log": log, "message": "Deepforged Master-Anvil constructed!"}
+
+    return {"success": False, "message": f"Unknown facility '{facility_key}'."}
+
+
+def get_vault_capacity(player_state):
+    """
+    Returns max lbs and slots for the homestead vault.
+    """
+    homestead = ensure_homestead_system(player_state)
+    tier = homestead.get("vault_tier", 1)
+    tier_info = VAULT_TIERS.get(tier, VAULT_TIERS[1])
+    return {
+        "tier": tier,
+        "max_lbs": tier_info["capacity_lbs"],
+        "max_slots": tier_info["slots"]
+    }
+
+
+def deposit_to_vault(player_state, item_query, qty=1, col_amount=0):
+    """
+    Deposits item or Col from player's inventory/pouch into the homestead vault.
+    """
+    homestead = ensure_homestead_system(player_state)
+    if not homestead.get("owned"):
+        return {"success": False, "message": "You must own the Sovereign Estate to access the vault."}
+
+    v_items = homestead.setdefault("vault_items", [])
+    cap = get_vault_capacity(player_state)
+
+    # 1. Col Deposit
+    if col_amount > 0:
+        cur_p_col = player_state.get("col", 0)
+        if cur_p_col < col_amount:
+            return {"success": False, "message": f"Insufficient Col (Have: {cur_p_col:,}, Tried: {col_amount:,})."}
+        player_state["col"] = cur_p_col - col_amount
+        homestead["vault_col"] = homestead.get("vault_col", 0) + col_amount
+        log = f"[VAULT DEPOSIT: Stored {col_amount:,} Col in Vault (Vault Col: {homestead['vault_col']:,} | Pouch: {player_state['col']:,})]"
+        return {
+            "success": True,
+            "deposited_col": col_amount,
+            "vault_col": homestead["vault_col"],
+            "player_col": player_state["col"],
+            "log": log,
+            "message": f"Deposited {col_amount:,} Col."
+        }
+
+    # 2. Item Deposit
+    if not item_query:
+        return {"success": False, "message": "No item specified for deposit."}
+
+    inv = player_state.setdefault("inventory", [])
+    found_item = None
+    target_idx = -1
+
+    for idx, it in enumerate(inv):
+        iname = it.get("name", "") if isinstance(it, dict) else str(it)
+        if item_query.lower() in iname.lower():
+            found_item = it
+            target_idx = idx
+            break
+
+    if not found_item:
+        return {"success": False, "message": f"Item '{item_query}' not found in inventory."}
+
+    # Capacity check
+    if len(v_items) >= cap["max_slots"]:
+        return {"success": False, "message": f"Vault is at slot capacity ({len(v_items)}/{cap['max_slots']} slots)."}
+
+    # Handle deduction
+    dep_item = None
+    if isinstance(found_item, dict):
+        cur_q = found_item.get("qty", 1)
+        transfer_q = min(cur_q, qty)
+        if cur_q <= transfer_q:
+            inv.pop(target_idx)
+            dep_item = copy.deepcopy(found_item)
+            dep_item["qty"] = transfer_q
+        else:
+            found_item["qty"] = cur_q - transfer_q
+            dep_item = copy.deepcopy(found_item)
+            dep_item["qty"] = transfer_q
+    elif isinstance(found_item, str):
+        inv.pop(target_idx)
+        dep_item = {"name": found_item, "qty": 1, "rarity": "Common", "desc": "Stored relic item."}
+
+    # Add to vault (stack if exists)
+    stacked = False
+    for vit in v_items:
+        if isinstance(vit, dict) and vit.get("name", "").lower() == dep_item.get("name", "").lower():
+            vit["qty"] = vit.get("qty", 1) + dep_item.get("qty", 1)
+            stacked = True
+            break
+    if not stacked:
+        v_items.append(dep_item)
+
+    item_disp = dep_item.get("name", item_query)
+    log = f"[VAULT DEPOSIT: Stored {dep_item.get('qty', 1)}x '{item_disp}' in Secure Vault (Vault Slots: {len(v_items)}/{cap['max_slots']})]"
+    return {
+        "success": True,
+        "item": item_disp,
+        "qty": dep_item.get("qty", 1),
+        "vault_slots_used": len(v_items),
+        "log": log,
+        "message": f"Deposited {item_disp} to vault."
+    }
+
+
+def withdraw_from_vault(player_state, item_query, qty=1, col_amount=0):
+    """
+    Withdraws item or Col from the homestead vault to player's inventory/pouch.
+    """
+    homestead = ensure_homestead_system(player_state)
+    if not homestead.get("owned"):
+        return {"success": False, "message": "You must own the Sovereign Estate to access the vault."}
+
+    # 1. Col Withdrawal
+    if col_amount > 0:
+        cur_v_col = homestead.get("vault_col", 0)
+        if cur_v_col < col_amount:
+            return {"success": False, "message": f"Insufficient Vault Col (Have: {cur_v_col:,}, Tried: {col_amount:,})."}
+        homestead["vault_col"] = cur_v_col - col_amount
+        player_state["col"] = player_state.get("col", 0) + col_amount
+        log = f"[VAULT WITHDRAW: Withdrew {col_amount:,} Col from Vault (Vault Col: {homestead['vault_col']:,} | Pouch: {player_state['col']:,})]"
+        return {
+            "success": True,
+            "withdrawn_col": col_amount,
+            "vault_col": homestead["vault_col"],
+            "player_col": player_state["col"],
+            "log": log,
+            "message": f"Withdrew {col_amount:,} Col."
+        }
+
+    # 2. Item Withdrawal
+    if not item_query:
+        return {"success": False, "message": "No item specified for withdrawal."}
+
+    v_items = homestead.setdefault("vault_items", [])
+    found_item = None
+    target_idx = -1
+
+    for idx, it in enumerate(v_items):
+        iname = it.get("name", "") if isinstance(it, dict) else str(it)
+        if item_query.lower() in iname.lower():
+            found_item = it
+            target_idx = idx
+            break
+
+    if not found_item:
+        return {"success": False, "message": f"Item '{item_query}' not found in vault."}
+
+    inv = player_state.setdefault("inventory", [])
+    with_item = None
+    if isinstance(found_item, dict):
+        cur_q = found_item.get("qty", 1)
+        transfer_q = min(cur_q, qty)
+        if cur_q <= transfer_q:
+            v_items.pop(target_idx)
+            with_item = copy.deepcopy(found_item)
+            with_item["qty"] = transfer_q
+        else:
+            found_item["qty"] = cur_q - transfer_q
+            with_item = copy.deepcopy(found_item)
+            with_item["qty"] = transfer_q
+    else:
+        v_items.pop(target_idx)
+        with_item = {"name": str(found_item), "qty": 1, "rarity": "Common"}
+
+    # Add to player inventory (stack if exists)
+    stacked = False
+    for pit in inv:
+        if isinstance(pit, dict) and pit.get("name", "").lower() == with_item.get("name", "").lower():
+            pit["qty"] = pit.get("qty", 1) + with_item.get("qty", 1)
+            stacked = True
+            break
+    if not stacked:
+        inv.append(with_item)
+
+    item_disp = with_item.get("name", item_query)
+    log = f"[VAULT WITHDRAW: Withdrew {with_item.get('qty', 1)}x '{item_disp}' from Vault to personal inventory.]"
+    return {
+        "success": True,
+        "item": item_disp,
+        "qty": with_item.get("qty", 1),
+        "log": log,
+        "message": f"Withdrew {item_disp}."
+    }
+
+
+def mount_boss_trophy(player_state, trophy_query):
+    """
+    Mounts a boss core/trophy from player inventory to the Trophy Hall pedestal.
+    Grants persistent party-wide passive perks.
+    """
+    homestead = ensure_homestead_system(player_state)
+    if not homestead.get("owned"):
+        return {"success": False, "message": "You must own the Sovereign Estate to mount trophies."}
+
+    mounted = homestead.setdefault("mounted_trophies", [])
+    if len(mounted) >= 5:
+        return {"success": False, "message": "All 5 Trophy Hall pedestals are occupied."}
+
+    # Find matching trophy definition
+    norm_q = trophy_query.lower()
+    t_def = None
+    t_key = None
+    for k, v in HOMESTEAD_TROPHIES.items():
+        if k in norm_q or norm_q in k or v["name"].lower() in norm_q or norm_q in v["name"].lower():
+            t_def = v
+            t_key = k
+            break
+
+    if not t_def:
+        return {"success": False, "message": f"Trophy '{trophy_query}' is not recognized as a mountable boss relic."}
+
+    if t_key in [m.get("key") for m in mounted if isinstance(m, dict)]:
+        return {"success": False, "message": f"{t_def['name']} is already mounted in the Trophy Hall."}
+
+    # Check player inventory for the trophy item
+    inv = player_state.setdefault("inventory", [])
+    found_idx = -1
+    for idx, item in enumerate(inv):
+        iname = item.get("name", "") if isinstance(item, dict) else str(item)
+        if t_def["name"].lower() in iname.lower() or t_key in iname.lower() or "overlord" in iname.lower() and "overlord" in t_key:
+            found_idx = idx
+            break
+
+    if found_idx == -1:
+        return {"success": False, "message": f"You do not possess the trophy item '{t_def['name']}' in your inventory."}
+
+    # Consume 1 from inventory
+    target_item = inv[found_idx]
+    if isinstance(target_item, dict):
+        if target_item.get("qty", 1) > 1:
+            target_item["qty"] -= 1
+        else:
+            inv.pop(found_idx)
+    else:
+        inv.pop(found_idx)
+
+    # Mount trophy
+    trophy_record = {
+        "key": t_key,
+        "name": t_def["name"],
+        "buff_name": t_def["buff_name"],
+        "desc": t_def["desc"],
+        "ac_bonus": t_def.get("ac_bonus", 0),
+        "col_drop_pct": t_def.get("col_drop_pct", 0),
+        "initiative_bonus": t_def.get("initiative_bonus", 0),
+        "hp_bonus": t_def.get("hp_bonus", 0),
+        "dr_bonus": t_def.get("dr_bonus", 0),
+        "crit_pct": t_def.get("crit_pct", 0)
+    }
+    mounted.append(trophy_record)
+
+    # Award feat entry
+    feats = player_state.setdefault("feats", [])
+    f_entry = f"{t_def['buff_name']}: {t_def['desc']}"
+    if not any(t_def["buff_name"] in str(f) for f in feats):
+        feats.append(f_entry)
+
+    log = f"[TROPHY MOUNTED: {t_def['name']} mounted on Pedestal {len(mounted)}/5! Party gains {t_def['buff_name']} ({t_def['desc']})]"
+    return {
+        "success": True,
+        "trophy": t_def["name"],
+        "buff": t_def["buff_name"],
+        "log": log,
+        "message": f"Mounted {t_def['name']} in the Trophy Hall."
+    }
+
+
+def unmount_boss_trophy(player_state, trophy_key):
+    """
+    Removes a mounted trophy and returns it to inventory.
+    """
+    homestead = ensure_homestead_system(player_state)
+    mounted = homestead.setdefault("mounted_trophies", [])
+
+    match_idx = -1
+    matched_trophy = None
+    for idx, t in enumerate(mounted):
+        if t.get("key") == trophy_key or trophy_key.lower() in t.get("name", "").lower():
+            match_idx = idx
+            matched_trophy = t
+            break
+
+    if match_idx == -1:
+        return {"success": False, "message": f"Trophy '{trophy_key}' is not mounted."}
+
+    mounted.pop(match_idx)
+    inv = player_state.setdefault("inventory", [])
+    inv.append({
+        "name": matched_trophy["name"],
+        "rarity": "Legendary",
+        "qty": 1,
+        "desc": "Unmounted boss relic."
+    })
+
+    # Remove feat
+    feats = player_state.get("feats", [])
+    b_name = matched_trophy.get("buff_name", "")
+    player_state["feats"] = [f for f in feats if b_name not in str(f)]
+
+    log = f"[TROPHY UNMOUNTED: Removed {matched_trophy['name']} from pedestal and returned it to inventory.]"
+    return {"success": True, "trophy": matched_trophy["name"], "log": log, "message": f"Unmounted {matched_trophy['name']}."}
+
+
+def get_active_trophy_buffs(player_state):
+    """
+    Returns list of active party-wide buffs from mounted trophies.
+    """
+    homestead = ensure_homestead_system(player_state)
+    mounted = homestead.get("mounted_trophies", [])
+    return [dict(t) for t in mounted if isinstance(t, dict)]
+
+
+def harvest_alchemical_garden(player_state):
+    """
+    Harvests grown herbs and roots from the greenhouse once per game day.
+    """
+    homestead = ensure_homestead_system(player_state)
+    if not homestead.get("owned"):
+        return {"success": False, "message": "You must own the Sovereign Estate to harvest the greenhouse."}
+
+    chrono = ensure_chrono_system(player_state)
+    cur_day = chrono.get("day", 1)
+    last_day = homestead.get("last_harvest_day", 0)
+
+    if cur_day <= last_day:
+        return {"success": False, "message": f"The greenhouse was already harvested today (Day {cur_day}). Plants require one full sunrise to bloom."}
+
+    tier = homestead.get("greenhouse_tier", 1)
+    yield_def = GREENHOUSE_TIERS.get(tier, GREENHOUSE_TIERS[1])["yield"]
+
+    inv = player_state.setdefault("inventory", [])
+    harvested_items = []
+
+    for herb_name, herb_qty in yield_def.items():
+        # Stack or append
+        found = False
+        for it in inv:
+            if isinstance(it, dict) and it.get("name", "").lower() == herb_name.lower():
+                it["qty"] = it.get("qty", 1) + herb_qty
+                found = True
+                break
+        if not found:
+            inv.append({
+                "name": herb_name,
+                "rarity": "Common",
+                "qty": herb_qty,
+                "desc": "Freshly cultivated botanical specimen harvested from the estate greenhouse."
+            })
+        harvested_items.append(f"{herb_qty}x {herb_name}")
+
+    homestead["last_harvest_day"] = cur_day
+
+    log = f"[GREENHOUSE HARVEST: Gathered {', '.join(harvested_items)} from the Tier {tier} Greenhouse on Day {cur_day}!]"
+    return {
+        "success": True,
+        "yield": yield_def,
+        "harvested": harvested_items,
+        "day": cur_day,
+        "log": log,
+        "message": f"Harvested: {', '.join(harvested_items)}."
+    }
+
+
+def get_commodity_prices(player_state):
+    """
+    Returns current market prices for commodities based on player reputation,
+    cleared trade routes, and regional market indices.
+    """
+    reps = player_state.get("factions", {})
+    iron_rep = reps.get("iron_syndicate", 0)
+
+    # Iron Syndicate discount: up to 15% discount at 50+ rep
+    discount_mult = 1.0
+    if iron_rep >= 50:
+        discount_mult = 0.85
+    elif iron_rep >= 25:
+        discount_mult = 0.90
+
+    prices = {}
+    for c_key, c_info in COMMODITY_MARKET.items():
+        buy_p = int(c_info["base_price"] * discount_mult)
+        sell_p = int(c_info["base_price"] * 0.60)
+        prices[c_key] = {
+            "name": c_info["name"],
+            "category": c_info["category"],
+            "buy_price": buy_p,
+            "sell_price": sell_p
+        }
+    return prices
+
+
+def trade_commodity(player_state, commodity_id, action="buy", qty=1):
+    """
+    Buys or sells commodities through the regional mercantile exchange.
+    """
+    prices = get_commodity_prices(player_state)
+    target_c = None
+    c_key = None
+
+    for k, info in prices.items():
+        if k == commodity_id or info["name"].lower() in commodity_id.lower() or commodity_id.lower() in k:
+            target_c = info
+            c_key = k
+            break
+
+    if not target_c:
+        return {"success": False, "message": f"Commodity '{commodity_id}' not recognized."}
+
+    inv = player_state.setdefault("inventory", [])
+    cur_col = player_state.get("col", 0)
+
+    if action == "buy":
+        total_cost = target_c["buy_price"] * qty
+        if cur_col < total_cost:
+            return {"success": False, "message": f"Insufficient Col to purchase {qty}x {target_c['name']} (Cost: {total_cost:,} Col, Have: {cur_col:,} Col)."}
+
+        player_state["col"] = cur_col - total_cost
+
+        # Add to inventory
+        stacked = False
+        for it in inv:
+            if isinstance(it, dict) and it.get("name", "").lower() == target_c["name"].lower():
+                it["qty"] = it.get("qty", 1) + qty
+                stacked = True
+                break
+        if not stacked:
+            inv.append({
+                "name": target_c["name"],
+                "rarity": "Common",
+                "qty": qty,
+                "desc": f"Trade commodity: {target_c['name']}."
+            })
+
+        log = f"[COMMODITY EXCHANGE: Purchased {qty}x {target_c['name']} for {total_cost:,} Col (Balance: {player_state['col']:,} Col)]"
+        return {"success": True, "action": "buy", "commodity": target_c["name"], "qty": qty, "total_col": total_cost, "log": log, "message": f"Purchased {qty}x {target_c['name']}."}
+
+    elif action == "sell":
+        # Check inventory
+        found_item = None
+        target_idx = -1
+        for idx, it in enumerate(inv):
+            iname = it.get("name", "") if isinstance(it, dict) else str(it)
+            if target_c["name"].lower() in iname.lower() or c_key in iname.lower():
+                found_item = it
+                target_idx = idx
+                break
+
+        if not found_item:
+            return {"success": False, "message": f"You do not possess '{target_c['name']}' to sell."}
+
+        avail_q = found_item.get("qty", 1) if isinstance(found_item, dict) else 1
+        if avail_q < qty:
+            return {"success": False, "message": f"Insufficient quantity to sell (Have: {avail_q}, Tried: {qty})."}
+
+        total_gain = target_c["sell_price"] * qty
+        player_state["col"] = cur_col + total_gain
+
+        # Deduct
+        if isinstance(found_item, dict):
+            if avail_q <= qty:
+                inv.pop(target_idx)
+            else:
+                found_item["qty"] = avail_q - qty
+        else:
+            inv.pop(target_idx)
+
+        log = f"[COMMODITY EXCHANGE: Sold {qty}x {target_c['name']} for +{total_gain:,} Col (Balance: {player_state['col']:,} Col)]"
+        return {"success": True, "action": "sell", "commodity": target_c["name"], "qty": qty, "total_col": total_gain, "log": log, "message": f"Sold {qty}x {target_c['name']}."}
+
+    return {"success": False, "message": f"Invalid trade action '{action}'."}
+
+
+def forge_mythic_equipment(player_state, recipe_key):
+    """
+    Fuses a Grade 5 base weapon with a Sector Boss Core and rare catalysts
+    at the Deepforged Master-Anvil to create a Grade 6 Mythic armament.
+    Auto-slots/learns the weapon's unique Sword Skill.
+    """
+    homestead = ensure_homestead_system(player_state)
+    if not homestead.get("owned") or not homestead.get("has_master_anvil"):
+        return {"success": False, "message": "Mythic forging requires an owned Sovereign Estate with a Deepforged Master-Anvil installed."}
+
+    norm = recipe_key.lower().replace(" ", "_")
+    recipe = None
+    for r_k, r_v in MYTHIC_RECIPES.items():
+        if r_k == norm or norm in r_k or norm in r_v["name"].lower():
+            recipe = r_v
+            break
+
+    if not recipe:
+        return {"success": False, "message": f"Mythic recipe '{recipe_key}' not found."}
+
+    cur_col = player_state.get("col", 0)
+    fee = recipe.get("fee_col", 2000)
+    if cur_col < fee:
+        return {"success": False, "message": f"Insufficient Col for master-forge ignition (Requires {fee:,} Col, Have {cur_col:,} Col)."}
+
+    inv = player_state.setdefault("inventory", [])
+    equipped = player_state.setdefault("equipped", {})
+
+    # 1. Check Base Item (in equipped or inventory)
+    base_q = recipe["base_item_query"].lower()
+    base_location = None
+    base_slot = None
+    base_inv_idx = -1
+
+    for slot, item in equipped.items():
+        if base_q in str(item).lower():
+            base_location = "equipped"
+            base_slot = slot
+            break
+
+    if not base_location:
+        for idx, item in enumerate(inv):
+            iname = item.get("name", "") if isinstance(item, dict) else str(item)
+            if base_q in iname.lower():
+                base_location = "inventory"
+                base_inv_idx = idx
+                break
+
+    if not base_location:
+        return {"success": False, "message": f"Missing required base item matching '{recipe['base_item_query']}'."}
+
+    # 2. Check Boss Core (in inventory or vault)
+    core_q = recipe["boss_core_query"].lower()
+    core_idx = -1
+    for idx, item in enumerate(inv):
+        iname = item.get("name", "") if isinstance(item, dict) else str(item)
+        if core_q in iname.lower() or "overlord" in iname.lower() and "core" in iname.lower():
+            core_idx = idx
+            break
+
+    if core_idx == -1:
+        return {"success": False, "message": f"Missing required Boss Core '{recipe['boss_core_query']}' in inventory."}
+
+    # 3. Check Materials
+    inv_map = {}
+    for item in inv:
+        if isinstance(item, dict):
+            iname = item.get("name", "").strip().lower()
+            inv_map[iname] = inv_map.get(iname, 0) + item.get("qty", 1)
+        elif isinstance(item, str):
+            iname = item.strip().lower()
+            inv_map[iname] = inv_map.get(iname, 0) + 1
+
+    missing = []
+    for mat_name, req_q in recipe["materials"].items():
+        m_low = mat_name.lower()
+        have_q = sum(qty for k, qty in inv_map.items() if m_low in k or k in m_low)
+        if have_q < req_q:
+            missing.append(f"{mat_name} (Need {req_q})")
+
+    if missing:
+        return {"success": False, "message": f"Missing required forging materials: {', '.join(missing)}."}
+
+    # 4. Deduct Fee
+    player_state["col"] = cur_col - fee
+
+    # 5. Consume Boss Core
+    core_item = inv[core_idx]
+    if isinstance(core_item, dict) and core_item.get("qty", 1) > 1:
+        core_item["qty"] -= 1
+    else:
+        inv.pop(core_idx)
+
+    # 6. Consume Materials
+    for mat_name, req_q in recipe["materials"].items():
+        m_low = mat_name.lower()
+        remaining_to_deduct = req_q
+        for item in inv[:]:
+            if remaining_to_deduct <= 0:
+                break
+            if isinstance(item, dict):
+                iname = item.get("name", "").lower()
+                if m_low in iname or iname in m_low:
+                    cur_q = item.get("qty", 1)
+                    if cur_q <= remaining_to_deduct:
+                        remaining_to_deduct -= cur_q
+                        inv.remove(item)
+                    else:
+                        item["qty"] = cur_q - remaining_to_deduct
+                        remaining_to_deduct = 0
+            elif isinstance(item, str):
+                if m_low in item.lower() or item.lower() in m_low:
+                    inv.remove(item)
+                    remaining_to_deduct -= 1
+
+    # 7. Consume / Upgrade Base Item
+    target_slot = recipe["slot"]
+    new_gear_name = recipe["name"]
+
+    if base_location == "equipped":
+        equipped[base_slot] = new_gear_name
+    else:
+        # Replace in inventory
+        inv.pop(base_inv_idx)
+        inv.append({
+            "name": new_gear_name,
+            "rarity": "Mythic",
+            "durability": recipe["durability"],
+            "max_durability": recipe["durability"],
+            "qty": 1,
+            "desc": recipe["description"]
+        })
+
+    # Update gear durability tracking
+    gear_dur = player_state.setdefault("gear_durability", {})
+    gear_dur[target_slot] = {
+        "item": new_gear_name,
+        "cur": recipe["durability"],
+        "max": recipe["durability"],
+        "grade": 6
+    }
+
+    # 8. Learn and Slot Active Technique
+    tech = recipe["active_technique"]
+    spells = player_state.setdefault("spells", [])
+    tech_full_name = f"{tech['name']} ({tech['type']})"
+    if not any(tech["name"].lower() in str(s).lower() for s in spells):
+        spells.append(tech_full_name)
+
+    slot_ability(player_state, tech["name"])
+
+    log = (
+        f"[DEEPFORGED MASTER-FORGE: Ignited runic anvil with {fee:,} Col! "
+        f"Forged '{new_gear_name}'! Durability: {recipe['durability']}/{recipe['durability']} (Grade 6 Mythic) | "
+        f"Mastered Unique Technique: '{tech['name']}' ({tech['desc']})]"
+    )
+
+    return {
+        "success": True,
+        "mythic_item": new_gear_name,
+        "grade": 6,
+        "slot": target_slot,
+        "active_technique": tech,
+        "durability": recipe["durability"],
+        "fee": fee,
+        "log": log,
+        "message": f"Successfully forged {new_gear_name}!"
+    }
+
 

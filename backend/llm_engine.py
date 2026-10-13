@@ -669,6 +669,12 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
         mechanics.ensure_chrono_system(player_state)
     chrono_info = mechanics.get_game_time(player_state) if hasattr(mechanics, "get_game_time") else {"time_str": "Day 1, 09:30", "period_info": {"label": "☀️ Midday"}, "weather_info": {"label": "☀️ Clear Skies", "effect": "Normal"}}
 
+    # Phase 9: Homestead & Trophy Data
+    if hasattr(mechanics, "ensure_homestead_system"):
+        mechanics.ensure_homestead_system(player_state)
+    homestead_data = player_state.get("homestead", {})
+    trophy_buffs = mechanics.get_active_trophy_buffs(player_state) if hasattr(mechanics, "get_active_trophy_buffs") else []
+
     # Locate active entities and secrets for the Encounter Director
     entities_in_room = []
     secrets_in_room = []
@@ -728,6 +734,8 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     Regional Factions & Standings: {json.dumps([{ 'faction': f['name'], 'score': f['score'], 'standing': f['badge'], 'active_perks': f['perks_active'] } for f in faction_standings])}
     Chrono-Atmosphere: {chrono_info['time_str']} [{chrono_info['period_info']['label']}] | Weather: {chrono_info['weather_info']['label']} ({chrono_info['weather_info']['effect']})
     Active Survival Buffs: {json.dumps(player_state.get('active_buffs', []))}
+    Sovereign Homestead: Owned={homestead_data.get('owned', False)} ({homestead_data.get('name', 'None')}) | Vault Items: {len(homestead_data.get('vault_items', []))} (Vault Col: {homestead_data.get('vault_col', 0):,}) | Master Anvil: {homestead_data.get('has_master_anvil', False)}
+    Mounted Boss Trophies & Perks: {json.dumps([{ 'name': t['name'], 'buff': t['buff_name'], 'effect': t['desc'] } for t in trophy_buffs])}
     Labyrinth Dungeon Room: {d_room.get('name', 'N/A')} ({d_room.get('badge', '')}) | Cleared: {d_room.get('cleared', False)}
     Active Sector Boss: {boss_info_str}
     Location: {current_location}
@@ -806,12 +814,26 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
         - Aether-Weather phenomena directly impact encounters: Runic Mist (-4 Ranged ATK, +3 Stealth, disables fast travel), Leyline Overload Storm (+25% Spell DMG, berserk constructs), Crimson Ash (-50% healing, signals roaming Apex Boss), Glitch Freeze (sub-zero hazard, Banki's dire-wolf fur mantle protects him).
         - You can output time advances via 'time_advance_minutes' (e.g. 15 for standard turn, 60 for travel), weather shifts via 'set_weather' (e.g. "runic_mist"), campfire meals via 'cook_recipe' (e.g. "wolf_heart_stew"), or wilderness camping via 'pitch_camp' (e.g. {{"watch": "Ren"}}).
     
+    20. SOVEREIGN HOMESTEAD, REGIONAL ECONOMY & MYTHIC FORGING:
+        - When the player is in Washington Borough Safe Zone and has accumulated 3,500 Col, they can purchase the Washington Borough Estate.
+        - Homestead facilities include: Subsurface Vault (safe deposit unencumbered by personal inventory weight limits), Trophy Hall (mounting Boss Cores/Remains grants persistent party-wide passive boons), Alchemical Greenhouse (daily herb/marrow harvests), and Deepforged Master-Anvil (unlocks Grade 6/7 Mythic weapon forging).
+        - Regional Commodity Economy: Players can trade raw resources (Refined Aether-Alloy, Scrap, Mutated Herbs, Primal Marrow, Core Flux) at dynamic rates with faction standing discounts.
+        - Mythic Forging: With a Master-Anvil and Sector Boss Cores, players can forge Grade 6/7 Mythic armaments (e.g. Fenrir's Howl, Mjölnir-Prime) granting unique active Sword Skills.
+        - Output state updates using:
+          * 'homestead_action': "purchase" or {{"upgrade": "facility_key"}}
+          * 'vault_deposit': {{"item": "Item Name"}} or {{"col": 500}}
+          * 'vault_withdraw': {{"item": "Item Name"}} or {{"col": 500}}
+          * 'mount_trophy': "gilded_overlord_core"
+          * 'harvest_greenhouse': true
+          * 'trade_commodity': {{"commodity": "aether_alloy", "action": "buy"|"sell", "qty": 1}}
+          * 'forge_mythic': "fenrirs_howl"
+    
     Format your response EXACTLY as a JSON object with FIVE keys:
     - "narrative": The markdown formatted story/dialogue. 
     - "combat_logs": A list of strings showing the exact dice math and damage for the turn. Leave empty if no combat or skill check occurred.
     - "global_news_add": A list of strings showing macro world events (e.g. continental faction movements). MUST BE POPULATED IF THE PLAYER SKIPS TIME OR SLEEPS.
     - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged warrior with a short beard and undercut hair, wearing heavy black-iron runic armor and a massive dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a lean, bookish young man with messy dark hair, wire-rimmed glasses, wearing a weathered leyline duster over scholar's garb, wielding an ornate brass-and-crystal MageTech caster firearm (magic-powered, not gunpowder) and carrying a glowing runic slate grimoire.
-    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates", "graft_installs", "ability_slots", "companion_updates", "boss_damage", "boss_is_heavy", "boss_telegraph_counter", "dungeon_move", "dungeon_trap_disarm", "dungeon_puzzle_solve", "infamy_change", "faction_rep_updates", "affinity_updates", "recruit_companion", "dual_tech_execute", "time_advance_minutes", "set_weather", "cook_recipe", "pitch_camp". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
+    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates", "graft_installs", "ability_slots", "companion_updates", "boss_damage", "boss_is_heavy", "boss_telegraph_counter", "dungeon_move", "dungeon_trap_disarm", "dungeon_puzzle_solve", "infamy_change", "faction_rep_updates", "affinity_updates", "recruit_companion", "dual_tech_execute", "time_advance_minutes", "set_weather", "cook_recipe", "pitch_camp", "homestead_action", "vault_deposit", "vault_withdraw", "mount_trophy", "harvest_greenhouse", "trade_commodity", "forge_mythic". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
       Additionally, use the following complex schemas for skills, inventory, factions, and quests:
       - "inventory_add": List of dicts, e.g. [{{"name": "Rusted Iron Sword", "rarity": "Common", "durability": 45, "max_durability": 50, "qty": 1, "desc": "A chipped blade scavenged from the ruins."}}]
       - "inventory_remove": List of strings (item names to delete).
@@ -833,6 +855,13 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
       - "set_weather": String weather key, e.g. "runic_mist", "leyline_storm", "crimson_ash", "glitch_freeze", "clear_skies".
       - "cook_recipe": String recipe ID to prepare at campfire, e.g. "wolf_heart_stew".
       - "pitch_camp": Dict specifying camp watch, e.g. {{"watch": "Ren"}}.
+      - "homestead_action": String "purchase" or dict {{"upgrade": "vault_tier_2"}}.
+      - "vault_deposit": Dict, e.g. {{"item": "Fenrir's Tusk"}} or {{"col": 500}}.
+      - "vault_withdraw": Dict, e.g. {{"item": "Fenrir's Tusk"}} or {{"col": 500}}.
+      - "mount_trophy": String trophy key, e.g. "gilded_overlord_core".
+      - "harvest_greenhouse": Boolean true.
+      - "trade_commodity": Dict, e.g. {{"commodity": "aether_alloy", "action": "buy", "qty": 2}}.
+      - "forge_mythic": String recipe key, e.g. "fenrirs_howl".
     
     MAP MECHANICS (CRITICAL): The world operates on a 100x100 grid mapped to a real satellite image. Washington NJ is at (50, 50). If the player "fast travels" or takes a caravan to a new Node, output the exact new destination coordinates in `coord_x` and `coord_y` (e.g., Oxford is 40,20). If the player explores the wilderness on foot locally, you MUST shift their coordinates slightly (e.g. from 50,50 to 50,49) to simulate micro-exploration and clear the Fog of War. ALWAYS output their current or new coordinates on every single turn.
     """
@@ -1075,6 +1104,69 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
                 camp_res = mechanics.pitch_wilderness_camp(player_state, watch_companion=w_comp)
                 if camp_res.get("log"):
                     result.setdefault("combat_logs", []).append(camp_res["log"])
+
+            # Phase 9: Homestead Action
+            h_act = state_updates.get("homestead_action")
+            if h_act and hasattr(mechanics, "purchase_homestead") and hasattr(mechanics, "upgrade_homestead_facility"):
+                if h_act == "purchase" or (isinstance(h_act, dict) and h_act.get("action") == "purchase"):
+                    h_res = mechanics.purchase_homestead(player_state)
+                    if h_res.get("log"):
+                        result.setdefault("combat_logs", []).append(h_res["log"])
+                elif isinstance(h_act, dict) and "upgrade" in h_act:
+                    h_res = mechanics.upgrade_homestead_facility(player_state, h_act["upgrade"])
+                    if h_res.get("log"):
+                        result.setdefault("combat_logs", []).append(h_res["log"])
+
+            # Phase 9: Vault Deposit
+            v_dep = state_updates.get("vault_deposit")
+            if v_dep and hasattr(mechanics, "deposit_to_vault"):
+                if isinstance(v_dep, dict):
+                    v_res = mechanics.deposit_to_vault(player_state, item_name=v_dep.get("item"), col_amount=v_dep.get("col", 0))
+                    if v_res.get("log"):
+                        result.setdefault("combat_logs", []).append(v_res["log"])
+
+            # Phase 9: Vault Withdraw
+            v_wdr = state_updates.get("vault_withdraw")
+            if v_wdr and hasattr(mechanics, "withdraw_from_vault"):
+                if isinstance(v_wdr, dict):
+                    v_res = mechanics.withdraw_from_vault(player_state, item_name=v_wdr.get("item"), col_amount=v_wdr.get("col", 0))
+                    if v_res.get("log"):
+                        result.setdefault("combat_logs", []).append(v_res["log"])
+
+            # Phase 9: Trophy Mount
+            m_trophy = state_updates.get("mount_trophy")
+            if m_trophy and hasattr(mechanics, "mount_boss_trophy"):
+                m_res = mechanics.mount_boss_trophy(player_state, str(m_trophy))
+                if m_res.get("log"):
+                    result.setdefault("combat_logs", []).append(m_res["log"])
+
+            # Phase 9: Harvest Greenhouse
+            h_green = state_updates.get("harvest_greenhouse")
+            if h_green and hasattr(mechanics, "harvest_alchemical_garden"):
+                g_res = mechanics.harvest_alchemical_garden(player_state)
+                if g_res.get("log"):
+                    result.setdefault("combat_logs", []).append(g_res["log"])
+
+            # Phase 9: Trade Commodity
+            t_com = state_updates.get("trade_commodity")
+            if t_com and isinstance(t_com, dict) and hasattr(mechanics, "trade_commodity"):
+                c_key = t_com.get("commodity", "")
+                c_act = t_com.get("action", "buy")
+                c_qty = int(t_com.get("qty", 1))
+                tc_res = mechanics.trade_commodity(player_state, c_key, c_act, c_qty)
+                if tc_res.get("log"):
+                    result.setdefault("combat_logs", []).append(tc_res["log"])
+
+            # Phase 9: Forge Mythic Equipment
+            f_myth = state_updates.get("forge_mythic")
+            if f_myth and hasattr(mechanics, "forge_mythic_equipment"):
+                f_res = mechanics.forge_mythic_equipment(player_state, str(f_myth))
+                if f_res.get("log"):
+                    result.setdefault("combat_logs", []).append(f_res["log"])
+                if f_res.get("success") and f_res.get("item"):
+                    state_updates.setdefault("inventory_add", []).append(f_res["item"])
+                    if f_res.get("recipe", {}).get("skill_grant"):
+                        state_updates.setdefault("spells_add", []).append(f_res["recipe"]["skill_grant"]["name"])
 
         return result
     except Exception as e:

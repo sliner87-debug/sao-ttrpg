@@ -1960,6 +1960,334 @@ with st.sidebar:
                     v_standing = mechanics.get_faction_standing(player, "vanguard_coalition") if hasattr(mechanics, "get_faction_standing") else {"badge": "⚖️ Neutral", "score": 0}
                     st.write(f"Frontline liaison **Commander Vance's Aide** monitors regional labyrinth expeditions. Current Standing: **{v_standing['badge']} ({v_standing['score']} Rep)**")
 
+        # 🏰 Sovereign Homestead, Subsurface Vault & Mythic Forge
+        if hasattr(mechanics, "ensure_homestead_system"):
+            mechanics.ensure_homestead_system(player)
+            h_data = player.get("homestead", {})
+            h_owned = h_data.get("owned", False)
+
+            with st.expander("🏰 Sovereign Homestead, Vault & Mythic Forge", expanded=h_owned):
+                if not h_owned:
+                    st.caption("📍 *Washington Borough Crossroads, Sector 1 Safe Zone*")
+                    st.markdown("#### 🏰 Washington Borough Estate")
+                    st.write(
+                        "A fortified stone-and-steel compound anchored at Washington Borough's historic crossroads. "
+                        "Built atop decommissioned colonial rail tunnels, offering impenetrable subsurface vault storage, "
+                        "botanical aether-greenhouses, a trophy hall for boss relics, and space for a deepforged master-anvil."
+                    )
+                    st.info("💰 **Purchase Price:** 3,500 Col | **Unlocks:** Subsurface Vault, Trophy Hall, Alchemical Greenhouse, Deepforged Master-Forge")
+                    cur_col = player.get("col", 0)
+                    if cur_col >= 3500:
+                        if st.button("🏰 Purchase Washington Borough Estate (3,500 Col)", key="btn_buy_estate_hud", use_container_width=True):
+                            b_res = mechanics.purchase_homestead(player)
+                            if b_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.balloons()
+                                st.toast(b_res["message"], icon="🏰")
+                                st.success(b_res["log"])
+                                st.rerun()
+                            else:
+                                st.error(b_res["message"])
+                    else:
+                        st.warning(f"🔒 Requires 3,500 Col to purchase (You have {cur_col:,} Col).")
+                else:
+                    v_cap = mechanics.get_vault_capacity(player)
+                    st.markdown(f"### 🏰 {h_data.get('name', 'Washington Borough Manor')}")
+                    st.caption(
+                        f"**Vault:** Tier {h_data.get('vault_tier', 1)} ({v_cap['max_slots']} slots, {v_cap['max_lbs']:,} lbs) | "
+                        f"**Greenhouse:** Tier {h_data.get('greenhouse_tier', 1)} | "
+                        f"**Master Anvil:** {'✅ Active' if h_data.get('has_master_anvil') else '❌ Unbuilt'}"
+                    )
+
+                    t_vault, t_trophy, t_green, t_forge, t_market = st.tabs([
+                        "📦 Subsurface Vault",
+                        "🏆 Trophy Hall",
+                        "🌿 Alchemical Greenhouse",
+                        "⚡ Master-Forge",
+                        "⚖️ Commodity Market"
+                    ])
+
+                    # 1. Subsurface Vault
+                    with t_vault:
+                        st.markdown("##### 📦 Fortified Subsurface Vault")
+                        st.caption("Secure depository unencumbered by personal inventory weight limits.")
+                        v_col = h_data.get("vault_col", 0)
+                        v_items = h_data.get("vault_items", [])
+                        st.write(f"💰 **Stored Vault Col:** `{v_col:,} Col` | 📦 **Vault Slots:** `{len(v_items)} / {v_cap['max_slots']}`")
+
+                        # Col Management
+                        vc_col1, vc_col2 = st.columns(2)
+                        with vc_col1:
+                            dep_col_amt = st.number_input("Col to Deposit", min_value=1, max_value=max(1, player.get("col", 0)), value=min(500, max(1, player.get("col", 0))), step=100, key="num_vault_col_dep")
+                            if st.button("📥 Deposit Col", key="btn_vault_dep_col", use_container_width=True):
+                                d_c_res = mechanics.deposit_to_vault(player, "", col_amount=int(dep_col_amt))
+                                if d_c_res["success"]:
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(d_c_res["message"], icon="💰")
+                                    st.rerun()
+                                else:
+                                    st.error(d_c_res["message"])
+                        with vc_col2:
+                            wdr_col_amt = st.number_input("Col to Withdraw", min_value=1, max_value=max(1, v_col), value=min(500, max(1, v_col)), step=100, key="num_vault_col_wdr")
+                            if st.button("📤 Withdraw Col", key="btn_vault_wdr_col", use_container_width=True):
+                                w_c_res = mechanics.withdraw_from_vault(player, "", col_amount=int(wdr_col_amt))
+                                if w_c_res["success"]:
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(w_c_res["message"], icon="💰")
+                                    st.rerun()
+                                else:
+                                    st.error(w_c_res["message"])
+
+                        st.divider()
+                        st.markdown("##### 📥 Deposit Item to Vault")
+                        p_inv = player.get("inventory", [])
+                        if p_inv:
+                            inv_choices = [it.get("name", str(it)) if isinstance(it, dict) else str(it) for it in p_inv]
+                            selected_dep_item = st.selectbox("Select Personal Item", inv_choices, key="sb_dep_item_vault")
+                            if st.button(f"📥 Deposit '{selected_dep_item}'", key="btn_deposit_item_action", use_container_width=True):
+                                d_i_res = mechanics.deposit_to_vault(player, selected_dep_item)
+                                if d_i_res["success"]:
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(d_i_res["message"], icon="📦")
+                                    st.rerun()
+                                else:
+                                    st.error(d_i_res["message"])
+                        else:
+                            st.caption("Personal inventory is empty.")
+
+                        st.markdown("##### 📤 Stored Vault Relics & Gear")
+                        if v_items:
+                            for idx, vi in enumerate(v_items):
+                                vi_name = vi.get("name", str(vi)) if isinstance(vi, dict) else str(vi)
+                                vi_qty = vi.get("qty", 1) if isinstance(vi, dict) else 1
+                                vi_rar = vi.get("rarity", "Common") if isinstance(vi, dict) else "Common"
+                                col_vi1, col_vi2 = st.columns([3, 1])
+                                with col_vi1:
+                                    st.markdown(f"📦 **{vi_name}** x{vi_qty} *({vi_rar})*")
+                                with col_vi2:
+                                    if st.button(f"Withdraw", key=f"btn_wdr_vi_{idx}", use_container_width=True):
+                                        w_i_res = mechanics.withdraw_from_vault(player, vi_name)
+                                        if w_i_res["success"]:
+                                            save_game(player, st.session_state.messages)
+                                            st.toast(w_i_res["message"], icon="📤")
+                                            st.rerun()
+                                        else:
+                                            st.error(w_i_res["message"])
+                        else:
+                            st.caption("Vault contains no stored items.")
+
+                        # Vault Upgrades
+                        cur_v_tier = h_data.get("vault_tier", 1)
+                        if cur_v_tier < 3:
+                            st.divider()
+                            next_vt = cur_v_tier + 1
+                            v_cost = mechanics.VAULT_TIERS[next_vt]["upgrade_cost"]
+                            st.markdown(f"⚙️ **Vault Upgrade:** Tier {next_vt} ({mechanics.VAULT_TIERS[next_vt]['slots']} slots, {mechanics.VAULT_TIERS[next_vt]['capacity_lbs']:,} lbs)")
+                            if st.button(f"Upgrade Vault to Tier {next_vt} ({v_cost:,} Col)", key="btn_upgrade_vault_action", use_container_width=True):
+                                u_v_res = mechanics.upgrade_homestead_facility(player, "vault")
+                                if u_v_res["success"]:
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(u_v_res["message"], icon="✨")
+                                    st.rerun()
+                                else:
+                                    st.error(u_v_res["message"])
+
+                    # 2. Trophy Hall
+                    with t_trophy:
+                        st.markdown("##### 🏆 Great Trophy Hall")
+                        st.caption("Mount slain Sector Boss cores and alpha beast remains on display pedestals to grant passive party-wide combat boons.")
+                        mounted = h_data.get("mounted_trophies", [])
+                        st.write(f"🏛️ **Occupied Pedestals:** `{len(mounted)} / 5`")
+
+                        if mounted:
+                            st.markdown("###### 👑 Active Trophy Perks:")
+                            for idx, tr in enumerate(mounted):
+                                tr_name = tr.get("name", "Trophy")
+                                tr_buff = tr.get("buff_name", "")
+                                tr_desc = tr.get("desc", "")
+                                col_t1, col_t2 = st.columns([3, 1])
+                                with col_t1:
+                                    st.markdown(f"🏆 **{tr_name}** — `{tr_buff}`\n\n*{tr_desc}*")
+                                with col_t2:
+                                    if st.button("Unmount", key=f"btn_unmount_tr_{idx}", use_container_width=True):
+                                        unm_res = mechanics.unmount_boss_trophy(player, tr.get("key", tr_name))
+                                        if unm_res["success"]:
+                                            save_game(player, st.session_state.messages)
+                                            st.toast(unm_res["message"], icon="🔄")
+                                            st.rerun()
+                                        else:
+                                            st.error(unm_res["message"])
+                        else:
+                            st.caption("No trophies currently mounted. Pedestals are waiting for Sector Boss relics.")
+
+                        st.divider()
+                        st.markdown("###### 🛡️ Mount Relic from Inventory:")
+                        inv_trophy_candidates = []
+                        for it in player.get("inventory", []):
+                            iname = it.get("name", str(it)) if isinstance(it, dict) else str(it)
+                            for tk, td in mechanics.HOMESTEAD_TROPHIES.items():
+                                if tk in iname.lower() or td["name"].lower() in iname.lower() or ("overlord" in iname.lower() and "core" in iname.lower()):
+                                    if iname not in inv_trophy_candidates:
+                                        inv_trophy_candidates.append(iname)
+
+                        if inv_trophy_candidates and len(mounted) < 5:
+                            sel_trophy = st.selectbox("Select Boss Relic", inv_trophy_candidates, key="sb_mount_trophy_choice")
+                            if st.button(f"🏆 Mount '{sel_trophy}' on Pedestal", key="btn_mount_trophy_action", use_container_width=True):
+                                m_res = mechanics.mount_boss_trophy(player, sel_trophy)
+                                if m_res["success"]:
+                                    save_game(player, st.session_state.messages)
+                                    st.balloons()
+                                    st.toast(m_res["message"], icon="🏆")
+                                    st.rerun()
+                                else:
+                                    st.error(m_res["message"])
+                        elif len(mounted) >= 5:
+                            st.warning("All 5 pedestals are currently occupied. Unmount an existing trophy to make room.")
+                        else:
+                            st.caption("No mountable boss relics found in personal inventory (Slay Sector Bosses to claim relics).")
+
+                    # 3. Alchemical Greenhouse
+                    with t_green:
+                        st.markdown("##### 🌿 Hydroponic Alchemical Greenhouse")
+                        st.caption("Automated cultivation chambers growing rare aether-infused flora and harvestable reagent fungi once per game day.")
+                        g_tier = h_data.get("greenhouse_tier", 1)
+                        g_info = mechanics.GREENHOUSE_TIERS.get(g_tier, mechanics.GREENHOUSE_TIERS[1])
+                        st.markdown(f"🌱 **Cultivation Tier:** `Tier {g_tier} ({g_info['name']})`")
+                        yield_str = ", ".join([f"{q}x {n}" for n, q in g_info["yield"].items()])
+                        st.caption(f"**Daily Botanical Yield:** {yield_str}")
+
+                        chrono_info = mechanics.get_game_time(player) if hasattr(mechanics, "get_game_time") else {}
+                        cur_day = chrono_info.get("day", 1)
+                        last_h = h_data.get("last_harvest_day", 0)
+                        can_harvest = cur_day > last_h
+
+                        if can_harvest:
+                            st.success(f"🌿 **Crops are in full bloom for Day {cur_day}!**")
+                            if st.button("🌿 Harvest Daily Botanical Yield", key="btn_harvest_greenhouse_action", use_container_width=True):
+                                h_res = mechanics.harvest_alchemical_garden(player)
+                                if h_res["success"]:
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(h_res["message"], icon="🌿")
+                                    st.success(h_res["log"])
+                                    st.rerun()
+                                else:
+                                    st.error(h_res["message"])
+                        else:
+                            st.info(f"⏳ **Flora Regenerating:** Harvested on Day {last_h}. Next bloom at sunrise on Day {last_h + 1}.")
+
+                        # Upgrade Greenhouse
+                        if g_tier < 3:
+                            st.divider()
+                            next_gt = g_tier + 1
+                            g_cost = mechanics.GREENHOUSE_TIERS[next_gt]["upgrade_cost"]
+                            st.markdown(f"⚙️ **Greenhouse Upgrade:** Tier {next_gt} ({mechanics.GREENHOUSE_TIERS[next_gt]['name']})")
+                            if st.button(f"Upgrade Greenhouse to Tier {next_gt} ({g_cost:,} Col)", key="btn_upgrade_greenhouse_action", use_container_width=True):
+                                u_g_res = mechanics.upgrade_homestead_facility(player, "greenhouse")
+                                if u_g_res["success"]:
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(u_g_res["message"], icon="🌿")
+                                    st.rerun()
+                                else:
+                                    st.error(u_g_res["message"])
+
+                    # 4. Master-Forge
+                    with t_forge:
+                        st.markdown("##### ⚡ Deepforged Master-Anvil")
+                        st.caption("Ancient runic forge utilizing geothermal leyline taps to fuse Grade 5 armaments with Sector Boss Cores into Grade 6 Mythic weapons.")
+
+                        if not h_data.get("has_master_anvil"):
+                            st.warning("⚠️ **Master-Anvil Not Installed:** Requires runic anvil installation to unlock Grade 6/7 Mythic weapon forging.")
+                            st.info("🔨 **Construction Cost:** 3,000 Col")
+                            if st.button("🔨 Construct Deepforged Master-Anvil (3,000 Col)", key="btn_build_master_anvil", use_container_width=True):
+                                b_a_res = mechanics.upgrade_homestead_facility(player, "master_anvil")
+                                if b_a_res["success"]:
+                                    save_game(player, st.session_state.messages)
+                                    st.balloons()
+                                    st.toast("Master-Anvil constructed!", icon="⚡")
+                                    st.success(b_a_res["log"])
+                                    st.rerun()
+                                else:
+                                    st.error(b_a_res["message"])
+                        else:
+                            st.success("⚡ **Deepforged Master-Anvil Active:** Geothermal magma flow nominal. Ready for mythic transmutation.")
+                            st.divider()
+
+                            # Recipes
+                            for r_key, r_data in mechanics.MYTHIC_RECIPES.items():
+                                st.markdown(f"#### ⚡ {r_data['name']} *(Grade 6 Mythic)*")
+                                st.caption(r_data.get("description", ""))
+                                tech = r_data["active_technique"]
+                                st.markdown(f"✨ **Granted Sword Skill:** `{tech['name']}` ({tech['type']}) — *{tech['desc']}*")
+                                st.caption(f"🛡️ **Base Durability:** `{r_data['durability']}/{r_data['durability']}` | **Forge Fee:** `{r_data['fee_col']:,} Col`")
+                                st.caption(f"🔩 **Required Base Gear:** `{r_data['base_item_query']}` | **Boss Catalyst:** `{r_data['boss_core_query']}`")
+                                mat_str = ", ".join([f"{q}x {m}" for m, q in r_data["materials"].items()])
+                                st.caption(f"💎 **Reagents:** {mat_str}")
+
+                                if st.button(f"⚡ Deepforge {r_data['name']}", key=f"btn_forge_{r_key}", use_container_width=True):
+                                    f_res = mechanics.forge_mythic_equipment(player, r_key)
+                                    if f_res["success"]:
+                                        save_game(player, st.session_state.messages)
+                                        st.balloons()
+                                        st.toast(f_res["message"], icon="⚡")
+                                        st.success(f_res["log"])
+                                        st.rerun()
+                                    else:
+                                        st.error(f_res["message"])
+                                st.markdown("---")
+
+                    # 5. Commodity Market
+                    with t_market:
+                        st.markdown("##### ⚖️ Regional Mercantile Exchange")
+                        st.caption("Trade raw aether-alloys, scrap, and alchemical catalysts at dynamic commodity market rates.")
+                        com_prices = mechanics.get_commodity_prices(player)
+                        reps = player.get("factions", {})
+                        iron_rep = reps.get("iron_syndicate", 0) if isinstance(reps, dict) else 0
+                        disc_str = "15% Trade Discount" if iron_rep >= 50 else ("10% Trade Discount" if iron_rep >= 25 else "Standard Rates")
+                        st.write(f"🤝 **Iron Syndicate Standing:** `{iron_rep} Rep ({disc_str})`")
+
+                        # Display Price Table
+                        p_table = []
+                        for ck, cv in com_prices.items():
+                            p_table.append({
+                                "Commodity": cv["name"],
+                                "Category": cv["category"],
+                                "Buy Price": f"{cv['buy_price']:,} Col",
+                                "Sell Price": f"{cv['sell_price']:,} Col"
+                            })
+                        st.table(p_table)
+
+                        # Trade Actions
+                        m_col1, m_col2 = st.columns(2)
+                        with m_col1:
+                            st.markdown("###### 🛒 Purchase Commodities")
+                            c_buy_choice = st.selectbox("Select Commodity to Buy", list(com_prices.keys()), format_func=lambda k: com_prices[k]["name"], key="sb_com_buy")
+                            b_qty = st.number_input("Purchase Quantity", min_value=1, max_value=20, value=1, step=1, key="num_com_buy_qty")
+                            total_b_cost = com_prices[c_buy_choice]["buy_price"] * b_qty
+                            st.caption(f"Total Cost: **{total_b_cost:,} Col**")
+                            if st.button("🛒 Buy Commodity", key="btn_trade_buy_action", use_container_width=True):
+                                tc_res = mechanics.trade_commodity(player, c_buy_choice, action="buy", qty=int(b_qty))
+                                if tc_res["success"]:
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(tc_res["message"], icon="⚖️")
+                                    st.rerun()
+                                else:
+                                    st.error(tc_res["message"])
+
+                        with m_col2:
+                            st.markdown("###### 💰 Sell Commodities")
+                            c_sell_choice = st.selectbox("Select Commodity to Sell", list(com_prices.keys()), format_func=lambda k: com_prices[k]["name"], key="sb_com_sell")
+                            s_qty = st.number_input("Sell Quantity", min_value=1, max_value=20, value=1, step=1, key="num_com_sell_qty")
+                            total_s_gain = com_prices[c_sell_choice]["sell_price"] * s_qty
+                            st.caption(f"Estimated Payout: **+{total_s_gain:,} Col**")
+                            if st.button("💰 Sell Commodity", key="btn_trade_sell_action", use_container_width=True):
+                                tc_res = mechanics.trade_commodity(player, c_sell_choice, action="sell", qty=int(s_qty))
+                                if tc_res["success"]:
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(tc_res["message"], icon="💰")
+                                    st.rerun()
+                                else:
+                                    st.error(tc_res["message"])
+
         with st.expander("📜 Active Quests & Bounties", expanded=True):
             if not player.get("quests"):
                 st.caption("No active directives.")
@@ -2910,6 +3238,30 @@ if prompt := (dev_prompt or chat_prompt):
                         t_adv_int = 15
                     if t_adv_int > 0:
                         mechanics.advance_game_time(st.session_state.player, minutes=t_adv_int)
+
+                # Phase 9: Homestead, Vault & Economy Toasts
+                h_act = state_updates.get("homestead_action")
+                if h_act:
+                    st.toast("🏰 Homestead Estate / Facility updated!", icon="🏰")
+                v_dep = state_updates.get("vault_deposit")
+                if v_dep:
+                    st.toast("📦 Items/Col secured in Subsurface Vault.", icon="📦")
+                v_wdr = state_updates.get("vault_withdraw")
+                if v_wdr:
+                    st.toast("📦 Retrieved items/Col from Subsurface Vault.", icon="📦")
+                m_trophy = state_updates.get("mount_trophy")
+                if m_trophy:
+                    st.toast("🏆 Boss Trophy mounted in Great Hall!", icon="🏆")
+                h_green = state_updates.get("harvest_greenhouse")
+                if h_green:
+                    st.toast("🌿 Harvested Alchemical Greenhouse botanical yield!", icon="🌿")
+                t_com = state_updates.get("trade_commodity")
+                if t_com:
+                    st.toast("⚖️ Commodity traded on Regional Exchange!", icon="⚖️")
+                f_myth = state_updates.get("forge_mythic")
+                if f_myth:
+                    st.balloons()
+                    st.toast("⚡ Deepforged Master-Anvil: Mythic Armament forged!", icon="⚡")
 
             # 1.5 Handle Combat Crunch Logs
             combat_logs = turn_data.get("combat_logs", [])
