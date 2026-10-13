@@ -741,19 +741,19 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
         - Golem-Grafts grant powerful biomechanical bonuses (such as +2 AC from Subdermal Carapace Weave or +1 active slot from Neural Cortex) but generate Cyber-Strain. If current strain ({cur_strain}) exceeds max ({max_strain}), the player is under System Rejection (taking HP damage per turn and suffering -2 to all saves). Mention this biological recoil in the narrative!
         - Combat Subroutine Gating: Active Sword Skills, Spells, and active tactical maneuvers can ONLY be executed if loaded in 'Active Slotted Abilities': {json.dumps(slotted_abs)}. If the player attempts an unslotted technique outside a safe zone, inform them in the narrative that their system matrix did not have the combat subroutine cached in active memory!
     16. COMPANION TACTICAL ORDERS & XP SHARING:
-        - Ren Sasaki is Banki's active companion, operating under the tactical stance: '{ren_stance_info.get('label', 'Overwatch Hacking')}'.
+        - Ren Sasaki is Banki's active companion, an Aether-Scholar & MageTech Artificer operating under the tactical stance: '{ren_stance_info.get('label', 'Leyline Overwatch')}'.
         - In `combat_logs`, narrate and resolve his specific tactical contribution:
-          * Overwatch Hacking: output '[REN OVERWATCH: Scans target hitbox -> -2 AC debuff applied to Enemy]' and factor this into attack rolls against the primary foe.
-          * Suppression Fire: output '[REN SUPPRESSION: Discharges stun burst -> Enemy makes DC 13 CON save vs Staggered]'.
-          * Full Evasion / Hide: output '[REN EVASION: Takes cover behind collision meshes -> Untargetable this turn]'.
-          * Utility & Rigging: output '[REN UTILITY: Deploys field snare or patches worn gear (+15 durability restored)]'.
+          * Leyline Overwatch: output '[REN OVERWATCH: Scans target aura & structural leylines -> -2 AC debuff applied to Enemy]' and factor this into attack rolls against the primary foe.
+          * MageTech Arc Suppression: output '[REN SUPPRESSION: Discharges MageTech lightning-rune salvo -> Enemy makes DC 13 CON save vs Staggered]'.
+          * Aetheric Phase-Veil: output '[REN EVASION: Weaves an aetheric phase-veil into the ruins -> Untargetable this turn]'.
+          * Arcane Artificing & Mending: output '[REN UTILITY: Channels mending runes or gathers aether-crystallite (+15 durability restored)]'.
         - When Banki earns XP ('xp_change'), the Cardinal System awards Ren 50% companion XP. You can also output explicit companion updates in 'companion_updates'!
     
     Format your response EXACTLY as a JSON object with FIVE keys:
     - "narrative": The markdown formatted story/dialogue. 
     - "combat_logs": A list of strings showing the exact dice math and damage for the turn. Leave empty if no combat or skill check occurred.
     - "global_news_add": A list of strings showing macro world events (e.g. continental faction movements). MUST BE POPULATED IF THE PLAYER SKIPS TIME OR SLEEPS.
-    - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged man with a short beard and undercut hair, wearing a heavy black-iron chainmail hauberk and a massive synthetic dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a gaunt, exhausted young man with messy dark hair, wearing cracked glasses and a threadbare corporate hoodie, holding a glowing cyan digital clipboard.
+    - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged warrior with a short beard and undercut hair, wearing heavy black-iron runic armor and a massive dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a lean, bookish young man with messy dark hair, wire-rimmed glasses, wearing a weathered leyline duster over scholar's garb, wielding an ornate brass-and-crystal MageTech caster firearm (magic-powered, not gunpowder) and carrying a glowing runic slate grimoire.
     - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates", "graft_installs", "ability_slots", "companion_updates". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
       Additionally, use the following complex schemas for skills, inventory, factions, and quests:
       - "inventory_add": List of dicts, e.g. [{{"name": "Rusted Iron Sword", "rarity": "Common", "durability": 45, "max_durability": 50, "qty": 1, "desc": "A chipped blade scavenged from the ruins."}}]
@@ -939,11 +939,16 @@ def generate_companion_intent(api_key, companion_data, player_input, chat_histor
     stance_label = stance_info.get("label", "Overwatch Hacking")
     stance_effect = stance_info.get("tactical_effect", "Scans enemy geometry and debug hitboxes via terminal.")
 
-    system_instruction = f"""You are {comp_name}, an autonomous companion in a grimdark "Magic-Cyber-Fantasy" LitRPG world (The Fractured Earth).
-    You travel with the Player (Banki). You are NOT the Encounter Director; you are simply deciding your own reaction and action to the current situation.
+    system_instruction = f"""You are {comp_name}, an autonomous companion in a grimdark Aether-Fantasy LitRPG world (The Fractured Overlay).
+    You travel with the Player (Banki). You are NOT the Encounter Director; you are deciding your own reaction and action to the current situation.
+    
+    CRITICAL THEME & GEAR:
+    - You fight using an ornate brass-and-crystal **MageTech Caster Firearm** (magic-based spell-locks, mana cartridges, lightning glyphs, and aetheric discharges — NEVER gunpowder, modern bullets, or modern military carbines).
+    - You consult a glowing **Runic Scribe Slate** (aether-grid grimoire) to analyze leylines, spatial seams, and enemy mana-auras.
+    - You wear a weathered **Leyline Duster** over scholar's garb with wire-rimmed glasses.
     
     YOUR CURRENT STATE & TACTICAL DIRECTIVE:
-    - Designation: {comp_name} ({companion_data.get('title', 'Junior QA / Hacker')})
+    - Designation: {comp_name} ({companion_data.get('title', 'Aether-Scholar & MageTech Artificer')})
     - Level: {companion_data.get('level', 3)} | HP: {companion_data.get('hp', 35)}/{companion_data.get('max_hp', 35)}
     - Morale: {companion_data.get('morale', 'Steady')}
     - MANDATORY TACTICAL STANCE ASSIGNED BY BANKI: {stance_label}
@@ -954,12 +959,12 @@ def generate_companion_intent(api_key, companion_data, player_input, chat_histor
     ROLEPLAY INSTRUCTIONS:
     1. Look at the player's current action and the recent chat history.
     2. YOUR INTENDED ACTION MUST STRICTLY ALIGN WITH YOUR ACTIVE TACTICAL ORDER ({stance_label}):
-       - If 'Overwatch Hacking': You are glued to your cracked digital slate, frantically scanning enemy collision wireframes, exploiting logic leaks, and shouting out AC weak points to Banki.
-       - If 'Suppression Fire': You grip your corporate stun pistol with white knuckles, firing non-lethal electrical EMP bursts to pin down flankers and disrupt charges.
-       - If 'Full Evasion / Hide': You dive for cover behind concrete ruins or collision meshes, staying low, avoiding line-of-sight, and warning Banki of incoming threats while staying safe.
-       - If 'Utility & Rigging': You are rapidly rigging a tripwire snare, patching Banki's worn armor seams with conductive adhesive, or frantically harvesting core components from fallen scrap.
+       - If 'Leyline Overwatch': You study your glowing runic slate, tracing enemy mana-flows and physical seams through your optical lens, shouting structural vulnerabilities and AC weak points to Banki.
+       - If 'MageTech Arc Suppression': You raise your brass-and-crystal MageTech caster, discharging crackling lightning-mana runes to pin down rushing foes and stagger enemy charges.
+       - If 'Aetheric Phase-Veil': You weave an aetheric concealment cloak, slipping into shadows and spatial ripples behind ancient stone ruins, remaining untargetable while relaying directional warnings to Banki.
+       - If 'Arcane Artificing & Mending': You channel mending glyphs into Banki's worn armor/weapons, rig quick field snares, or harvest glowing aether-crystallites from fallen constructs.
     3. Factor in your morale ({companion_data.get('morale', 'Steady')}) and health.
-    4. Keep your output to 1-2 concise sentences written in third person (e.g. "Ren adjusts his cracked glasses and frantically taps his slate to exploit an unpatched hitbox leak on the lead construct, shouting the vulnerability to Banki.")
+    4. Keep your output to 1-2 concise sentences written in third person (e.g. "Ren sights down the crystalline barrel of his MageTech caster, discharging a crackling stun-rune to check the beast's charge while shouting for Banki to strike the exposed flank.")
     
     Do NOT resolve the outcome. Just state your intended action and emotional state.
     """

@@ -1234,10 +1234,10 @@ with st.sidebar:
             st.markdown("##### 🎯 Tactical Stance Directive")
             
             stance_labels = {
-                "overwatch_hacking": "📡 Overwatch Hacking (-2 Target AC)",
-                "suppression_fire": "⚡ Suppression Fire (DC 13 Stagger)",
-                "full_evasion": "🛡️ Full Evasion (Untargetable Cover)",
-                "utility_rigging": "🔧 Utility & Rigging (+15 Durability / Scrap)"
+                "overwatch_hacking": "👁️ Leyline Overwatch (-2 Target AC)",
+                "suppression_fire": "⚡ MageTech Arc Suppression (DC 13 Stagger)",
+                "full_evasion": "🌫️ Aetheric Phase-Veil (Untargetable Cover)",
+                "utility_rigging": "✨ Arcane Artificing & Mending (+15 Durability / Scrap)"
             }
             
             stance_keys = list(mechanics.COMPANION_TACTICAL_STANCES.keys()) if hasattr(mechanics, "COMPANION_TACTICAL_STANCES") else ["overwatch_hacking", "suppression_fire", "full_evasion", "utility_rigging"]
