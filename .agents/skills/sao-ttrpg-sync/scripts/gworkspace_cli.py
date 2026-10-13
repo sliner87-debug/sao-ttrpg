@@ -251,13 +251,12 @@ def parse_a1_range(range_str, wb):
     if "!" in range_str:
         sheet_name, cell_range = range_str.split("!", 1)
         sheet_name = sheet_name.strip("'")
+    elif range_str in wb.sheetnames:
+        return wb[range_str], None
     else:
         sheet_name = wb.sheetnames[0]
         cell_range = range_str
     if sheet_name not in wb.sheetnames:
-        # Check if range_str was just a sheet name
-        if range_str in wb.sheetnames:
-            return wb[range_str], None
         ws = wb.create_sheet(title=sheet_name)
     else:
         ws = wb[sheet_name]
