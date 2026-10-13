@@ -42,6 +42,8 @@ Return ONLY the data the players can clearly observe. Output EXACTLY matching th
     print("Staging Ground updated: visible_room.json")
     return visible_room
 
+generate_visible_room = generate_visible_state
+
 def resolve_turn(api_key: str, player_action: str):
     """Takes the player action + AI queue, calculates math, updates master state."""
     client = genai.Client(api_key=api_key)
@@ -95,6 +97,12 @@ CORE GM BEHAVIOR RULES:
 11. HIGH-FANTASY MAGETECH THEME (OVER CYBERPUNK):
    - The world is dark fantasy infused with ancient aetheric artifice and runic machinery.
    - Prioritize magical/fantasy terminology: mana-crystallization, aether-ducts, runic glyphs, enchanted clockwork, and chimeric beast organs over pure cold cyberpunk, sterile microchips, or modern military hardware.
+12. LABYRINTH DUNGEONS & OVERLORD MECHANICS (POHATCONG DEPTHS):
+   - When engaged with Sector Bosses (e.g. The Gilded Spire Overlord), track Break Gauge depletion and telegraph counters. Output `boss_break_gauge_damage` and set `boss_staggered=true` when vulnerable.
+13. CHRONO-ATMOSPHERE & WEATHER SHIFTS:
+   - Output `time_minutes_advanced` (10-30 min per turn, 480 min for camp). Output `weather_change` (runic_mist, glitch_freeze, aether_storm, clear) when meteorological conditions shift.
+14. SOVEREIGN HOMESTEAD & VAULT (WASHINGTON BOROUGH):
+   - When resting or utilizing facilities at the player's Washington Borough homestead, reflect vault storage, greenhouse reagent harvesting, or trophy mounting in `homestead_action`.
 
 
 

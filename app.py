@@ -7,6 +7,7 @@ import base64
 import re
 import backend.gm_engine as gm_engine
 import backend.actor_engine as actor_engine
+import backend.mechanics as mechanics
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="The Fractured Overlay", page_icon="🗡️", layout="wide")
@@ -290,29 +291,61 @@ def apply_player_state_updates(state_updates):
                     st.session_state.player.setdefault("skills", {})[name] = {"mastery": max(1, change), "description": desc}
                     st.toast(f"✨ Unlocked New Skill: {name} (Mastery: {change})", icon="🌟")
 
+    w_change = state_updates.get("weather_change")
+    if w_change and hasattr(mechanics, "set_weather"):
+        mechanics.set_weather(st.session_state.player, w_change)
+        st.toast(f"🌪️ Weather shifted: {w_change}!", icon="🌤️")
+
+    mins_adv = state_updates.get("time_minutes_advanced")
+    if mins_adv and hasattr(mechanics, "advance_game_time"):
+        try:
+            m_val = int(mins_adv)
+            if m_val > 0:
+                t_res = mechanics.advance_game_time(st.session_state.player, minutes=m_val)
+                st.toast(f"⏱️ Time advanced by {m_val}m ({t_res.get('time_str', '')})", icon="⏳")
+        except (ValueError, TypeError):
+            pass
+
+    bb_dmg = state_updates.get("boss_break_gauge_damage")
+    if bb_dmg and hasattr(mechanics, "damage_overlord_break_gauge"):
+        try:
+            b_val = int(bb_dmg)
+            if b_val > 0:
+                bg_res = mechanics.damage_overlord_break_gauge(st.session_state.player, b_val)
+                st.toast(bg_res.get("log", f"Boss Break Gauge -{b_val}"), icon="💥")
+        except (ValueError, TypeError):
+            pass
+
 
 def apply_companion_state_updates(hp_changes: dict):
     """Synchronizes companion damage/healing across session state and Party/*.json sheets."""
     if not hp_changes or not isinstance(hp_changes, dict):
         return
         
-    for c_key in ["companion_ren", "Ren", "ren"]:
-        if c_key in hp_changes:
-            delta = hp_changes[c_key]
-            # 1. Update session state player["companions"]["Ren"]
-            if "companions" in st.session_state.player and "Ren" in st.session_state.player["companions"]:
-                ren_ref = st.session_state.player["companions"]["Ren"]
-                old_hp = ren_ref.get("hp", 35)
-                max_hp = ren_ref.get("max_hp", 35)
+    companion_id_map = {
+        "companion_ren": "Ren", "Ren": "Ren", "ren": "Ren",
+        "companion_elora": "Elora", "Elora": "Elora", "elora": "Elora",
+        "companion_torvald": "Torvald", "Torvald": "Torvald", "torvald": "Torvald",
+        "companion_kibs": "Kibs", "Kibs": "Kibs", "kibs": "Kibs"
+    }
+    
+    for c_key, delta in hp_changes.items():
+        if c_key in companion_id_map:
+            c_name = companion_id_map[c_key]
+            # 1. Update session state player["companions"][c_name]
+            if "companions" in st.session_state.player and c_name in st.session_state.player["companions"]:
+                c_ref = st.session_state.player["companions"][c_name]
+                old_hp = c_ref.get("hp", 35)
+                max_hp = c_ref.get("max_hp", 35)
                 new_hp = max(0, min(max_hp, old_hp + delta))
-                ren_ref["hp"] = new_hp
+                c_ref["hp"] = new_hp
                 if delta < 0:
-                    st.toast(f"🩸 Ren took {abs(delta)} damage! (HP: {new_hp}/{max_hp})", icon="🛡️")
+                    st.toast(f"🩸 {c_name} took {abs(delta)} damage! (HP: {new_hp}/{max_hp})", icon="🛡️")
                 elif delta > 0:
-                    st.toast(f"💚 Ren recovered {delta} HP! (HP: {new_hp}/{max_hp})", icon="🩹")
+                    st.toast(f"💚 {c_name} recovered {delta} HP! (HP: {new_hp}/{max_hp})", icon="🩹")
                     
-            # 2. Update Party/companion_ren.json on disk
-            party_file = os.path.join(BASE_DIR, "Party", "companion_ren.json")
+            # 2. Update Party/companion_*.json on disk
+            party_file = os.path.join(BASE_DIR, "Party", f"companion_{c_name.lower()}.json")
             if os.path.exists(party_file):
                 try:
                     with open(party_file, "r", encoding="utf-8") as f:
@@ -323,7 +356,6 @@ def apply_companion_state_updates(hp_changes: dict):
                         json.dump(p_sheet, f, indent=4)
                 except Exception as e:
                     print(f"[COMPANION SYNC ERROR] {e}", flush=True)
-            break
 
 # --- INITIALIZE SESSION STATE ---
 saved_data = load_game()
@@ -408,31 +440,47 @@ p.setdefault("equipped", {"head": "None", "chest": "None", "main_hand": "None", 
 p.setdefault("companions", {
     "Ren": {
         "name": "Ren",
-        "archetype": "QA Vanguard",
+        "archetype": "MageTech Vanguard (Trapped 17yo Game Tester)",
+        "role": "MageTech Vanguard (Trapped 17yo Game Tester)",
         "hp": 35,
         "max_hp": 35,
         "ac": 16,
         "status": "Vigilant and operational",
         "active_grafts": [
-            {"name": "Sub-Dermal Optical Scanner", "slot": "Head", "effect": "Darkvision, reveals traps"}
+            {"name": "Aetheric Ocular Lens", "slot": "Head", "effect": "Darkvision, reveals arcane matrices & traps"}
         ],
-        "inventory": ["Monofilament Blade", "Smoke Grenades"]
+        "inventory": ["Aether-Lock Carbine", "Runic Vanguard Blade", "Alchemical Haze Pellets"]
     }
 })
 
-# Synchronize existing session/saved Ren data with canonical QA Vanguard sheet
+# Synchronize existing session/saved Ren data with canonical MageTech Vanguard sheet
 if "companions" in p and "Ren" in p["companions"]:
     r_sheet = p["companions"]["Ren"]
-    if r_sheet.get("archetype") != "QA Vanguard" or r_sheet.get("max_hp") != 35:
-        r_sheet["archetype"] = "QA Vanguard"
+    if "MageTech" not in str(r_sheet.get("archetype", "")) or r_sheet.get("max_hp") != 35:
+        r_sheet["archetype"] = "MageTech Vanguard (Trapped 17yo Game Tester)"
+        r_sheet["role"] = "MageTech Vanguard (Trapped 17yo Game Tester)"
         r_sheet["max_hp"] = 35
         r_sheet["hp"] = min(35, r_sheet.get("hp", 35))
         r_sheet["ac"] = 16
         r_sheet["status"] = "Vigilant and operational"
         r_sheet["active_grafts"] = [
-            {"name": "Sub-Dermal Optical Scanner", "slot": "Head", "effect": "Darkvision, reveals traps"}
+            {"name": "Aetheric Ocular Lens", "slot": "Head", "effect": "Darkvision, reveals arcane matrices & traps"}
         ]
-        r_sheet["inventory"] = ["Monofilament Blade", "Smoke Grenades"]
+        r_sheet["inventory"] = ["Aether-Lock Carbine", "Runic Vanguard Blade", "Alchemical Haze Pellets"]
+
+# Initialize Phase 1-9 Systems
+if hasattr(mechanics, "ensure_chrono_system"):
+    mechanics.ensure_chrono_system(p)
+if hasattr(mechanics, "ensure_factions_system"):
+    mechanics.ensure_factions_system(p)
+if hasattr(mechanics, "ensure_homestead_system"):
+    mechanics.ensure_homestead_system(p)
+if hasattr(mechanics, "ensure_graft_system"):
+    mechanics.ensure_graft_system(p)
+if hasattr(mechanics, "ensure_party_system"):
+    mechanics.ensure_party_system(p)
+if hasattr(mechanics, "ensure_ability_matrix"):
+    mechanics.ensure_ability_matrix(p)
 
 if "messages" not in st.session_state:
     if saved_data:
@@ -466,8 +514,10 @@ with st.sidebar:
     
 
     with st.expander("🧬 Character Build", expanded=False):
+        cursor_data = mechanics.get_cursor_status(player) if hasattr(mechanics, "get_cursor_status") else {"badge": "🟢 Green"}
         st.write(f"**Race:** {player['race']}")
         st.write(f"**Class:** {player['class']}")
+        st.write(f"**SAO Status:** {cursor_data.get('badge', '🟢 Green')}")
         st.write("**Core Stats:**")
         cols = st.columns(3)
         cols[0].write(f"STR: {player['stats']['STR']}")
@@ -477,13 +527,59 @@ with st.sidebar:
         cols[0].write(f"INT: {player['stats']['INT']}")
         cols[1].write(f"WIS: {player['stats']['WIS']}")
         cols[2].write(f"CHA: {player['stats']['CHA']}")
-        
-    with st.expander("⚔️ Equipped Gear", expanded=False):
-        st.write(f"- **Head:** {player['equipped']['head']}")
-        st.write(f"- **Chest:** {player['equipped']['chest']}")
-        st.write(f"- **Main:** {player['equipped']['main_hand']}")
-        st.write(f"- **Off:** {player['equipped']['off_hand']}")
-        st.write(f"- **Acc:** {player['equipped']['accessory']}")
+
+    encumbrance = mechanics.calculate_encumbrance(player) if hasattr(mechanics, "calculate_encumbrance") else {"label": "Unburdened", "current_weight_lbs": 10, "max_weight_lbs": 150, "weight_percent": 0.1, "used_slots": 5, "max_slots": 20, "slots_percent": 0.25, "penalties": {"dex_mod": 0, "speed_pct": 100, "disadvantage_stealth": False}}
+    with st.expander("⚖️ Encumbrance & Carry Physics", expanded=False):
+        st.write(f"**Status:** {encumbrance['label']}")
+        st.progress(encumbrance['weight_percent'], text=f"Weight: {encumbrance['current_weight_lbs']} / {encumbrance['max_weight_lbs']} lbs")
+        st.progress(encumbrance['slots_percent'], text=f"Slots: {encumbrance['used_slots']} / {encumbrance['max_slots']} slots")
+        pen = encumbrance['penalties']
+        if pen['dex_mod'] != 0 or pen['disadvantage_stealth']:
+            st.warning(f"⚠️ **Penalties:** DEX {pen['dex_mod']} | Speed: {pen['speed_pct']}% | Disadvantage on Stealth")
+        else:
+            st.success("✅ **Unburdened:** Full agility and movement speed.")
+
+    with st.expander("⚔️ Equipped Gear & Durability", expanded=False):
+        gear_dur = mechanics.normalize_gear_durability(player) if hasattr(mechanics, "normalize_gear_durability") else {}
+        pens = mechanics.calculate_durability_penalties(player) if hasattr(mechanics, "calculate_durability_penalties") else {"atk_penalty": 0, "ac_penalty": 0, "broken_items": []}
+        if pens["atk_penalty"] > 0 or pens["ac_penalty"] > 0:
+            st.warning(f"⚠️ **Wear Penalties Active:** ATK -{pens['atk_penalty']} | AC -{pens['ac_penalty']}")
+        if pens["broken_items"]:
+            st.error(f"🚨 **Broken Gear:** {', '.join(pens['broken_items'])} (Ineffective!)")
+
+        for slot in ["head", "chest", "main_hand", "off_hand", "accessory"]:
+            item = player['equipped'].get(slot, "None")
+            slot_label = slot.replace('_', ' ').title()
+            if item and item != "None":
+                grade = mechanics.get_item_grade(item) if hasattr(mechanics, "get_item_grade") else 1
+                grade_badge = f"Grade {grade}"
+                d = gear_dur.get(slot, {"cur": 100, "max": 100})
+                cur_d = d.get("cur", 100)
+                max_d = d.get("max", 100)
+                state_info = mechanics.get_durability_state(cur_d, max_d) if hasattr(mechanics, "get_durability_state") else {"label": f"{cur_d}/{max_d}", "pct": cur_d / max_d if max_d > 0 else 1.0, "is_broken": cur_d <= 0, "is_dulled": cur_d < max_d * 0.25}
+                st.markdown(f"**{slot_label}:** {item}")
+                st.caption(f"{grade_badge} | {state_info['label']}")
+                pct_val = max(0.0, min(1.0, float(state_info.get("pct", cur_d / max_d if max_d > 0 else 1.0))))
+                st.progress(pct_val, text=f"{cur_d} / {max_d} Durability ({int(pct_val * 100)}%)")
+                if state_info.get("is_broken"):
+                    st.error("🛑 BROKEN: Weapon/Armor has fractured!")
+                elif state_info.get("is_dulled"):
+                    st.warning("🟠 DULLED/CRACKED: Imposing -2 penalty to checks!")
+                st.divider()
+            else:
+                st.caption(f"- **{slot_label}:** None")
+
+        total_dur_needed = sum(max(0, d.get("max", 100) - d.get("cur", 100)) for d in gear_dur.values())
+        if total_dur_needed > 0:
+            st.caption(f"Maintenance Required: **{total_dur_needed} pts** of wear | Cost: **{total_dur_needed} Col**")
+            if st.button("🔨 Repair All Equipped Gear", key="btn_repair_all_gear_hud", use_container_width=True):
+                for slot_k in ["head", "chest", "main_hand", "off_hand", "accessory"]:
+                    if slot_k in gear_dur and hasattr(mechanics, "repair_item"):
+                        mechanics.repair_item(player, slot_k)
+                save_game(player, st.session_state.messages)
+                st.toast("🔨 All equipped gear repaired!", icon="✨")
+                st.rerun()
+
         
     with st.expander("🦾 Magitech & Bio-Grafts", expanded=False):
         cap = get_strain_capacity(player)
@@ -570,31 +666,319 @@ with st.sidebar:
                     st.markdown(f"🔸 {q}")
                     st.divider()
                 
-    with st.expander("🤖 Party Companions", expanded=True):
-        companions = player.get("companions", {})
-        if not companions:
-            st.caption("No party companions registered.")
+    active_comps = list(mechanics.get_active_party(player)) if hasattr(mechanics, "get_active_party") else []
+    with st.expander(f"🛡️ Raiding Party Hub ({len(active_comps) + 1}/4 Vanguard)", expanded=True):
+        st.markdown(f"**Party Leader:** 👑 **{player['name']}** `[Lv. {player.get('level', 1)} {player.get('class', 'Warrior')}]`")
+        st.caption(f"Active Party: {player['name']} + {len(active_comps)}/3 Companions | 4-Vanguard Cap")
+
+        tab_active_party, tab_benched_party, tab_recruit_pool = st.tabs([
+            f"⚔️ Active ({len(active_comps)}/3)",
+            f"🛋️ Reserve Roster",
+            f"🤝 Recruit Candidates"
+        ])
+
+        with tab_active_party:
+            if not active_comps:
+                st.info("No active companions deployed in vanguard. Check Reserve or Recruit tabs!")
+            else:
+                for comp in active_comps:
+                    c_name = comp["name"]
+                    c_lvl = comp.get("level", 1)
+                    c_class = comp.get("class", comp.get("archetype", "Specialist"))
+                    c_hp = comp.get("hp", 35)
+                    c_max_hp = comp.get("max_hp", 35)
+                    c_xp = comp.get("xp", 0)
+                    c_next_xp = comp.get("next_level_xp", 300)
+                    c_morale = comp.get("morale", "Steady")
+                    c_stance = comp.get("stance", "default")
+                    c_aff = comp.get("affinity", 0)
+                    c_tier = comp.get("affinity_tier", "Acquaintance")
+
+                    st.markdown(f"#### 👤 {c_name} `[Lv. {c_lvl} {c_class}]`")
+                    st.caption(f"Morale: **{c_morale}** | Affinity: `{c_aff}/100 [{c_tier}]`")
+                    hp_pct = min(1.0, max(0.0, c_hp / max(1, c_max_hp)))
+                    st.progress(hp_pct, text=f"HP: {c_hp} / {c_max_hp}")
+
+                    col_aff1, col_aff2 = st.columns([2, 1])
+                    with col_aff1:
+                        if c_aff >= 50:
+                            st.success(f"✨ **Dual-Tech Unlocked:** {comp.get('dual_tech_name', 'Combo')}!")
+                        else:
+                            st.caption("Reach Affinity 50 to unlock Dual-Tech combo.")
+                    with col_aff2:
+                        if st.button(f"Share Rations (50 Col)", key=f"btn_share_meal_{c_name}"):
+                            if player.get("col", 0) >= 50:
+                                player["col"] -= 50
+                                aff_res = mechanics.increase_companion_affinity(player, c_name, 10, reason="Shared rations")
+                                save_game(player, st.session_state.messages)
+                                st.toast(aff_res["message"], icon="🍲")
+                                st.rerun()
+                            else:
+                                st.error("Insufficient Col (50 Col).")
+
+                    if c_aff >= 50:
+                        combo_id = comp.get("dual_tech_id")
+                        if st.button(f"⚡ Execute Dual-Tech: {comp.get('dual_tech_name', 'Combo')}", key=f"btn_exec_dt_{c_name}", use_container_width=True):
+                            if hasattr(mechanics, "execute_dual_tech"):
+                                dt_res = mechanics.execute_dual_tech(player, combo_id)
+                                if dt_res["success"]:
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(dt_res["message"], icon="⚡")
+                                    st.success(dt_res["log"])
+                                    st.rerun()
+                                else:
+                                    st.error(dt_res["message"])
+
+                    stances = comp.get("stances", {})
+                    if stances:
+                        stance_keys = list(stances.keys())
+                        curr_idx = stance_keys.index(c_stance) if c_stance in stance_keys else 0
+                        new_st = st.selectbox(
+                            f"Stance for {c_name}:",
+                            options=stance_keys,
+                            index=curr_idx,
+                            format_func=lambda k: stances.get(k, {}).get("label", k),
+                            key=f"sb_stance_{c_name}"
+                        )
+                        if new_st != c_stance:
+                            if hasattr(mechanics, "set_party_member_stance"):
+                                mechanics.set_party_member_stance(player, c_name, new_st)
+                                save_game(player, st.session_state.messages)
+                                st.toast(f"{c_name}'s stance set to {stances[new_st].get('label', new_st)}!", icon="🎯")
+                                st.rerun()
+                        st.caption(f"↳ **Effect:** {stances.get(c_stance, {}).get('tactical_effect', '')}")
+
+                    if st.button(f"Bench {c_name} (Send to Reserve)", key=f"btn_bench_{c_name}"):
+                        comp["active"] = False
+                        save_game(player, st.session_state.messages)
+                        st.toast(f"{c_name} moved to Reserve.", icon="🛋️")
+                        st.rerun()
+                    st.divider()
+
+        with tab_benched_party:
+            comps = player.get("party", {})
+            benched = [c for c in comps.values() if c.get("recruited", False) and not c.get("active", False)] if isinstance(comps, dict) else [c for c in comps if c.get("recruited", False) and not c.get("active", False)]
+            if not benched:
+                st.caption("No companions currently in Reserve.")
+            else:
+                for b_comp in benched:
+                    st.markdown(f"**👤 {b_comp['name']}** `[Lv. {b_comp.get('level', 1)}]`")
+                    st.caption(f"HP: {b_comp.get('hp', 30)}/{b_comp.get('max_hp', 30)}")
+                    if len(active_comps) < 3:
+                        if st.button(f"Activate {b_comp['name']} to Vanguard", key=f"btn_activate_{b_comp['name']}"):
+                            b_comp["active"] = True
+                            save_game(player, st.session_state.messages)
+                            st.toast(f"{b_comp['name']} activated to Vanguard!", icon="⚔️")
+                            st.rerun()
+                    else:
+                        st.caption("⚠️ Vanguard is full (Max 3 companions).")
+                    st.divider()
+
+        with tab_recruit_pool:
+            comps = player.get("party", {})
+            all_known = mechanics.RECRUITABLE_COMPANIONS
+            unrecruited = [c for name, c in all_known.items() if not (isinstance(comps, dict) and comps.get(name, {}).get("recruited")) and not (isinstance(comps, list) and any(x.get("name") == name and x.get("recruited") for x in comps))]
+            if not unrecruited:
+                st.success("All known Sector 1 companions have joined your vanguard!")
+            else:
+                for u_comp in unrecruited:
+                    st.markdown(f"##### 👤 {u_comp['name']} — `{u_comp.get('title', u_comp.get('class', 'Warrior'))}`")
+                    st.caption(f"**Class:** {u_comp.get('class', '')} | **Lineage:** {u_comp.get('race', 'Human')} | **Starting Level:** {u_comp.get('level', 1)}")
+                    st.write(u_comp.get("bio", u_comp.get("background", "")))
+                    if st.button(f"Recruit {u_comp['name']} into Vanguard", key=f"btn_recruit_{u_comp['name']}"):
+                        rec_res = mechanics.recruit_companion(player, u_comp["name"])
+                        if rec_res["success"]:
+                            save_game(player, st.session_state.messages)
+                            st.balloons()
+                            st.toast(rec_res["message"], icon="🤝")
+                            st.success(rec_res["log"])
+                            st.rerun()
+                        else:
+                            st.error(rec_res["message"])
+                    st.divider()
+
+    # SAO Status Cursor
+    cursor_data = mechanics.get_cursor_status(player) if hasattr(mechanics, "get_cursor_status") else {"status": "green", "label": "🟢 Lawful (Green)", "badge": "🟢 Green", "current_infamy": 0, "merchant_surcharge": 0.0, "safe_zone_clearance": True, "description": "Lawful citizen."}
+    with st.expander(f"⚖️ SAO Status: {cursor_data['badge']}", expanded=False):
+        st.markdown(f"#### {cursor_data['label']}")
+        st.write(cursor_data.get("description", ""))
+        col_cur1, col_cur2 = st.columns(2)
+        col_cur1.metric("Infamy Rating", f"{cursor_data['current_infamy']} pts")
+        col_cur2.metric("Merchant Surcharge", f"+{int(cursor_data['merchant_surcharge']*100)}%")
+        if cursor_data["safe_zone_clearance"]:
+            st.success("✅ **Safe-Zone Clearance Granted:** Barrier wards recognize lawful status.")
         else:
-            for c_id, c_data in companions.items():
-                c_name = c_data.get("name", c_id)
-                c_hp = c_data.get("hp", 35)
-                c_max_hp = c_data.get("max_hp", 35)
-                c_ac = c_data.get("ac", 16)
-                c_archetype = c_data.get("archetype", "Vanguard")
-                c_status = c_data.get("status", "Active")
-                st.markdown(f"**{c_name}** ({c_archetype}) — AC: {c_ac}")
-                c_hp_pct = max(0.0, min(1.0, c_hp / max(1, c_max_hp)))
-                st.progress(c_hp_pct, text=f"HP: {c_hp} / {c_max_hp}")
-                st.caption(f"Status: {c_status}")
-                if "active_grafts" in c_data:
-                    st.markdown("**Active Grafts:**")
-                    for g in c_data["active_grafts"]:
-                        st.caption(f"- 🔧 {g.get('name')} [{g.get('slot')}]: {g.get('effect')}")
-                if "inventory" in c_data:
-                    st.markdown("**Inventory:**")
-                    for itm in c_data["inventory"]:
-                        st.caption(f"- 🎒 {itm}")
-                st.divider()
+            st.error("🚨 **SAFE-ZONE WARD LOCKDOWN:** Anti-PK turrets active!")
+        if cursor_data["status"] == "orange":
+            inf = cursor_data["current_infamy"]
+            atone_cost = inf * 500
+            st.warning(f"⚠️ Pay reparations at Washington Council ({atone_cost:,} Col) to restore Green Cursor.")
+            if st.button(f"Pay Municipal Atonement ({atone_cost:,} Col)", key="btn_pay_atone_sb", use_container_width=True):
+                at_res = mechanics.pay_criminal_atonement(player)
+                if at_res["success"]:
+                    save_game(player, st.session_state.messages)
+                    st.toast(at_res["message"], icon="🟢")
+                    st.rerun()
+
+    # Regional Factions
+    factions_list = mechanics.get_all_faction_standings(player) if hasattr(mechanics, "get_all_faction_standings") else []
+    with st.expander("🚩 Regional Factions & Guild Alliances", expanded=False):
+        st.caption("Reputation standings across regional coalitions and baronies.")
+        for fac in factions_list:
+            f_def = mechanics.REGIONAL_FACTIONS.get(fac["faction_id"], {})
+            st.markdown(f"##### {f_def.get('icon', '🚩')} {fac['name']}")
+            st.caption(f"**Leader:** {f_def.get('leader', 'Unknown')} | **HQ:** {f_def.get('headquarters', 'Unknown')}")
+            score = fac["score"]
+            st.markdown(f"**Standing:** {fac['badge']} `({score:+d} Rep)`")
+            norm_progress = min(1.0, max(0.0, (score + 100) / 200.0))
+            st.progress(norm_progress, text=f"Reputation: {score}/100 [{fac['label']}]")
+            st.divider()
+
+    # Wilderness Survival & Chrono-Atmosphere
+    time_info = mechanics.get_game_time_info(player) if hasattr(mechanics, "get_game_time_info") else {"time_str": "Day 1, 08:00", "period_info": {"label": "Day", "desc": "Clear light."}}
+    cur_weather = mechanics.get_current_weather(player) if hasattr(mechanics, "get_current_weather") else {"icon": "☀️", "label": "Clear Skies", "desc": "Standard visibility", "effect": "No penalties"}
+    with st.expander("⛺ Wilderness Survival & Chrono-Atmosphere", expanded=False):
+        p_info = time_info.get("period_info", {})
+        st.markdown(f"### ⏱️ {time_info.get('time_str', '08:00')}")
+        st.caption(f"**Period:** {p_info.get('label', 'Day')} | **Field Effects:** {p_info.get('desc', 'Standard')}")
+        st.markdown(f"#### {cur_weather.get('icon', '🌤️')} {cur_weather.get('label', 'Clear')}")
+        st.caption(f"*{cur_weather.get('desc', '')}*")
+        st.info(f"**Atmospheric Modifier:** {cur_weather.get('effect', 'None')}")
+
+        tc1, tc2, tc3 = st.columns(3)
+        with tc1:
+            if st.button("⏳ Wait 1h", key="btn_wait_1h_hud", use_container_width=True):
+                w_res = mechanics.advance_game_time(player, minutes=60)
+                save_game(player, st.session_state.messages)
+                st.toast(f"Waited 1 Hour. Time is {w_res['time_str']}.", icon="⏳")
+                st.rerun()
+        with tc2:
+            if st.button("🌅 Rest to Dawn", key="btn_rest_dawn_hud", use_container_width=True):
+                w_res = mechanics.advance_game_time(player, minutes=480)
+                save_game(player, st.session_state.messages)
+                st.toast(f"Rested until Dawn ({w_res['time_str']}).", icon="🌅")
+                st.rerun()
+        with tc3:
+            if st.button("🎲 Attune Sky", key="btn_sky_attune_hud", use_container_width=True):
+                rw_res = mechanics.roll_random_weather(player)
+                save_game(player, st.session_state.messages)
+                st.toast(f"Atmospheric shift: {rw_res['weather_info']['label']}!", icon="🌪️")
+                st.rerun()
+
+        st.divider()
+        tab_kitch, tab_cp = st.tabs(["🍳 Campfire Kitchen", "🏕️ Pitch Camp"])
+        with tab_kitch:
+            st.markdown("##### 🍲 Campfire Culinary Crafting")
+            for r_key, r_data in getattr(mechanics, "CAMPFIRE_RECIPES", {}).items():
+                st.markdown(f"**{r_data['name']}**")
+                st.caption(f"Buff: `{r_data['buff']['name']}` ({r_data['buff']['desc']})")
+                if st.button(f"Cook {r_data['name']}", key=f"btn_cook_{r_key}_hud"):
+                    c_res = mechanics.cook_campfire_meal(player, r_key)
+                    if c_res["success"]:
+                        save_game(player, st.session_state.messages)
+                        st.toast(c_res["message"], icon="🍲")
+                        st.rerun()
+                    else:
+                        st.error(c_res["message"])
+        with tab_cp:
+            st.markdown("##### ⛺ 8-Hour Wilderness Rest & Perimeter Watch")
+            w_choices = ["Ren", "Elora", "Torvald", "Kibs", "Solo / No Watch"]
+            w_guard = st.selectbox("Assign Watch Guard", w_choices, key="sb_camp_guard_hud")
+            if st.button("⛺ Pitch Camp & Rest (8 Hours)", key="btn_pitch_camp_action_hud", use_container_width=True):
+                guard = None if w_guard == "Solo / No Watch" else w_guard
+                camp_res = mechanics.pitch_wilderness_camp(player, watch_companion=guard)
+                if camp_res["success"]:
+                    save_game(player, st.session_state.messages)
+                    st.toast(camp_res["message"], icon="⛺")
+                    st.success(camp_res["log"])
+                    st.rerun()
+                else:
+                    st.error(camp_res["message"])
+
+    # Labyrinth Dungeon & Sector Overlord
+    loc_str = str(player.get("location", "")).lower()
+    in_dungeon = any(w in loc_str for w in ["dungeon", "depths", "labyrinth", "pohatcong", "spire", "overlord"])
+    with st.expander("🏰 Labyrinth Dungeon: The Pohatcong Depths", expanded=in_dungeon):
+        st.markdown("#### 🏰 Sector 1 Labyrinth: The Pohatcong Depths")
+        st.caption("An 8-tier instanced subterranean megastructure.")
+        d_room = mechanics.get_current_dungeon_room(player) if hasattr(mechanics, "get_current_dungeon_room") else {"name": "Labyrinth Entrance", "desc": "Ancient stone portal."}
+        st.write(f"**Current Chamber:** {d_room.get('name', 'Entry')} (Tier {d_room.get('tier', 1)})")
+        st.write(d_room.get("desc", ""))
+
+        st.markdown("##### 👑 Sector Boss: The Gilded Spire Overlord")
+        boss_data = mechanics.get_overlord_status(player) if hasattr(mechanics, "get_overlord_status") else {}
+        b_hp = boss_data.get("hp", 450)
+        b_max = boss_data.get("max_hp", 450)
+        b_bg = boss_data.get("break_gauge", 100)
+        b_bg_max = boss_data.get("max_break_gauge", 100)
+        st.progress(min(1.0, max(0.0, b_hp / max(1, b_max))), text=f"Overlord HP: {b_hp} / {b_max}")
+        st.progress(min(1.0, max(0.0, b_bg / max(1, b_bg_max))), text=f"Break Gauge: {b_bg} / {b_bg_max} ({'STAGGERED!' if boss_data.get('is_staggered') else 'Intact'})")
+        if boss_data.get("is_staggered"):
+            st.error("💥 **BOSS STAGGERED!** Attacks deal double critical damage!")
+
+    # Sovereign Homestead, Vault & Mythic Forge
+    mechanics.ensure_homestead_system(player) if hasattr(mechanics, "ensure_homestead_system") else None
+    h_data = player.get("homestead", {})
+    h_owned = h_data.get("owned", False)
+    with st.expander("🏰 Sovereign Homestead, Vault & Mythic Forge", expanded=h_owned):
+        if not h_owned:
+            st.markdown("#### 🏰 Washington Borough Estate")
+            st.caption("📍 *Washington Borough Crossroads, Sector 1 Safe Zone*")
+            st.write("Fortified compound offering subsurface vault storage, botanical aether-greenhouses, a trophy hall, and deepforged master-forge space.")
+            st.info("💰 **Purchase Price:** 3,500 Col | **Deed:** Requires earning in-game Col (Rule 22)")
+            if player.get("col", 0) >= 3500:
+                if st.button("🏰 Purchase Washington Borough Estate (3,500 Col)", key="btn_buy_homestead_hud", use_container_width=True):
+                    b_res = mechanics.purchase_homestead(player)
+                    if b_res["success"]:
+                        save_game(player, st.session_state.messages)
+                        st.balloons()
+                        st.toast(b_res["message"], icon="🏰")
+                        st.rerun()
+            else:
+                st.warning(f"🔒 Requires 3,500 Col (You have {player.get('col', 0):,} Col).")
+        else:
+            v_cap = mechanics.get_vault_capacity(player) if hasattr(mechanics, "get_vault_capacity") else {"max_slots": 20, "max_lbs": 500}
+            st.markdown(f"### 🏰 {h_data.get('name', 'Washington Borough Manor')}")
+            st.caption(f"Vault: Tier {h_data.get('vault_tier', 1)} | Greenhouse: Tier {h_data.get('greenhouse_tier', 1)} | Master Anvil: {'Active' if h_data.get('has_master_anvil') else 'Unbuilt'}")
+            tv1, tv2, tv3, tv4, tv5 = st.tabs(["📦 Vault", "🏆 Trophies", "🌿 Greenhouse", "⚡ Forge", "⚖️ Market"])
+            with tv1:
+                v_col = h_data.get("vault_col", 0)
+                st.write(f"💰 Vault Col: `{v_col:,} Col` | Stored Items: `{len(h_data.get('vault_items', []))} / {v_cap['max_slots']}`")
+                dep_col = st.number_input("Deposit Col", min_value=1, max_value=max(1, player.get("col", 0)), value=min(100, max(1, player.get("col", 0))), step=50, key="num_vault_dep")
+                if st.button("📥 Deposit Col to Vault", key="btn_dep_vault_col"):
+                    mechanics.deposit_to_vault(player, "", col_amount=int(dep_col))
+                    save_game(player, st.session_state.messages)
+                    st.rerun()
+            with tv2:
+                mounted = h_data.get("mounted_trophies", [])
+                st.write(f"🏛️ Occupied Pedestals: `{len(mounted)} / 5`")
+                for tr in mounted:
+                    st.success(f"🏆 {tr.get('name', 'Trophy')}: {tr.get('buff', '')}")
+            with tv3:
+                st.markdown("##### 🌿 Alchemical Garden Plots")
+                if st.button("🌱 Harvest Daily Greenhouse Yield", key="btn_harvest_garden_hud"):
+                    g_res = mechanics.harvest_alchemical_garden(player)
+                    if g_res["success"]:
+                        save_game(player, st.session_state.messages)
+                        st.toast(g_res["message"], icon="🌿")
+                        st.success(g_res["log"])
+                        st.rerun()
+                    else:
+                        st.info(g_res["message"])
+            with tv4:
+                st.markdown("##### ⚡ Deepforged Master-Forge")
+                if not h_data.get("has_master_anvil"):
+                    st.info("Requires Master-Anvil installation.")
+                    if st.button("Build Master-Anvil (1,500 Col)", key="btn_build_anvil_hud"):
+                        mechanics.upgrade_homestead_facility(player, "master_anvil")
+                        save_game(player, st.session_state.messages)
+                        st.rerun()
+                else:
+                    st.success("✅ Deepforged Anvil Ready for Grade 6 Mythic Upgrading.")
+            with tv5:
+                st.markdown("##### ⚖️ Commodity Market")
+                st.caption("Trade bulk materials (Scrap Metal, Aether Shards, Alchemical Herbs).")
+
 
     with st.expander("🌍 Global Threat Intelligence", expanded=False):
         global_news = world_state.get("global_news", [])

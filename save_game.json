@@ -106,17 +106,390 @@
                     "Aether-Lock Carbine",
                     "Runic Vanguard Blade",
                     "Alchemical Haze Pellets"
-                ]
+                ],
+                "id": "ren_sasaki",
+                "class": "Aether-Scholar & MageTech Artificer",
+                "title": "Aether-Scholar & MageTech Artificer",
+                "role": "Support, Aura Scanning, Lightning Stuns & Field Artificing",
+                "level": 3,
+                "xp": 450,
+                "next_level_xp": 900,
+                "stance": "overwatch_hacking",
+                "morale": "Steady",
+                "affinity": 35,
+                "affinity_tier": "Ally",
+                "recruited": true,
+                "active": true,
+                "bio": "A studious young survivor who fused his pre-Integration engineering background with esoteric aetheric rune-matrices. Wields a custom-etched brass-and-crystal MageTech caster firearm.",
+                "loadout": {
+                    "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
+                    "tool": "Runic Scribe Slate (Aether-Grid Focus)",
+                    "deck": "Runic Scribe Slate (Aether-Grid Focus)",
+                    "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
+                    "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
+                },
+                "equipped": {
+                    "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
+                    "tool": "Runic Scribe Slate (Aether-Grid Focus)",
+                    "deck": "Runic Scribe Slate (Aether-Grid Focus)",
+                    "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
+                    "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
+                },
+                "skills": {
+                    "Mesh Exploitation": {
+                        "mastery": 190,
+                        "tier": "Journeyman",
+                        "description": "Perceiving spatial seams and leylines.",
+                        "milestones_unlocked": [
+                            "Logic Buffer Exploit"
+                        ]
+                    },
+                    "Stun-Pistol Marksmanship": {
+                        "mastery": 95,
+                        "tier": "Apprentice",
+                        "description": "Discharging lightning runes from MageTech firearm.",
+                        "milestones_unlocked": []
+                    },
+                    "Diagnostic Triage": {
+                        "mastery": 110,
+                        "tier": "Journeyman",
+                        "description": "Channelling restorative aether-salves.",
+                        "milestones_unlocked": [
+                            "Patch Script v1.0"
+                        ]
+                    }
+                },
+                "abilities": [
+                    "Aura Weakpoint Scan (-2 Enemy AC)",
+                    "MageTech Stun-Arc Salvo (DC 13 CON save vs Stun)",
+                    "Aetheric Phase-Veil (Untargetable 1 turn)",
+                    "Aether-Scrap Extraction (+25% salvage yield)"
+                ],
+                "stances": {
+                    "overwatch_hacking": {
+                        "name": "Leyline Overwatch",
+                        "label": "\ud83d\udc41\ufe0f Leyline Overwatch",
+                        "tag": "[REN OVERWATCH]",
+                        "tactical_effect": "-2 Enemy AC debuff to primary target via weakpoint telemetry.",
+                        "desc": "Scans leylines and structural telemetry, debuffing target AC."
+                    },
+                    "suppression_fire": {
+                        "name": "MageTech Arc Suppression",
+                        "label": "\u26a1 MageTech Arc Suppression",
+                        "tag": "[REN SUPPRESSION]",
+                        "tactical_effect": "Discharges lightning-mana salvos; forces DC 13 CON save vs Staggered.",
+                        "desc": "Suppresses targets with crackling lightning bolts."
+                    },
+                    "full_evasion": {
+                        "name": "Aetheric Phase-Veil",
+                        "label": "\ud83c\udf2b\ufe0f Aetheric Phase-Veil",
+                        "tag": "[REN EVASION]",
+                        "tactical_effect": "Weaves spatial distortion cloak; completely immune to single-target attacks.",
+                        "desc": "Blinks out of direct reality."
+                    },
+                    "utility_rigging": {
+                        "name": "Arcane Artificing & Mending",
+                        "label": "\u2728 Arcane Artificing & Mending",
+                        "tag": "[REN UTILITY]",
+                        "tactical_effect": "Restores +15 durability to worn equipment or scavenges bonus crystallite.",
+                        "desc": "Channels mending runes into ally equipment."
+                    }
+                },
+                "dual_tech_id": "runic_axe_storm"
+            },
+            "Elora": {
+                "id": "elora_thorne",
+                "name": "Elora Thorne",
+                "class": "Aether-Slinger / Spellblade",
+                "title": "Aether-Slinger / Spellblade",
+                "role": "Ranged Burst DPS, Elemental Mana Infusion & Phase Mobility",
+                "level": 3,
+                "hp": 32,
+                "max_hp": 32,
+                "xp": 400,
+                "next_level_xp": 900,
+                "stance": "spellblade_flurry",
+                "morale": "Steady",
+                "affinity": 20,
+                "affinity_tier": "Acquaintance",
+                "recruited": false,
+                "active": false,
+                "bio": "A nimble spellblade who channels raw mana into rapid-firing crystal-tipped rapiers. Dr. Thorne's estranged niece, currently seeking a frontline raiding party in Sector 1.",
+                "loadout": {
+                    "main_hand": "Starlight Aether-Rapier (Enchanted Steel, 1d8+3 Piercing)",
+                    "off_hand": "Resonating Caster Gauntlet (Focus)",
+                    "armor": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)",
+                    "chest": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)"
+                },
+                "equipped": {
+                    "main_hand": "Starlight Aether-Rapier (Enchanted Steel, 1d8+3 Piercing)",
+                    "off_hand": "Resonating Caster Gauntlet (Focus)",
+                    "armor": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)",
+                    "chest": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)"
+                },
+                "skills": {
+                    "Spellblade Fencing": {
+                        "mastery": 175,
+                        "tier": "Journeyman",
+                        "description": "Fluid martial strikes infused with raw mana.",
+                        "milestones_unlocked": [
+                            "Lunge & Pierce"
+                        ]
+                    },
+                    "Aether Siphoning": {
+                        "mastery": 130,
+                        "tier": "Journeyman",
+                        "description": "Harvesting stray leyline charges to empower abilities.",
+                        "milestones_unlocked": [
+                            "Mana Flow"
+                        ]
+                    },
+                    "Acrobatic Skirmishing": {
+                        "mastery": 140,
+                        "tier": "Journeyman",
+                        "description": "Dancing between melee and ranged kill zones.",
+                        "milestones_unlocked": [
+                            "Quickstep"
+                        ]
+                    }
+                },
+                "abilities": [
+                    "Spellblade Flurry (3-Hit Piercing Combo)",
+                    "Aetheric Weapon Infusion (+1d8 Elemental DMG to Ally)",
+                    "Dimensional Blinkstep (Disengage without provoking opportunity attacks)"
+                ],
+                "stances": {
+                    "spellblade_flurry": {
+                        "name": "Spellblade Flurry",
+                        "label": "\ud83d\udde1\ufe0f Spellblade Flurry",
+                        "tag": "[ELORA FLURRY]",
+                        "tactical_effect": "Unleashes rapid piercing strikes dealing 2d8+4 Arcane DMG and +2 Attack bonus to party.",
+                        "desc": "High offensive DPS mode."
+                    },
+                    "aether_overcharge": {
+                        "name": "Aether Overcharge",
+                        "label": "\ud83d\udd2e Aether Overcharge",
+                        "tag": "[ELORA OVERCHARGE]",
+                        "tactical_effect": "Channels radiant mana into Banki's weapons; Banki deals +1d10 bonus Radiant/Lightning DMG.",
+                        "desc": "Weapon buffing stance."
+                    },
+                    "blink_skirmish": {
+                        "name": "Blink Skirmish",
+                        "label": "\ud83c\udf00 Blink Skirmish",
+                        "tag": "[ELORA BLINK]",
+                        "tactical_effect": "Teleports erratically across the perimeter; evades incoming attacks and roots a target (DC 14 DEX save).",
+                        "desc": "Evasive control stance."
+                    }
+                },
+                "dual_tech_id": "spellblade_vortex"
+            },
+            "Torvald": {
+                "id": "torvald_ironvein",
+                "name": "Torvald Iron-Vein",
+                "class": "Deepforged Vanguard",
+                "title": "Deepforged Vanguard",
+                "role": "Heavy Tower Shield Tank, Frontline Threat Generation & Seismic Stuns",
+                "level": 4,
+                "hp": 55,
+                "max_hp": 55,
+                "xp": 750,
+                "next_level_xp": 1200,
+                "stance": "aegis_bulwark",
+                "morale": "Steady",
+                "affinity": 25,
+                "affinity_tier": "Ally",
+                "recruited": false,
+                "active": false,
+                "bio": "A veteran dwarven mercenary and barkeep of the Iron Spoke. Possesses runic cyber-plated armor and a tower shield wide as a castle gate, capable of anchoring frontline assaults.",
+                "loadout": {
+                    "main_hand": "Deepforged War-Axe (Heavy Runic Iron, 1d10+4 Slashing)",
+                    "off_hand": "Adamant Bulwark Tower Shield (+4 AC, DR 2)",
+                    "armor": "Runic Plate Carapace (Heavy Armor, DR 3)",
+                    "chest": "Runic Plate Carapace (Heavy Armor, DR 3)"
+                },
+                "equipped": {
+                    "main_hand": "Deepforged War-Axe (Heavy Runic Iron, 1d10+4 Slashing)",
+                    "off_hand": "Adamant Bulwark Tower Shield (+4 AC, DR 2)",
+                    "armor": "Runic Plate Carapace (Heavy Armor, DR 3)",
+                    "chest": "Runic Plate Carapace (Heavy Armor, DR 3)"
+                },
+                "skills": {
+                    "Tower Shield Phalanx": {
+                        "mastery": 240,
+                        "tier": "Journeyman",
+                        "description": "Mastery of defensive interlocking shield stances.",
+                        "milestones_unlocked": [
+                            "Shield Wall",
+                            "Brace Impact"
+                        ]
+                    },
+                    "Deepforged Smithing": {
+                        "mastery": 210,
+                        "tier": "Journeyman",
+                        "description": "Knowledge of runic alloys, temper lines, and repairs.",
+                        "milestones_unlocked": [
+                            "Field Tempering"
+                        ]
+                    },
+                    "Battlefield Provocation": {
+                        "mastery": 180,
+                        "tier": "Journeyman",
+                        "description": "Commanding hostile attention through force of presence.",
+                        "milestones_unlocked": [
+                            "Roar of Challenge"
+                        ]
+                    }
+                },
+                "abilities": [
+                    "Interception Ward (+4 AC to adjacent ally)",
+                    "Challenge of the Anvil (Forced Taunt)",
+                    "Seismic Tremor (Frontal Knockdown)"
+                ],
+                "stances": {
+                    "aegis_bulwark": {
+                        "name": "Aegis Bulwark",
+                        "label": "\ud83d\udee1\ufe0f Aegis Bulwark",
+                        "tag": "[TORVALD AEGIS]",
+                        "tactical_effect": "Locks tower shield on frontline; grants Banki +4 AC and absorbs 50% of incoming physical damage.",
+                        "desc": "Frontline damage interception."
+                    },
+                    "iron_taunt": {
+                        "name": "Iron Challenge",
+                        "label": "\ud83d\udde3\ufe0f Iron Challenge",
+                        "tag": "[TORVALD TAUNT]",
+                        "tactical_effect": "Bangs war-axe against adamant shield; forces all active foes to attack Torvald instead of allies.",
+                        "desc": "Aggro and threat control."
+                    },
+                    "seismic_slam": {
+                        "name": "Seismic Slam",
+                        "label": "\ud83d\udca5 Seismic Slam",
+                        "tag": "[TORVALD SLAM]",
+                        "tactical_effect": "Slams shield into the earth for 2d10+5 Force DMG; chips target Break Gauge by -30.",
+                        "desc": "Heavy bludgeoning stun."
+                    }
+                },
+                "dual_tech_id": "titans_anvil_shockwave"
+            },
+            "Kibs": {
+                "id": "kibs_ninefingers",
+                "name": "Kibs Nine-Fingers",
+                "class": "Scrapper Rogue / Infiltrator",
+                "title": "Scrapper Rogue / Infiltrator",
+                "role": "Shadow-Meld, Critical Backstabs, Poison Coatings & Trap Disarming",
+                "level": 3,
+                "hp": 30,
+                "max_hp": 30,
+                "xp": 350,
+                "next_level_xp": 900,
+                "stance": "shadow_meld",
+                "morale": "Steady",
+                "affinity": 15,
+                "affinity_tier": "Acquaintance",
+                "recruited": false,
+                "active": false,
+                "bio": "A crafty scavenger broker operating out of the Meiji Dump. Lost a finger to an automated perimeter laser, but gained uncanny instincts for stealth, poison synthesis, and lock manipulation.",
+                "loadout": {
+                    "main_hand": "Serrated Scrap Dagger (1d6+3 Piercing + Bleed)",
+                    "off_hand": "Spring-Loaded Wrist Shank (1d4+3 Piercing)",
+                    "armor": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)",
+                    "chest": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)"
+                },
+                "equipped": {
+                    "main_hand": "Serrated Scrap Dagger (1d6+3 Piercing + Bleed)",
+                    "off_hand": "Spring-Loaded Wrist Shank (1d4+3 Piercing)",
+                    "armor": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)",
+                    "chest": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)"
+                },
+                "skills": {
+                    "Scrapper Infiltration": {
+                        "mastery": 185,
+                        "tier": "Journeyman",
+                        "description": "Unseen movement and exploitation of sightlines.",
+                        "milestones_unlocked": [
+                            "Silent Step"
+                        ]
+                    },
+                    "Neurotoxin Synthesis": {
+                        "mastery": 140,
+                        "tier": "Journeyman",
+                        "description": "Distilling monster venom into weapon coatings.",
+                        "milestones_unlocked": [
+                            "Paralytic Blend"
+                        ]
+                    },
+                    "Lockpick & Bypass": {
+                        "mastery": 205,
+                        "tier": "Journeyman",
+                        "description": "Circumventing tumblers and runic electronic latches.",
+                        "milestones_unlocked": [
+                            "Skeleton Keying"
+                        ]
+                    }
+                },
+                "abilities": [
+                    "Shadow Strike (+3d6 Critical Bleed)",
+                    "Corrosive Neurotoxin Coating (-2 Enemy Saves)",
+                    "Scavenger's Eye (+30% bonus Col find)"
+                ],
+                "stances": {
+                    "shadow_meld": {
+                        "name": "Shadow Meld",
+                        "label": "\ud83d\udc64 Shadow Meld",
+                        "tag": "[KIBS SNEAK]",
+                        "tactical_effect": "Melds into shadows; unleashes guaranteed sneak attack for 3d6+6 Piercing DMG + Bleed.",
+                        "desc": "High critical stealth DPS."
+                    },
+                    "venom_coating": {
+                        "name": "Venom Coating",
+                        "label": "\ud83e\uddea Venom Coating",
+                        "tag": "[KIBS VENOM]",
+                        "tactical_effect": "Coats party weapons in neurotoxin; attacks deal +1d6 Acid damage and inflict -2 to enemy saving throws.",
+                        "desc": "Poison debuff support."
+                    },
+                    "lockpick_salvage": {
+                        "name": "Lockpick & Salvage",
+                        "label": "\ud83d\udddd\ufe0f Lockpick & Salvage",
+                        "tag": "[KIBS SALVAGE]",
+                        "tactical_effect": "Grants +4 bonus on all trap disarm and chest checks; increases party Col yield by +20%.",
+                        "desc": "Exploration and looting utility."
+                    }
+                },
+                "dual_tech_id": "shadow_flank_execution"
             }
         },
-        "grafts": {
-            "head": null,
-            "torso": null,
-            "left_arm": null,
-            "right_arm": null,
-            "legs": null,
-            "spine": null
-        }
+        "chrono": {
+            "day": 1,
+            "hour": 9,
+            "minute": 30,
+            "weather": "clear_skies",
+            "active_buffs": []
+        },
+        "active_buffs": [],
+        "faction_reputation": {
+            "vanguard_coalition": 0,
+            "iron_syndicate": 0,
+            "blood_shroud": 0
+        },
+        "homestead": {
+            "owned": false,
+            "estate_id": "washington_manor",
+            "vault_tier": 1,
+            "greenhouse_tier": 1,
+            "has_master_anvil": false,
+            "mounted_trophies": [],
+            "vault_items": [],
+            "vault_col": 0,
+            "last_harvest_day": 0
+        },
+        "graft_system": {
+            "installed_grafts": {},
+            "harmonized_grafts": []
+        },
+        "slotted_abilities": {
+            "max_slots": 5,
+            "active": []
+        },
+        "fused_abilities": []
     },
     "messages": [
         {

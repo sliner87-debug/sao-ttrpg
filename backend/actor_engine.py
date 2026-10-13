@@ -27,10 +27,21 @@ def get_companion_action(api_key: str, character_id: str):
     visible_room = load_json(visible_room_path)
     
     # 2. Construct the prompt
-    prompt = f"""You are roleplaying as Ren in a dark fantasy, tactical TTRPG.
+    char_name = char_sheet.get("name", character_id)
+    char_role = char_sheet.get("role", "Companion")
+    behavior = char_sheet.get("behavior_prompt", "")
+    
+    if "ren" in character_id.lower():
+        roleplay_header = """You are roleplaying as Ren in a dark fantasy, tactical TTRPG.
 You are a 17-year-old indie video game designer and tester who was pulled through your screen and trapped inside your own character persona—a MageTech Vanguard!
 You wield an Aether-Lock Carbine (a magetech rifle firing condensed radiant mana bolts, NEVER gunpowder) and a runic blade.
-You talk, think, and react like a passionate, quick-witted, slightly stressed 17-year-old gamer and designer: sharp about stats/loot/hitboxes, terrified of permadeath, but fiercely loyal to your co-op partner Banki. Never act like a gruff soldier.
+You talk, think, and react like a passionate, quick-witted, slightly stressed 17-year-old gamer and designer: sharp about stats/loot/hitboxes, terrified of permadeath, but fiercely loyal to your co-op partner Banki. Never act like a gruff soldier."""
+    else:
+        roleplay_header = f"""You are roleplaying as {char_name} ({char_role}) in a dark fantasy, tactical TTRPG.
+Persona instructions: {behavior}"""
+
+    prompt = f"""{roleplay_header}
+
 Your character sheet is: {json.dumps(char_sheet, indent=2)}
 
 You only know what you can see in the visible room:

@@ -47,6 +47,11 @@ class PlayerStateUpdates(BaseModel):
     feats_add: Optional[List[str]] = Field(default=[], description="New feats or fused techniques learned")
     skill_updates: Optional[List[SkillMasteryUpdate]] = Field(default=[], description="Skill mastery improvements from actions")
     grafts_installed: Optional[List[GraftInstallation]] = Field(default=[], description="Grafts surgically installed into anatomical slots")
+    weather_change: Optional[str] = Field(default=None, description="Weather condition shift (e.g. runic_mist, glitch_freeze, clear)")
+    time_minutes_advanced: Optional[int] = Field(default=0, description="Minutes advanced by actions or travel")
+    boss_break_gauge_damage: Optional[int] = Field(default=0, description="Damage dealt to boss Break Gauge")
+    boss_staggered: Optional[bool] = Field(default=False, description="True if boss has been staggered this turn")
+    homestead_action: Optional[str] = Field(default=None, description="Homestead action summary if safe-zone resting or facility used")
 
 
 class EntityHpChange(BaseModel):
@@ -64,6 +69,8 @@ class TurnResolutionSchema(BaseModel):
     status_updates: List[EntityStatusUpdate] = Field(description="List of updated statuses for entities")
     encounter_active: bool = Field(description="True if the fight continues, False if it is over")
     global_news_add: Optional[List[str]] = Field(default=[], description="1-2 global or regional news blurbs if a rest, boss defeat, or faction event occurred")
+    weather: Optional[str] = Field(default=None, description="Current ambient weather condition")
+    time_of_day: Optional[str] = Field(default=None, description="Current time of day / diurnal period")
     player_state_updates: Optional[PlayerStateUpdates] = Field(None, description="Updates to the human player's sheet")
 
 class EntityPersonaSchema(BaseModel):
