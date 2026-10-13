@@ -39,11 +39,13 @@ def forge_entity_persona(api_key: str, entity_id: str, raw_name: str = "", entit
     env_loc = environment.get("location", "Sector 1") if environment else "Sector 1"
 
     prompt = f"""You are the Soul-Forge of the Crucible. A new SubAgent is being awakened into Earth's Eldritch Terraforming integration.
+The setting is high-fantasy aether-punk and magetech (NOT modern military or cyberpunk). Technology is driven by ancient arcane matrices, runic clockwork, elemental crystals, and living golem craft.
 
 Entity Designation: {entity_id}
 Suggested Name / Archetype: {raw_name or entity_id}
 Role / Alignment: {entity_type}
 Current Environment: {env_loc} — {env_desc}
+
 
 Interview this SubAgent and bring them to life with depth and psychological realism.
 1. Ask them: "What has your life been up to now?" Have them recount their origins in first person (were they a mutated animal, an infected human survivor, an ancient pre-collapse excavator, or an alien bio-construct?).
@@ -113,9 +115,11 @@ def get_subagent_action(api_key: str, entity_id: str, visible_room: dict) -> dic
         mechanical_section = "\nYOUR CURRENT PHYSICAL STATUS & TACTICAL LOADOUT:\n" + "\n".join(mech_lines) + "\n"
 
     # 3. Build the persona's subjective perception prompt
-    prompt = f"""You are an autonomous SubAgent in a dark fantasy death-game.
+    prompt = f"""You are an autonomous SubAgent in a dark fantasy, aether-punk LitRPG death-game.
+The setting is high-fantasy and magetech (NOT modern military or cyberpunk). Any firearms used (like MageTech carbines) channel condensed radiant mana or elemental charges, NEVER gunpowder or lead.
 You are: {persona.get('name', entity_id)} ({persona.get('species_or_type', 'Creature')})
 Role: {persona.get('role', 'entity')}
+
 
 YOUR BACKSTORY (What your life has been up to now):
 "{persona.get('backstory_interview', 'I survive in the dark.')}"

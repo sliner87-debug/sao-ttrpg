@@ -90,21 +90,22 @@
         "companions": {
             "Ren": {
                 "name": "Ren",
-                "archetype": "QA Vanguard",
+                "archetype": "MageTech Vanguard",
                 "hp": 28,
                 "max_hp": 35,
                 "ac": 16,
-                "status": "Scalded by steam, shielding Banki",
+                "status": "Scalded by steam, aiming his Aether-Lock Carbine to shield Banki",
                 "active_grafts": [
                     {
-                        "name": "Sub-Dermal Optical Scanner",
+                        "name": "Aetheric Ocular Lens",
                         "slot": "Head",
-                        "effect": "Darkvision, reveals traps"
+                        "effect": "Darkvision, reveals arcane matrices & traps"
                     }
                 ],
                 "inventory": [
-                    "Monofilament Blade",
-                    "Smoke Grenades"
+                    "Aether-Lock Carbine",
+                    "Runic Vanguard Blade",
+                    "Alchemical Haze Pellets"
                 ]
             }
         },

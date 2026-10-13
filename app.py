@@ -485,15 +485,16 @@ with st.sidebar:
         st.write(f"- **Off:** {player['equipped']['off_hand']}")
         st.write(f"- **Acc:** {player['equipped']['accessory']}")
         
-    with st.expander("🦾 Cybernetic & Bio-Grafts", expanded=False):
+    with st.expander("🦾 Magitech & Bio-Grafts", expanded=False):
         cap = get_strain_capacity(player)
         cur = get_current_strain(player)
         st.write(f"**Strain Capacity:** `{cur} / {cap}`")
         if cur > cap:
-            st.error(f"⚠️ **OVER-STRAIN:** Exceeded capacity! Subject to Cyber-Psychosis / Necrotic Rejection.")
+            st.error(f"⚠️ **OVER-STRAIN:** Exceeded capacity! Subject to Arcane Dissonance / Necrotic Rejection.")
             st.progress(1.0)
         else:
             st.progress(min(1.0, cur / max(1, cap)))
+
         st.caption("Strain limit = CON Mod + Floor(Level / 2). One graft per slot.")
         
         grafts = player.get("grafts", {})
@@ -799,9 +800,10 @@ with st.sidebar:
                 if st.button("🛏️ Safe-Zone Rest (24h)", use_container_width=True, help="Full HP recovery & triggers living world simulation."):
                     st.session_state.pending_dev_command = "I take a full 24-hour long rest in the Washington Borough sanctuary to recover our wounds and hear the latest regional news."
                     st.rerun()
-                if st.button("🏥 Visit Doc Mercer", use_container_width=True, help="Visit the underground clinic for graft consultation & surgery."):
-                    st.session_state.pending_dev_command = "I head down into the fortified fallout bunker beneath Washington Avenue to consult with Doc Mercer at his surgical clinic."
+                if st.button("🏥 Visit Doc Mercer", use_container_width=True, help="Visit the subterranean clinic for graft consultation & surgery."):
+                    st.session_state.pending_dev_command = "I head down into the ancient vaulted catacombs beneath Washington Avenue to consult with Doc Mercer at his flesh-weaving and graft clinic."
                     st.rerun()
+
             with c_hub2:
                 if st.button("🪙 Quartermaster Vane", use_container_width=True, help="Trade supplies and review Warren County Barony bounties."):
                     st.session_state.pending_dev_command = "I report to Quartermaster Vane at the Warren County logistics depot to trade salvage and review active bounties."

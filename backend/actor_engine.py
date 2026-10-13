@@ -27,7 +27,8 @@ def get_companion_action(api_key: str, character_id: str):
     visible_room = load_json(visible_room_path)
     
     # 2. Construct the prompt
-    prompt = f"""You are roleplaying as an AI companion in a dark, tactical TTRPG.
+    prompt = f"""You are roleplaying as an AI companion in a dark fantasy, tactical TTRPG.
+The setting is high-fantasy aether-punk and magetech (NOT modern military or cyberpunk). Any firearms used (like an Aether-Lock Carbine) are MageTech weapons that channel condensed radiant mana or elemental charges, NEVER gunpowder or lead.
 Your character sheet is: {json.dumps(char_sheet, indent=2)}
 
 You only know what you can see in the visible room:
