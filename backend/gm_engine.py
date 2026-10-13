@@ -3,6 +3,7 @@ import os
 from google import genai
 from google.genai import types
 from backend.schemas import VisibleRoomSchema, TurnResolutionSchema
+from backend import world_atlas
 
 def load_json(filepath):
     if os.path.exists(filepath):
@@ -92,12 +93,17 @@ def generate_visible_state(api_key: str = None, player_state: dict = None, world
         p_loc = player_state.get("location", "").strip()
         master_loc = master_state.get("environment", {}).get("location", "").strip()
 
-        is_safe = any(w in p_loc.lower() for w in ["safe-zone", "safe zone", "washington", "clinic", "catacomb", "depot", "sanctuary", "manor", "outpost"])
+        active_zone = world_atlas.resolve_zone_from_location(p_loc)
+        is_safe = world_atlas.is_location_safe_zone(p_loc) or any(w in p_loc.lower() for w in ["safe-zone", "safe zone", "washington", "clinic", "catacomb", "depot", "sanctuary", "manor", "outpost"])
 
         needs_sync = False
         if p_loc and p_loc != master_loc:
             needs_sync = True
             master_state.setdefault("environment", {})["location"] = p_loc
+            if active_zone and active_zone.get("lore_summary"):
+                master_state["environment"]["description"] = active_zone["lore_summary"]
+                if active_zone.get("environmental_hazards"):
+                    master_state["environment"]["environmental_effects"] = list(active_zone["environmental_hazards"])
 
         if is_safe:
             # Purge lingering hostile dungeon hazards when in a safe zone or town
@@ -113,6 +119,10 @@ def generate_visible_state(api_key: str = None, player_state: dict = None, world
                 master_state["environment"]["description"] = "A fortified timber and aether-iron logistics depot in Washington Borough, stacked with military supply crates and trade manifests."
                 if not filtered_effects:
                     filtered_effects = ["Safe-Zone Sanctuary Wards", "Order of the Barony"]
+            elif active_zone and active_zone.get("lore_summary"):
+                master_state["environment"]["description"] = active_zone["lore_summary"]
+                if not filtered_effects:
+                    filtered_effects = list(active_zone.get("environmental_hazards") or ["Safe-Zone Sanctuary Wards", "Calm Ambient Mana"])
             else:
                 if not master_state["environment"].get("description") or any(c in master_state["environment"].get("description", "").lower() for c in hostile_cues):
                     master_state["environment"]["description"] = f"A fortified civilian sanctuary within {p_loc} shielded by ancient runic barrier wards."
@@ -318,6 +328,9 @@ CORE GM BEHAVIOR RULES:
      * Sister Teresa: Austere inquisitor in a high-collared Inquisitor's Leather Duster and wide-brimmed witch-hunter hat, wielding a Silver-Chambered Crossbow and Blessed Consecrated Estoc.
      * Doc Mercer (NPC): Grizzled cyber-physician and flesh-weaver in a bloodstained leather surgeon's apron and brass magnifying loupes, surrounded by steam pistons, glowing blue mana vats, and articulated surgical needles in an ancient stone catacomb clinic.
 
+17. 100-MILE WASHINGTON NJ REGIONAL ATLAS CONTEXT (ACTIVE OR TARGET ZONE):
+{world_atlas.format_zone_gm_briefing(world_atlas.resolve_zone_from_location((player_state or {}).get("location") or master_state.get("environment", {}).get("location", "")) or world_atlas.resolve_zone_from_location(player_action))}
+
 Current Master State:
 {json.dumps(master_state, indent=2)}
 
@@ -422,10 +435,11 @@ Output matching TurnResolutionSchema.
             if e.get("type") not in ["hostile", "monster"]
             or (e.get("hp", 1) > 0 and not any(s in [st.lower() for st in e.get("status", [])] for s in ["defeated", "inert", "dead", "destroyed", "slag", "harvested"]))
         ]
-        loc_str = master_state.get("environment", {}).get("location", "").lower()
+        raw_loc_str = master_state.get("environment", {}).get("location", "")
+        loc_str = raw_loc_str.lower()
         hostile_cues = ["steam", "timber", "collapse", "falling", "shale", "cave-in", "hazard", "unstable", "compromised"]
         curr_effs = master_state.get("environment", {}).get("environmental_effects", [])
-        if any(w in loc_str for w in ["safe-zone", "safe zone", "washington", "clinic", "catacomb", "depot", "sanctuary"]):
+        if world_atlas.is_location_safe_zone(raw_loc_str) or any(w in loc_str for w in ["safe-zone", "safe zone", "washington", "clinic", "catacomb", "depot", "sanctuary"]):
             master_state["environment"]["environmental_effects"] = [eff for eff in curr_effs if not any(c in eff.lower() for c in hostile_cues)] or ["Safe-Zone Sanctuary Wards", "Calm Ambient Mana"]
         elif any(c in " ".join(curr_effs).lower() for c in hostile_cues):
             master_state["environment"]["environmental_effects"] = ["Dim Light", "Settling Dust", "Clear Escape Routes Available"]

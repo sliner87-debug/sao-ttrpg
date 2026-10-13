@@ -2049,20 +2049,28 @@ def render_game_hud():
             for n in reversed(news_list[-5:]):
                 st.caption(f"• {n}")
 
-    # Regional Hub & Fast Actions (Milestone 1)
+    # Regional Hub & Fast Actions + 100-Mile Fractured Atlas
     curr_loc = st.session_state.player.get("location", "")
-    is_in_safe_zone = "washington" in curr_loc.lower() or (map_state.get("player_x") == 50 and map_state.get("player_y") == 50)
+    active_atlas_zone = mechanics.resolve_zone_from_location(curr_loc, x=map_state.get("player_x"), y=map_state.get("player_y"))
+    is_in_safe_zone = (
+        mechanics.is_location_safe_zone(curr_loc, x=map_state.get("player_x"), y=map_state.get("player_y"))
+        or "washington" in curr_loc.lower()
+        or (map_state.get("player_x") == 50 and map_state.get("player_y") == 50)
+    )
     
-    with st.expander("🏛️ Regional Hub & Navigation", expanded=is_in_safe_zone):
+    with st.expander("🏛️ Regional Hub & 100-Mile Atlas", expanded=is_in_safe_zone):
         if is_in_safe_zone:
-            st.success("📍 **Sanctuary: Washington Borough Safe-Zone**")
-            st.caption("A fortified civilian sanctuary ruled by the Warren County Barony.")
+            safe_title = active_atlas_zone["name"] if active_atlas_zone else "Washington Borough Safe-Zone"
+            safe_desc = active_atlas_zone["lore_summary"] if active_atlas_zone else "A fortified civilian sanctuary ruled by the Warren County Barony."
+            st.success(f"📍 **Sanctuary: {safe_title}**")
+            st.caption(safe_desc)
             
             c_hub1, c_hub2 = st.columns(2)
             with c_hub1:
                 if st.button("🛏️ Safe-Zone Rest (24h)", use_container_width=True, help="Full HP recovery & triggers living world simulation."):
-                    st.session_state.player["location"] = "Sector 1 Safe-Zone: Washington Borough, NJ"
-                    st.session_state.pending_dev_command = "I take a full 24-hour long rest in the Washington Borough sanctuary to recover our wounds and hear the latest regional news."
+                    if not active_atlas_zone:
+                        st.session_state.player["location"] = "Sector 1 Safe-Zone: Washington Borough, NJ"
+                    st.session_state.pending_dev_command = f"I take a full 24-hour long rest in the {safe_title} sanctuary to recover our wounds and hear the latest regional news."
                     save_game(st.session_state.player, st.session_state.messages)
                     st.rerun()
                 if st.button("🏥 Visit Doc Mercer", use_container_width=True, help="Visit the subterranean clinic for graft consultation & surgery."):
@@ -2078,7 +2086,7 @@ def render_game_hud():
                     save_game(st.session_state.player, st.session_state.messages)
                     st.rerun()
                 if st.button("⛏️ Travel to Oxford Mines", use_container_width=True, help="Depart the safe zone toward Oxford Adits (X:53, Y:48)."):
-                    st.session_state.pending_dev_command = "I gear up with Ren and travel southeast along the ridge toward the Oxford Mining District."
+                    st.session_state.pending_dev_command = "I gear up with Ren and travel along the ridge toward the Oxford Furnace & Deep Magnetite Mines."
                     st.rerun()
 
             # Fast Surgical Action if graft candidate in inventory (Milestone 2)
@@ -2096,13 +2104,107 @@ def render_game_hud():
                     st.rerun()
 
         else:
-            st.warning(f"📍 **Hostile Territory:** {curr_loc or 'Wilderness'}")
-            st.caption("Active threat zone. Keep your weapon ready.")
+            zone_label = active_atlas_zone["name"] if active_atlas_zone else (curr_loc or "Wilderness")
+            lvl_badge = f" (Lv. {active_atlas_zone['level_range'][0]}–{active_atlas_zone['level_range'][1]})" if active_atlas_zone else ""
+            st.warning(f"📍 **Hostile Territory:** {zone_label}{lvl_badge}")
+            if active_atlas_zone:
+                st.caption(f"**{active_atlas_zone.get('quadrant', 'Sector 1')}** • {active_atlas_zone.get('lore_summary', '')}")
+            else:
+                st.caption("Active threat zone. Keep your weapon ready.")
             if st.button("🏛️ Return to Washington Safe-Zone", use_container_width=True, help="Navigate back to Washington Borough Safe-Zone (X:50, Y:50)."):
                 st.session_state.player["location"] = "Sector 1 Safe-Zone: Washington Borough, NJ"
+                map_state["player_x"] = 50
+                map_state["player_y"] = 50
+                map_engine.save_map_state(map_state)
                 st.session_state.pending_dev_command = "We fall back from the hazard zone and take the cleared trail back to the Washington Borough Safe-Zone."
                 save_game(st.session_state.player, st.session_state.messages)
                 st.rerun()
+
+        st.divider()
+        st.markdown("#### 🗺️ 100-Mile Fractured Atlas & Expedition Planner")
+        st.caption("Survey System-Merged Safe Zones, Mines, Dungeons, and Wilderness Grind Zones within 100 miles of Washington, NJ.")
+
+        quad_options = [
+            "All Quadrants (0–100 mi)",
+            "Inner Core (0–25 mi)",
+            "North & East (25–100 mi)",
+            "West & Northwest (25–100 mi)",
+            "South & Southwest (25–100 mi)",
+        ]
+        cat_label_map = {
+            "All Categories": None,
+            "🛡️ Safe Zones & Citadels": "safe_zone",
+            "⛏️ Mines & Extraction Veins": "mine",
+            "🏰 Dungeons & Megastructures": "dungeon",
+            "🌲 Wilderness & Anomalies": "wilderness",
+        }
+
+        f_col1, f_col2 = st.columns(2)
+        with f_col1:
+            sel_quad_label = st.selectbox("Quadrant:", quad_options, key="atlas_quad_filter")
+        with f_col2:
+            sel_cat_label = st.selectbox("Category:", list(cat_label_map.keys()), key="atlas_cat_filter")
+
+        quad_filter = None if sel_quad_label.startswith("All") else sel_quad_label
+        cat_filter = cat_label_map[sel_cat_label]
+        filtered_zones = mechanics.get_zones_by_category(category=cat_filter, quadrant=quad_filter)
+
+        if not filtered_zones:
+            st.info("No zones match the selected filters.")
+        else:
+            cat_icon_map = {
+                "safe_zone": "🛡️",
+                "mine": "⛏️",
+                "dungeon": "🏰",
+                "wilderness": "🌲",
+            }
+            zone_Display_map = {}
+            for z_data in filtered_zones:
+                z_id = z_data["id"]
+                icon = cat_icon_map.get(z_data.get("category"), "📍")
+                lv_min, lv_max = z_data.get("level_range", (1, 5))
+                dist_mi = z_data.get("distance_miles", 0)
+                label = f"{icon} {z_data['name']} [Lv.{lv_min}-{lv_max} | {dist_mi} mi {z_data.get('bearing', '')}]"
+                zone_Display_map[label] = z_id
+
+            sel_zone_label = st.selectbox("Select Destination Zone:", list(zone_Display_map.keys()), key="atlas_zone_select")
+            target_z_id = zone_Display_map[sel_zone_label]
+            target_z = mechanics.WORLD_ATLAS_ZONES[target_z_id]
+            telemetry = mechanics.calculate_travel_telemetry(curr_loc, target_z_id, st.session_state.player)
+
+            with st.container(border=True):
+                lv_min, lv_max = target_z.get("level_range", (1, 5))
+                st.markdown(f"**{target_z['name']}**")
+                st.caption(
+                    f"🌍 **Real-World Site:** {target_z.get('real_world_name', '')} ({target_z.get('distance_miles', 0)} mi {target_z.get('bearing', '')} of Washington NJ)  \n"
+                    f"⚔️ **Recommended Level:** `Lv. {lv_min}–{lv_max}` | 🏛️ **Faction:** `{target_z.get('faction', 'Unaligned')}`  \n"
+                    f"🧭 **Transit Estimate:** `{telemetry['distance_miles']} mi` (~`{telemetry['travel_hours']} hrs` / `{telemetry['travel_minutes']} mins`)"
+                )
+                st.write(target_z.get("lore_summary", ""))
+                if target_z.get("monsters"):
+                    st.caption(f"🐉 **Hostiles:** {', '.join(target_z['monsters'])} | 💀 **Apex Boss:** `{target_z.get('boss', 'None')}`")
+                if target_z.get("resources"):
+                    st.caption(f"💎 **Resources & Grafts:** {', '.join(target_z['resources'])}")
+                if target_z.get("environmental_hazards"):
+                    st.caption(f"⚠️ **Hazards:** {', '.join(target_z['environmental_hazards'])}")
+
+                if st.button(f"🧭 Dispatch Expedition to {target_z['name']}", key=f"btn_travel_{target_z_id}", use_container_width=True):
+                    st.session_state.player["location"] = target_z["name"]
+                    gx, gy = target_z.get("grid_coords", (50, 50))
+                    map_state["player_x"] = gx
+                    map_state["player_y"] = gy
+                    if [gx, gy] not in map_state.get("explored_tiles", []):
+                        map_state.setdefault("explored_tiles", []).append([gx, gy])
+                    map_engine.save_map_state(map_state)
+                    if telemetry["travel_minutes"] > 0:
+                        mechanics.advance_game_time(st.session_state.player, minutes=min(telemetry["travel_minutes"], 240))
+                    st.session_state.pending_dev_command = (
+                        f"We chart an expedition across the Fractured Overlay to [{target_z['name']}] "
+                        f"({target_z.get('real_world_name', '')}, {target_z.get('distance_miles', 0)} miles {target_z.get('bearing', '')} of Washington Borough). "
+                        f"Describe our arrival and the immediate environment."
+                    )
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.rerun()
 
     st.divider()
     with st.expander("💻 Root Dev Console"):

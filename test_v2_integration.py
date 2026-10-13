@@ -327,6 +327,62 @@ class TestV2Integration(unittest.TestCase):
         self.assertIn("Vesper", sent_prompt)
         self.assertNotIn("Banki", sent_prompt)
 
+    def test_washington_100_mile_atlas(self):
+        """Verifies the 100-mile Washington NJ World Atlas, regional salvage yields, travel telemetry, and Cartography 1-1000 support."""
+        import map_engine
+
+        # 1. Verify all 4 categories and all 4 quadrants are populated
+        self.assertGreaterEqual(len(mechanics.WORLD_ATLAS_ZONES), 55)
+        for cat in ["safe_zone", "mine", "dungeon", "wilderness"]:
+            cat_zones = mechanics.get_zones_by_category(category=cat)
+            self.assertGreaterEqual(len(cat_zones), 10, f"Expected >= 10 zones for category {cat}")
+
+        for quad in [
+            "Inner Core (0–25 mi)",
+            "North & East (25–100 mi)",
+            "West & Northwest (25–100 mi)",
+            "South & Southwest (25–100 mi)",
+        ]:
+            q_zones = mechanics.get_zones_by_category(quadrant=quad)
+            self.assertGreaterEqual(len(q_zones), 10, f"Expected >= 10 zones for quadrant {quad}")
+
+        # 2. Verify safe-zone detection across the 100-mile radius
+        self.assertTrue(mechanics.is_location_safe_zone("Sector 1 Safe-Zone: Washington Borough, NJ"))
+        self.assertTrue(mechanics.is_location_safe_zone("West Point Granite Bastion & Bullion Vaults"))
+        self.assertTrue(mechanics.is_location_safe_zone("Jim Thorpe Gorge Bastion"))
+        self.assertTrue(mechanics.is_location_safe_zone("Princeton Arcane Conclave & Nassau Sanctuary"))
+        self.assertFalse(mechanics.is_location_safe_zone("Centralia Hellfire Abyssal Breach"))
+        self.assertFalse(mechanics.is_location_safe_zone("Picatinny Artificer Siege Citadel"))
+
+        # 3. Verify regional salvage yields in a specific mine (Sterling Hill & Centralia)
+        p = self.player
+        p["location"] = "Sterling Hill & Franklin Fluorescent Zinc Mines, NJ"
+        salv_res = mechanics.salvage_materials(p, target_type="ruins", d20_roll=16)
+        self.assertTrue(salv_res["success"])
+        harvested_names = [it["name"] for it in salv_res["items"]]
+        self.assertIn("Neon Willemite Shards", harvested_names)
+
+        # 4. Verify travel telemetry and GM briefing formatting
+        telem = mechanics.calculate_travel_telemetry("Washington Borough", "centralia_pioneer_breach", p)
+        self.assertGreater(telem["distance_miles"], 70.0)
+        self.assertGreater(telem["travel_minutes"], 60)
+        briefing = mechanics.format_zone_gm_briefing(mechanics.resolve_zone_from_location("Centralia"))
+        self.assertIn("Centralia", briefing)
+        self.assertIn("IGNIS-62", briefing)
+
+        # 5. Verify expanded regional Homestead Estates
+        self.assertIn("washington_manor", mechanics.HOMESTEAD_ESTATES)
+        self.assertIn("oxford_foundry_estate", mechanics.HOMESTEAD_ESTATES)
+        self.assertIn("pocono_wilderness_lodge", mechanics.HOMESTEAD_ESTATES)
+
+        # 6. Verify map_engine Oxford_Mines coordinates and V2 1-1000 Cartography skill support
+        self.assertEqual(map_engine.NODES["Oxford_Mines"]["x"], 53)
+        self.assertEqual(map_engine.NODES["Oxford_Mines"]["y"], 48)
+        self.assertFalse(map_engine.has_cartography_skill("Cartography I", {"Cartography": {"mastery": 25}}))
+        self.assertTrue(map_engine.has_cartography_skill("Cartography I", {"Cartography": {"mastery": 55}}))
+        self.assertTrue(map_engine.has_cartography_skill("Cartography II", {"Cartography": {"mastery": 120}}))
+
+
 if __name__ == "__main__":
     unittest.main()
 

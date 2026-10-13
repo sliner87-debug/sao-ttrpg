@@ -6,6 +6,15 @@ Handles mathematical crunch, dice logic, encumbrance physics, and equipment stat
 import math
 import copy
 import re
+from backend.world_atlas import (
+    WORLD_ATLAS_ZONES,
+    resolve_zone_from_location,
+    is_location_safe_zone,
+    get_zones_by_category,
+    get_zone_salvage_yields,
+    calculate_travel_telemetry,
+    format_zone_gm_briefing,
+)
 
 # --- ITEM WEIGHT HEURISTICS ---
 DEFAULT_WEIGHT_MAP = {
@@ -2318,13 +2327,27 @@ def salvage_materials(player_state, target_type="construct", d20_roll=None):
 
     if total_roll >= 15:
         # Full salvage: 2 items
-        items_to_add.extend(pool[:2])
+        items_to_add.extend([copy.deepcopy(x) for x in pool[:2]])
     elif total_roll >= 10:
         # Standard salvage: 1 item
-        items_to_add.append(pool[0])
+        items_to_add.append(copy.deepcopy(pool[0]))
     else:
         # Low roll: basic scrap
         items_to_add.append({"name": "Tainted Metallic Scrap", "qty": 1, "weight": 1.0})
+
+    # Regional 100-mile World Atlas specialty ore / resource yield
+    active_zone = resolve_zone_from_location(player_state.get("location", "")) or resolve_zone_from_location(target_type)
+    if active_zone and total_roll >= 10:
+        zone_resources = active_zone.get("resources", [])
+        if zone_resources:
+            reg_item = zone_resources[0]
+            reg_qty = 2 if (total_roll >= 15 and active_zone.get("category") == "mine") else 1
+            items_to_add.append({
+                "name": reg_item,
+                "qty": reg_qty,
+                "weight": 2.5 if active_zone.get("category") == "mine" else 1.5,
+                "desc": f"Regional specialty resource extracted from {active_zone.get('name', 'the Wilds')}."
+            })
 
     # Add to player inventory
     inv = player_state.setdefault("inventory", [])
@@ -2343,7 +2366,7 @@ def salvage_materials(player_state, target_type="construct", d20_roll=None):
                     except ValueError: cur_qty = 1
                 inv[idx] = f"{base_name} x{cur_qty + item['qty']}"
         else:
-            inv.append({"name": item["name"], "qty": item["qty"], "rarity": "Common", "durability": 100, "max_durability": 100, "desc": "Field salvaged component."})
+            inv.append({"name": item["name"], "qty": item["qty"], "rarity": "Common", "durability": 100, "max_durability": 100, "desc": item.get("desc", "Field salvaged component.")})
         added_names.append(f"{item['name']} (x{item['qty']})")
 
     # Award skill mastery
@@ -7302,8 +7325,9 @@ def pitch_wilderness_camp(player_state, watch_companion="Ren"):
     time_res = advance_game_time(player_state, minutes=480)
 
     # Healing
-    loc_str = str(player_state.get("location", "")).lower()
-    in_safe_zone = any(w in loc_str for w in ["borough", "safe", "haven", "taphouse", "outpost", "camp", "sanctuary"])
+    raw_loc = str(player_state.get("location", ""))
+    loc_str = raw_loc.lower()
+    in_safe_zone = is_location_safe_zone(raw_loc) or any(w in loc_str for w in ["borough", "safe", "haven", "taphouse", "outpost", "camp", "sanctuary"])
     old_hp = player_state.get("hp", 100)
     max_hp = player_state.get("max_hp", 100)
 
@@ -7343,7 +7367,8 @@ def pitch_wilderness_camp(player_state, watch_companion="Ren"):
         watch_log = "Kibs strung barbed tripwires and noise-canisters through the underbrush, catching a wandering razor-hound in a snare."
     elif watch_key == "Elora":
         ambush_prevented = True
-        watch_perk = "[Warded Perimeter: Banki gains +2 AC for next combat]"
+        p_name_label = player_state.get("name", "Player")
+        watch_perk = f"[Warded Perimeter: {p_name_label} gains +2 AC for next combat]"
         watch_log = "Elora etched shimmering starlight wards in a ring around the campfire, alarming the party of approaching mana-beasts."
     else:
         # Solo or no companion watch
@@ -7383,6 +7408,20 @@ HOMESTEAD_ESTATES = {
         "location": "Washington Borough Safe Zone (Sector 1 Ridge)",
         "purchase_cost_col": 3500,
         "description": "An expansive pre-Integration stone manor on the southern ridge of Washington Borough, fortified with ancient dwarven ward-stones, deep cellars, and an aether-well."
+    },
+    "oxford_foundry_estate": {
+        "id": "oxford_foundry_estate",
+        "name": "The Oxford Hot-Blast Foundry Estate",
+        "location": "Oxford Furnace Ridge (3.5 mi NW of Washington)",
+        "purchase_cost_col": 4500,
+        "description": "A fortified 18th-century ironmaster's limestone manor overlooking the Oxford Furnace slag-pits, equipped with a private geothermal crucible and deep magnetite shaft access."
+    },
+    "pocono_wilderness_lodge": {
+        "id": "pocono_wilderness_lodge",
+        "name": "The Delaware Gap & Pocono Timber Lodge",
+        "location": "Kittatinny Ridge / Delaware Water Gap Overlook (18 mi NW)",
+        "purchase_cost_col": 5000,
+        "description": "A heavy hemlock-and-bluestone cliffside bastion perched above the Delaware Water Gap wind-current, featuring a beast-kin falconry roost and alpine herb terrace."
     }
 }
 

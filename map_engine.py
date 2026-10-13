@@ -16,7 +16,7 @@ PIXELS_PER_GRID = 768 / GRID_SIZE
 NODES = {
     "Washington_Borough": {"x": 50, "y": 50, "color": "blue", "label": "Washington Safe-Zone"},
     "Route_31_Chokepoint": {"x": 50, "y": 35, "color": "red", "label": "Route 31 Blockade"},
-    "Oxford_Mines": {"x": 40, "y": 20, "color": "purple", "label": "Oxford Mine Vaults"}
+    "Oxford_Mines": {"x": 53, "y": 48, "color": "purple", "label": "Oxford Mine Vaults"}
 }
 
 CONNECTIONS = [
@@ -52,6 +52,38 @@ def save_map_state(state):
     with open("map_state.json", "w") as f:
         json.dump(state, f)
 
+def has_cartography_skill(req_skill, p_skills):
+    """Checks if player meets Cartography or exploration skill requirements across V1 list or V2 1-1000 dict."""
+    if req_skill is None:
+        return True
+    if not p_skills:
+        return False
+    req_lower = req_skill.lower().strip()
+
+    # Check direct string match first (backwards compatibility)
+    skill_keys = list(p_skills.keys()) if isinstance(p_skills, dict) else [str(s) for s in p_skills]
+    if any(req_lower in s.lower() or "omniscience (dev)" in s.lower() for s in skill_keys):
+        return True
+
+    # V2 1-1000 Cartography mastery threshold check
+    if isinstance(p_skills, dict):
+        cart_mastery = 0
+        for s_name, s_val in p_skills.items():
+            if "cartograph" in s_name.lower() or "aether-map" in s_name.lower() or "navigat" in s_name.lower():
+                if isinstance(s_val, dict):
+                    cart_mastery = max(cart_mastery, int(s_val.get("mastery", 0)))
+                elif isinstance(s_val, (int, float)):
+                    cart_mastery = max(cart_mastery, int(s_val))
+        if "cartography iv" in req_lower:
+            return cart_mastery >= 500
+        elif "cartography iii" in req_lower:
+            return cart_mastery >= 250
+        elif "cartography ii" in req_lower or "aether-mapping" in req_lower:
+            return cart_mastery >= 100
+        elif "cartography i" in req_lower or "cartography" in req_lower:
+            return cart_mastery >= 50
+    return False
+
 def generate_overlay(player_skills=None):
     if player_skills is None:
         player_skills = []
@@ -81,11 +113,9 @@ def generate_overlay(player_skills=None):
         px, py = node["x"] * PIXELS_PER_GRID, node["y"] * PIXELS_PER_GRID
         mask_draw.ellipse([px - 40, py - 40, px + 40, py + 40], fill=0)
         
-    # Helper to check if player has a required skill (fuzzy match to ignore AI descriptions)
+    # Helper to check if player has a required skill (supports V1 strings and V2 1-1000 dicts)
     def has_skill(req_skill, p_skills):
-        if req_skill is None: return True
-        req_lower = req_skill.lower()
-        return any(req_lower in s.lower() or "omniscience (dev)" in s.lower() for s in p_skills)
+        return has_cartography_skill(req_skill, p_skills)
 
     # Reveal Secrets (if skill check passes)
     visible_secrets = {}
