@@ -1,0 +1,20 @@
+{
+    "sector": 1,
+    "world_status": "CRUCIBLE: METAMORPHIC STRESS TEST (PHASE 1)",
+    "map_locations": [
+        {
+            "name": "Washington Borough Safe-Zone",
+            "x": 50,
+            "y": 50
+        },
+        {
+            "name": "Oxford Mining District",
+            "x": 53,
+            "y": 48
+        }
+    ],
+    "global_news": [
+        "Architect broadcast: Sector 1 biomes undergoing forced geological recrystallization.",
+        "Pohatcong fault line reported stable; Oxford Adits unstable."
+    ]
+}

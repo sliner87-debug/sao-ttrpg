@@ -2013,8 +2013,50 @@ def render_game_hud():
         st.divider()
         st.markdown("**Restore Campaign**")
         def apply_restored_save_data(loaded_data):
-            st.session_state.player = loaded_data["player"]
-            st.session_state.messages = loaded_data["messages"]
+            player_obj = loaded_data.get("player", {})
+            msgs = loaded_data.get("messages", [])
+
+            # 1. Deduplicate repeated boss drops from the Rule 3 loop bug
+            inv = player_obj.get("inventory", [])
+            if isinstance(inv, list):
+                deduped_inv = []
+                seen_unique = set()
+                unique_keys = [
+                    "[graft component] silt-marrow's geothermal core piston",
+                    "basalt carapace plating x2",
+                    "[graft component] intact runic mind-matrix"
+                ]
+                for item in inv:
+                    item_str = item.get("name", str(item)) if isinstance(item, dict) else str(item)
+                    low_str = item_str.strip().lower()
+                    if any(uk in low_str for uk in unique_keys):
+                        if low_str in seen_unique:
+                            continue
+                        seen_unique.add(low_str)
+                    deduped_inv.append(item)
+                player_obj["inventory"] = deduped_inv
+
+            # 2. Detect and strip the Silt-Marrow post-kill collapse loop if present in uploaded messages
+            silt_kill_assistant_idx = None
+            for idx, m in enumerate(msgs):
+                if m.get("role") == "user" and "throw the bearded axe at the golem" in m.get("content", "").lower():
+                    if idx + 1 < len(msgs) and msgs[idx + 1].get("role") in ["assistant", "system"]:
+                        silt_kill_assistant_idx = idx + 1
+                        break
+
+            if silt_kill_assistant_idx is not None and len(msgs) > silt_kill_assistant_idx + 1:
+                # Check if subsequent assistant messages had the repeated Piston drop bug
+                subsequent_text = " ".join(m.get("content", "") + " " + m.get("mechanics_log", "") for m in msgs[silt_kill_assistant_idx + 1:])
+                if "geothermal core piston" in subsequent_text.lower() or "compromised timber bracing" in subsequent_text.lower():
+                    msgs = msgs[:silt_kill_assistant_idx + 1]
+                    player_obj["location"] = "Oxford Mine - Exit Junction (Cleared)"
+                    player_obj["hp"] = max(player_obj.get("hp", 58), 58)
+                    if "companions" in player_obj and "Ren" in player_obj["companions"]:
+                        player_obj["companions"]["Ren"]["hp"] = 28
+                        player_obj["companions"]["Ren"]["status"] = "Active (Combat Ready - Watching Exit)"
+
+            st.session_state.player = player_obj
+            st.session_state.messages = msgs
             if "world_state" in loaded_data:
                 st.session_state.world_state = loaded_data["world_state"]
             
@@ -2047,13 +2089,16 @@ def render_game_hud():
                     hostile_cues = ["steam", "timber", "collapse", "falling", "shale", "cave-in", "hazard", "unstable", "compromised"]
                     m_state["environment"]["environmental_effects"] = [eff for eff in curr_effs if not any(c in eff.lower() for c in hostile_cues)] or ["Safe-Zone Sanctuary Wards", "Calm Ambient Mana"]
                 elif not has_hostiles:
-                    # Aftermath: clear collapse hazards
+                    # Aftermath: clear collapse hazards and sync location
+                    if p_loc:
+                        m_state.setdefault("environment", {})["location"] = p_loc
+                    m_state.setdefault("environment", {})["hidden_traps"] = []
                     curr_effs = m_state.get("environment", {}).get("environmental_effects", [])
                     if any(c in " ".join(curr_effs).lower() for c in ["steam", "timber", "collapse", "falling", "shale", "compromised", "hazard"]):
                         m_state.setdefault("environment", {})["environmental_effects"] = ["Dim Light", "Settling Dust", "Clear Escape Routes Available"]
                     desc = m_state.get("environment", {}).get("description", "")
                     if any(c in desc.lower() for c in ["splintered and venting", "superheated geothermal", "falling shale", "rock debris litter"]):
-                        m_state.setdefault("environment", {})["description"] = "A damp, cavernous mine shaft exit junction. The massive chassis of Silt-Marrow the Unhewn lies completely inert and harvested. The seismic rumbles have ceased, leaving the path open to ascend upward via the ore-cart track toward the Washington Borough Safe-Zone or descend toward the Morris Canal Aqueducts."
+                        m_state.setdefault("environment", {})["description"] = "A damp, cavernous mine shaft exit junction. The massive chassis of Silt-Marrow the Unhewn lies completely inert, dismantled, and harvested. The seismic rumbles have ceased, leaving the path open to ascend upward via the ore-cart track toward the Washington Borough Safe-Zone or descend toward the Morris Canal Aqueducts."
 
                 os.makedirs(os.path.dirname(m_path), exist_ok=True)
                 with open(m_path, "w", encoding="utf-8") as f:
@@ -2235,10 +2280,10 @@ if prompt := (dev_prompt or chat_prompt):
             import backend.persona_engine as persona_engine
             
             # a. Generate the Staging Ground (Visible Room)
-            visible_room = gm_engine.generate_visible_state(api_key=api_key, player_state=st.session_state.player)
+            visible_room = gm_engine.generate_visible_state(api_key=api_key, player_state=st.session_state.player, player_action=ai_prompt)
             
             # b. All Room SubAgents Act Autonomously (Companions, Monsters, NPCs)
-            subagent_actions = persona_engine.run_all_room_subagents(api_key=api_key, visible_room=visible_room)
+            subagent_actions = persona_engine.run_all_room_subagents(api_key=api_key, visible_room=visible_room, player_action=ai_prompt)
             subagent_log_lines = []
             for sa in subagent_actions:
                 actor_id = sa.get("actor_id", "")

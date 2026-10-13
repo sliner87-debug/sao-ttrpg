@@ -1,0 +1,12 @@
+{
+  "in_combat": false,
+  "turn_number": 33,
+  "location": "Oxford Mine Adits - Lower Collapse Zone (Exit Junction)",
+  "hazards_active": false,
+  "boss_status": "Silt-Marrow the Unhewn (DEFEATED_AND_HARVESTED)",
+  "environmental_effects": [
+    "Dim Light",
+    "Settling Dust",
+    "Clear Escape Routes Available"
+  ]
+}

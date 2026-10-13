@@ -71,10 +71,10 @@ Output strictly conforming to the EntityPersonaSchema.
     print(f"[SUBAGENT FORGED] {persona['name']} ({persona['id']}) awakened with full persona.", flush=True)
     return persona
 
-def get_subagent_action(api_key: str, entity_id: str, visible_room: dict) -> dict:
+def get_subagent_action(api_key: str, entity_id: str, visible_room: dict, player_action: str = "") -> dict:
     """
     Prompts a specific SubAgent (Companion, NPC, or Monster) to decide their next action.
-    They read ONLY their persona sheet and visible_room.json.
+    They read ONLY their persona sheet, visible_room.json, and the player's current action/speech.
     """
     client = genai.Client(api_key=api_key)
     
@@ -114,6 +114,10 @@ def get_subagent_action(api_key: str, entity_id: str, visible_room: dict) -> dic
     if mech_lines:
         mechanical_section = "\nYOUR CURRENT PHYSICAL STATUS & TACTICAL LOADOUT:\n" + "\n".join(mech_lines) + "\n"
 
+    player_action_section = ""
+    if player_action:
+        player_action_section = f"\nHUMAN PLAYER'S CURRENT ACTION / SPEECH THIS TURN:\n\"{player_action}\"\n"
+
     # 3. Build the persona's subjective perception prompt
     prompt = f"""You are an autonomous SubAgent in a dark fantasy, aether-punk LitRPG death-game.
 The setting is high-fantasy and magetech (NOT modern military or cyberpunk). Any firearms used (like MageTech carbines) channel condensed radiant mana or elemental charges, NEVER gunpowder or lead.
@@ -134,6 +138,10 @@ YOUR PSYCHE:
 {mechanical_section}
 WHAT YOU CAN CURRENTLY SEE (Visible Room):
 {json.dumps(visible_room, indent=2)}
+{player_action_section}
+CRITICAL GROUNDING RULE:
+- Ground your thoughts and intended action strictly in `Visible Room.environment.location` and `Visible Room.environment.environmental_effects`.
+- If there are NO hostile entities in `Visible Room.entities` and no active collapse in `environmental_effects`, do NOT hallucinate cave-ins, falling shale, or active combat! Follow or coordinate with the Human Player's current action/speech naturally.
 
 Decide your next action based on your instincts, physical condition, available gear, fear level, and tactical goals.
 Do not break character. Speak from your internal thought and declare your action.
@@ -154,7 +162,7 @@ Output strictly matching ActorActionSchema.
     action["actor_name"] = persona.get("name", entity_id)
     return action
 
-def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list = None) -> list:
+def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list = None, player_action: str = "") -> list:
     """
     Iterates through all entities in the visible room (Active Vanguard Companions, Monsters, NPCs).
     Each SubAgent decides their move autonomously based on their persona, stance, and visible threats.
@@ -175,7 +183,7 @@ def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list 
         party_ids.append(c_id)
         
         try:
-            c_action = get_subagent_action(api_key, c_id, visible_room)
+            c_action = get_subagent_action(api_key, c_id, visible_room, player_action=player_action)
             all_actions.append(c_action)
         except Exception as e:
             print(f"[SUBAGENT ERROR] Companion {c_id} action failed: {e}", flush=True)
@@ -188,7 +196,7 @@ def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list 
             
         # Skip dead or inert slag entities
         statuses = [s.lower() for s in entity.get("status", [])]
-        if any(dead_tag in statuses for dead_tag in ["dead", "inert", "destroyed", "slag"]):
+        if any(dead_tag in statuses for dead_tag in ["dead", "inert", "destroyed", "slag", "defeated", "harvested"]):
             continue
 
         try:
@@ -201,7 +209,7 @@ def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list 
                 environment=visible_room.get("environment")
             )
             # Get their action
-            sub_action = get_subagent_action(api_key, eid, visible_room)
+            sub_action = get_subagent_action(api_key, eid, visible_room, player_action=player_action)
             all_actions.append(sub_action)
         except Exception as e:
             print(f"[SUBAGENT ERROR] Action for {eid} failed: {e}", flush=True)

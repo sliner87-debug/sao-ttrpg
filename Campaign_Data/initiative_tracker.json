@@ -1,0 +1,9 @@
+{
+  "round": 0,
+  "active_combat": false,
+  "party_vanguard": [
+    "player",
+    "companion_ren"
+  ],
+  "turn_order": []
+}

@@ -18,7 +18,7 @@ def save_json(filepath, data):
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4)
 
-def generate_visible_state(api_key: str = None, player_state: dict = None, world_state: dict = None):
+def generate_visible_state(api_key: str = None, player_state: dict = None, world_state: dict = None, player_action: str = ""):
     """Reads secret_master_state.json or passed state and writes sanitized version to visible_room.json"""
     # If called as generate_visible_room(player_state, world_state)
     if isinstance(api_key, dict) and player_state is not None and world_state is None:
@@ -71,6 +71,24 @@ def generate_visible_state(api_key: str = None, player_state: dict = None, world
 
     # Synchronize player location and environment integrity
     if player_state and isinstance(player_state, dict):
+        # Check if all hostiles in the room are defeated / inert
+        active_hostiles = [
+            e for e in master_state.get("entities", [])
+            if e.get("type") in ["hostile", "monster"]
+            and e.get("hp", 1) > 0
+            and not any(s in [st.lower() for st in e.get("status", [])] for s in ["defeated", "inert", "dead", "destroyed", "slag", "harvested"])
+        ]
+
+        # Pre-synchronize location if player_action expresses a clear transition out of a cleared room
+        if player_action and not active_hostiles:
+            act_low = player_action.lower()
+            if any(k in act_low for k in ["hit the doc", "visit doc mercer", "doc mercer", "mercer's clinic", "vaulted catacombs", "flesh-weaving and graft clinic"]):
+                player_state["location"] = "Doc Mercer's Underground Clinic (Washington Borough Catacombs)"
+            elif any(k in act_low for k in ["quartermaster vane", "logistics depot", "vane's outpost"]):
+                player_state["location"] = "Washington Borough - Quartermaster Vane's Logistics Depot"
+            elif any(k in act_low for k in ["safe zone", "safe-zone", "washington borough", "surges out of the exit", "back to town", "get that drink", "fall back from the hazard zone"]):
+                player_state["location"] = "Sector 1 Safe-Zone: Washington Borough, NJ"
+
         p_loc = player_state.get("location", "").strip()
         master_loc = master_state.get("environment", {}).get("location", "").strip()
 
@@ -135,12 +153,6 @@ def generate_visible_state(api_key: str = None, player_state: dict = None, world
             needs_sync = True
 
         # Post-combat & Exit Junction cleanup: if no active living hostiles remain, settle collapse hazards
-        active_hostiles = [
-            e for e in master_state.get("entities", [])
-            if e.get("type") in ["hostile", "monster"]
-            and e.get("hp", 1) > 0
-            and not any(s in [st.lower() for st in e.get("status", [])] for s in ["defeated", "inert", "dead", "destroyed", "slag", "harvested"])
-        ]
         if not active_hostiles:
             orig_len = len(master_state.get("entities", []))
             master_state["entities"] = [
@@ -217,10 +229,9 @@ CORE GM BEHAVIOR RULES:
    - NEVER WRITE GRUFF MILITARY SOLDIER JARGON: Ren is not a hardened veteran; he is a 17-year-old kid surviving in the game he helped make, terrified of permadeath but fiercely loyal to Banki.
 
 2. TRAP & HAZARD LIFECYCLE: If a trap or hazard (like the X:5 Y:5 tripwire) has already been detected, highlighted, or avoided in previous turns, do NOT repeat warnings about it. It has already been accounted for.
-3. COMBAT AFTERMATH & GRAFT HARVESTING: When all hostiles are dead (HP <= 0), set encounter_active=false. 
-   - Award significant encounter XP (e.g. 250 XP for Silt-Marrow) and Col (e.g. +75 Col) in player_state_updates.
-   - Drop harvesting graft components into player_state_updates.inventory_add (e.g., "[Graft Component] Silt-Marrow's Geothermal Core Piston", "Basalt Carapace Plating x2").
-   - Describe the collapse settling and open 1-2 clear exits: an emergency ore-cart incline ascending to the surface toward Washington Borough Safe-Zone, and a lower adit leading toward the Morris Canal Aqueducts.
+3. COMBAT AFTERMATH & GRAFT HARVESTING:
+   - ONLY on the exact turn when an active, living hostile combatant's HP is reduced from >0 to 0 (or when the player explicitly harvests an unharvested corpse for the first time): set `encounter_active=false`, award encounter XP and Col in `player_state_updates`, drop appropriate monster graft components into `player_state_updates.inventory_add`, and add the slain entity's ID to `cleared_entities`.
+   - CRITICAL ANTI-LOOP MANDATE: If `Current Master State.entities` has NO living hostiles, the combat encounter is ALREADY resolved. NEVER re-award boss loot drops, NEVER repeat cave-in/collapse hazards or steam vents, and NEVER pull the party back into a previous tunnel or mine shaft! Always ground your narrative strictly in `Current Master State.environment.location`.
 4. INVENTORY & SPELL LOOT: Whenever you narrate that the player loots, inspects, or identifies an item or spell slate, you MUST include it in player_state_updates.inventory_add so it actually lands on their character sheet.
 5. AUTONOMOUS SUBAGENTS: Each entity in the queue (Companions, Monsters, NPCs) is an autonomous SubAgent with their own quirks, fears, and tactical goals. Resolve how their queued actions collide with each other and with the Human Player's action.
 6. MECHANICAL TRANSPARENCY & CLEAN NARRATIVE: Explicitly simulate all dice rolls, attacks vs AC, saving throws vs DC, and damage math in the `combat_logs` array. In `narrative_recap`, tell a dramatic, cinematic story WITHOUT embedding bracketed formulas like '[Attack: 1d20+5...]' in the story prose. Put all crunch into `combat_logs`.
@@ -375,14 +386,27 @@ Output matching TurnResolutionSchema.
         if p_up_dict.get("location"):
             master_state.setdefault("environment", {})["location"] = p_up_dict["location"]
 
-    # If encounter is no longer active, purge traps & dead monsters
-    if not resolution.get("encounter_active", True):
+    # If encounter is no longer active or no living hostiles remain, purge traps & dead monsters
+    remaining_hostiles = [
+        e for e in master_state.get("entities", [])
+        if e.get("type") in ["hostile", "monster"]
+        and e.get("hp", 1) > 0
+        and not any(s in [st.lower() for st in e.get("status", [])] for s in ["defeated", "inert", "dead", "destroyed", "slag", "harvested"])
+    ]
+    if not resolution.get("encounter_active", True) or not remaining_hostiles:
         master_state.setdefault("environment", {})["hidden_traps"] = []
+        master_state["entities"] = [
+            e for e in master_state.get("entities", [])
+            if e.get("type") not in ["hostile", "monster"]
+            or (e.get("hp", 1) > 0 and not any(s in [st.lower() for st in e.get("status", [])] for s in ["defeated", "inert", "dead", "destroyed", "slag", "harvested"]))
+        ]
         loc_str = master_state.get("environment", {}).get("location", "").lower()
+        hostile_cues = ["steam", "timber", "collapse", "falling", "shale", "cave-in", "hazard", "unstable", "compromised"]
+        curr_effs = master_state.get("environment", {}).get("environmental_effects", [])
         if any(w in loc_str for w in ["safe-zone", "safe zone", "washington", "clinic", "catacomb", "depot", "sanctuary"]):
-            master_state["entities"] = [e for e in master_state.get("entities", []) if e.get("type") not in ["hostile", "monster"] and e.get("hp", 1) > 0]
-            hostile_cues = ["steam", "timber", "collapse", "falling", "shale", "cave-in", "hazard"]
-            master_state["environment"]["environmental_effects"] = [eff for eff in master_state["environment"].get("environmental_effects", []) if not any(c in eff.lower() for c in hostile_cues)]
+            master_state["environment"]["environmental_effects"] = [eff for eff in curr_effs if not any(c in eff.lower() for c in hostile_cues)] or ["Safe-Zone Sanctuary Wards", "Calm Ambient Mana"]
+        elif any(c in " ".join(curr_effs).lower() for c in hostile_cues):
+            master_state["environment"]["environmental_effects"] = ["Dim Light", "Settling Dust", "Clear Escape Routes Available"]
 
     # Apply companion HP updates to Party/*.json files
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

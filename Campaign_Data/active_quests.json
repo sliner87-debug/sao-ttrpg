@@ -1,0 +1,24 @@
+{
+  "sector": 1,
+  "world_status": "CRUCIBLE: METAMORPHIC STRESS TEST (PHASE 1)",
+  "global_news": [
+    "Architect broadcast: Sector 1 biomes undergoing forced geological recrystallization.",
+    "Pohatcong fault line reported stable; Oxford Adits unstable."
+  ],
+  "active_quests": [
+    {
+      "quest_id": "q_oxford_silt_marrow_aftermath",
+      "title": "Ascent from the Oxford Mine Adits",
+      "status": "COMPLETED_BOSS_HARVESTED",
+      "location": "Oxford Mine Adits - Lower Collapse Zone (Exit Junction)",
+      "description": "Silt-Marrow the Unhewn has been defeated, dismantled, and harvested. Ascend via the ore-cart track to Washington Borough Safe-Zone or descend toward the Morris Canal Aqueducts."
+    },
+    {
+      "quest_id": "q_washington_safe_zone_resupply",
+      "title": "Washington Borough Safe-Zone Resupply & Homestead",
+      "status": "ACTIVE",
+      "location": "Washington Borough Safe-Zone",
+      "description": "Return to Washington Borough Council territory to trade harvested Silt-Marrow cores, visit Doc Mercer's clinic or Quartermaster Vane, and expand vanguard party operations."
+    }
+  ]
+}
