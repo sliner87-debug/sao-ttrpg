@@ -68,5 +68,28 @@ YOUR ROLE:
     - **The Procedure:** Takes 1d4+2 hours per slot. Must be in a sterile clinic/safe zone. DC 13/16/20 Medicine check; failure inflicts 1 permanent Strain wound until fixed.
     - **Post-Op Recovery (Cellular Re-Knitting):** Immediately after surgery, max HP is reduced by 20%, Dash is disabled, and using graft actives requires a DC 13 CON save (or take 1d6 necrotic damage).
     - **The Cure:** Post-Op Sickness is only cured by a full 24-Hour Rest in a Safe Zone, or 48 hours of light travel. Magical healing does not bypass this.
+19. LABYRINTH DUNGEONS & OVERLORD MECHANICS (PHASE 6):
+    - Instanced dungeons like The Pohatcong Depths feature sequential room states, arcane wards, and mechanical puzzles.
+    - Sector Overlord (The Gilded Spire Overlord): Governed by a Break Gauge (staggered when depleted, granting vulnerability), multi-phase telegraphs (Phase 1 Brass Aegis, Phase 2 Overclocked Blades, Phase 3 Meltdown Protocol), and environmental counter-mechanics.
+20. 4-MEMBER RAIDING PARTY & DUAL-TECHS (PHASE 7):
+    - Up to 4 active vanguard slots. Companions (Ren, Elora Vael, Torvald Ironbreaker, Kibs) possess autonomous SubAgent agency and individual sheets in `Party/`.
+    - Companion Autonomy: The player is never forced to recruit anyone; dynamic alliances depend on personal rapport and player choice.
+    - Dual-Tech Combos: Coordinated attacks between player and companions (e.g. Ren's Arcane Pinpoint + Banki's Cleave) deal devastating burst damage.
+    - SAO Player Cursors: Green (Lawful / Neutral), Orange (Criminal / Aggressor), Red (Murderer / Marked). Cursors dictate NPC merchant pricing and barony guard hostility.
+21. CHRONO-ATMOSPHERE & WILDERNESS SURVIVAL (PHASE 8):
+    - Continuous 24-hour diurnal cycle (Dawn, Day, Dusk, Night) with ambient weather phenomena (Clear, Runic Mist, Glitch Freeze, Aether Storm).
+    - Harsh weather impacts combat accuracy and elemental vulnerability.
+    - Campfire Cooking: Preparing alchemical meals (e.g. Wolf-Heart Stew, Dire-Boar Roast) grants well-fed stat buffs.
+    - Wilderness Camping: 8-hour rests require setting a watch companion to prevent ambush and restore combat stamina.
+22. SOVEREIGN HOMESTEAD, VAULT & MYTHIC FORGING (PHASE 9):
+    - Real Estate Acquisition: Players can purchase private homestead deeds in safe zones like Washington Borough (earned, never given for free).
+    - Subsurface Vault: 20-slot secure item storage across Tiers 1-3, protecting legendary items from wilderness loss.
+    - 5-Pedestal Trophy Hall: Displaying severed boss relics (e.g. Overlord's Gilded Core) projects permanent passive party-wide aura buffs.
+    - Alchemical Greenhouse: 4 garden plots producing daily reagent harvests based on calendar days.
+    - Deepforged Master-Anvil: Grade 6 Mythic weapon upgrading requiring boss cores, refined aether-alloys, and Col.
+    - Commodity Market: Local bulk trading of scrap metal, leather, alchemical herbs, and aether-shards.
+23. CONTINENTAL ATLAS & GEOPOLITICAL FACTIONS:
+    - The Fractured Overlay maintains recognizable North American continental geography across 10 distinct post-initialization sectors.
+    - 7 Regional Factions (Washington Borough Council, The Gilded Foundry, Oxford Prospectors, Ashen Covenant, Sylvan Wardens, Iron Hand Guild, Aether-Scholars Union) maintain dynamic territory control and reputation tracks.
 ```
 
