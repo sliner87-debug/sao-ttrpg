@@ -1642,7 +1642,8 @@ def render_game_hud():
             st.error("💥 **BOSS STAGGERED!** Attacks deal double critical damage!")
 
     # Sovereign Homestead, Vault & Mythic Forge
-    mechanics.ensure_homestead_system(player) if hasattr(mechanics, "ensure_homestead_system") else None
+    if hasattr(mechanics, "ensure_homestead_system"):
+        mechanics.ensure_homestead_system(player)
     h_data = player.get("homestead", {})
     h_owned = h_data.get("owned", False)
     with st.expander("🏰 Sovereign Homestead, Vault & Mythic Forge", expanded=h_owned):
@@ -1799,7 +1800,7 @@ def render_game_hud():
                             subagent_log = "\n\n".join(subagent_log_lines) if subagent_log_lines else ""
                             
                             # 3. GM resolution
-                            turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=result_text)
+                            turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=result_text, player_state=st.session_state.player)
                             narrative = turn_data.get("narrative_recap", "")
                             
                             combat_logs = turn_data.get("combat_logs", [])
@@ -1825,12 +1826,12 @@ def render_game_hud():
                             apply_player_state_updates(state_updates)
                             apply_companion_state_updates(hp_changes)
 
-                            # 4. Generate scene image matching Main branch styling
+                            # 4. Generate scene image matching Main branch styling & dynamic equipped gear
                             image_data = None
                             image_prompt = turn_data.get("image_prompt", "")
                             if image_prompt:
                                 try:
-                                    img_bytes, img_err = gm_engine.generate_scene_image(api_key=api_key, prompt=image_prompt)
+                                    img_bytes, img_err = gm_engine.generate_scene_image(api_key=api_key, prompt=image_prompt, player_state=st.session_state.player)
                                     if img_bytes:
                                         b64_img = base64.b64encode(img_bytes).decode("utf-8")
                                         image_data = f"data:image/png;base64,{b64_img}"

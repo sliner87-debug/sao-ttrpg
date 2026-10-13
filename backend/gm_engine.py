@@ -479,6 +479,14 @@ def generate_scene_image(api_key: str, prompt: str, player_state: dict = None, a
             except Exception:
                 pass
 
+    if player_state and isinstance(player_state, dict):
+        chest_eq = str(player_state.get("equipped", {}).get("chest", "")).lower()
+        if "plate" not in chest_eq and "rig" not in chest_eq and chest_eq and chest_eq != "none":
+            chest_det = mechanics.get_item_details(player_state["equipped"]["chest"], inventory=player_state.get("inventory", []))
+            chest_vis = chest_det.get("visual_appearance", chest_eq)
+            import re
+            prompt = re.sub(r'\b(?:heavy\s+)?(?:black-iron\s+)?(?:runic\s+)?plate(?:\s+armor)?\b', chest_vis, prompt, flags=re.IGNORECASE)
+
     gear_manifest = mechanics.build_scene_visual_manifest(player_state=player_state, active_companions=active_companions)
     if gear_manifest:
         full_prompt = (
