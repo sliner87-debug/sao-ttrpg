@@ -657,6 +657,13 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     ren_stance_info = mechanics.COMPANION_TACTICAL_STANCES.get(ren_stance_key, mechanics.COMPANION_TACTICAL_STANCES.get("overwatch_hacking", {})) if hasattr(mechanics, "COMPANION_TACTICAL_STANCES") else {}
     comp_action = mechanics.get_companion_combat_action(player_state, "Ren") if hasattr(mechanics, "get_companion_combat_action") else {}
 
+    # Phase 7: Party, Cursor & Faction Data
+    if hasattr(mechanics, "ensure_party_system"):
+        mechanics.ensure_party_system(player_state)
+    active_party = mechanics.get_active_party(player_state) if hasattr(mechanics, "get_active_party") else []
+    cursor_info = mechanics.get_cursor_status(player_state) if hasattr(mechanics, "get_cursor_status") else {"label": "🟢 Lawful (Green Cursor)", "current_infamy": 0, "merchant_surcharge": 0.0, "safe_zone_clearance": True}
+    faction_standings = mechanics.get_all_faction_standings(player_state) if hasattr(mechanics, "get_all_faction_standings") else []
+
     # Locate active entities and secrets for the Encounter Director
     entities_in_room = []
     secrets_in_room = []
@@ -711,8 +718,9 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     Grafts & Cyber-Strain: {cur_strain}/{max_strain} Strain ({rejection.get('label', 'Stable')}) | Installed: {json.dumps(player_state.get('graft_system', {}).get('installed_grafts', {}))}
     Active Slotted Abilities ({len(slotted_abs)}/{max_slots} slots): {json.dumps(slotted_abs)}
     Active Traps Deployed: {json.dumps(player_state.get('active_traps', []))}
-    Companion Party: Ren Sasaki (Level: {comp_ren.get('level', 3)} | HP: {comp_ren.get('hp', 35)}/{comp_ren.get('max_hp', 35)} | Morale: {comp_ren.get('morale', 'Steady')})
-    Active Companion Stance: {ren_stance_info.get('label', 'Overwatch Hacking')} — {ren_stance_info.get('tactical_effect', '')}
+    Active Raiding Party (Banki + up to 3): {json.dumps([{ 'name': c['name'], 'class': c['class'], 'stance': c.get('stance', 'default'), 'hp': f"{c.get('hp', 30)}/{c.get('max_hp', 30)}", 'affinity': f"{c.get('affinity', 0)}/100 [{c.get('affinity_tier', 'Acquaintance')}]" } for c in active_party])}
+    Cursor Criminality (SAO System): {cursor_info['label']} (Infamy: {cursor_info['current_infamy']} | Surcharge: +{int(cursor_info['merchant_surcharge']*100)}% | Safe-Zone Clearance: {cursor_info['safe_zone_clearance']})
+    Regional Factions & Standings: {json.dumps([{ 'faction': f['name'], 'score': f['score'], 'standing': f['badge'], 'active_perks': f['perks_active'] } for f in faction_standings])}
     Labyrinth Dungeon Room: {d_room.get('name', 'N/A')} ({d_room.get('badge', '')}) | Cleared: {d_room.get('cleared', False)}
     Active Sector Boss: {boss_info_str}
     Location: {current_location}
@@ -772,12 +780,25 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
           * When the player lands heavy blunt strikes (Trench Hammers, heavy axes, heavy spells, Ren EMP discharge), chip the Break Gauge. When Break Gauge reaches 0, describe the boss collapsing into Staggered Stun (+50% bonus crit damage, DR bypassed for 1 turn)!
           * Output boss damage in 'boss_damage' (int) in `state_updates`, or report in `combat_logs` using '[BOSS COMBAT: ...]'.
     
+    18. PARTY RAIDS, CURSOR CRIMINALITY & FACTION POLITICS:
+        - Banki commands an active 4-Member Raiding Party (Banki + up to 3 active companions among: Ren Sasaki, Elora Thorne, Torvald Iron-Vein, Kibs Nine-Fingers).
+        - In combat_logs, narrate and resolve companion tactical stances using their signature tags ([REN OVERWATCH], [REN SUPPRESSION], [ELORA FLURRY], [TORVALD AEGIS], [KIBS SNEAK], etc.).
+        - Award companion affinity in 'affinity_updates' for tactical coordination or shared quests: [{{"companion": "Ren", "affinity_change": 5, "reason": "Synced tactical execution"}}]. Reaching Affinity 50 unlocks signature Dual-Tech combos!
+        - SAO CURSOR CRIMINALITY:
+          * Green (0 Infamy): Lawful citizen, standard prices, welcome in safe zones.
+          * Orange (1-9 Infamy): Criminal. Triggered by theft or assault on innocents. Merchants impose +25% Col surcharge.
+          * Red (10+ Infamy): Outlaw PK. Murderers. Safe-Zone barrier matrices will violently incinerate red players on entry! Cannot pay municipal atonement.
+          * Output infamy changes via 'infamy_change' (int delta, e.g. +5 for PK/theft, -1 for lawful bounty).
+        - REGIONAL FACTIONS:
+          * The Vanguard Coalition (frontline raid guild), The Iron Syndicate (merchant crafting cartel), The Blood Shroud (outlaw syndicate).
+          * Output faction standing changes via 'faction_rep_updates': [{{"faction": "vanguard_coalition", "rep_change": 10, "reason": "Assisted vanguard scouts"}}].
+    
     Format your response EXACTLY as a JSON object with FIVE keys:
     - "narrative": The markdown formatted story/dialogue. 
     - "combat_logs": A list of strings showing the exact dice math and damage for the turn. Leave empty if no combat or skill check occurred.
     - "global_news_add": A list of strings showing macro world events (e.g. continental faction movements). MUST BE POPULATED IF THE PLAYER SKIPS TIME OR SLEEPS.
     - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged warrior with a short beard and undercut hair, wearing heavy black-iron runic armor and a massive dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a lean, bookish young man with messy dark hair, wire-rimmed glasses, wearing a weathered leyline duster over scholar's garb, wielding an ornate brass-and-crystal MageTech caster firearm (magic-powered, not gunpowder) and carrying a glowing runic slate grimoire.
-    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates", "graft_installs", "ability_slots", "companion_updates", "boss_damage", "boss_is_heavy", "boss_telegraph_counter", "dungeon_move", "dungeon_trap_disarm", "dungeon_puzzle_solve". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
+    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates", "graft_installs", "ability_slots", "companion_updates", "boss_damage", "boss_is_heavy", "boss_telegraph_counter", "dungeon_move", "dungeon_trap_disarm", "dungeon_puzzle_solve", "infamy_change", "faction_rep_updates", "affinity_updates", "recruit_companion", "dual_tech_execute". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
       Additionally, use the following complex schemas for skills, inventory, factions, and quests:
       - "inventory_add": List of dicts, e.g. [{{"name": "Rusted Iron Sword", "rarity": "Common", "durability": 45, "max_durability": 50, "qty": 1, "desc": "A chipped blade scavenged from the ruins."}}]
       - "inventory_remove": List of strings (item names to delete).
@@ -790,6 +811,11 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
       - "node_updates": Dict of node_name to color, e.g. {{"Washington_Borough": "red", "Oxford_Mines": "blue"}}
       - "quests_add": List of dicts, e.g. [{{"title": "Slay the Boar", "desc": "Kill 5 boars in the ruins", "reward": "500 Col, 200 XP"}}]
       - "quests_complete": List of strings matching the exact titles of completed quests.
+      - "infamy_change": Integer delta to the player's SAO cursor infamy (e.g. +5 for killing innocents, -1 for municipal atonement/lawful deeds).
+      - "faction_rep_updates": List of dicts, e.g. [{{"faction": "vanguard_coalition", "rep_change": 10, "reason": "Defended vanguard scouting party"}}]
+      - "affinity_updates": List of dicts, e.g. [{{"companion": "Ren", "affinity_change": 5, "reason": "Shared tactical victory"}}]
+      - "recruit_companion": String companion name to recruit into roster, e.g. "Elora" or "Torvald".
+      - "dual_tech_execute": String Dual-Tech combo ID or partner name, e.g. "Runic Axe Storm" or "Ren".
     
     MAP MECHANICS (CRITICAL): The world operates on a 100x100 grid mapped to a real satellite image. Washington NJ is at (50, 50). If the player "fast travels" or takes a caravan to a new Node, output the exact new destination coordinates in `coord_x` and `coord_y` (e.g., Oxford is 40,20). If the player explores the wilderness on foot locally, you MUST shift their coordinates slightly (e.g. from 50,50 to 50,49) to simulate micro-exploration and clear the Fog of War. ALWAYS output their current or new coordinates on every single turn.
     """
@@ -868,9 +894,11 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
                     xp_int = int(str(xp_gained).replace(",", "").replace(" ", ""))
                     if xp_int > 0 and hasattr(mechanics, "award_companion_xp"):
                         comp_xp = max(1, xp_int // 2)
-                        comp_res = mechanics.award_companion_xp(player_state, "Ren", comp_xp)
-                        if comp_res.get("log"):
-                            result.setdefault("combat_logs", []).append(comp_res["log"])
+                        active_comps = mechanics.get_active_party(player_state) if hasattr(mechanics, "get_active_party") else [{"name": "Ren"}]
+                        for ac in active_comps:
+                            comp_res = mechanics.award_companion_xp(player_state, ac["name"], comp_xp)
+                            if comp_res.get("log"):
+                                result.setdefault("combat_logs", []).append(comp_res["log"])
                 except (ValueError, TypeError):
                     pass
 
@@ -884,8 +912,11 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
                                 result.setdefault("combat_logs", []).append(c_xp_res["log"])
                         if "morale" in c_data and hasattr(mechanics, "update_companion_morale"):
                             mechanics.update_companion_morale(player_state, c_name, c_data["morale"])
-                        if "stance" in c_data and hasattr(mechanics, "set_companion_stance"):
-                            mechanics.set_companion_stance(player_state, c_name, c_data["stance"])
+                        if "stance" in c_data:
+                            if hasattr(mechanics, "set_party_member_stance"):
+                                mechanics.set_party_member_stance(player_state, c_name, c_data["stance"])
+                            elif hasattr(mechanics, "set_companion_stance"):
+                                mechanics.set_companion_stance(player_state, c_name, c_data["stance"])
 
             # Boss Damage processing
             boss_dmg = state_updates.get("boss_damage")
@@ -931,6 +962,64 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
                 p_res = mechanics.solve_dungeon_puzzle(player_state, sequence=seq)
                 if p_res.get("log"):
                     result.setdefault("combat_logs", []).append(p_res["log"])
+
+            # Phase 7: Infamy & Cursor Criminality
+            inf_change = state_updates.get("infamy_change")
+            if inf_change is not None:
+                try:
+                    ic_int = int(str(inf_change).replace(",", "").replace(" ", ""))
+                    if ic_int != 0 and hasattr(mechanics, "adjust_infamy"):
+                        inf_res = mechanics.adjust_infamy(player_state, ic_int, reason="Encounter consequence")
+                        if inf_res.get("log"):
+                            result.setdefault("combat_logs", []).append(inf_res["log"])
+                except (ValueError, TypeError):
+                    pass
+
+            # Phase 7: Faction Reputation Updates
+            fac_updates = state_updates.get("faction_rep_updates")
+            if fac_updates and isinstance(fac_updates, list):
+                for fu in fac_updates:
+                    if isinstance(fu, dict) and "faction" in fu and "rep_change" in fu:
+                        try:
+                            f_id = fu["faction"]
+                            f_delta = int(fu["rep_change"])
+                            f_reason = fu.get("reason", "")
+                            if hasattr(mechanics, "modify_faction_rep"):
+                                f_res = mechanics.modify_faction_rep(player_state, f_id, f_delta, reason=f_reason)
+                                if f_res.get("log"):
+                                    result.setdefault("combat_logs", []).append(f_res["log"])
+                        except (ValueError, TypeError):
+                            pass
+
+            # Phase 7: Companion Affinity Updates
+            aff_updates = state_updates.get("affinity_updates")
+            if aff_updates and isinstance(aff_updates, list):
+                for au in aff_updates:
+                    if isinstance(au, dict) and "companion" in au and "affinity_change" in au:
+                        try:
+                            c_name = au["companion"]
+                            a_delta = int(au["affinity_change"])
+                            a_reason = au.get("reason", "")
+                            if hasattr(mechanics, "increase_companion_affinity"):
+                                aff_res = mechanics.increase_companion_affinity(player_state, c_name, a_delta, reason=a_reason)
+                                if aff_res.get("log"):
+                                    result.setdefault("combat_logs", []).append(aff_res["log"])
+                        except (ValueError, TypeError):
+                            pass
+
+            # Phase 7: Companion Recruitment
+            rec_comp = state_updates.get("recruit_companion")
+            if rec_comp and hasattr(mechanics, "recruit_companion"):
+                rec_res = mechanics.recruit_companion(player_state, str(rec_comp))
+                if rec_res.get("log"):
+                    result.setdefault("combat_logs", []).append(rec_res["log"])
+
+            # Phase 7: Dual-Tech Execution
+            dt_exec = state_updates.get("dual_tech_execute")
+            if dt_exec and hasattr(mechanics, "execute_dual_tech"):
+                dt_res = mechanics.execute_dual_tech(player_state, str(dt_exec))
+                if dt_res.get("log"):
+                    result.setdefault("combat_logs", []).append(dt_res["log"])
 
         return result
     except Exception as e:

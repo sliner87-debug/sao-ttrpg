@@ -2997,7 +2997,12 @@ def get_companion_stances():
 def get_companion(player_state, companion_name="Ren"):
     """Safely retrieves a companion profile."""
     companions = ensure_companion_profile(player_state)
-    return companions.get(companion_name, companions.get("Ren", get_default_ren_companion()))
+    comp = companions.get(companion_name)
+    if not comp:
+        for k, v in companions.items():
+            if isinstance(v, dict) and (k.lower() == str(companion_name).lower() or str(companion_name).lower() in v.get("name", "").lower()):
+                return v
+    return comp or companions.get("Ren", get_default_ren_companion())
 
 def set_companion_stance(player_state, companion_name="Ren", stance_key=None):
     """
@@ -3013,6 +3018,11 @@ def set_companion_stance(player_state, companion_name="Ren", stance_key=None):
 
     companions = ensure_companion_profile(player_state)
     comp = companions.get(companion_name)
+    if not comp:
+        for k, v in companions.items():
+            if isinstance(v, dict) and (k.lower() == str(companion_name).lower() or str(companion_name).lower() in v.get("name", "").lower()):
+                comp = v
+                break
     if not comp:
         # Check if companion_name was actually the stance
         if companion_name in COMPANION_TACTICAL_STANCES:
@@ -3070,6 +3080,11 @@ def award_companion_xp(player_state, companion_name="Ren", xp_amount=0):
 
     companions = ensure_companion_profile(player_state)
     comp = companions.get(companion_name)
+    if not comp:
+        for k, v in companions.items():
+            if isinstance(v, dict) and (k.lower() == str(companion_name).lower() or str(companion_name).lower() in v.get("name", "").lower()):
+                comp = v
+                break
     if not comp:
         return {"success": False, "message": f"Companion '{companion_name}' not found."}
 
@@ -4283,5 +4298,900 @@ def claim_boss_victory(player_state):
     }
 
 
+# =====================================================================
+# PHASE 7: LIVING NPC ECOSYSTEM, PARTY RECRUITMENT & GUILD ALLIANCES
+# =====================================================================
+
+RECRUITABLE_COMPANIONS = {
+    "Ren": {
+        "id": "ren_sasaki",
+        "name": "Ren Sasaki",
+        "class": "Aether-Scholar & MageTech Artificer",
+        "title": "Aether-Scholar & MageTech Artificer",
+        "role": "Support, Aura Scanning, Lightning Stuns & Field Artificing",
+        "level": 3,
+        "hp": 35,
+        "max_hp": 35,
+        "xp": 450,
+        "next_level_xp": 900,
+        "stance": "overwatch_hacking",
+        "morale": "Steady",
+        "affinity": 35,
+        "affinity_tier": "Ally",
+        "recruited": True,
+        "active": True,
+        "bio": "A studious young survivor who fused his pre-Integration engineering background with esoteric aetheric rune-matrices. Wields a custom-etched brass-and-crystal MageTech caster firearm.",
+        "loadout": {
+            "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
+            "tool": "Runic Scribe Slate (Aether-Grid Focus)",
+            "deck": "Runic Scribe Slate (Aether-Grid Focus)",
+            "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
+            "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
+        },
+        "equipped": {
+            "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
+            "tool": "Runic Scribe Slate (Aether-Grid Focus)",
+            "deck": "Runic Scribe Slate (Aether-Grid Focus)",
+            "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
+            "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
+        },
+        "skills": {
+            "Mesh Exploitation": {"mastery": 190, "tier": "Journeyman", "description": "Perceiving spatial seams and leylines.", "milestones_unlocked": ["Logic Buffer Exploit"]},
+            "Stun-Pistol Marksmanship": {"mastery": 95, "tier": "Apprentice", "description": "Discharging lightning runes from MageTech firearm.", "milestones_unlocked": []},
+            "Diagnostic Triage": {"mastery": 110, "tier": "Journeyman", "description": "Channelling restorative aether-salves.", "milestones_unlocked": ["Patch Script v1.0"]}
+        },
+        "abilities": [
+            "Aura Weakpoint Scan (-2 Enemy AC)",
+            "MageTech Stun-Arc Salvo (DC 13 CON save vs Stun)",
+            "Aetheric Phase-Veil (Untargetable 1 turn)",
+            "Aether-Scrap Extraction (+25% salvage yield)"
+        ],
+        "stances": {
+            "overwatch_hacking": {
+                "name": "Leyline Overwatch",
+                "label": "👁️ Leyline Overwatch",
+                "tag": "[REN OVERWATCH]",
+                "tactical_effect": "-2 Enemy AC debuff to primary target via weakpoint telemetry.",
+                "desc": "Scans leylines and structural telemetry, debuffing target AC."
+            },
+            "suppression_fire": {
+                "name": "MageTech Arc Suppression",
+                "label": "⚡ MageTech Arc Suppression",
+                "tag": "[REN SUPPRESSION]",
+                "tactical_effect": "Discharges lightning-mana salvos; forces DC 13 CON save vs Staggered.",
+                "desc": "Suppresses targets with crackling lightning bolts."
+            },
+            "full_evasion": {
+                "name": "Aetheric Phase-Veil",
+                "label": "🌫️ Aetheric Phase-Veil",
+                "tag": "[REN EVASION]",
+                "tactical_effect": "Weaves spatial distortion cloak; completely immune to single-target attacks.",
+                "desc": "Blinks out of direct reality."
+            },
+            "utility_rigging": {
+                "name": "Arcane Artificing & Mending",
+                "label": "✨ Arcane Artificing & Mending",
+                "tag": "[REN UTILITY]",
+                "tactical_effect": "Restores +15 durability to worn equipment or scavenges bonus crystallite.",
+                "desc": "Channels mending runes into ally equipment."
+            }
+        },
+        "dual_tech_id": "runic_axe_storm"
+    },
+    "Elora": {
+        "id": "elora_thorne",
+        "name": "Elora Thorne",
+        "class": "Aether-Slinger / Spellblade",
+        "title": "Aether-Slinger / Spellblade",
+        "role": "Ranged Burst DPS, Elemental Mana Infusion & Phase Mobility",
+        "level": 3,
+        "hp": 32,
+        "max_hp": 32,
+        "xp": 400,
+        "next_level_xp": 900,
+        "stance": "spellblade_flurry",
+        "morale": "Steady",
+        "affinity": 20,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "bio": "A nimble spellblade who channels raw mana into rapid-firing crystal-tipped rapiers. Dr. Thorne's estranged niece, currently seeking a frontline raiding party in Sector 1.",
+        "loadout": {
+            "main_hand": "Starlight Aether-Rapier (Enchanted Steel, 1d8+3 Piercing)",
+            "off_hand": "Resonating Caster Gauntlet (Focus)",
+            "armor": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)",
+            "chest": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)"
+        },
+        "equipped": {
+            "main_hand": "Starlight Aether-Rapier (Enchanted Steel, 1d8+3 Piercing)",
+            "off_hand": "Resonating Caster Gauntlet (Focus)",
+            "armor": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)",
+            "chest": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)"
+        },
+        "skills": {
+            "Spellblade Fencing": {"mastery": 175, "tier": "Journeyman", "description": "Fluid martial strikes infused with raw mana.", "milestones_unlocked": ["Lunge & Pierce"]},
+            "Aether Siphoning": {"mastery": 130, "tier": "Journeyman", "description": "Harvesting stray leyline charges to empower abilities.", "milestones_unlocked": ["Mana Flow"]},
+            "Acrobatic Skirmishing": {"mastery": 140, "tier": "Journeyman", "description": "Dancing between melee and ranged kill zones.", "milestones_unlocked": ["Quickstep"]}
+        },
+        "abilities": [
+            "Spellblade Flurry (3-Hit Piercing Combo)",
+            "Aetheric Weapon Infusion (+1d8 Elemental DMG to Ally)",
+            "Dimensional Blinkstep (Disengage without provoking opportunity attacks)"
+        ],
+        "stances": {
+            "spellblade_flurry": {
+                "name": "Spellblade Flurry",
+                "label": "🗡️ Spellblade Flurry",
+                "tag": "[ELORA FLURRY]",
+                "tactical_effect": "Unleashes rapid piercing strikes dealing 2d8+4 Arcane DMG and +2 Attack bonus to party.",
+                "desc": "High offensive DPS mode."
+            },
+            "aether_overcharge": {
+                "name": "Aether Overcharge",
+                "label": "🔮 Aether Overcharge",
+                "tag": "[ELORA OVERCHARGE]",
+                "tactical_effect": "Channels radiant mana into Banki's weapons; Banki deals +1d10 bonus Radiant/Lightning DMG.",
+                "desc": "Weapon buffing stance."
+            },
+            "blink_skirmish": {
+                "name": "Blink Skirmish",
+                "label": "🌀 Blink Skirmish",
+                "tag": "[ELORA BLINK]",
+                "tactical_effect": "Teleports erratically across the perimeter; evades incoming attacks and roots a target (DC 14 DEX save).",
+                "desc": "Evasive control stance."
+            }
+        },
+        "dual_tech_id": "spellblade_vortex"
+    },
+    "Torvald": {
+        "id": "torvald_ironvein",
+        "name": "Torvald Iron-Vein",
+        "class": "Deepforged Vanguard",
+        "title": "Deepforged Vanguard",
+        "role": "Heavy Tower Shield Tank, Frontline Threat Generation & Seismic Stuns",
+        "level": 4,
+        "hp": 55,
+        "max_hp": 55,
+        "xp": 750,
+        "next_level_xp": 1200,
+        "stance": "aegis_bulwark",
+        "morale": "Steady",
+        "affinity": 25,
+        "affinity_tier": "Ally",
+        "recruited": False,
+        "active": False,
+        "bio": "A veteran dwarven mercenary and barkeep of the Iron Spoke. Possesses runic cyber-plated armor and a tower shield wide as a castle gate, capable of anchoring frontline assaults.",
+        "loadout": {
+            "main_hand": "Deepforged War-Axe (Heavy Runic Iron, 1d10+4 Slashing)",
+            "off_hand": "Adamant Bulwark Tower Shield (+4 AC, DR 2)",
+            "armor": "Runic Plate Carapace (Heavy Armor, DR 3)",
+            "chest": "Runic Plate Carapace (Heavy Armor, DR 3)"
+        },
+        "equipped": {
+            "main_hand": "Deepforged War-Axe (Heavy Runic Iron, 1d10+4 Slashing)",
+            "off_hand": "Adamant Bulwark Tower Shield (+4 AC, DR 2)",
+            "armor": "Runic Plate Carapace (Heavy Armor, DR 3)",
+            "chest": "Runic Plate Carapace (Heavy Armor, DR 3)"
+        },
+        "skills": {
+            "Tower Shield Phalanx": {"mastery": 240, "tier": "Journeyman", "description": "Mastery of defensive interlocking shield stances.", "milestones_unlocked": ["Shield Wall", "Brace Impact"]},
+            "Deepforged Smithing": {"mastery": 210, "tier": "Journeyman", "description": "Knowledge of runic alloys, temper lines, and repairs.", "milestones_unlocked": ["Field Tempering"]},
+            "Battlefield Provocation": {"mastery": 180, "tier": "Journeyman", "description": "Commanding hostile attention through force of presence.", "milestones_unlocked": ["Roar of Challenge"]}
+        },
+        "abilities": [
+            "Interception Ward (+4 AC to adjacent ally)",
+            "Challenge of the Anvil (Forced Taunt)",
+            "Seismic Tremor (Frontal Knockdown)"
+        ],
+        "stances": {
+            "aegis_bulwark": {
+                "name": "Aegis Bulwark",
+                "label": "🛡️ Aegis Bulwark",
+                "tag": "[TORVALD AEGIS]",
+                "tactical_effect": "Locks tower shield on frontline; grants Banki +4 AC and absorbs 50% of incoming physical damage.",
+                "desc": "Frontline damage interception."
+            },
+            "iron_taunt": {
+                "name": "Iron Challenge",
+                "label": "🗣️ Iron Challenge",
+                "tag": "[TORVALD TAUNT]",
+                "tactical_effect": "Bangs war-axe against adamant shield; forces all active foes to attack Torvald instead of allies.",
+                "desc": "Aggro and threat control."
+            },
+            "seismic_slam": {
+                "name": "Seismic Slam",
+                "label": "💥 Seismic Slam",
+                "tag": "[TORVALD SLAM]",
+                "tactical_effect": "Slams shield into the earth for 2d10+5 Force DMG; chips target Break Gauge by -30.",
+                "desc": "Heavy bludgeoning stun."
+            }
+        },
+        "dual_tech_id": "titans_anvil_shockwave"
+    },
+    "Kibs": {
+        "id": "kibs_ninefingers",
+        "name": "Kibs Nine-Fingers",
+        "class": "Scrapper Rogue / Infiltrator",
+        "title": "Scrapper Rogue / Infiltrator",
+        "role": "Shadow-Meld, Critical Backstabs, Poison Coatings & Trap Disarming",
+        "level": 3,
+        "hp": 30,
+        "max_hp": 30,
+        "xp": 350,
+        "next_level_xp": 900,
+        "stance": "shadow_meld",
+        "morale": "Steady",
+        "affinity": 15,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "bio": "A crafty scavenger broker operating out of the Meiji Dump. Lost a finger to an automated perimeter laser, but gained uncanny instincts for stealth, poison synthesis, and lock manipulation.",
+        "loadout": {
+            "main_hand": "Serrated Scrap Dagger (1d6+3 Piercing + Bleed)",
+            "off_hand": "Spring-Loaded Wrist Shank (1d4+3 Piercing)",
+            "armor": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)",
+            "chest": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)"
+        },
+        "equipped": {
+            "main_hand": "Serrated Scrap Dagger (1d6+3 Piercing + Bleed)",
+            "off_hand": "Spring-Loaded Wrist Shank (1d4+3 Piercing)",
+            "armor": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)",
+            "chest": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)"
+        },
+        "skills": {
+            "Scrapper Infiltration": {"mastery": 185, "tier": "Journeyman", "description": "Unseen movement and exploitation of sightlines.", "milestones_unlocked": ["Silent Step"]},
+            "Neurotoxin Synthesis": {"mastery": 140, "tier": "Journeyman", "description": "Distilling monster venom into weapon coatings.", "milestones_unlocked": ["Paralytic Blend"]},
+            "Lockpick & Bypass": {"mastery": 205, "tier": "Journeyman", "description": "Circumventing tumblers and runic electronic latches.", "milestones_unlocked": ["Skeleton Keying"]}
+        },
+        "abilities": [
+            "Shadow Strike (+3d6 Critical Bleed)",
+            "Corrosive Neurotoxin Coating (-2 Enemy Saves)",
+            "Scavenger's Eye (+30% bonus Col find)"
+        ],
+        "stances": {
+            "shadow_meld": {
+                "name": "Shadow Meld",
+                "label": "👤 Shadow Meld",
+                "tag": "[KIBS SNEAK]",
+                "tactical_effect": "Melds into shadows; unleashes guaranteed sneak attack for 3d6+6 Piercing DMG + Bleed.",
+                "desc": "High critical stealth DPS."
+            },
+            "venom_coating": {
+                "name": "Venom Coating",
+                "label": "🧪 Venom Coating",
+                "tag": "[KIBS VENOM]",
+                "tactical_effect": "Coats party weapons in neurotoxin; attacks deal +1d6 Acid damage and inflict -2 to enemy saving throws.",
+                "desc": "Poison debuff support."
+            },
+            "lockpick_salvage": {
+                "name": "Lockpick & Salvage",
+                "label": "🗝️ Lockpick & Salvage",
+                "tag": "[KIBS SALVAGE]",
+                "tactical_effect": "Grants +4 bonus on all trap disarm and chest checks; increases party Col yield by +20%.",
+                "desc": "Exploration and looting utility."
+            }
+        },
+        "dual_tech_id": "shadow_flank_execution"
+    }
+}
+
+DUAL_TECH_COMBOS = {
+    "runic_axe_storm": {
+        "id": "runic_axe_storm",
+        "name": "Runic Axe Storm",
+        "partners": ["Banki", "Ren"],
+        "req_affinity": 50,
+        "desc": "Banki executes a furious whirlwind cleave while Ren fires lightning runes directly into the axe head, unleashing a 360° chain-lightning cyclone.",
+        "damage": "4d10+8 Slashing + 2d8 Lightning AOE",
+        "effect": "Hits all surrounding enemies, deals 4d10+8 Slashing + 2d8 Lightning DMG and inflicts Stagger on secondary targets.",
+        "log_tag": "[DUAL-TECH: BANKI + REN -> RUNIC AXE STORM]"
+    },
+    "titans_anvil_shockwave": {
+        "id": "titans_anvil_shockwave",
+        "name": "Titan's Anvil Shockwave",
+        "partners": ["Banki", "Torvald"],
+        "req_affinity": 50,
+        "desc": "Torvald plants his adamant tower shield while Banki strikes the shield's runic center with his Trench Hammer, detonating a sonic kinetic shockwave.",
+        "damage": "3d12+10 Force DMG",
+        "effect": "Inflicts 3d12+10 Force DMG and shatters 60 Break Gauge points (guaranteed boss STAGGER).",
+        "log_tag": "[DUAL-TECH: BANKI + TORVALD -> TITAN'S ANVIL SHOCKWAVE]"
+    },
+    "spellblade_vortex": {
+        "id": "spellblade_vortex",
+        "name": "Spellblade Vortex",
+        "partners": ["Banki", "Elora"],
+        "req_affinity": 50,
+        "desc": "Banki hurls his bearded axe into Elora's dimensional spatial rift; the blade ricochets between 3 targets enveloped in cold aether-flames.",
+        "damage": "3d8 Slashing + 3d8 Frost-Burn to 3 targets",
+        "effect": "Cleaves through 3 enemies bypassing 50% Armor Class.",
+        "log_tag": "[DUAL-TECH: BANKI + ELORA -> SPELLBLADE VORTEX]"
+    },
+    "shadow_flank_execution": {
+        "id": "shadow_flank_execution",
+        "name": "Shadow-Flank Execution",
+        "partners": ["Banki", "Kibs"],
+        "req_affinity": 50,
+        "desc": "Kibs throws an aetheric flash-smoke bomb blinding the primary foe while Banki steps through the blind spot for a guaranteed decapitation strike.",
+        "damage": "5d10+12 Critical Slashing DMG",
+        "effect": "Guaranteed critical hit dealing 5d10+12 Slashing DMG and severe Bleed (10 DMG/turn).",
+        "log_tag": "[DUAL-TECH: BANKI + KIBS -> SHADOW-FLANK EXECUTION]"
+    }
+}
 
 
+# =====================================================================
+# 4-MEMBER PARTY ENGINE & COMPANION MANAGEMENT
+# =====================================================================
+
+def ensure_party_system(player_state):
+    """
+    Initializes the multi-companion party system in player_state:
+    - Maintains 'companions' dictionary with full profiles
+    - Enforces active party cap of 4 (Banki + up to 3 active companions)
+    """
+    import copy
+    comps = player_state.setdefault("companions", {})
+    if not isinstance(comps, dict):
+        comps = {}
+        player_state["companions"] = comps
+
+    # Ensure all recruitable companion archetypes exist in record
+    for c_name, c_def in RECRUITABLE_COMPANIONS.items():
+        if c_name not in comps:
+            comps[c_name] = copy.deepcopy(c_def)
+        else:
+            # Backfill missing keys on existing companions
+            for k, v in c_def.items():
+                if k not in comps[c_name]:
+                    comps[c_name][k] = copy.deepcopy(v)
+
+    # Ren is recruited and active by default
+    comps["Ren"]["recruited"] = True
+    if "active" not in comps["Ren"]:
+        comps["Ren"]["active"] = True
+
+    return comps
+
+
+def get_active_party(player_state):
+    """
+    Returns the list of currently active companion dictionaries (max 3, plus Banki).
+    """
+    comps = ensure_party_system(player_state)
+    active_list = []
+    for c_name, c_data in comps.items():
+        if c_data.get("recruited", False) and c_data.get("active", False):
+            active_list.append(c_data)
+    return active_list
+
+
+def recruit_companion(player_state, companion_name):
+    """
+    Recruits a companion from the living world into Banki's roster.
+    If the active party has fewer than 3 companions, automatically slots them into active duty.
+    """
+    comps = ensure_party_system(player_state)
+    target = None
+    for k in comps:
+        if k.lower() == companion_name.lower():
+            target = k
+            break
+
+    if not target:
+        return {"success": False, "message": f"Companion '{companion_name}' not found."}
+
+    comp = comps[target]
+    if comp.get("recruited", False):
+        return {"success": False, "message": f"{comp['name']} is already recruited into your vanguard."}
+
+    comp["recruited"] = True
+
+    # Count active companions
+    active_count = len(get_active_party(player_state))
+    if active_count < 3:
+        comp["active"] = True
+        status_str = "added to Active Raiding Party"
+    else:
+        comp["active"] = False
+        status_str = "added to Reserve Benched Roster"
+
+    log = f"[PARTY RECRUIT: {comp['name']} ({comp['class']}) has joined the expedition! ({status_str})]"
+    return {
+        "success": True,
+        "companion": comp["name"],
+        "class": comp["class"],
+        "active": comp["active"],
+        "log": log,
+        "message": f"Recruited {comp['name']} ({comp['class']})!"
+    }
+
+
+def set_active_party_roster(player_state, active_companion_names):
+    """
+    Sets the active companion roster (maximum 3 companions alongside Banki).
+    Any unlisted companions are moved to Reserve / Benched.
+    """
+    comps = ensure_party_system(player_state)
+    clean_names = [n.strip().title() for n in active_companion_names]
+
+    if len(clean_names) > 3:
+        return {"success": False, "message": "Active party cannot exceed 3 companions (4 total with Banki)."}
+
+    # Verify all chosen companions are recruited
+    for name in clean_names:
+        if name in comps and not comps[name].get("recruited", False):
+            return {"success": False, "message": f"Cannot activate {name}; they have not been recruited yet."}
+
+    for c_name, c_data in comps.items():
+        if c_name in clean_names and c_data.get("recruited", False):
+            c_data["active"] = True
+        else:
+            c_data["active"] = False
+
+    active_now = [c["name"] for c in get_active_party(player_state)]
+    log = f"[PARTY ROSTER UPDATED: Active Vanguard: Banki (Leader) + {', '.join(active_now)}]"
+    return {
+        "success": True,
+        "active_party": active_now,
+        "log": log,
+        "message": f"Active party configured: Banki + {', '.join(active_now)}"
+    }
+
+
+def set_party_member_stance(player_state, companion_name, stance_key):
+    """
+    Switches any companion's active tactical stance.
+    """
+    comps = ensure_party_system(player_state)
+    target = None
+    for k in comps:
+        if k.lower() == companion_name.lower():
+            target = k
+            break
+
+    if not target:
+        return {"success": False, "message": f"Companion '{companion_name}' not found."}
+
+    comp = comps[target]
+    stances = comp.get("stances", {})
+    if stance_key not in stances:
+        # Check normalized / alias
+        for sk in stances:
+            if stance_key.lower().replace(" ", "_") in sk:
+                stance_key = sk
+                break
+        else:
+            return {"success": False, "message": f"Invalid stance '{stance_key}' for {comp['name']}."}
+
+    comp["stance"] = stance_key
+    st_info = stances[stance_key]
+    log = f"[TACTICAL STANCE: {comp['name']} shifted to {st_info.get('label', stance_key)} ({st_info.get('tactical_effect', '')})]"
+    return {
+        "success": True,
+        "companion": comp["name"],
+        "stance": stance_key,
+        "stance_info": st_info,
+        "log": log,
+        "message": f"Set {comp['name']}'s stance to {st_info.get('label', stance_key)}."
+    }
+
+
+def resolve_party_combat_actions(player_state):
+    """
+    Evaluates combat contributions from ALL active companions in a single cohesive turn.
+    Returns list of action objects and concatenated combat logs.
+    """
+    active_comps = get_active_party(player_state)
+    actions = []
+    logs = []
+
+    for comp in active_comps:
+        c_name = comp["name"]
+        stance_key = comp.get("stance", "default")
+        stances = comp.get("stances", {})
+        st_info = stances.get(stance_key, {})
+
+        tag = st_info.get("tag", f"[{c_name.upper()}]")
+        tactical_desc = st_info.get("tactical_effect", "Provides combat support.")
+
+        log_entry = f"{tag} {tactical_desc}"
+        logs.append(log_entry)
+
+        actions.append({
+            "companion": c_name,
+            "stance": stance_key,
+            "tag": tag,
+            "log": log_entry,
+            "effect": st_info
+        })
+
+    return {
+        "actions": actions,
+        "logs": logs,
+        "combined_log": " | ".join(logs)
+    }
+
+
+def increase_companion_affinity(player_state, companion_name, amount, reason=""):
+    """
+    Increases companion affinity meter (0–100) through shared taphouse meals, dialogue, or quests.
+    Updates affinity tier:
+    - 0-24: Acquaintance
+    - 25-49: Ally
+    - 50-74: Trusted Battle-Brother / Sister
+    - 75-100: Soul-Bonded Raiding Partner
+    Crossing 50 unlocks the companion's signature Dual-Tech combo!
+    """
+    comps = ensure_party_system(player_state)
+    target = None
+    for k in comps:
+        if k.lower() == companion_name.lower():
+            target = k
+            break
+
+    if not target:
+        return {"success": False, "message": f"Companion '{companion_name}' not found."}
+
+    comp = comps[target]
+    old_aff = comp.get("affinity", 0)
+    new_aff = max(0, min(100, old_aff + int(amount)))
+    comp["affinity"] = new_aff
+
+    # Determine tier
+    if new_aff >= 75:
+        tier = "Soul-Bonded Partner"
+    elif new_aff >= 50:
+        tier = "Trusted Battle-Brother/Sister"
+    elif new_aff >= 25:
+        tier = "Ally"
+    else:
+        tier = "Acquaintance"
+
+    old_tier = comp.get("affinity_tier", "Acquaintance")
+    comp["affinity_tier"] = tier
+
+    unlocked_combo = None
+    if old_aff < 50 and new_aff >= 50:
+        # Combo unlock!
+        combo_id = comp.get("dual_tech_id")
+        if combo_id and combo_id in DUAL_TECH_COMBOS:
+            unlocked_combo = DUAL_TECH_COMBOS[combo_id]
+            feats = player_state.setdefault("feats", [])
+            f_entry = f"Dual-Tech Combo: {unlocked_combo['name']} (Banki + {comp['name']})"
+            if f_entry not in feats:
+                feats.append(f_entry)
+
+    log_reason = f" ({reason})" if reason else ""
+    log = f"[COMPANION AFFINITY: {comp['name']} affinity +{amount} -> {new_aff}/100 [{tier}]{log_reason}]"
+    if unlocked_combo:
+        log += f"\n✨ [DUAL-TECH UNLOCKED: Reached Affinity 50! Unlocked signature combo: '{unlocked_combo['name']}']"
+
+    return {
+        "success": True,
+        "companion": comp["name"],
+        "old_affinity": old_aff,
+        "new_affinity": new_aff,
+        "tier": tier,
+        "unlocked_combo": unlocked_combo,
+        "log": log,
+        "message": f"{comp['name']}'s affinity increased to {new_aff}/100 [{tier}]!"
+    }
+
+
+def execute_dual_tech(player_state, combo_id_or_partner):
+    """
+    Executes an unlocked Dual-Tech combo attack with an active party member.
+    Requires affinity >= 50 and partner in active party.
+    """
+    comps = ensure_party_system(player_state)
+    active_names = [c["name"] for c in get_active_party(player_state)]
+
+    combo = None
+    for c_id, c_data in DUAL_TECH_COMBOS.items():
+        if c_id == combo_id_or_partner or any(combo_id_or_partner.lower() in p.lower() for p in c_data["partners"]):
+            combo = c_data
+            break
+
+    if not combo:
+        return {"success": False, "message": f"Dual-Tech combo '{combo_id_or_partner}' not found."}
+
+    # Find companion partner
+    partner_name = [p for p in combo["partners"] if p != "Banki"][0]
+    partner_comp = comps.get(partner_name)
+
+    if not partner_comp:
+        return {"success": False, "message": f"Partner '{partner_name}' is not in party."}
+
+    if not partner_comp.get("active", False):
+        return {"success": False, "message": f"{partner_comp.get('name', partner_name)} must be in your active raiding party to execute this combo."}
+
+    if partner_comp.get("affinity", 0) < combo["req_affinity"]:
+        return {"success": False, "message": f"Requires Affinity {combo['req_affinity']} with {partner_name} (Current: {partner_comp.get('affinity', 0)}/100)."}
+
+    log = f"{combo['log_tag']} {combo['desc']} -> Dealt {combo['damage']}! {combo['effect']}"
+    return {
+        "success": True,
+        "combo": combo["name"],
+        "damage": combo["damage"],
+        "effect": combo["effect"],
+        "log": log,
+        "message": f"Executed Dual-Tech: {combo['name']} with {partner_name}!"
+    }
+
+
+# =====================================================================
+# THE SAO CURSOR CRIMINALITY SYSTEM (GREEN / ORANGE / RED)
+# =====================================================================
+
+CURSOR_TIERS = {
+    "green": {
+        "status": "green",
+        "label": "🟢 Lawful (Green Cursor)",
+        "badge": "🟢 Green",
+        "description": "Innocent citizen and lawful adventurer. Full protection under Safe-Zone barrier matrices. Respected by merchants and regional guards.",
+        "infamy_range": (0, 0),
+        "merchant_surcharge": 0.0,
+        "safe_zone_clearance": True
+    },
+    "orange": {
+        "status": "orange",
+        "label": "🟠 Criminal (Orange Cursor)",
+        "badge": "🟠 Orange",
+        "description": "Flagged for unprovoked assault, theft, or trap tampering. Safe-zone merchants impose a +25% Col surcharge. Townsfolk are guarded.",
+        "infamy_range": (1, 9),
+        "merchant_surcharge": 0.25,
+        "safe_zone_clearance": True
+    },
+    "red": {
+        "status": "red",
+        "label": "🔴 Outlaw PK (Red Cursor)",
+        "badge": "🔴 Red",
+        "description": "Murderer and outlaw player-killer! Safe-Zone barrier matrices will incinerate Red players on sight. High-tier NPC Wardens actively hunt them.",
+        "infamy_range": (10, 999),
+        "merchant_surcharge": 1.00,
+        "safe_zone_clearance": False
+    }
+}
+
+
+def get_cursor_status(player_state):
+    """
+    Returns the player's active cursor criminality object (Green / Orange / Red).
+    """
+    infamy = max(0, int(player_state.get("infamy", 0)))
+    if infamy >= 10:
+        tier_data = CURSOR_TIERS["red"]
+    elif infamy >= 1:
+        tier_data = CURSOR_TIERS["orange"]
+    else:
+        tier_data = CURSOR_TIERS["green"]
+
+    return {
+        **tier_data,
+        "current_infamy": infamy
+    }
+
+
+def adjust_infamy(player_state, delta, reason=""):
+    """
+    Modifies the player's infamy score and triggers cursor status transitions.
+    """
+    old_status = get_cursor_status(player_state)
+    current_infamy = max(0, int(player_state.get("infamy", 0)))
+    new_infamy = max(0, current_infamy + int(delta))
+    player_state["infamy"] = new_infamy
+
+    new_status = get_cursor_status(player_state)
+    transition = old_status["status"] != new_status["status"]
+
+    log_reason = f" ({reason})" if reason else ""
+    log = f"[CURSOR INFAMY: Infamy delta {delta:+d} -> Now {new_infamy} [{new_status['badge']}]{log_reason}]"
+    if transition:
+        log += f"\n🚨 [CURSOR STATE TRANSITION: Player has become {new_status['label']}! {new_status['description']}]"
+
+    return {
+        "success": True,
+        "old_infamy": current_infamy,
+        "new_infamy": new_infamy,
+        "old_cursor": old_status["status"],
+        "new_cursor": new_status["status"],
+        "transition": transition,
+        "status_info": new_status,
+        "log": log,
+        "message": f"Cursor updated: {new_status['label']}"
+    }
+
+
+def pay_criminal_atonement(player_state):
+    """
+    Allows an Orange cursor player to atone for criminal acts at the Washington Council.
+    Cost: 500 Col per point of Infamy.
+    Resets Infamy to 0, returning cursor to Green.
+    Red players cannot simply buy atonement; they must face justice or regional directives.
+    """
+    status = get_cursor_status(player_state)
+    if status["status"] == "green":
+        return {"success": False, "message": "Your cursor is already Green. You have no criminal infamy to atone for."}
+
+    if status["status"] == "red":
+        return {"success": False, "message": "Murderer (Red Cursor) status cannot be paid off with mere Col! The Safe-Zone wards reject you."}
+
+    infamy = status["current_infamy"]
+    cost = infamy * 500
+    current_col = player_state.get("col", 0)
+
+    if current_col < cost:
+        return {"success": False, "message": f"Insufficient Col for criminal atonement. Required: {cost:,} Col (Have: {current_col:,} Col)."}
+
+    player_state["col"] -= cost
+    player_state["infamy"] = 0
+    new_status = get_cursor_status(player_state)
+
+    log = f"[ATONEMENT PAID: Paid {cost:,} Col in municipal reparations! Infamy reset to 0 -> Cursor restored to {new_status['label']}!]"
+    return {
+        "success": True,
+        "cost_paid": cost,
+        "remaining_col": player_state["col"],
+        "new_cursor": new_status["status"],
+        "log": log,
+        "message": f"Atonement accepted. Your cursor is now Green."
+    }
+
+
+def check_safe_zone_ward_clearance(player_state):
+    """
+    Checks if player is allowed past Safe-Zone barrier matrices.
+    Red cursor players are denied and blasted by anti-PK barrier fire.
+    """
+    status = get_cursor_status(player_state)
+    if not status["safe_zone_clearance"]:
+        log = "🚨 [BARRIER WARD DETONATION: Safe-Zone defense matrix detects RED CURSOR! Lethal anti-PK beam incinerates boundary breach!]"
+        return {
+            "allowed": False,
+            "status": "red",
+            "log": log,
+            "damage": 100,
+            "message": "Access Denied: Red players cannot enter safe zones!"
+        }
+    return {
+        "allowed": True,
+        "status": status["status"],
+        "surcharge": status["merchant_surcharge"],
+        "message": "Safe-zone clearance granted."
+    }
+
+
+# =====================================================================
+# FACTION POLITICS & GUILD ALIGNMENT ENGINE
+# =====================================================================
+
+REGIONAL_FACTIONS = {
+    "vanguard_coalition": {
+        "id": "vanguard_coalition",
+        "name": "The Vanguard Coalition",
+        "leader": "Commander Kaelen Vance",
+        "headquarters": "Washington Fortress Bastion",
+        "icon": "⚔️",
+        "description": "Dedicated frontline raid coalition committed to breaking the regional labyrinth bosses and ascending the regional spires.",
+        "perks": {
+            25: "+10% bonus damage against Dungeon and Sector Bosses; Coalition Quartermaster access.",
+            50: "+15% Maximum HP and military requisition grade armor."
+        }
+    },
+    "iron_syndicate": {
+        "id": "iron_syndicate",
+        "name": "The Iron Syndicate",
+        "leader": "Guildmaster Silas Bron",
+        "headquarters": "Oxford Forge & Smelting Vaults",
+        "icon": "⚒️",
+        "description": "Mercantile crafting cartel that monopolizes regional raw materials, forge leylines, and trade routes across Warren County.",
+        "perks": {
+            25: "15% wholesale discount on all store purchases and repair services.",
+            50: "Masterwork forging blueprints and priority auction trade access."
+        }
+    },
+    "blood_shroud": {
+        "id": "blood_shroud",
+        "name": "The Blood Shroud",
+        "leader": "The Pale Whisper",
+        "headquarters": "Scotts Mountain Glitch-Vaults",
+        "icon": "🩸",
+        "description": "Secretive outlaw guild operating in dark sectors (Laughing Coffin analog); orchestrates ambushes and black market trade.",
+        "perks": {
+            25: "Immunity to wilderness outlaw ambushes; access to illicit poison blueprints.",
+            50: "Black-market teleporters and outlaw contract bounties."
+        }
+    }
+}
+
+
+def ensure_faction_system(player_state):
+    """
+    Initializes faction reputation standings in player_state if not present.
+    """
+    reps = player_state.setdefault("faction_reputation", {})
+    if not isinstance(reps, dict):
+        reps = {}
+        player_state["faction_reputation"] = reps
+
+    for f_id in REGIONAL_FACTIONS:
+        if f_id not in reps:
+            reps[f_id] = 0
+
+    return reps
+
+
+def get_faction_standing(player_state, faction_id):
+    """
+    Returns faction reputation score and standing label:
+    - Hostile: < 0
+    - Neutral: 0 - 24
+    - Friendly: 25 - 49
+    - Honored / Revered: 50+
+    """
+    reps = ensure_faction_system(player_state)
+    score = reps.get(faction_id, 0)
+
+    if score >= 50:
+        label = "Honored / Revered"
+        badge = "👑 Honored"
+    elif score >= 25:
+        label = "Friendly"
+        badge = "🤝 Friendly"
+    elif score >= 0:
+        label = "Neutral"
+        badge = "⚖️ Neutral"
+    else:
+        label = "Hostile"
+        badge = "⚔️ Hostile"
+
+    fac_def = REGIONAL_FACTIONS.get(faction_id, {})
+    return {
+        "faction_id": faction_id,
+        "name": fac_def.get("name", faction_id),
+        "score": score,
+        "label": label,
+        "badge": badge,
+        "perks_active": [desc for thresh, desc in fac_def.get("perks", {}).items() if score >= thresh]
+    }
+
+
+def modify_faction_rep(player_state, faction_id, amount, reason=""):
+    """
+    Modifies reputation standing with a specific guild faction.
+    """
+    reps = ensure_faction_system(player_state)
+    if faction_id not in REGIONAL_FACTIONS:
+        # Check normalized
+        for k in REGIONAL_FACTIONS:
+            if faction_id.lower().replace(" ", "_") in k:
+                faction_id = k
+                break
+        else:
+            return {"success": False, "message": f"Faction '{faction_id}' not found."}
+
+    old_score = reps.get(faction_id, 0)
+    new_score = max(-100, min(100, old_score + int(amount)))
+    reps[faction_id] = new_score
+
+    fac_standing = get_faction_standing(player_state, faction_id)
+    log_reason = f" ({reason})" if reason else ""
+    log = f"[FACTION REP: {fac_standing['name']} reputation {amount:+d} -> Now {new_score} [{fac_standing['badge']}]{log_reason}]"
+
+    return {
+        "success": True,
+        "faction": fac_standing["name"],
+        "old_score": old_score,
+        "new_score": new_score,
+        "standing": fac_standing["label"],
+        "log": log,
+        "message": f"Reputation with {fac_standing['name']} is now {new_score} [{fac_standing['label']}]."
+    }
+
+
+def get_all_faction_standings(player_state):
+    """
+    Returns summary list of all faction standings for the HUD.
+    """
+    ensure_faction_system(player_state)
+    return [get_faction_standing(player_state, f_id) for f_id in REGIONAL_FACTIONS]

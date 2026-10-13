@@ -1195,93 +1195,228 @@ with st.sidebar:
                 else:
                     st.write(f"- {item}")
 
-        # 🤝 Party & Companion HUD Expander
-        comp_profile = mechanics.get_companion(player, "Ren") if hasattr(mechanics, "get_companion") else player.get("companions", {}).get("Ren", {})
-        c_name = comp_profile.get("name", "Ren Sasaki")
-        c_lvl = comp_profile.get("level", 3)
-        c_class = comp_profile.get("class", comp_profile.get("title", "Cyber-Infiltrator & Support Hacker"))
-        c_hp = comp_profile.get("hp", 35)
-        c_max_hp = comp_profile.get("max_hp", 35)
-        c_xp = comp_profile.get("xp", 450)
-        c_next_xp = comp_profile.get("next_level_xp", c_lvl * 300)
-        c_morale = comp_profile.get("morale", "Steady")
-        c_stance = comp_profile.get("stance", "overwatch_hacking")
+        # 🛡️ Raiding Party Hub (4-Member Party Matrix)
+        comps = mechanics.ensure_party_system(player) if hasattr(mechanics, "ensure_party_system") else {}
+        active_comps = mechanics.get_active_party(player) if hasattr(mechanics, "get_active_party") else []
+        
+        with st.expander(f"🛡️ Raiding Party Hub ({len(active_comps) + 1}/4 Vanguard)", expanded=False):
+            st.markdown(f"**Party Leader:** 👑 **Banki** `[Lv. {player.get('level', 1)} {player.get('class', 'Warrior')}]`")
+            st.caption(f"Active Party: Banki + {len(active_comps)}/3 Companions | XP Sharing: Active (50% Combat Share)")
 
-        with st.expander(f"🤝 Party & Companion: {c_name} [Lv. {c_lvl}]", expanded=False):
-            st.markdown(f"#### 👤 {c_name} `[Lv. {c_lvl} {c_class}]`")
-            
-            # Morale badge with color
-            morale_badges = {
-                "Panicked": "🔴 **Panicked** (-20% accuracy, prone to flee)",
-                "Shaken": "🟡 **Shaken** (-10% accuracy)",
-                "Steady": "⚪ **Steady** (Normal operational baseline)",
-                "Confident": "🟢 **Confident** (+10% accuracy, +1 tactical DC)",
-                "Inspired": "🟣 **Inspired** (+20% accuracy, double tactical perks)"
-            }
-            st.markdown(f"**Morale:** {morale_badges.get(c_morale, f'⚪ **{c_morale}**')}")
+            tab_active_party, tab_benched_party, tab_recruit_pool = st.tabs([
+                f"⚔️ Active ({len(active_comps)}/3)",
+                f"🛋️ Reserve Roster",
+                f"🤝 Recruit Candidates"
+            ])
 
-            # Vitals Progress Bar
-            hp_pct = min(1.0, max(0.0, c_hp / c_max_hp)) if c_max_hp > 0 else 0.0
-            st.markdown(f"**Vitals:** `{c_hp} / {c_max_hp} HP`")
-            st.progress(hp_pct, text=f"Companion HP: {c_hp} / {c_max_hp}")
+            with tab_active_party:
+                if not active_comps:
+                    st.info("No active companions deployed alongside Banki. Check the Reserve or Recruit tabs!")
+                else:
+                    for comp in active_comps:
+                        c_name = comp["name"]
+                        c_lvl = comp.get("level", 1)
+                        c_class = comp.get("class", "Specialist")
+                        c_hp = comp.get("hp", 35)
+                        c_max_hp = comp.get("max_hp", 35)
+                        c_xp = comp.get("xp", 0)
+                        c_next_xp = comp.get("next_level_xp", 300)
+                        c_morale = comp.get("morale", "Steady")
+                        c_stance = comp.get("stance", "default")
+                        c_aff = comp.get("affinity", 0)
+                        c_tier = comp.get("affinity_tier", "Acquaintance")
 
-            # XP Progress Bar
-            xp_pct = min(1.0, max(0.0, c_xp / c_next_xp)) if c_next_xp > 0 else 0.0
-            st.markdown(f"**Progression:** `{c_xp} / {c_next_xp} XP` *(Shares 50% of Combat XP)*")
-            st.progress(xp_pct, text=f"Companion XP: {c_xp} / {c_next_xp} to Level {c_lvl + 1}")
+                        st.markdown(f"#### 👤 {c_name} `[Lv. {c_lvl} {c_class}]`")
+                        
+                        # Morale badge
+                        morale_badges = {
+                            "Panicked": "🔴 **Panicked** (-20% accuracy, prone to flee)",
+                            "Shaken": "🟡 **Shaken** (-10% accuracy)",
+                            "Steady": "⚪ **Steady** (Normal operational baseline)",
+                            "Confident": "🟢 **Confident** (+10% accuracy, +1 tactical DC)",
+                            "Inspired": "🟣 **Inspired** (+20% accuracy, double tactical perks)"
+                        }
+                        st.markdown(f"**Morale:** {morale_badges.get(c_morale, f'⚪ **{c_morale}**')}")
 
-            st.divider()
-            st.markdown("##### 🎯 Tactical Stance Directive")
-            
-            stance_labels = {
-                "overwatch_hacking": "👁️ Leyline Overwatch (-2 Target AC)",
-                "suppression_fire": "⚡ MageTech Arc Suppression (DC 13 Stagger)",
-                "full_evasion": "🌫️ Aetheric Phase-Veil (Untargetable Cover)",
-                "utility_rigging": "✨ Arcane Artificing & Mending (+15 Durability / Scrap)"
-            }
-            
-            stance_keys = list(mechanics.COMPANION_TACTICAL_STANCES.keys()) if hasattr(mechanics, "COMPANION_TACTICAL_STANCES") else ["overwatch_hacking", "suppression_fire", "full_evasion", "utility_rigging"]
-            current_stance_idx = stance_keys.index(c_stance) if c_stance in stance_keys else 0
+                        # Vitals Progress Bar
+                        hp_pct = min(1.0, max(0.0, c_hp / c_max_hp)) if c_max_hp > 0 else 0.0
+                        st.markdown(f"**Vitals:** `{c_hp} / {c_max_hp} HP`")
+                        st.progress(hp_pct, text=f"{c_name} HP: {c_hp} / {c_max_hp}")
 
-            new_stance = st.selectbox(
-                "Active Tactical Stance:",
-                options=stance_keys,
-                index=current_stance_idx,
-                format_func=lambda k: stance_labels.get(k, k),
-                key="sb_companion_stance_select"
-            )
+                        # XP Progress Bar
+                        xp_pct = min(1.0, max(0.0, c_xp / c_next_xp)) if c_next_xp > 0 else 0.0
+                        st.markdown(f"**Progression:** `{c_xp} / {c_next_xp} XP` *(Shares 50% XP)*")
+                        st.progress(xp_pct, text=f"XP to Level {c_lvl + 1}")
 
-            if new_stance != c_stance:
-                if hasattr(mechanics, "set_companion_stance"):
-                    mechanics.set_companion_stance(player, "Ren", new_stance)
-                    save_game(player, st.session_state.messages)
-                    st.toast(f"Ren's tactical stance switched to: {stance_labels.get(new_stance, new_stance)}", icon="🎯")
-                    st.rerun()
+                        # Affinity Meter
+                        aff_pct = min(1.0, max(0.0, c_aff / 100.0))
+                        st.markdown(f"**Affinity Meter:** `{c_aff} / 100` `[{c_tier}]`")
+                        st.progress(aff_pct, text=f"Affinity: {c_aff}/100 [{c_tier}]")
+                        
+                        # Shared Meal / Gift to boost affinity
+                        col_aff1, col_aff2 = st.columns([2, 1])
+                        with col_aff1:
+                            if c_aff >= 50:
+                                st.success(f"✨ **Dual-Tech Unlocked:** {comp.get('dual_tech_name', 'Signature Combo')}!")
+                            else:
+                                st.caption(f"Reach Affinity 50 to unlock signature Dual-Tech combo with Banki.")
+                        with col_aff2:
+                            if st.button(f"Share Rations (50 Col)", key=f"btn_share_meal_{c_name}"):
+                                if player.get("col", 0) >= 50:
+                                    player["col"] -= 50
+                                    aff_res = mechanics.increase_companion_affinity(player, c_name, 10, reason="Shared taphouse rations")
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(aff_res["message"], icon="🍲")
+                                    st.rerun()
+                                else:
+                                    st.error("Insufficient Col (50 Col required).")
 
-            stance_details = mechanics.COMPANION_TACTICAL_STANCES.get(c_stance, {}) if hasattr(mechanics, "COMPANION_TACTICAL_STANCES") else {}
-            if stance_details:
-                st.caption(f"↳ **Tactical Effect:** {stance_details.get('tactical_effect', '')}")
-                st.caption(f"↳ **Protocol:** {stance_details.get('short_desc', '')}")
+                        # Dual Tech Attack Trigger
+                        if c_aff >= 50:
+                            combo_id = comp.get("dual_tech_id")
+                            if st.button(f"⚡ Execute Dual-Tech Combo: {comp.get('dual_tech_name', 'Combo')}", key=f"btn_exec_dt_{c_name}", use_container_width=True):
+                                if hasattr(mechanics, "execute_dual_tech"):
+                                    dt_res = mechanics.execute_dual_tech(player, combo_id)
+                                    if dt_res["success"]:
+                                        save_game(player, st.session_state.messages)
+                                        st.toast(dt_res["message"], icon="⚡")
+                                        st.success(dt_res["log"])
+                                        st.rerun()
+                                    else:
+                                        st.error(dt_res["message"])
 
-            st.divider()
-            st.markdown("##### 🎒 Loadout & Equipment")
-            equipped = comp_profile.get("equipped", comp_profile.get("loadout", {}))
-            st.write(f"- **Main Hand:** {equipped.get('main_hand', 'None')}")
-            st.write(f"- **Rig / Armor:** {equipped.get('armor', equipped.get('chest', 'None'))}")
-            st.write(f"- **Deck / Tool:** {equipped.get('deck', equipped.get('tool', 'None'))}")
+                        # Tactical Stance Selector
+                        stances = comp.get("stances", {})
+                        if stances:
+                            st.markdown("##### 🎯 Tactical Stance Directive")
+                            stance_keys = list(stances.keys())
+                            curr_idx = stance_keys.index(c_stance) if c_stance in stance_keys else 0
+                            new_st = st.selectbox(
+                                f"Active Stance for {c_name}:",
+                                options=stance_keys,
+                                index=curr_idx,
+                                format_func=lambda k: stances.get(k, {}).get("label", k),
+                                key=f"sb_stance_{c_name}"
+                            )
+                            if new_st != c_stance:
+                                if hasattr(mechanics, "set_party_member_stance"):
+                                    mechanics.set_party_member_stance(player, c_name, new_st)
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(f"{c_name}'s stance set to {stances[new_st].get('label', new_st)}!", icon="🎯")
+                                    st.rerun()
+                            st.caption(f"↳ **Tactical Effect:** {stances.get(c_stance, {}).get('tactical_effect', '')}")
 
-            abilities = comp_profile.get("abilities", [])
-            if abilities:
-                st.markdown("##### 💡 Tactical Perks & Protocols")
-                for ab in abilities:
-                    st.markdown(f"- 🔹 {ab}")
+                        # Loadout summary
+                        loadout = comp.get("loadout", {})
+                        st.caption(f"🎒 **Equipped:** {loadout.get('main_hand', 'None')} | {loadout.get('armor', 'None')}")
 
-            skills = comp_profile.get("skills", {})
-            if skills:
-                st.markdown("##### 📈 Companion Masteries")
-                for sk_name, sk_data in skills.items():
-                    if isinstance(sk_data, dict):
-                        st.caption(f"• **{sk_name}:** {sk_data.get('mastery', 1)}/1000 `[{sk_data.get('tier', 'Novice')}]`")
+                        # Bench button
+                        if st.button(f"Bench {c_name} (Send to Reserve)", key=f"btn_bench_{c_name}"):
+                            comp["active"] = False
+                            save_game(player, st.session_state.messages)
+                            st.toast(f"{c_name} moved to Reserve Roster.", icon="🛋️")
+                            st.rerun()
+
+                        st.divider()
+
+            with tab_benched_party:
+                benched_comps = [c for c in comps.values() if c.get("recruited", False) and not c.get("active", False)]
+                if not benched_comps:
+                    st.caption("No companions currently in the Reserve Benched Roster.")
+                else:
+                    for b_comp in benched_comps:
+                        st.markdown(f"**👤 {b_comp['name']}** `[Lv. {b_comp.get('level', 1)} {b_comp.get('class', '')}]`")
+                        st.caption(f"HP: {b_comp.get('hp', 30)}/{b_comp.get('max_hp', 30)} | Affinity: {b_comp.get('affinity', 0)}/100 `[{b_comp.get('affinity_tier', 'Acquaintance')}]`")
+                        if len(active_comps) < 3:
+                            if st.button(f"Activate {b_comp['name']} to Vanguard", key=f"btn_activate_{b_comp['name']}"):
+                                b_comp["active"] = True
+                                save_game(player, st.session_state.messages)
+                                st.toast(f"{b_comp['name']} is now in the active raiding party!", icon="⚔️")
+                                st.rerun()
+                        else:
+                            st.caption("⚠️ *Active party is full (3 companions maximum alongside Banki). Bench an active companion first.*")
+                        st.divider()
+
+            with tab_recruit_pool:
+                unrecruited = [c for c in comps.values() if not c.get("recruited", False)]
+                if not unrecruited:
+                    st.success("All known Sector 1 companions have been recruited into your vanguard!")
+                else:
+                    st.caption("Recruit skilled companions encountered across Washington Borough and Warren County.")
+                    for u_comp in unrecruited:
+                        st.markdown(f"##### 👤 {u_comp['name']} — `{u_comp.get('title', u_comp.get('class', 'Warrior'))}`")
+                        st.caption(f"**Class:** {u_comp.get('class', '')} | **Lineage:** {u_comp.get('race', 'Human')} | **Starting Level:** {u_comp.get('level', 1)}")
+                        st.write(u_comp.get("background", ""))
+                        st.caption(f"**Starting Stances:** {', '.join([s.get('label', k) for k, s in u_comp.get('stances', {}).items()])}")
+                        st.caption(f"**Signature Dual-Tech:** {u_comp.get('dual_tech_name', 'None')}")
+                        if st.button(f"Recruit {u_comp['name']} into Vanguard", key=f"btn_recruit_{u_comp['name']}"):
+                            rec_res = mechanics.recruit_companion(player, u_comp["name"])
+                            if rec_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.balloons()
+                                st.toast(rec_res["message"], icon="🤝")
+                                st.success(rec_res["log"])
+                                st.rerun()
+                            else:
+                                st.error(rec_res["message"])
+                        st.divider()
+
+        # 🟢 Cursor Criminality & SAO Status Expander
+        cursor_data = mechanics.get_cursor_status(player) if hasattr(mechanics, "get_cursor_status") else {"status": "green", "label": "🟢 Lawful (Green)", "badge": "🟢 Green", "current_infamy": 0, "merchant_surcharge": 0.0, "safe_zone_clearance": True, "description": "Lawful citizen."}
+        with st.expander(f"⚖️ SAO Status: {cursor_data['badge']}", expanded=False):
+            st.markdown(f"#### {cursor_data['label']}")
+            st.write(cursor_data.get("description", ""))
+
+            col_cur1, col_cur2 = st.columns(2)
+            col_cur1.metric("Infamy Rating", f"{cursor_data['current_infamy']} pts")
+            col_cur2.metric("Merchant Surcharge", f"+{int(cursor_data['merchant_surcharge']*100)}%")
+
+            if cursor_data["safe_zone_clearance"]:
+                st.success("✅ **Safe-Zone Clearance Granted:** Barrier wards recognize lawful or minor misdemeanor status.")
+            else:
+                st.error("🚨 **SAFE-ZONE WARD LOCKDOWN:** Lethal anti-PK ward turrets will vaporize avatar on boundary breach!")
+
+            # Criminal Atonement for Orange Status
+            if cursor_data["status"] == "orange":
+                inf = cursor_data["current_infamy"]
+                atone_cost = inf * 500
+                st.warning(f"⚠️ **Municipal Misdemeanor:** Pay reparations at Washington Council ({atone_cost:,} Col) to restore Green Cursor.")
+                if st.button(f"Pay Municipal Atonement ({atone_cost:,} Col)", key="btn_pay_atone_sb", use_container_width=True):
+                    if hasattr(mechanics, "pay_criminal_atonement"):
+                        at_res = mechanics.pay_criminal_atonement(player)
+                        if at_res["success"]:
+                            save_game(player, st.session_state.messages)
+                            st.toast(at_res["message"], icon="🟢")
+                            st.success(at_res["log"])
+                            st.rerun()
+                        else:
+                            st.error(at_res["message"])
+
+        # 🚩 Regional Factions & Guild Politics Expander
+        factions_list = mechanics.get_all_faction_standings(player) if hasattr(mechanics, "get_all_faction_standings") else []
+        with st.expander("🚩 Regional Factions & Guild Alliances", expanded=False):
+            st.caption("Reputation standings across regional coalitions, crafting cartels, and underground syndicates.")
+            for fac in factions_list:
+                f_def = mechanics.REGIONAL_FACTIONS.get(fac["faction_id"], {})
+                st.markdown(f"##### {f_def.get('icon', '🚩')} {fac['name']}")
+                st.caption(f"**Leader:** {f_def.get('leader', 'Unknown')} | **HQ:** {f_def.get('headquarters', 'Unknown')}")
+                st.write(f_def.get("description", ""))
+
+                # Reputation score & progress bar
+                score = fac["score"]
+                st.markdown(f"**Standing:** {fac['badge']} `({score:+d} Rep)`")
+                norm_progress = min(1.0, max(0.0, (score + 100) / 200.0))
+                st.progress(norm_progress, text=f"Reputation: {score}/100 [{fac['label']}]")
+
+                # Active Perks
+                active_perks = fac.get("perks_active", [])
+                if active_perks:
+                    st.markdown("✨ **Active Faction Perks:**")
+                    for perk_desc in active_perks:
+                        st.markdown(f"- 🔸 {perk_desc}")
+                else:
+                    st.caption("🔒 *No perks unlocked yet (Unlocks at Friendly 25+ / Honored 50+).*")
+                st.divider()
                 
         with st.expander("🪤 Field Prep & Tactical Trap-Rigging", expanded=False):
             st.write("Deploy specialized combat snares, tripwires, and scent corridors using scavenged materials and your **Field Trapping** mastery.")
@@ -1550,11 +1685,12 @@ with st.sidebar:
             with st.expander("🏛️ Safe-Zone Settlement: Washington Borough", expanded=True):
                 st.caption("📍 *You are currently within the fortified perimeter of Washington Borough Safe-Zone. Weapon locks active; civilian and mercantile trade permitted.*")
                 
-                tab_taphouse, tab_medbay, tab_dump, tab_bounties = st.tabs([
+                tab_taphouse, tab_medbay, tab_dump, tab_bounties, tab_council = st.tabs([
                     "🍺 Iron Spoke", 
                     "🏥 Arcane Med-Bay", 
                     "🛒 Scavenger Dump", 
-                    "📜 Bounty Board"
+                    "📜 Bounty Board",
+                    "⚖️ Municipal Council"
                 ])
                 
                 with tab_taphouse:
@@ -1642,6 +1778,37 @@ with st.sidebar:
                                 else:
                                     st.error(res_b["message"])
                         st.divider()
+
+                with tab_council:
+                    st.markdown("#### ⚖️ Washington Settlement Council & Wardens")
+                    st.caption("Municipal authority governing safe-zone law enforcement, barrier matrices, and guild registrations.")
+                    
+                    c_status = mechanics.get_cursor_status(player) if hasattr(mechanics, "get_cursor_status") else {"status": "green", "label": "🟢 Green", "current_infamy": 0, "merchant_surcharge": 0.0}
+                    st.markdown(f"**Your Cursor Status:** {c_status['label']}")
+                    st.caption(f"Recorded Infamy: **{c_status['current_infamy']} points** | Active Safe-Zone Surcharge: **+{int(c_status['merchant_surcharge']*100)}%**")
+                    
+                    if c_status["status"] == "green":
+                        st.success("🛡️ **Clean Standing:** You have no municipal penalties or infamy records.")
+                    elif c_status["status"] == "orange":
+                        cost = c_status["current_infamy"] * 500
+                        st.warning(f"⚠️ **Municipal Misdemeanor Fine:** You owe {cost:,} Col in public restitution to clear your criminal status.")
+                        if st.button(f"Pay Restitution ({cost:,} Col)", key="btn_pay_atone_council", use_container_width=True):
+                            at_res = mechanics.pay_criminal_atonement(player)
+                            if at_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.balloons()
+                                st.toast(at_res["message"], icon="🟢")
+                                st.success(at_res["log"])
+                                st.rerun()
+                            else:
+                                st.error(at_res["message"])
+                    else:
+                        st.error("🚨 **OUTLAW PK RECORD:** You are branded a murderer! Safe-zone defense turrets will engage on approach.")
+
+                    st.divider()
+                    st.markdown("##### ⚔️ The Vanguard Coalition Liaison")
+                    v_standing = mechanics.get_faction_standing(player, "vanguard_coalition") if hasattr(mechanics, "get_faction_standing") else {"badge": "⚖️ Neutral", "score": 0}
+                    st.write(f"Frontline liaison **Commander Vance's Aide** monitors regional labyrinth expeditions. Current Standing: **{v_standing['badge']} ({v_standing['score']} Rep)**")
 
         with st.expander("📜 Active Quests & Bounties", expanded=True):
             if not player.get("quests"):
@@ -2494,6 +2661,68 @@ if prompt := (dev_prompt or chat_prompt):
                                     elif isinstance(change, int):
                                         item["durability"] = min(item.get("max_durability", 100), change)
                                     break
+
+                # Phase 7: Infamy & Cursor Criminality
+                inf_delta = state_updates.get("infamy_change")
+                if inf_delta is not None and hasattr(mechanics, "adjust_infamy"):
+                    try:
+                        i_int = int(str(inf_delta).replace(",", "").replace(" ", ""))
+                        if i_int != 0:
+                            inf_res = mechanics.adjust_infamy(st.session_state.player, i_int, reason="Encounter resolution")
+                            if inf_res.get("transition"):
+                                st.error(f"🚨 CURSOR STATE TRANSITION: Player has become {inf_res['status_info']['label']}!")
+                            elif i_int > 0:
+                                st.warning(f"⚠️ Cursor Infamy +{i_int} -> Now {inf_res['new_infamy']} [{inf_res['status_info']['badge']}]")
+                    except (ValueError, TypeError):
+                        pass
+
+                # Phase 7: Faction Reputation Updates
+                fac_reps = state_updates.get("faction_rep_updates")
+                if fac_reps and isinstance(fac_reps, list) and hasattr(mechanics, "modify_faction_rep"):
+                    for fu in fac_reps:
+                        if isinstance(fu, dict) and "faction" in fu and "rep_change" in fu:
+                            try:
+                                f_id = fu["faction"]
+                                f_delta = int(fu["rep_change"])
+                                f_res = mechanics.modify_faction_rep(st.session_state.player, f_id, f_delta, reason=fu.get("reason", ""))
+                                if f_delta > 0:
+                                    st.toast(f"📈 {f_res['faction']} Reputation +{f_delta} ({f_res['standing']})", icon="🚩")
+                                elif f_delta < 0:
+                                    st.toast(f"📉 {f_res['faction']} Reputation {f_delta} ({f_res['standing']})", icon="⚔️")
+                            except (ValueError, TypeError):
+                                pass
+
+                # Phase 7: Companion Affinity Updates
+                aff_updates = state_updates.get("affinity_updates")
+                if aff_updates and isinstance(aff_updates, list) and hasattr(mechanics, "increase_companion_affinity"):
+                    for au in aff_updates:
+                        if isinstance(au, dict) and "companion" in au and "affinity_change" in au:
+                            try:
+                                c_target = au["companion"]
+                                a_delta = int(au["affinity_change"])
+                                aff_res = mechanics.increase_companion_affinity(st.session_state.player, c_target, a_delta, reason=au.get("reason", ""))
+                                if aff_res.get("unlocked_combo"):
+                                    st.balloons()
+                                    st.success(f"✨ **DUAL-TECH COMBO UNLOCKED!** Reached Affinity 50 with {c_target}! Unlocked '{aff_res['unlocked_combo']['name']}'!")
+                                else:
+                                    st.toast(f"🤝 {c_target} Affinity +{a_delta} -> {aff_res['new_affinity']}/100 [{aff_res['tier']}]", icon="❤️")
+                            except (ValueError, TypeError):
+                                pass
+
+                # Phase 7: Companion Recruitment
+                rec_target = state_updates.get("recruit_companion")
+                if rec_target and hasattr(mechanics, "recruit_companion"):
+                    rec_res = mechanics.recruit_companion(st.session_state.player, str(rec_target))
+                    if rec_res.get("success"):
+                        st.balloons()
+                        st.success(f"🤝 **NEW COMPANION RECRUITED:** {rec_res['companion']} ({rec_res['class']}) has joined your vanguard!")
+
+                # Phase 7: Dual-Tech Execution
+                dt_target = state_updates.get("dual_tech_execute")
+                if dt_target and hasattr(mechanics, "execute_dual_tech"):
+                    dt_res = mechanics.execute_dual_tech(st.session_state.player, str(dt_target))
+                    if dt_res.get("success"):
+                        st.toast(f"⚡ DUAL-TECH: {dt_res['combo']} executed!", icon="⚡")
 
             # 1.5 Handle Combat Crunch Logs
             combat_logs = turn_data.get("combat_logs", [])
