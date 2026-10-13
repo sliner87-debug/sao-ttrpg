@@ -763,8 +763,10 @@ def render_character_calibration_wizard():
             st.session_state.cg_custom_relic_data = None
             relic_obj = cg.PERSONAL_RELICS[selected_relic_key]
             
-            st.success(f"✨ **{relic_obj['name']}** [{relic_obj['rarity']}]")
+            st.success(f"✨ **{relic_obj['name']}** [{relic_obj['rarity']} • {relic_obj.get('category', 'Relic')}]")
             st.caption(f"{relic_obj['desc']}")
+            if "mechanics" in relic_obj:
+                st.info(f"🎲 **Game Mechanics:** {relic_obj['mechanics']}")
         else:
             st.session_state.cg_relic_key = "custom"
             st.markdown("##### ✍️ Custom Personal Relic Write-In:")
