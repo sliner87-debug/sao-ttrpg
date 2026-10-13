@@ -44,62 +44,47 @@ def load_world():
 world_state = load_world()
 
 def get_available_profiles():
-    if not os.path.exists(SAVES_DIR):
-        os.makedirs(SAVES_DIR, exist_ok=True)
-    files = [f for f in os.listdir(SAVES_DIR) if f.endswith('.json')]
-    profiles = [os.path.splitext(f)[0] for f in files]
+    # Discover all character folders in saves/ and auto-migrate legacy files
+    manifests = cg.list_all_character_folders(BASE_DIR)
+    profiles = [m["name"] for m in manifests if m.get("name")]
     
-    # Ensure Banki profile is seeded if not present
+    # Ensure Banki profile folder is seeded if not present
     if "Banki" not in profiles:
         seed_data = None
         if os.path.exists(SAVE_PATH):
             try:
-                with open(SAVE_PATH, 'r') as f:
+                with open(SAVE_PATH, 'r', encoding="utf-8") as f:
                     seed_data = json.load(f)
             except Exception:
                 pass
         if not seed_data and os.path.exists(os.path.join(BASE_DIR, 'save1.json')):
             try:
-                with open(os.path.join(BASE_DIR, 'save1.json'), 'r') as f:
+                with open(os.path.join(BASE_DIR, 'save1.json'), 'r', encoding="utf-8") as f:
                     seed_data = json.load(f)
             except Exception:
                 pass
         if seed_data and isinstance(seed_data, dict) and "player" in seed_data:
             seed_data["player"]["name"] = "Banki"
-            banki_file = os.path.join(SAVES_DIR, 'Banki.json')
-            with open(banki_file, 'w') as f:
-                json.dump(seed_data, f, indent=4)
+            cg.save_character_to_folder(BASE_DIR, seed_data["player"], seed_data.get("messages", []))
             profiles.append("Banki")
     return sorted(list(set(profiles)))
 
 def load_game():
     active_prof = st.session_state.get("active_profile")
     if active_prof:
-        prof_path = os.path.join(SAVES_DIR, f"{active_prof}.json")
-        if os.path.exists(prof_path):
-            with open(prof_path, 'r') as f:
-                return json.load(f)
+        char_data = cg.load_character_from_folder(BASE_DIR, active_prof)
+        if char_data:
+            return char_data
     if os.path.exists(SAVE_PATH):
-        with open(SAVE_PATH, 'r') as f:
-            return json.load(f)
+        try:
+            with open(SAVE_PATH, 'r', encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
     return None
 
 def save_game(player_state, messages):
-    data = {
-        "player": player_state,
-        "messages": messages,
-        "last_saved": time.time()
-    }
-    with open(SAVE_PATH, 'w') as f:
-        json.dump(data, f, indent=4)
-    # Also persist to dedicated profile file slot
-    p_name = player_state.get("name")
-    if p_name and p_name != "TestSubject_01":
-        safe_slug = "".join(c for c in p_name if c.isalnum() or c in (' ', '_', '-')).strip()
-        if safe_slug:
-            slot_path = os.path.join(SAVES_DIR, f"{safe_slug}.json")
-            with open(slot_path, 'w') as f:
-                json.dump(data, f, indent=4)
+    return cg.save_character_to_folder(BASE_DIR, player_state, messages)
 
 # --- INITIALIZE SESSION STATE ---
 saved_data = load_game()
@@ -283,7 +268,12 @@ def render_sidebar_calibration_preview():
     
     prev_race = cg.RACIAL_LINEAGES.get(st.session_state.get("cg_race_key", "pure_human"), cg.RACIAL_LINEAGES["pure_human"])
     prev_class = cg.CLASS_PATHS.get(st.session_state.get("cg_class_key", "pathless"), cg.CLASS_PATHS["pathless"])
-    prev_relic = cg.PERSONAL_RELICS.get(st.session_state.get("cg_relic_key", "smartphone"), cg.PERSONAL_RELICS["smartphone"])
+    
+    relic_k = st.session_state.get("cg_relic_key", "smartphone")
+    if relic_k == "custom" and st.session_state.get("cg_custom_relic_data"):
+        prev_relic = st.session_state.cg_custom_relic_data
+    else:
+        prev_relic = cg.PERSONAL_RELICS.get(relic_k, cg.PERSONAL_RELICS["smartphone"])
     
     pt_alloc = st.session_state.get("cg_points", {"STR": 0, "DEX": 0, "CON": 0, "INT": 0, "WIS": 0, "CHA": 0})
     prev_stats = {
@@ -311,7 +301,7 @@ def render_sidebar_calibration_preview():
             "chest": "Threadbare Scavenger Tunic", 
             "main_hand": main_w, 
             "off_hand": off_w, 
-            "accessory": prev_relic["name"] if ("Watch" in prev_relic["name"] or "Tool" in prev_relic["name"]) else "None"
+            "accessory": prev_relic["name"] if any(k in prev_relic["name"] for k in ["Watch", "Tool", "Headphones", "Compass", "USB", "Rangefinder"]) else "None"
         },
         "inventory": [prev_relic, {"name": main_w, "qty": 1}, {"name": "Bottled Water", "qty": 2}, {"name": "Survival Rations", "qty": 2}]
     }
@@ -352,8 +342,20 @@ def render_sidebar_calibration_preview():
         
     with st.expander("✨ Starting Skills & Feats Preview", expanded=False):
         bg_key = st.session_state.get("cg_bg_key", "software_engineer")
-        if bg_key == "custom" and st.session_state.get("cg_custom_bg_text"):
-            bg_data = cg.parse_custom_background(st.session_state.get("cg_custom_bg_text"))
+        if bg_key == "custom":
+            if st.session_state.get("cg_custom_collaborated"):
+                c_data = st.session_state.cg_custom_collaborated
+                bg_data = {
+                    "skills": {
+                        c_data["skill_1"]["name"]: {"mastery": c_data["skill_1"]["mastery"], "tier": "Apprentice" if c_data["skill_1"]["mastery"] >= 50 else "Novice"},
+                        c_data["skill_2"]["name"]: {"mastery": c_data["skill_2"]["mastery"], "tier": "Apprentice" if c_data["skill_2"]["mastery"] >= 50 else "Novice"}
+                    },
+                    "innate_perk": c_data.get("innate_perk", "")
+                }
+            elif st.session_state.get("cg_custom_bg_text"):
+                bg_data = cg.parse_custom_background(st.session_state.get("cg_custom_bg_text"))
+            else:
+                bg_data = cg.PRESET_BACKGROUNDS["software_engineer"]
         else:
             bg_data = cg.PRESET_BACKGROUNDS.get(bg_key, cg.PRESET_BACKGROUNDS["software_engineer"])
             
@@ -379,6 +381,10 @@ def render_character_calibration_wizard():
         st.session_state.cg_bg_key = "software_engineer"
     if "cg_custom_bg_text" not in st.session_state:
         st.session_state.cg_custom_bg_text = ""
+    if "cg_custom_notes" not in st.session_state:
+        st.session_state.cg_custom_notes = ""
+    if "cg_custom_collaborated" not in st.session_state:
+        st.session_state.cg_custom_collaborated = None
     if "cg_race_key" not in st.session_state:
         st.session_state.cg_race_key = "pure_human"
     if "cg_class_key" not in st.session_state:
@@ -391,6 +397,8 @@ def render_character_calibration_wizard():
         st.session_state.cg_main_hand = "Rusted Iron Sword"
     if "cg_off_hand" not in st.session_state:
         st.session_state.cg_off_hand = "None"
+    if "cg_custom_relic_data" not in st.session_state:
+        st.session_state.cg_custom_relic_data = None
 
     # Header & Cancel Bar
     top_c1, top_c2 = st.columns([4, 1])
@@ -433,35 +441,52 @@ def render_character_calibration_wizard():
         else:
             st.error(f"⚠️ Calibration Pool Overdrawn: **{total_allocated} / 20** points ({abs(pts_left)} too many)! Please reduce allocated points.")
 
-        # Quick-Lifestyle Questionnaire Presets
-        with st.expander("⚡ Quick-Lifestyle Questionnaire Presets (Auto-Distribute 20 Points)", expanded=False):
-            st.caption("Click any Pre-Integration Earth archetype to instantly auto-distribute your 20 calibration points:")
-            q_cols1 = st.columns(4)
-            if q_cols1[0].button("🛋️ Desk Bound (+Mental)", use_container_width=True, key="preset_desk"):
-                st.session_state.cg_points = {"STR": 1, "DEX": 1, "CON": 2, "INT": 6, "WIS": 6, "CHA": 4}
-                st.rerun()
-            if q_cols1[1].button("🏃 Athletic (+Agility)", use_container_width=True, key="preset_athletic"):
-                st.session_state.cg_points = {"STR": 5, "DEX": 6, "CON": 4, "INT": 1, "WIS": 2, "CHA": 2}
-                st.rerun()
-            if q_cols1[2].button("🔨 Heavy Labor (+STR/CON)", use_container_width=True, key="preset_labor"):
-                st.session_state.cg_points = {"STR": 7, "DEX": 3, "CON": 6, "INT": 1, "WIS": 2, "CHA": 1}
-                st.rerun()
-            if q_cols1[3].button("🎖️ First Responder (+Combat)", use_container_width=True, key="preset_responder"):
-                st.session_state.cg_points = {"STR": 5, "DEX": 5, "CON": 4, "INT": 2, "WIS": 3, "CHA": 1}
+        # Quick-Lifestyle Questionnaire Presets (18 Archetypes)
+        with st.expander("⚡ 18 Quick-Lifestyle Questionnaire Presets (Auto-Distribute 20 Points)", expanded=False):
+            st.caption("Select any Pre-Integration Earth archetype to instantly auto-distribute your 20 calibration points:")
+            preset_keys = list(cg.PRESET_LIFESTYLES.keys())
+            sel_p_key = st.selectbox(
+                "Browse Lifestyle Archetype:",
+                options=preset_keys,
+                format_func=lambda k: cg.PRESET_LIFESTYLES[k]["title"],
+                key="sel_lifestyle_preset"
+            )
+            p_data = cg.PRESET_LIFESTYLES[sel_p_key]
+            st.info(f"**Archetype Summary:** {p_data['desc']}")
+            p_pts = p_data["points"]
+            st.caption(f"**Point Allocation:** STR +{p_pts['STR']} | DEX +{p_pts['DEX']} | CON +{p_pts['CON']} | INT +{p_pts['INT']} | WIS +{p_pts['WIS']} | CHA +{p_pts['CHA']}")
+            if st.button("⚡ Apply Selected Lifestyle Preset (20 Points)", use_container_width=True, key="btn_apply_preset_main"):
+                st.session_state.cg_points = dict(p_pts)
                 st.rerun()
 
+            st.markdown("---")
+            st.caption("Or One-Click Popular Archetypes:")
+            q_cols1 = st.columns(4)
+            if q_cols1[0].button("🛋️ Desk Bound", use_container_width=True, key="preset_desk"):
+                st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["desk_bound"]["points"])
+                st.rerun()
+            if q_cols1[1].button("🏃 Athletic", use_container_width=True, key="preset_athletic"):
+                st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["athletic"]["points"])
+                st.rerun()
+            if q_cols1[2].button("🔨 Heavy Labor", use_container_width=True, key="preset_labor"):
+                st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["heavy_labor"]["points"])
+                st.rerun()
+            if q_cols1[3].button("🎖️ First Responder", use_container_width=True, key="preset_responder"):
+                st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["first_responder"]["points"])
+                st.rerun()
+                
             q_cols2 = st.columns(4)
-            if q_cols2[0].button("🔬 Academic (+INT)", use_container_width=True, key="preset_academic"):
-                st.session_state.cg_points = {"STR": 2, "DEX": 2, "CON": 2, "INT": 7, "WIS": 5, "CHA": 2}
+            if q_cols2[0].button("📚 Academic Scholar", use_container_width=True, key="preset_scholar"):
+                st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["academic_scholar"]["points"])
                 st.rerun()
-            if q_cols2[1].button("🏙️ Street Smart (+WIS/CHA)", use_container_width=True, key="preset_street"):
-                st.session_state.cg_points = {"STR": 2, "DEX": 4, "CON": 1, "INT": 2, "WIS": 5, "CHA": 6}
+            if q_cols2[1].button("🧘 Yoga Contortionist", use_container_width=True, key="preset_yoga"):
+                st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["yoga_contortionist"]["points"])
                 st.rerun()
-            if q_cols2[2].button("🎭 Performer (+CHA)", use_container_width=True, key="preset_performer"):
-                st.session_state.cg_points = {"STR": 1, "DEX": 5, "CON": 2, "INT": 3, "WIS": 2, "CHA": 7}
+            if q_cols2[2].button("🎮 Esports Gamer", use_container_width=True, key="preset_esports"):
+                st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["esports_gamer"]["points"])
                 st.rerun()
-            if q_cols2[3].button("🌲 Survivalist (+WIS/CON)", use_container_width=True, key="preset_survivalist"):
-                st.session_state.cg_points = {"STR": 2, "DEX": 3, "CON": 4, "INT": 4, "WIS": 7, "CHA": 0}
+            if q_cols2[3].button("🌲 Homesteader", use_container_width=True, key="preset_homesteader"):
+                st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["offgrid_homesteader"]["points"])
                 st.rerun()
 
         st.divider()
@@ -512,7 +537,7 @@ def render_character_calibration_wizard():
         
         v_mode = st.radio(
             "Vocation Input Mode:",
-            ["Preset Earth Vocations (Recommended)", "Custom Earth Life Description (Procedural Mapping)"],
+            ["Preset Earth Vocations (20 Archetypes)", "✍️ Custom Earth Life (Interactive Collaboration with Cardinal)"],
             horizontal=True,
             key="vocation_mode_radio"
         )
@@ -523,7 +548,7 @@ def render_character_calibration_wizard():
             
             cur_bg_idx = bg_keys.index(st.session_state.cg_bg_key) if st.session_state.cg_bg_key in bg_keys else 0
             sel_bg_title = st.selectbox(
-                "Choose Earth Profession:",
+                "Choose Earth Profession (20 Options):",
                 options=bg_titles,
                 index=cur_bg_idx,
                 key="sel_preset_bg_box"
@@ -545,43 +570,87 @@ def render_character_calibration_wizard():
             st.success(f"🔹 **{bg_obj['innate_perk']}**")
         else:
             st.session_state.cg_bg_key = "custom"
-            st.markdown("##### ✍️ Custom Earth Life Description:")
+            st.markdown("##### ✍️ Custom Earth Life Description & Collaboration:")
+            st.caption("Describe your pre-collapse profession, trade, or daily hobbies. You and the Cardinal System will collaborate to synthesize the appropriate starting skills.")
+            
             st.session_state.cg_custom_bg_text = st.text_area(
-                "Describe your pre-collapse profession, trade, or daily hobbies:",
-                value=st.session_state.cg_custom_bg_text,
+                "Your Pre-Integration Story / Career:",
+                value=st.session_state.get("cg_custom_bg_text", ""),
                 placeholder="e.g. I worked as an industrial high-voltage electrician, played rugby on weekends, and spent time restoring vintage motorcycles...",
                 height=110,
                 key="custom_bg_input_area"
             )
             
-            parsed = cg.parse_custom_background(st.session_state.cg_custom_bg_text)
-            st.markdown(f"##### 🧬 Cardinal System Procedural Analysis: *{parsed['title']}*")
-            st.markdown("##### ⚔️ Derived Starting Skills (1-1000 System):")
-            for sname, sdata in parsed["skills"].items():
-                m_val = sdata["mastery"]
-                tier = sdata["tier"]
-                st.write(f"**{sname}** `[{m_val} / 1000]` *[{tier}]* - {sdata['description']}")
-                st.progress(m_val / 1000.0)
+            col_notes = st.text_input(
+                "Optional Collaboration Focus / Notes (e.g. 'Emphasize high shock resistance and hand-to-hand brawling'):",
+                value=st.session_state.get("cg_custom_notes", ""),
+                key="custom_notes_input"
+            )
+            st.session_state.cg_custom_notes = col_notes
+            
+            c_btn1, c_btn2 = st.columns([2, 1])
+            if c_btn1.button("🤖 Consult Cardinal System on Custom Profile", use_container_width=True, key="btn_consult_cardinal"):
+                with st.spinner("Cardinal System scanning pre-integration neural engrams..."):
+                    collab_result = cg.consult_custom_background(
+                        st.session_state.cg_custom_bg_text,
+                        api_key=api_key,
+                        follow_up_notes=col_notes
+                    )
+                    st.session_state.cg_custom_collaborated = collab_result
+                    st.success("Cardinal System consultation complete!")
+
+            if st.session_state.get("cg_custom_collaborated"):
+                res = st.session_state.cg_custom_collaborated
+                st.info(f"👾 **Cardinal Evaluation:** {res.get('evaluation_message', '')}")
                 
-            st.markdown("##### 🎖️ Derived Innate Perk:")
-            st.success(f"🔹 **{parsed['innate_perk']}**")
+                st.markdown("##### 🤝 Collaborative Refinement (Edit Your Starting Skills):")
+                ref_col1, ref_col2 = st.columns(2)
+                with ref_col1:
+                    st.markdown("**Primary Vocation Skill**")
+                    s1_name = st.text_input("Skill 1 Name:", value=res["skill_1"]["name"], key="c_s1_name")
+                    s1_mst = st.slider("Skill 1 Mastery (1-1000):", min_value=30, max_value=65, value=res["skill_1"]["mastery"], key="c_s1_mst")
+                    s1_desc = st.text_input("Skill 1 Description:", value=res["skill_1"]["description"], key="c_s1_desc")
+                with ref_col2:
+                    st.markdown("**Secondary Trait Skill**")
+                    s2_name = st.text_input("Skill 2 Name:", value=res["skill_2"]["name"], key="c_s2_name")
+                    s2_mst = st.slider("Skill 2 Mastery (1-1000):", min_value=25, max_value=55, value=res["skill_2"]["mastery"], key="c_s2_mst")
+                    s2_desc = st.text_input("Skill 2 Description:", value=res["skill_2"]["description"], key="c_s2_desc")
+                    
+                perk_val = st.text_input("Innate Passive Perk:", value=res.get("innate_perk", ""), key="c_perk_val")
+                
+                # Keep active data synced
+                st.session_state.cg_custom_collaborated["skill_1"] = {"name": s1_name, "mastery": s1_mst, "description": s1_desc}
+                st.session_state.cg_custom_collaborated["skill_2"] = {"name": s2_name, "mastery": s2_mst, "description": s2_desc}
+                st.session_state.cg_custom_collaborated["innate_perk"] = perk_val
+            else:
+                # Heuristic fallback preview
+                parsed = cg.parse_custom_background(st.session_state.cg_custom_bg_text)
+                st.caption("*(Click 'Consult Cardinal System' above to interactively collaborate on custom skill names and tiers)*")
+                st.markdown(f"##### 🧬 Procedural Baseline Analysis: *{parsed['title']}*")
+                for sname, sdata in parsed["skills"].items():
+                    m_val = sdata["mastery"]
+                    tier = sdata["tier"]
+                    st.write(f"**{sname}** `[{m_val} / 1000]` *[{tier}]* - {sdata['description']}")
+                    st.progress(m_val / 1000.0)
+                st.markdown("##### 🎖️ Derived Innate Perk:")
+                st.success(f"🔹 **{parsed['innate_perk']}**")
 
     # --- TAB 3: GENETIC LINEAGE ---
     with tab3:
         st.markdown("### 🧬 Stage 3: Genetic Rift Mutation (Racial Lineage)")
-        st.write("When the Aetheric Rift collapsed into Earth, ambient leylines permeated human biology. Survivors either resisted mutation or adapted into new physical lineages.")
+        st.write("When the Aetheric Rift collapsed into Earth, ambient leylines permeated human biology. Survivors either resisted mutation or adapted into new physical lineages pulling from high-fantasy and sci-fi phenotypes.")
         
         race_keys = list(cg.RACIAL_LINEAGES.keys())
-        race_names = [cg.RACIAL_LINEAGES[k]["name"] for k in race_keys]
+        race_display_labels = [f"[{cg.RACIAL_LINEAGES[k].get('genre', 'Universal')}] {cg.RACIAL_LINEAGES[k]['name']}" for k in race_keys]
         cur_r_idx = race_keys.index(st.session_state.cg_race_key) if st.session_state.cg_race_key in race_keys else 0
         
-        sel_race_name = st.selectbox(
-            "Select Lineage / Mutation:",
-            options=race_names,
+        sel_race_label = st.selectbox(
+            "Select Lineage / Mutation (20 Options):",
+            options=race_display_labels,
             index=cur_r_idx,
             key="sel_race_box"
         )
-        selected_race_key = race_keys[race_names.index(sel_race_name)]
+        selected_race_key = race_keys[race_display_labels.index(sel_race_label)]
         st.session_state.cg_race_key = selected_race_key
         race_obj = cg.RACIAL_LINEAGES[selected_race_key]
         
@@ -641,7 +710,7 @@ def render_character_calibration_wizard():
     # --- TAB 5: RELIC & GEAR ---
     with tab5:
         st.markdown("### 🎒 Stage 5: Earth Relic, Starting Gear & Link Start")
-        st.write("Every survivor carries a haunting personal relic from old Earth, alongside scavenged survival supplies.")
+        st.write("Every survivor carries a personal relic from old Earth, alongside scavenged survival supplies.")
         
         # Weapons Selection (Class Default with Manual Override)
         st.markdown("#### ⚔️ Starting Weapons")
@@ -669,25 +738,60 @@ def render_character_calibration_wizard():
             st.info(f"**Assigned Weapons:** {class_def_w['main_hand']} (Main Hand) | {class_def_w['off_hand']} (Off Hand)")
             
         st.divider()
-        # Personal Relic Selection
-        st.markdown("#### 📱 Pre-Integration Earth Relic (Choose 1):")
-        relic_keys = list(cg.PERSONAL_RELICS.keys())
-        relic_names = [cg.PERSONAL_RELICS[k]["name"] for k in relic_keys]
-        cur_relic_idx = relic_keys.index(st.session_state.cg_relic_key) if st.session_state.cg_relic_key in relic_keys else 0
-        
-        sel_relic_name = st.selectbox(
-            "Choose Personal Relic:",
-            options=relic_names,
-            index=cur_relic_idx,
-            key="sel_relic_box"
+        # Personal Relic Selection (17 Presets or Custom Write-In)
+        st.markdown("#### 📱 Pre-Integration Earth Relic")
+        relic_mode = st.radio(
+            "Relic Selection Mode:",
+            ["Choose from 17 Pre-Integration Earth Relics", "✍️ Custom Personal Keepsake (Write-In Object)"],
+            horizontal=True,
+            key="relic_mode_radio"
         )
-        selected_relic_key = relic_keys[relic_names.index(sel_relic_name)]
-        st.session_state.cg_relic_key = selected_relic_key
-        relic_obj = cg.PERSONAL_RELICS[selected_relic_key]
         
-        st.success(f"✨ **{relic_obj['name']}** [{relic_obj['rarity']}]")
-        st.caption(f"{relic_obj['desc']}")
-        
+        if relic_mode.startswith("Choose"):
+            relic_keys = list(cg.PERSONAL_RELICS.keys())
+            relic_names = [cg.PERSONAL_RELICS[k]["name"] for k in relic_keys]
+            cur_relic_idx = relic_keys.index(st.session_state.cg_relic_key) if st.session_state.cg_relic_key in relic_keys else 0
+            
+            sel_relic_name = st.selectbox(
+                "Choose Personal Relic (17 Options):",
+                options=relic_names,
+                index=cur_relic_idx,
+                key="sel_relic_box"
+            )
+            selected_relic_key = relic_keys[relic_names.index(sel_relic_name)]
+            st.session_state.cg_relic_key = selected_relic_key
+            st.session_state.cg_custom_relic_data = None
+            relic_obj = cg.PERSONAL_RELICS[selected_relic_key]
+            
+            st.success(f"✨ **{relic_obj['name']}** [{relic_obj['rarity']}]")
+            st.caption(f"{relic_obj['desc']}")
+        else:
+            st.session_state.cg_relic_key = "custom"
+            st.markdown("##### ✍️ Custom Personal Relic Write-In:")
+            r_name = st.text_input(
+                "Keepsake Name:",
+                value=st.session_state.get("cg_custom_relic_name", "Grandpa's Pocket Bible"),
+                key="in_custom_relic_name"
+            )
+            r_desc = st.text_area(
+                "Nostalgic Memory / Visual Details:",
+                value=st.session_state.get("cg_custom_relic_desc", "A dog-eared leather-bound pocket book with yellowed pages and handwritten family notes."),
+                height=70,
+                key="in_custom_relic_desc"
+            )
+            r_ability = st.text_input(
+                "Thematic Survival Effect / Passive Aura:",
+                value=st.session_state.get("cg_custom_relic_ability", "Grants +2 on saving throws against psychic despair, fear, and cosmic panic."),
+                key="in_custom_relic_ability"
+            )
+            st.session_state.cg_custom_relic_name = r_name
+            st.session_state.cg_custom_relic_desc = r_desc
+            st.session_state.cg_custom_relic_ability = r_ability
+            custom_obj = cg.create_custom_relic(r_name, r_desc, r_ability)
+            st.session_state.cg_custom_relic_data = custom_obj
+            relic_obj = custom_obj
+            st.success(f"✨ Custom Relic: **{custom_obj['name']}** [Custom Relic] — {custom_obj['desc']}")
+            
         # Starter Survival Cache Preview
         with st.expander("📦 Standard Survival Scrap Cache (Included)", expanded=False):
             st.markdown("- **Threadbare Scavenger Tunic** (Equipped Chest Armor, Durability 100/100)")
@@ -705,7 +809,7 @@ def render_character_calibration_wizard():
             s: 10 + st.session_state.cg_points.get(s, 0) + r_info["stat_mods"].get(s, 0)
             for s in ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
         }
-        calc_hp = 100 + ((final_scores["CON"] - 10) // 2) * 10
+        calc_hp = c_info.get("base_hp", 100) + ((final_scores["CON"] - 10) // 2) * 10
         
         st.markdown("### 📋 Final Calibration Review")
         rev_c1, rev_c2, rev_c3 = st.columns(3)
@@ -714,7 +818,7 @@ def render_character_calibration_wizard():
         rev_c2.metric("Doctrine", c_info["title"])
         rev_c2.metric("Starting HP", f"{calc_hp} HP")
         rev_c3.metric("Main Weapon", st.session_state.cg_main_hand)
-        rev_c3.metric("Personal Relic", relic_obj["name"][:20] + "...")
+        rev_c3.metric("Personal Relic", relic_obj["name"][:22] + "...")
         
         # Link Start Action Button
         st.write("")
@@ -733,7 +837,9 @@ def render_character_calibration_wizard():
                     class_key=st.session_state.cg_class_key,
                     relic_key=st.session_state.cg_relic_key,
                     custom_background_text=st.session_state.cg_custom_bg_text if st.session_state.cg_bg_key == "custom" else None,
-                    starting_weapons={"main_hand": st.session_state.cg_main_hand, "off_hand": st.session_state.cg_off_hand}
+                    starting_weapons={"main_hand": st.session_state.cg_main_hand, "off_hand": st.session_state.cg_off_hand},
+                    custom_relic_data=st.session_state.get("cg_custom_relic_data"),
+                    custom_collaborated_data=st.session_state.get("cg_custom_collaborated")
                 )
                 
                 opening_announcement = (
@@ -760,7 +866,7 @@ def render_character_calibration_wizard():
                 
                 save_game(st.session_state.player, st.session_state.messages)
                 st.balloons()
-                st.success(f"Calibration Complete! Avatar **{char_name}** linked to the Cardinal System. Entering Sector 1 Safe-Zone...")
+                st.success(f"Calibration Complete! Avatar **{char_name}** linked to the Cardinal System. Saved to saves/{char_name}/. Entering Sector 1 Safe-Zone...")
                 time.sleep(1.0)
                 st.rerun()
 
@@ -783,10 +889,8 @@ with st.sidebar:
         label_visibility='collapsed'
     )
     if sel_profile != curr_name and not st.session_state.get('character_creation_mode', False):
-        target_file = os.path.join(SAVES_DIR, f'{sel_profile}.json')
-        if os.path.exists(target_file):
-            with open(target_file, 'r', encoding='utf-8') as pf:
-                p_data = json.load(pf)
+        p_data = cg.load_character_from_folder(BASE_DIR, sel_profile)
+        if p_data:
             st.session_state.player = p_data['player']
             st.session_state.messages = p_data.get('messages', [])
             st.session_state.active_profile = sel_profile
