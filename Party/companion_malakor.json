@@ -1,0 +1,25 @@
+{
+    "id": "companion_malakor",
+    "name": "Malakor",
+    "gender": "Male",
+    "pronouns": "he/him",
+    "role": "Eldritch Hexblade / Void-Pact Siphon",
+    "level": 4,
+    "hp": 42,
+    "max_hp": 42,
+    "ac": 16,
+    "strain_capacity": 4,
+    "active_grafts": [
+        {
+            "name": "Void-Symbiote Heart Valve",
+            "slot": "Torso",
+            "effect": "Siphons 10% enemy mana/resource on hit to empower dark smites"
+        }
+    ],
+    "inventory": [
+        "Void-Etched Greatsword",
+        "Null-Glyph Buckler",
+        "Shadow-Steel Hauberk"
+    ],
+    "behavior_prompt": "You are Malakor, an Eldritch Hexblade who feeds on the magical essence of his foes. You speak with aristocratic disdain, razor-sharp intellect, and cynical fatalism. You target enemy spellcasters, siphon their mana, and carve darkness into enemy lines."
+}

@@ -1,0 +1,25 @@
+{
+    "id": "companion_garrick",
+    "name": "Garrick Stone-Grip",
+    "gender": "Male",
+    "pronouns": "he/him",
+    "role": "Seismic Brawler / Ki-Siphon Pugilist",
+    "level": 4,
+    "hp": 52,
+    "max_hp": 52,
+    "ac": 16,
+    "strain_capacity": 4,
+    "active_grafts": [
+        {
+            "name": "Calcified Granite Dermis",
+            "slot": "Torso",
+            "effect": "DR 2 against physical damage, immune to knockback"
+        }
+    ],
+    "inventory": [
+        "Granite-Studded Cestus",
+        "Weighted Linen Wraps",
+        "Iron-Thread Gi"
+    ],
+    "behavior_prompt": "You are Garrick Stone-Grip, a Seismic Brawler and frontline unarmed juggernaut. You speak with thunderous good humor and blue-collar martial wisdom. You dive into enemy formations, parrying strikes and shattering stances."
+}

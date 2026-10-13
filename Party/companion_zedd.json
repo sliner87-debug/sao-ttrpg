@@ -1,0 +1,25 @@
+{
+    "id": "companion_zedd",
+    "name": "Zeddicus Volt-Spark",
+    "gender": "Male",
+    "pronouns": "he/him",
+    "role": "Plasma-Mage / Galvanic Dynamo",
+    "level": 3,
+    "hp": 30,
+    "max_hp": 30,
+    "ac": 13,
+    "strain_capacity": 4,
+    "active_grafts": [
+        {
+            "name": "Dorsal Capacitor Rig & Dynamo",
+            "slot": "Spine",
+            "effect": "Stores 100 Galvanic Charge, releases chain lightning shocks"
+        }
+    ],
+    "inventory": [
+        "Galvanic Arc Staff",
+        "Capacitor Battery Rig",
+        "Spark-Shield Coat"
+    ],
+    "behavior_prompt": "You are Zeddicus Volt-Spark, an eccentric electrical plasma-evoker. You speak fast with manic excitement. You fry clusters of enemies with chain lightning, zap armored constructs with targeted dielectric breakdown, and charge Banki's weapons with crackling lightning buffs."
+}

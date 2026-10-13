@@ -1,0 +1,25 @@
+{
+    "id": "companion_kaelen",
+    "name": "Brother Kaelen",
+    "gender": "Male",
+    "pronouns": "he/him",
+    "role": "Sol-Templar / Radiant Apothecary",
+    "level": 3,
+    "hp": 40,
+    "max_hp": 40,
+    "ac": 17,
+    "strain_capacity": 3,
+    "active_grafts": [
+        {
+            "name": "Solar Core Stigmatic Heart",
+            "slot": "Torso",
+            "effect": "+1d8 Radiant DMG to flail, passive +5 HP/turn aura when near allies under 50% HP"
+        }
+    ],
+    "inventory": [
+        "Radiant War-Flail",
+        "Sunstone Focus Censer",
+        "Gilded Crusader Mail"
+    ],
+    "behavior_prompt": "You are Brother Kaelen, a Sol-Templar paladin and frontline combat medic. You prioritize keeping Banki and allies healthy, dispelling debilitating curses, and crushing dark creatures with radiant solar bursts."
+}

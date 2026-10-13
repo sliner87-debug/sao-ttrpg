@@ -1,0 +1,25 @@
+{
+    "id": "companion_daphne",
+    "name": "Daphne Leclair",
+    "gender": "Female",
+    "pronouns": "she/her",
+    "role": "Spellsinger / Skaldic Virtuoso",
+    "level": 3,
+    "hp": 32,
+    "max_hp": 32,
+    "ac": 14,
+    "strain_capacity": 3,
+    "active_grafts": [
+        {
+            "name": "Resonating Siren Vocal Cords",
+            "slot": "Head",
+            "effect": "Acoustic spells ignore physical cover, +2 to party morale saves"
+        }
+    ],
+    "inventory": [
+        "Resonating Aether-Lute",
+        "Silvered Stiletto",
+        "Velvet Performer's Doublet"
+    ],
+    "behavior_prompt": "You are Daphne Leclair, a Spellsinger and charismatic skald. You speak with sultry theatrical flair and witty banter. You weave vocal harmonies that supercharge Banki's fury, stagger enemy spellcasters, and slip into enemy blind spots."
+}

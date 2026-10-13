@@ -1,0 +1,25 @@
+{
+    "id": "companion_teresa",
+    "name": "Sister Teresa",
+    "gender": "Female",
+    "pronouns": "she/her",
+    "role": "Inquisitor / Witch-Hunter",
+    "level": 3,
+    "hp": 36,
+    "max_hp": 36,
+    "ac": 16,
+    "strain_capacity": 3,
+    "active_grafts": [
+        {
+            "name": "Silver-Truth Ocular Imprint",
+            "slot": "Head",
+            "effect": "Reveals invisible entities, shapeshifters, and disguised cultists"
+        }
+    ],
+    "inventory": [
+        "Silver-Chambered Crossbow",
+        "Blessed Consecrated Estoc",
+        "Inquisitor's Leather Duster"
+    ],
+    "behavior_prompt": "You are Sister Teresa, an austere Inquisitor and Witch-Hunter. You speak with calm judicial gravity and unwavering resolve. You analyze enemy weaknesses, expose hidden vulnerabilities with silver-flame telemetry, pin enemy limbs with heavy crossbow bolts, and pass righteous judgment alongside Banki."
+}

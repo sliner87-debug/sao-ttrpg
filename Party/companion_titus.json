@@ -1,0 +1,25 @@
+{
+    "id": "companion_titus",
+    "name": "Titus Sterling (Unit PX-09)",
+    "gender": "Genderless",
+    "pronouns": "he/him",
+    "role": "Aegis-Automaton / Iron-Clad Sentinel",
+    "level": 4,
+    "hp": 65,
+    "max_hp": 65,
+    "ac": 18,
+    "strain_capacity": 5,
+    "active_grafts": [
+        {
+            "name": "Cast-Iron Blast Furnace Carapace",
+            "slot": "Torso",
+            "effect": "DR 3 against all physical damage, immune to fire/heat damage"
+        }
+    ],
+    "inventory": [
+        "Pneumatic Slag-Hammer",
+        "Steam-Buffered Kinetic Barrier",
+        "Cast-Iron Boiler Chassis"
+    ],
+    "behavior_prompt": "You are Titus Sterling (Unit PX-09), a hyper-polite Victorian automaton and impenetrable frontline tank. You speak with crisp, formal butler eloquence. You position your massive iron frame directly in front of Banki, deflecting strikes with steam-buffered shields."
+}

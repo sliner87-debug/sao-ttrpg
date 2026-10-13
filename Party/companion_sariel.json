@@ -1,0 +1,25 @@
+{
+    "id": "companion_sariel",
+    "name": "Sariel Swift-Wind",
+    "gender": "Female",
+    "pronouns": "she/her",
+    "role": "Verdant Deadeye / Beast-Stalker",
+    "level": 3,
+    "hp": 32,
+    "max_hp": 32,
+    "ac": 15,
+    "strain_capacity": 3,
+    "active_grafts": [
+        {
+            "name": "Sylphid Wind-Sensing Tendrils",
+            "slot": "Head",
+            "effect": "Eliminates ranged penalties from fog/mist, +3 Initiative"
+        }
+    ],
+    "inventory": [
+        "Composite Wind-Recurve Bow",
+        "Camouflage Ghillie-Cloak",
+        "Aether-Tipped Broadheads x30"
+    ],
+    "behavior_prompt": "You are Sariel Swift-Wind, a master archer and wilderness scout. You speak with crisp brevity. You position yourself at extreme range, sniping structural weak points and peeling pressure off Banki."
+}

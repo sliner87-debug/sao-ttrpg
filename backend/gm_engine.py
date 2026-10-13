@@ -242,6 +242,20 @@ CORE GM BEHAVIOR RULES:
      * Elora Thorne (Companion): Nimble elven spellblade with silver-braided hair, wearing silk starlight phase-robes, wielding a starlight aether-rapier and glowing caster gauntlet.
      * Torvald Iron-Vein (Companion): Veteran dwarven vanguard in deepforged runic plate armor, wielding a massive adamant tower shield wide as a castle gate and a heavy war-axe.
      * Kibs Nine-Fingers (Companion): Scrapper rogue cloaked in scavenged shrouds, serrated wrist daggers, mechanical optical goggles.
+     * Valeria Vane (Companion): Striking blonde aerial Valkyrie in gleaming falcon-crest mail with aerodynamic aether-glider struts forming luminous cyan wings along her spine, wielding an ornate winged aether-spear and solar aegis shield.
+     * Morrigan Black-Thorn (Companion): Pale gothic abyssal grave-binder with flowing raven hair, obsidian-and-bone mantle, shrouded in dark necrotic mist and ethereal emerald soul-wisps, wielding an obsidian scythe and bone wand.
+     * Garrick Stone-Grip (Companion): Muscular martial artist with stone-grafted obsidian-scaled arms and glowing tectonic ki-glyphs across his chest, wearing monk trousers and iron-plated hand wraps.
+     * Sariel Swift-Wind (Companion): Graceful emerald-eyed wood-elf beast-stalker ranger clad in camouflaged moss-green leathers and autumn leaf cloaks, carrying an elegant recurve aether-longbow and twin hunting daggers.
+     * Brother Kaelen (Companion): Resolute shaved-head Sol-Templar priest in polished sun-gold breastplate and white hooded vestments, channeling radiant golden sunlight through a heavy solar warhammer and glowing sunstone medallion.
+     * Zeddicus Volt-Spark (Companion): Eccentric plasma-mage with wild copper-streaked spiky hair, brass galvanic conduction goggles, crackling lightning arcs dancing across his fingers and insulated leyline coat.
+     * Daphne Leclair (Companion): Charismatic violet-eyed bard in flamboyant midnight-velvet skaldic coat and silver-threaded scarf, strumming a glowing aether-resonant lute-blade.
+     * Ragnarok 'Rok' (Companion): Massive battle-scarred barbarian juggernaut with fiery red war-braids, tribal runic tattoos pulsating crimson with blood-rage, wielding a colossal dual-bearded greataxe and spiked bone pauldrons.
+     * Lyra Stargaze (Companion): Ethereal silver-haired chronomancer in deep indigo robes embroidered with golden constellation diagrams, surrounded by floating ticking clockwork dials and orbital astrolabe rings.
+     * Titus Sterling (Companion): Imposing 7-foot bronze-and-steel clockwork automaton sentinel with a glowing amber ocular furnace in its chest, steam hissing from shoulder exhaust valves, armed with a pneumatic piledriver flail and iron tower pavise.
+     * Nyssa Thorn-Weft (Companion): Wild primal druid with braided bramble vines in auburn hair, living thorn-woven bark-armor, amber wolf-like eyes, and shifting beastial claws crackling with green primal life-energy.
+     * Malakor (Companion): Slender dark-cloaked tiefling/fiend-touched hexblade warlock with swept-back obsidian horns, glowing amethyst eyes, wielding a translucent purple void-glass greatsword trailing shadowy dark-matter tendrils.
+     * Dr. Alistair Thorne (Companion): Sharp-featured patrician alchemical toxicologist in an acid-resistant slate-grey lab duster, reinforced rubber gloves, bandoliers of pressurized glowing vials, and an alchemical sprayer pistol.
+     * Sister Teresa (Companion): Austere, piercing-eyed inquisitor in a high-collared charcoal duster and wide-brimmed witch-hunter hat, wielding a heavy consecrated silver-stake mechanical crossbow and twin sanctified estocs.
      * Doc Mercer (NPC): Grizzled cyber-physician and flesh-weaver in a bloodstained leather surgeon's apron and brass magnifying loupes, surrounded by steam pistons, glowing blue mana vats, and articulated surgical needles in an ancient stone catacomb clinic.
 
 Current Master State:

@@ -1,0 +1,25 @@
+{
+    "id": "companion_rok",
+    "name": "Ragnarok 'Rok'",
+    "gender": "Male",
+    "pronouns": "he/him",
+    "role": "Juggernaut Marauder / Blood-Rager",
+    "level": 4,
+    "hp": 58,
+    "max_hp": 58,
+    "ac": 15,
+    "strain_capacity": 4,
+    "active_grafts": [
+        {
+            "name": "Troll-Blood Adrenal Pump",
+            "slot": "Torso",
+            "effect": "Regenerate +4 HP/turn when below 50% HP, +2d6 Berserk Melee DMG"
+        }
+    ],
+    "inventory": [
+        "Twin Serrated Slag-Cleavers",
+        "Spiked Iron Pauldrons",
+        "Troll-Hide Kilt"
+    ],
+    "behavior_prompt": "You are Ragnarok 'Rok', a brutal Blood-Rager marauder. You speak with guttural gravel and raw warrior pride. In combat, you ignore defense, roaring as you charge the largest monster on the field, cleaving with both axes and soaking damage."
+}

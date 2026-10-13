@@ -3265,43 +3265,55 @@ def set_companion_stance(player_state, companion_name="Ren", stance_key=None):
     elif companion_name in COMPANION_TACTICAL_STANCES or any(k in str(companion_name).lower() for k in ["overwatch", "suppression", "evasion", "utility", "hacking"]):
         companion_name, stance_key = stance_key, companion_name
 
-    companions = ensure_companion_profile(player_state)
-    comp = companions.get(companion_name)
+    comps = ensure_party_system(player_state)
+    comp = comps.get(companion_name)
     if not comp:
-        for k, v in companions.items():
+        for k, v in comps.items():
             if isinstance(v, dict) and (k.lower() == str(companion_name).lower() or str(companion_name).lower() in v.get("name", "").lower()):
                 comp = v
                 break
     if not comp:
         # Check if companion_name was actually the stance
         if companion_name in COMPANION_TACTICAL_STANCES:
-            comp = companions.get("Ren")
+            comp = comps.get("Ren")
             stance_key = companion_name
         else:
             return {"success": False, "message": f"Companion '{companion_name}' not found."}
 
+    # Available stances for this companion
+    comp_stances = comp.get("stances", {})
+    if not comp_stances and comp.get("id") == "ren_sasaki":
+        comp_stances = COMPANION_TACTICAL_STANCES
+
     norm_str = str(stance_key).strip().lower()
+    norm_clean = norm_str.replace(" ", "_").replace("-", "_")
+
     matched_key = None
-    if any(w in norm_str for w in ["overwatch", "hack", "scan"]):
-        matched_key = "overwatch_hacking"
-    elif any(w in norm_str for w in ["suppress", "stun", "burst", "pistol"]):
-        matched_key = "suppression_fire"
-    elif any(w in norm_str for w in ["evasion", "evade", "hide", "cover"]):
-        matched_key = "full_evasion"
-    elif any(w in norm_str for w in ["utility", "rig", "repair", "patch", "scavenge"]):
-        matched_key = "utility_rigging"
+    # 1. Exact or clean match in companion's own stances
+    for k in comp_stances:
+        if k.lower() == norm_clean or norm_clean in k.lower() or k.lower() in norm_clean:
+            matched_key = k
+            break
+        label = comp_stances[k].get("name", "").lower()
+        if norm_clean in label.replace(" ", "_") or norm_str in label:
+            matched_key = k
+            break
 
-    if not matched_key:
-        norm_clean = norm_str.replace(" ", "_").replace("-", "_")
-        for k in COMPANION_TACTICAL_STANCES:
-            if k == norm_clean or norm_clean in k or k in norm_clean:
-                matched_key = k
-                break
+    # 2. Ren legacy fallback keywords if still not matched
+    if not matched_key and comp.get("id") == "ren_sasaki":
+        if any(w in norm_str for w in ["overwatch", "hack", "scan"]):
+            matched_key = "overwatch_hacking"
+        elif any(w in norm_str for w in ["suppress", "stun", "burst", "pistol"]):
+            matched_key = "suppression_fire"
+        elif any(w in norm_str for w in ["evasion", "evade", "hide", "cover"]):
+            matched_key = "full_evasion"
+        elif any(w in norm_str for w in ["utility", "rig", "repair", "patch", "scavenge"]):
+            matched_key = "utility_rigging"
 
-    if not matched_key:
-        return {"success": False, "message": f"Unknown tactical stance '{stance_key}'."}
+    if not matched_key or matched_key not in comp_stances:
+        return {"success": False, "message": f"Unknown tactical stance '{stance_key}' for {comp.get('name', companion_name)}."}
 
-    stance_def = COMPANION_TACTICAL_STANCES[matched_key]
+    stance_def = comp_stances[matched_key]
     comp["stance"] = matched_key
 
     log = f"[TACTICAL DIRECTIVE: {comp['name']} transitioned to {stance_def['label']} — {stance_def['tactical_effect']}]"
@@ -4573,7 +4585,9 @@ RECRUITABLE_COMPANIONS = {
         "affinity_tier": "Ally",
         "recruited": True,
         "active": True,
-        "bio": "A studious young survivor who fused his pre-Integration engineering background with esoteric aetheric rune-matrices. Wields a custom-etched brass-and-crystal MageTech caster firearm.",
+        "recruitment_location": "Washington Borough Safe-Zone (Starting Companion / Vanguard)",
+        "recruitment_requirements": {"min_level": 1, "col_cost": 0, "description": "Form a co-op pact in Sector 1."},
+        "bio": "A studious 17-year-old survivor and trapped game tester who fused his engineering background with esoteric aetheric rune-matrices. Wields a custom brass-and-crystal MageTech caster firearm.",
         "loadout": {
             "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
             "tool": "Runic Scribe Slate (Aether-Grid Focus)",
@@ -4596,7 +4610,6 @@ RECRUITABLE_COMPANIONS = {
         "abilities": [
             "Aura Weakpoint Scan (-2 Enemy AC)",
             "MageTech Stun-Arc Salvo (DC 13 CON save vs Stun)",
-            "Aetheric Phase-Veil (Untargetable 1 turn)",
             "Aether-Scrap Extraction (+25% salvage yield)"
         ],
         "stances": {
@@ -4648,7 +4661,9 @@ RECRUITABLE_COMPANIONS = {
         "affinity_tier": "Acquaintance",
         "recruited": False,
         "active": False,
-        "bio": "A nimble spellblade who channels raw mana into rapid-firing crystal-tipped rapiers. Dr. Thorne's estranged niece, currently seeking a frontline raiding party in Sector 1.",
+        "recruitment_location": "The Iron Spoke Tavern (Washington Borough, X:50, Y:50)",
+        "recruitment_requirements": {"min_level": 2, "col_cost": 100, "description": "Meet Elora at the Iron Spoke Tavern and provide 100 Col for expedition rations."},
+        "bio": "A nimble spellblade who channels raw mana into rapid-firing crystal-tipped rapiers. Dr. Thorne's estranged niece, seeking a frontline raiding party in Sector 1.",
         "loadout": {
             "main_hand": "Starlight Aether-Rapier (Enchanted Steel, 1d8+3 Piercing)",
             "off_hand": "Resonating Caster Gauntlet (Focus)",
@@ -4713,7 +4728,9 @@ RECRUITABLE_COMPANIONS = {
         "affinity_tier": "Ally",
         "recruited": False,
         "active": False,
-        "bio": "A veteran dwarven mercenary and barkeep of the Iron Spoke. Possesses runic cyber-plated armor and a tower shield wide as a castle gate, capable of anchoring frontline assaults.",
+        "recruitment_location": "The Iron Spoke Tavern / Oxford Ridge Outpost (X:52, Y:48)",
+        "recruitment_requirements": {"min_level": 3, "col_cost": 150, "description": "Prove your vanguard mettle in battle and pay 150 Col for deepforged gear upkeep."},
+        "bio": "A veteran dwarven mercenary and barkeep of the Iron Spoke. Possesses runic cyber-plated armor and a tower shield wide as a castle gate.",
         "loadout": {
             "main_hand": "Deepforged War-Axe (Heavy Runic Iron, 1d10+4 Slashing)",
             "off_hand": "Adamant Bulwark Tower Shield (+4 AC, DR 2)",
@@ -4778,7 +4795,9 @@ RECRUITABLE_COMPANIONS = {
         "affinity_tier": "Acquaintance",
         "recruited": False,
         "active": False,
-        "bio": "A crafty scavenger broker operating out of the Meiji Dump. Lost a finger to an automated perimeter laser, but gained uncanny instincts for stealth, poison synthesis, and lock manipulation.",
+        "recruitment_location": "Meiji Dump Scrap Warrens (X:48, Y:54)",
+        "recruitment_requirements": {"min_level": 2, "col_cost": 75, "description": "Rescue Kibs from perimeter scavengers or trade 75 Col worth of scrap parts."},
+        "bio": "A crafty goblinoid scavenger operating out of the Meiji Dump. Possesses uncanny instincts for stealth, neurotoxin synthesis, and lockpicking.",
         "loadout": {
             "main_hand": "Serrated Scrap Dagger (1d6+3 Piercing + Bleed)",
             "off_hand": "Spring-Loaded Wrist Shank (1d4+3 Piercing)",
@@ -4825,6 +4844,944 @@ RECRUITABLE_COMPANIONS = {
             }
         },
         "dual_tech_id": "shadow_flank_execution"
+    },
+    "Valeria": {
+        "id": "companion_valeria",
+        "name": "Valeria Vane",
+        "class": "Primal Valkyrie / Aerial Skirmisher",
+        "title": "Primal Valkyrie / Aerial Skirmisher",
+        "role": "Aerial High-Ground Recon, Dive-Bomb Impalement & Radiant Shielding",
+        "level": 4,
+        "hp": 48,
+        "max_hp": 48,
+        "xp": 800,
+        "next_level_xp": 1200,
+        "stance": "aerial_divebomb",
+        "morale": "Steady",
+        "affinity": 25,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "Warren County Barony Watchtower (Washington Borough, X:52, Y:50)",
+        "recruitment_requirements": {"min_level": 3, "col_cost": 0, "faction": "Warren County Barony", "min_rep": 15, "description": "Reach Level 3 and achieve Respected standing (15+ Rep) with Warren County Barony."},
+        "bio": "A phrenic human aerial skirmisher whose spine fused with aerodynamic aether-glider struts. Serves as Barony aerial perimeter commander.",
+        "loadout": {
+            "main_hand": "Winged Aether-Spear (1d10+4 Piercing)",
+            "off_hand": "Solar Aegis Shield (+3 AC, Radiant Blind)",
+            "armor": "Falcon Crest Mail (DR 2, Flight)",
+            "chest": "Falcon Crest Mail (DR 2, Flight)"
+        },
+        "equipped": {
+            "main_hand": "Winged Aether-Spear (1d10+4 Piercing)",
+            "off_hand": "Solar Aegis Shield (+3 AC, Radiant Blind)",
+            "armor": "Falcon Crest Mail (DR 2, Flight)",
+            "chest": "Falcon Crest Mail (DR 2, Flight)"
+        },
+        "skills": {
+            "Aerial Spear Technique": {"mastery": 260, "tier": "Adept", "description": "High-velocity vertical thrusts.", "milestones_unlocked": ["Dive-Strike Impact", "Falcon Lunge"]},
+            "Aether Gliding": {"mastery": 240, "tier": "Journeyman", "description": "Mastery of thermal drafts and aetheric lift.", "milestones_unlocked": ["Thermal Glide"]},
+            "Aegis Phalanx": {"mastery": 180, "tier": "Journeyman", "description": "Radiant shield positioning.", "milestones_unlocked": ["Blinding Glare"]}
+        },
+        "abilities": [
+            "Solar Dive-Bomb (3d10 Radiant/Piercing + Knockdown)",
+            "Skyward Interception (+3 AC to ground ally)",
+            "Blinding Sunburst (DC 14 CON vs Blinded)"
+        ],
+        "stances": {
+            "aerial_divebomb": {
+                "name": "Aerial Dive-Bomb",
+                "label": "🦅 Aerial Dive-Bomb",
+                "tag": "[VALERIA DIVE]",
+                "tactical_effect": "Dives from the sky dealing 2d10+4 Piercing DMG and knocking targets prone.",
+                "desc": "High offensive aerial assault."
+            },
+            "radiant_bulwark": {
+                "name": "Radiant Bulwark",
+                "label": "🛡️ Radiant Bulwark",
+                "tag": "[VALERIA BULWARK]",
+                "tactical_effect": "Hovers above the vanguard, granting Banki +3 AC and absorbing projectile fire.",
+                "desc": "Aerial defensive perimeter."
+            },
+            "high_overwatch": {
+                "name": "High-Ground Overwatch",
+                "label": "👁️ High-Ground Overwatch",
+                "tag": "[VALERIA RECON]",
+                "tactical_effect": "Scouts the perimeter from cloud altitude, revealing concealed enemies and granting +3 party Initiative.",
+                "desc": "Aerial reconnaissance."
+            }
+        },
+        "dual_tech_id": "valkyries_wrath"
+    },
+    "Morrigan": {
+        "id": "companion_morrigan",
+        "name": "Morrigan Black-Thorn",
+        "class": "Abyssal Grave-Binder / Necrotic Hexer",
+        "title": "Abyssal Grave-Binder / Necrotic Hexer",
+        "role": "Necrotic Crowd Control, Soul-Siphon Drain & Bone Barricades",
+        "level": 3,
+        "hp": 34,
+        "max_hp": 34,
+        "xp": 450,
+        "next_level_xp": 900,
+        "stance": "soul_siphon",
+        "morale": "Steady",
+        "affinity": 20,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "Musconetcong Crypts - Sunken Ossuary (X:45, Y:62)",
+        "recruitment_requirements": {"min_level": 3, "col_cost": 0, "quest": "crypt_reanimator", "description": "Defeat the Crypt Reanimator in the Musconetcong Crypts and recover the Shattered Veil Tome."},
+        "bio": "An umbral tiefling shadow-weaver who harvests digital soul-residue and deceased bio-mana from fallen monsters.",
+        "loadout": {
+            "main_hand": "Bone-Chime Scythe (1d8+3 Slashing + 1d6 Necrotic)",
+            "off_hand": "Soul-Vessel Phylactery (Focus)",
+            "armor": "Obsidian Shroud (Cloth, DR 1, +2 Spell DC)",
+            "chest": "Obsidian Shroud (Cloth, DR 1, +2 Spell DC)"
+        },
+        "equipped": {
+            "main_hand": "Bone-Chime Scythe (1d8+3 Slashing + 1d6 Necrotic)",
+            "off_hand": "Soul-Vessel Phylactery (Focus)",
+            "armor": "Obsidian Shroud (Cloth, DR 1, +2 Spell DC)",
+            "chest": "Obsidian Shroud (Cloth, DR 1, +2 Spell DC)"
+        },
+        "skills": {
+            "Necrotic Siphoning": {"mastery": 210, "tier": "Journeyman", "description": "Draining vitality from decaying tissue.", "milestones_unlocked": ["Soul Tap", "Life Leech"]},
+            "Bone Matrix Weaving": {"mastery": 180, "tier": "Journeyman", "description": "Erecting calcified bone barriers.", "milestones_unlocked": ["Ossuary Shield"]},
+            "Abyssal Hexes": {"mastery": 195, "tier": "Journeyman", "description": "Debilitating enemy metabolic functions.", "milestones_unlocked": ["Withering Curse"]}
+        },
+        "abilities": [
+            "Soul-Siphon Lash (1d8 Necrotic DMG + restores 8 HP to lowest ally)",
+            "Grave-Wall Erection (absorbs 30 incoming damage)",
+            "Miasma of the Tomb (-2 Enemy Saves)"
+        ],
+        "stances": {
+            "soul_siphon": {
+                "name": "Soul-Siphon Drain",
+                "label": "💀 Soul-Siphon Drain",
+                "tag": "[MORRIGAN SIPHON]",
+                "tactical_effect": "Drains 2d6 Necrotic DMG from target, transferring health to Banki.",
+                "desc": "Lifesteal support stance."
+            },
+            "skeletal_wall": {
+                "name": "Skeletal Wall",
+                "label": "🦴 Skeletal Wall",
+                "tag": "[MORRIGAN BONEWALL]",
+                "tactical_effect": "Raises calcified bone palisades that intercept up to 30 damage from incoming enemy attacks.",
+                "desc": "Barrier defense."
+            },
+            "miasma_curse": {
+                "name": "Miasma Hex Aura",
+                "label": "🌫️ Miasma Hex Aura",
+                "tag": "[MORRIGAN MIASMA]",
+                "tactical_effect": "Surrounds the enemy line in choking grave-mist; enemies suffer -2 to saving throws and lose 5 HP/turn.",
+                "desc": "AOE necrotic debuff."
+            }
+        },
+        "dual_tech_id": "grave_lord_cleave"
+    },
+    "Garrick": {
+        "id": "companion_garrick",
+        "name": "Garrick Stone-Grip",
+        "class": "Seismic Brawler / Ki-Siphon Pugilist",
+        "title": "Seismic Brawler / Ki-Siphon Pugilist",
+        "role": "Unarmed Frontline Pressure, Kinetic Deflection & Break Gauge Stun",
+        "level": 4,
+        "hp": 52,
+        "max_hp": 52,
+        "xp": 750,
+        "next_level_xp": 1200,
+        "stance": "mountain_crusher",
+        "morale": "Steady",
+        "affinity": 25,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "Pequest River Limestone Quarry (X:38, Y:42)",
+        "recruitment_requirements": {"min_level": 3, "col_cost": 0, "stat_check": "STR 14 or Athletics 100", "description": "Defeat or spar with Garrick to a standstill in the Quarry fighting ring."},
+        "bio": "An Earth Genasi structural ironworker whose knuckles and skin calcified into dense granite. Dominates the Pequest quarries.",
+        "loadout": {
+            "main_hand": "Granite-Studded Cestus (1d8+4 Bludgeoning)",
+            "off_hand": "Granite-Studded Cestus (1d8+4 Bludgeoning)",
+            "armor": "Iron-Thread Gi (Unarmored, DR 2)",
+            "chest": "Iron-Thread Gi (Unarmored, DR 2)"
+        },
+        "equipped": {
+            "main_hand": "Granite-Studded Cestus (1d8+4 Bludgeoning)",
+            "off_hand": "Granite-Studded Cestus (1d8+4 Bludgeoning)",
+            "armor": "Iron-Thread Gi (Unarmored, DR 2)",
+            "chest": "Iron-Thread Gi (Unarmored, DR 2)"
+        },
+        "skills": {
+            "Unarmed Pummeling": {"mastery": 280, "tier": "Adept", "description": "Bone-cracking pugilism.", "milestones_unlocked": ["Iron Fist", "Staggering Hook", "Haymaker"]},
+            "Seismic Grounding": {"mastery": 220, "tier": "Journeyman", "description": "Rooting into tectonic bedrock.", "milestones_unlocked": ["Unyielding Stance"]},
+            "Ki Kinetic Deflection": {"mastery": 190, "tier": "Journeyman", "description": "Deflecting incoming missiles with bare hands.", "milestones_unlocked": ["Missile Snatch"]}
+        },
+        "abilities": [
+            "Tectonic Tremor Palm (2d8+5 Force + Stagger)",
+            "Iron Shirt Deflection (Absorbs 15 Bludgeoning/Piercing)",
+            "Earthquake Stomp (Prone all enemies in 10ft)"
+        ],
+        "stances": {
+            "mountain_crusher": {
+                "name": "Mountain-Crusher Stance",
+                "label": "⛰️ Mountain-Crusher",
+                "tag": "[GARRICK CRUSHER]",
+                "tactical_effect": "Strikes target with 2d8+5 Bludgeoning DMG; chips boss Break Gauge by -35.",
+                "desc": "High stun and break gauge pressure."
+            },
+            "ki_deflection": {
+                "name": "Ki-Deflection Weave",
+                "label": "🥋 Ki-Deflection Weave",
+                "tag": "[GARRICK DEFLECT]",
+                "tactical_effect": "Swats aside incoming projectiles and melee strikes, granting himself and Banki +3 AC.",
+                "desc": "Martial defensive weave."
+            },
+            "seismic_slam": {
+                "name": "Earth-Shatter Flurry",
+                "label": "💥 Earth-Shatter Flurry",
+                "tag": "[GARRICK FLURRY]",
+                "tactical_effect": "Unleashes 3 rapid concussive palm strikes dealing 3d6+6 Force DMG and forcing DC 14 STR check vs Prone.",
+                "desc": "Multi-hit knockdown flurry."
+            }
+        },
+        "dual_tech_id": "seismic_cataclysm"
+    },
+    "Sariel": {
+        "id": "companion_sariel",
+        "name": "Sariel Swift-Wind",
+        "class": "Verdant Deadeye / Beast-Stalker",
+        "title": "Verdant Deadeye / Beast-Stalker",
+        "role": "Extreme-Range Sniping, Crippling Arrow Volleys & Wilderness Tracking",
+        "level": 3,
+        "hp": 32,
+        "max_hp": 32,
+        "xp": 400,
+        "next_level_xp": 900,
+        "stance": "canopy_snipe",
+        "morale": "Steady",
+        "affinity": 20,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "Jenny Jump Forest Canopy - Roaming Glade (X:58, Y:35)",
+        "recruitment_requirements": {"min_level": 2, "col_cost": 0, "item_delivery": ["Venison Ration", "Wild Forest Herbs x2"], "description": "Track her scent through Jenny Jump Forest (Perception DC 13) and deliver forest rations."},
+        "bio": "A wild wood elf ranger who nests in the 400-foot ironwood trees of Jenny Jump. Unerring sniper with living ironwood recurve bow.",
+        "loadout": {
+            "main_hand": "Living Ironwood Recurve Bow (1d10+4 Piercing)",
+            "off_hand": "None (Two-Handed)",
+            "armor": "Camouflage Ghillie-Cloak (Light, +4 Stealth)",
+            "chest": "Camouflage Ghillie-Cloak (Light, +4 Stealth)"
+        },
+        "equipped": {
+            "main_hand": "Living Ironwood Recurve Bow (1d10+4 Piercing)",
+            "off_hand": "None (Two-Handed)",
+            "armor": "Camouflage Ghillie-Cloak (Light, +4 Stealth)",
+            "chest": "Camouflage Ghillie-Cloak (Light, +4 Stealth)"
+        },
+        "skills": {
+            "Archery Mastery": {"mastery": 270, "tier": "Adept", "description": "Pinpoint extreme-range shooting.", "milestones_unlocked": ["Double Shot", "Ocular Piercing", "Eagle Eye"]},
+            "Wilderness Stalking": {"mastery": 240, "tier": "Journeyman", "description": "Moving without disturbing leaf or twig.", "milestones_unlocked": ["Forest Ghost"]},
+            "Beast Anatomy": {"mastery": 180, "tier": "Journeyman", "description": "Targeting beast tendon and heart nodes.", "milestones_unlocked": ["Cripple Tendon"]}
+        },
+        "abilities": [
+            "Heartseeker Snipe (3d10 Piercing DMG from stealth)",
+            "Barbed Hamstring Volley (Roots target for 1 turn)",
+            "Wind-Guidance Aura (+2 Ranged ATK to party)"
+        ],
+        "stances": {
+            "canopy_snipe": {
+                "name": "Canopy Snipe",
+                "label": "🏹 Canopy Snipe",
+                "tag": "[SARIEL SNIPE]",
+                "tactical_effect": "Fires from maximum concealment dealing 2d10+4 Piercing DMG, ignoring 50% enemy armor.",
+                "desc": "High critical range sniping."
+            },
+            "suppression_volley": {
+                "name": "Barbed Suppression Volley",
+                "label": "🌧️ Barbed Volley",
+                "tag": "[SARIEL VOLLEY]",
+                "tactical_effect": "Rains barbed arrows in an arc; slows all advancing enemies and inflicts Bleed (6 DMG/turn).",
+                "desc": "Area crowd control."
+            },
+            "stealth_ambush": {
+                "name": "Woodland Camouflage",
+                "label": "🌿 Woodland Camouflage",
+                "tag": "[SARIEL CAMO]",
+                "tactical_effect": "Melds into foliage; completely untargetable until next attack which is an automatic Critical Hit.",
+                "desc": "Stealth setup."
+            }
+        },
+        "dual_tech_id": "cyclone_arrow_storm"
+    },
+    "Kaelen": {
+        "id": "companion_kaelen",
+        "name": "Brother Kaelen",
+        "class": "Sol-Templar / Radiant Apothecary",
+        "title": "Sol-Templar / Radiant Apothecary",
+        "role": "Frontline Healing, Radiant Flail Burst & Condition Cleansing",
+        "level": 3,
+        "hp": 40,
+        "max_hp": 40,
+        "xp": 450,
+        "next_level_xp": 900,
+        "stance": "radiant_bastion",
+        "morale": "Steady",
+        "affinity": 30,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "St. Luke's Chapel Ruins (High Bridge Safe-Node, X:65, Y:55)",
+        "recruitment_requirements": {"min_level": 2, "col_cost": 200, "description": "Donate 200 Col to the High Bridge hospice or restore the Sunstone Altar."},
+        "bio": "An aasimar parish deacon and former EMT whose veins pulse with solar mana. Wields a heavy sunstone flail to protect the wounded.",
+        "loadout": {
+            "main_hand": "Radiant War-Flail (1d8+3 Bludgeoning + 1d8 Radiant)",
+            "off_hand": "Sunstone Focus Censer (Holy Focus)",
+            "armor": "Gilded Crusader Mail (Heavy, DR 2)",
+            "chest": "Gilded Crusader Mail (Heavy, DR 2)"
+        },
+        "equipped": {
+            "main_hand": "Radiant War-Flail (1d8+3 Bludgeoning + 1d8 Radiant)",
+            "off_hand": "Sunstone Focus Censer (Holy Focus)",
+            "armor": "Gilded Crusader Mail (Heavy, DR 2)",
+            "chest": "Gilded Crusader Mail (Heavy, DR 2)"
+        },
+        "skills": {
+            "Radiant Restoration": {"mastery": 250, "tier": "Adept", "description": "Channelling restorative solar fire.", "milestones_unlocked": ["Solar Mending", "Purifying Pulse"]},
+            "War-Flail Discipline": {"mastery": 190, "tier": "Journeyman", "description": "Swinging spiked morningstar chains.", "milestones_unlocked": ["Shield Bypass"]},
+            "Aura of Protection": {"mastery": 220, "tier": "Journeyman", "description": "Radiant protective aegis for allies.", "milestones_unlocked": ["Sanctuary Ward"]}
+        },
+        "abilities": [
+            "Sun-Burst Heal (+25 HP to ally + cleanses poison/bleed)",
+            "Solar Smite (+2d8 Radiant DMG vs Undead/Fiends)",
+            "Aegis of the Brass Sun (+3 AC to adjacent allies)"
+        ],
+        "stances": {
+            "radiant_bastion": {
+                "name": "Radiant Bastion Aura",
+                "label": "☀️ Radiant Bastion",
+                "tag": "[KAELEN BASTION]",
+                "tactical_effect": "Radiates solar protection; restores +8 HP to Banki each turn and grants +2 to all saving throws.",
+                "desc": "Persistent healing aura."
+            },
+            "cleansing_sunburst": {
+                "name": "Cleansing Sunburst",
+                "label": "✨ Cleansing Sunburst",
+                "tag": "[KAELEN SUNBURST]",
+                "tactical_effect": "Unleashes blinding solar flash for 2d8+3 Radiant DMG; removes all debuffs from party.",
+                "desc": "Damage and cleanse."
+            },
+            "crusader_smite": {
+                "name": "Crusader Smite",
+                "label": "🔨 Crusader Smite",
+                "tag": "[KAELEN SMITE]",
+                "tactical_effect": "Swings radiant flail dealing 1d10+4 Bludgeoning + 2d8 Radiant DMG, ignoring enemy shields.",
+                "desc": "Offensive shield-breaker."
+            }
+        },
+        "dual_tech_id": "dawn_breaker_smite"
+    },
+    "Zedd": {
+        "id": "companion_zedd",
+        "name": "Zeddicus Volt-Spark",
+        "class": "Plasma-Mage / Galvanic Dynamo",
+        "title": "Plasma-Mage / Galvanic Dynamo",
+        "role": "Chain-Lightning AOE, Superconductor Field & Armor Splicing",
+        "level": 3,
+        "hp": 30,
+        "max_hp": 30,
+        "xp": 420,
+        "next_level_xp": 900,
+        "stance": "plasma_arc",
+        "morale": "Steady",
+        "affinity": 25,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "Decommissioned Edison Substation (Belvidere Junction, X:30, Y:50)",
+        "recruitment_requirements": {"min_level": 3, "col_cost": 0, "puzzle": "substation_grid", "description": "Solve the Substation Power-Grid puzzle (INT DC 13) or deliver 2 Voltaic Cores."},
+        "bio": "A high-voltage lineman who survived a 500kV discharge when the Crucible hit. Fused with dorsal capacitors, he commands plasma arcs.",
+        "loadout": {
+            "main_hand": "Galvanic Arc Staff (1d6+3 Bludgeoning + 2d6 Lightning)",
+            "off_hand": "Capacitor Battery Rig (Focus)",
+            "armor": "Spark-Shield Coat (Cloth, DR 1, Lightning Immune)",
+            "chest": "Spark-Shield Coat (Cloth, DR 1, Lightning Immune)"
+        },
+        "equipped": {
+            "main_hand": "Galvanic Arc Staff (1d6+3 Bludgeoning + 2d6 Lightning)",
+            "off_hand": "Capacitor Battery Rig (Focus)",
+            "armor": "Spark-Shield Coat (Cloth, DR 1, Lightning Immune)",
+            "chest": "Spark-Shield Coat (Cloth, DR 1, Lightning Immune)"
+        },
+        "skills": {
+            "Galvanic Sorcery": {"mastery": 240, "tier": "Journeyman", "description": "Channelling high-voltage aetheric arcs.", "milestones_unlocked": ["Chain Lightning", "Static Overload"]},
+            "Capacitor Engineering": {"mastery": 210, "tier": "Journeyman", "description": "Storing and regulating energetic voltage.", "milestones_unlocked": ["Overcharge Valve"]},
+            "Dielectric Piercing": {"mastery": 180, "tier": "Journeyman", "description": "Melting metal armor with plasma heat.", "milestones_unlocked": ["Arc Weld"]}
+        },
+        "abilities": [
+            "Ball Lightning Discharge (3d8 Lightning AOE)",
+            "Static Overcharge (Weapon buff: +1d10 Shock DMG to Banki)",
+            "Dielectric EMP (Stuns constructs for 1 turn)"
+        ],
+        "stances": {
+            "plasma_arc": {
+                "name": "Overcharge Plasma Arc",
+                "label": "⚡ Plasma Arc",
+                "tag": "[ZEDD PLASMA]",
+                "tactical_effect": "Discharges chain lightning dealing 2d10+4 Shock DMG that arcs across up to 3 targets.",
+                "desc": "Multi-target lightning assault."
+            },
+            "superconductor_field": {
+                "name": "Superconductor Field",
+                "label": "🌐 Superconductor Field",
+                "tag": "[ZEDD FIELD]",
+                "tactical_effect": "Deploys crackling electric perimeter; any enemy entering melee takes 1d8 Shock DMG and loses 10ft movement.",
+                "desc": "Defensive area denial."
+            },
+            "capacitive_burst": {
+                "name": "Static Discharge Burst",
+                "label": "💥 Static Burst",
+                "tag": "[ZEDD BURST]",
+                "tactical_effect": "Vents all dorsal capacitors into a single concussive shockwave dealing 3d8 Force/Lightning DMG and knocking foes back 15ft.",
+                "desc": "Point-blank peel."
+            }
+        },
+        "dual_tech_id": "volt_tempest_detonation"
+    },
+    "Daphne": {
+        "id": "companion_daphne",
+        "name": "Daphne Leclair",
+        "class": "Spellsinger / Skaldic Virtuoso",
+        "title": "Spellsinger / Skaldic Virtuoso",
+        "role": "Vocal Attack Buffs, Sonic Stuns & Skaldic Battle Anthems",
+        "level": 3,
+        "hp": 32,
+        "max_hp": 32,
+        "xp": 380,
+        "next_level_xp": 900,
+        "stance": "berserker_hymn",
+        "morale": "Steady",
+        "affinity": 25,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "The Rusty Flagon Speakeasy (Easton Riverfront Node, X:22, Y:55)",
+        "recruitment_requirements": {"min_level": 2, "col_cost": 350, "description": "Pay off her 350 Col tavern tab OR perform a collaborative battle ballad (CHA DC 14)."},
+        "bio": "A half-elf siren-kin jazz singer whose vocal harmonies bend sound waves into sonic concussions and battle-buffs.",
+        "loadout": {
+            "main_hand": "Silvered Stiletto (1d4+3 Piercing)",
+            "off_hand": "Resonating Aether-Lute (Focus)",
+            "armor": "Velvet Performer's Doublet (+2 CHA, DR 1)",
+            "chest": "Velvet Performer's Doublet (+2 CHA, DR 1)"
+        },
+        "equipped": {
+            "main_hand": "Silvered Stiletto (1d4+3 Piercing)",
+            "off_hand": "Resonating Aether-Lute (Focus)",
+            "armor": "Velvet Performer's Doublet (+2 CHA, DR 1)",
+            "chest": "Velvet Performer's Doublet (+2 CHA, DR 1)"
+        },
+        "skills": {
+            "Spellsinging": {"mastery": 250, "tier": "Adept", "description": "Weaving acoustic vibrations into magic.", "milestones_unlocked": ["Sonic Boom", "Song of Valor"]},
+            "Acoustic Manipulation": {"mastery": 200, "tier": "Journeyman", "description": "Bending resonance to disrupt spellcasting.", "milestones_unlocked": ["Counter-Melody"]},
+            "Streetwise Performance": {"mastery": 180, "tier": "Journeyman", "description": "Extracting rumors and winning tavern crowds.", "milestones_unlocked": ["Silver Tongue"]}
+        },
+        "abilities": [
+            "Song of Sovereign Might (+4 DMG & +2 ATK to Party)",
+            "Discordant Screech (DC 14 CON vs Stun)",
+            "Lullaby of the Void (Puts non-elite target to sleep)"
+        ],
+        "stances": {
+            "berserker_hymn": {
+                "name": "Hymn of the Berserker",
+                "label": "🎶 Berserker Hymn",
+                "tag": "[DAPHNE HYMN]",
+                "tactical_effect": "Sings a thunderous battle chant; grants Banki +3 Attack rolls and +1d8 weapon damage.",
+                "desc": "High offensive party buff."
+            },
+            "discordant_screech": {
+                "name": "Discordant Screech",
+                "label": "🔊 Discordant Screech",
+                "tag": "[DAPHNE SCREECH]",
+                "tactical_effect": "Plucks a shattering resonant chord dealing 2d6 Thunder DMG and forcing DC 14 CON check vs Disoriented.",
+                "desc": "Sonic disruption."
+            },
+            "fleeting_shadows": {
+                "name": "Song of Fleeting Shadows",
+                "label": "🌫️ Fleeting Shadows",
+                "tag": "[DAPHNE SHADOWS]",
+                "tactical_effect": "Weaves acoustic dampening; grants all allies +4 Stealth and +2 Dodge AC.",
+                "desc": "Evasive party defense."
+            }
+        },
+        "dual_tech_id": "valkyrie_war_chorus"
+    },
+    "Rok": {
+        "id": "companion_rok",
+        "name": "Ragnarok 'Rok'",
+        "class": "Juggernaut Marauder / Blood-Rager",
+        "title": "Juggernaut Marauder / Blood-Rager",
+        "role": "Berserk Melee Fury, High Physical DR & Twin Cleaver Slaughter",
+        "level": 4,
+        "hp": 58,
+        "max_hp": 58,
+        "xp": 850,
+        "next_level_xp": 1200,
+        "stance": "blood_frenzy",
+        "morale": "Bloodthirsty",
+        "affinity": 20,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "Blood-Pit Arena (Oxford Iron Mines Slag Heaps, X:55, Y:45)",
+        "recruitment_requirements": {"min_level": 3, "col_cost": 0, "duel": "slag_pit_brawl", "description": "Defeat Rok in the Slag Pit duel OR match him drink-for-drink in dwarven gut-burner ale (CON DC 15)."},
+        "bio": "A half-orc bio-chimeric marauder who wields twin jagged slag-cleavers. Becomes exponentially deadlier as his health drops.",
+        "loadout": {
+            "main_hand": "Serrated Slag-Cleaver (1d10+4 Slashing)",
+            "off_hand": "Serrated Slag-Cleaver (1d10+4 Slashing)",
+            "armor": "Troll-Hide Kilt (Heavy Leathers, DR 3)",
+            "chest": "Troll-Hide Kilt (Heavy Leathers, DR 3)"
+        },
+        "equipped": {
+            "main_hand": "Serrated Slag-Cleaver (1d10+4 Slashing)",
+            "off_hand": "Serrated Slag-Cleaver (1d10+4 Slashing)",
+            "armor": "Troll-Hide Kilt (Heavy Leathers, DR 3)",
+            "chest": "Troll-Hide Kilt (Heavy Leathers, DR 3)"
+        },
+        "skills": {
+            "Dual-Axe Slaughter": {"mastery": 290, "tier": "Adept", "description": "Relentless twin-weapon onslaught.", "milestones_unlocked": ["Whirlwind Rake", "Decapitate", "Blood Fountain"]},
+            "Pain Tolerance": {"mastery": 270, "tier": "Adept", "description": "Converting physical trauma into adrenaline.", "milestones_unlocked": ["Thick Skinned", "Berserk Vigor"]},
+            "Intimidating Roar": {"mastery": 210, "tier": "Journeyman", "description": "Terrifying lesser foes with primal bellows.", "milestones_unlocked": ["Battle Shriek"]}
+        },
+        "abilities": [
+            "Blood-Frenzy Charge (3d10+8 Slashing + Knocks Prone)",
+            "Unyielding Rage (Cannot drop below 1 HP for 1 turn)",
+            "Meat-Hook Cleave (Pulls enemy into melee range)"
+        ],
+        "stances": {
+            "blood_frenzy": {
+                "name": "Blood-Frenzy Rampage",
+                "label": "🩸 Blood Frenzy",
+                "tag": "[ROK FRENZY]",
+                "tactical_effect": "Swings twin cleavers wildly dealing 2d10+6 Slashing DMG; gains +2 DMG for every 10 HP missing.",
+                "desc": "Ramping berserk damage."
+            },
+            "unyielding_flesh": {
+                "name": "Unyielding Flesh",
+                "label": "🛡️ Unyielding Flesh",
+                "tag": "[ROK FLESH]",
+                "tactical_effect": "Tenses troll-grafted muscles; gains DR 4 against physical damage and taunts all active foes.",
+                "desc": "Frontline berserk tanking."
+            },
+            "cleaver_whirl": {
+                "name": "Whirlwind Slag-Torn",
+                "label": "🌪️ Slag Whirlwind",
+                "tag": "[ROK WHIRL]",
+                "tactical_effect": "Spins in a tight circle dealing 2d8+4 Slashing DMG to all adjacent enemies with guaranteed Bleed.",
+                "desc": "Melee AOE cleave."
+            }
+        },
+        "dual_tech_id": "blood_twin_cleave"
+    },
+    "Lyra": {
+        "id": "companion_lyra",
+        "name": "Lyra Stargaze",
+        "class": "Chronomancer / Temporal Weaver",
+        "title": "Chronomancer / Temporal Weaver",
+        "role": "Timeline Dilation, Haste Buffs, Slow Fields & Wound Reversal",
+        "level": 4,
+        "hp": 28,
+        "max_hp": 28,
+        "xp": 780,
+        "next_level_xp": 1200,
+        "stance": "temporal_haste",
+        "morale": "Steady",
+        "affinity": 25,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "High Point Observatory Spire (Sussex Overlook, X:48, Y:12)",
+        "recruitment_requirements": {"min_level": 4, "col_cost": 0, "item": "Refined Aether-Crystal", "description": "Reach Level 4 and calibrate the Astrolabe Focal Prism using an Aether-Crystal."},
+        "bio": "An aether-born stargazer astrophysicist who manipulates timeline foam to speed allies, freeze foes, and rewind lethal wounds.",
+        "loadout": {
+            "main_hand": "Chrono-Staff of Moments (1d6+3 Bludgeoning + Time Warp)",
+            "off_hand": "Hourglass Focus (Cosmic Focus)",
+            "armor": "Star-Silk Robes (+2 INT, DR 1)",
+            "chest": "Star-Silk Robes (+2 INT, DR 1)"
+        },
+        "equipped": {
+            "main_hand": "Chrono-Staff of Moments (1d6+3 Bludgeoning + Time Warp)",
+            "off_hand": "Hourglass Focus (Cosmic Focus)",
+            "armor": "Star-Silk Robes (+2 INT, DR 1)",
+            "chest": "Star-Silk Robes (+2 INT, DR 1)"
+        },
+        "skills": {
+            "Chronomancy": {"mastery": 290, "tier": "Adept", "description": "Accelerating and decelerating causal flow.", "milestones_unlocked": ["Haste Glyphs", "Time Dilation", "Temporal Anchor"]},
+            "Stargazing Telemetry": {"mastery": 240, "tier": "Journeyman", "description": "Calculating celestial alignment and odds.", "milestones_unlocked": ["Fate Reading"]},
+            "Temporal Mending": {"mastery": 210, "tier": "Journeyman", "description": "Reversing physical damage into past states.", "milestones_unlocked": ["Rewind Tissue"]}
+        },
+        "abilities": [
+            "Chrono-Stasis Bubble (Freezes target for 1 turn)",
+            "Haste Surge (Grants Banki an extra standard action)",
+            "Temporal Rewind (Reverses last turn's damage on ally)"
+        ],
+        "stances": {
+            "temporal_haste": {
+                "name": "Haste Surge Acceleration",
+                "label": "⏳ Haste Surge",
+                "tag": "[LYRA HASTE]",
+                "tactical_effect": "Bends time around Banki; grants Banki +4 Initiative and an extra attack every other turn.",
+                "desc": "Speed and action accelerator."
+            },
+            "time_dilation": {
+                "name": "Time Dilation Field",
+                "label": "🌀 Dilation Field",
+                "tag": "[LYRA SLOW]",
+                "tactical_effect": "Traps enemy frontliners in viscous time; enemies suffer -4 to AC and lose their reactions.",
+                "desc": "Enemy time freeze."
+            },
+            "wound_echo": {
+                "name": "Rewind Wound Echoes",
+                "label": "⏪ Wound Rewind",
+                "tag": "[LYRA REWIND]",
+                "tactical_effect": "Rewinds time on the most damaged ally, restoring 20 HP from injuries sustained this combat.",
+                "desc": "Temporal healing."
+            }
+        },
+        "dual_tech_id": "temporal_shatter_strike"
+    },
+    "Titus": {
+        "id": "companion_titus",
+        "name": "Titus Sterling",
+        "class": "Aegis-Automaton / Iron-Clad Sentinel",
+        "title": "Aegis-Automaton / Iron-Clad Sentinel",
+        "role": "Impenetrable Interception Tank, Blast Furnace Armor & Steam Concussion",
+        "level": 4,
+        "hp": 65,
+        "max_hp": 65,
+        "xp": 850,
+        "next_level_xp": 1200,
+        "stance": "iron_curtain",
+        "morale": "Dignified",
+        "affinity": 30,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "Abandoned Bethlehem Steel Foundry (Lehigh Basin Node, X:18, Y:65)",
+        "recruitment_requirements": {"min_level": 3, "col_cost": 0, "repair_items": ["Refined Aether-Alloy x2", "Clockwork Gyroscope"], "description": "Repair his fractured boiler core (Crafting DC 12) with alloy and clockwork parts."},
+        "bio": "A sentient Victorian-era steam golem from Bethlehem Steel. Formally polite butler who absorbs up to 75% of party damage.",
+        "loadout": {
+            "main_hand": "Pneumatic Slag-Hammer (1d12+5 Bludgeoning)",
+            "off_hand": "Steam-Buffered Kinetic Barrier (+4 AC, DR 2)",
+            "armor": "Cast-Iron Boiler Chassis (Heavy Plate, DR 4)",
+            "chest": "Cast-Iron Boiler Chassis (Heavy Plate, DR 4)"
+        },
+        "equipped": {
+            "main_hand": "Pneumatic Slag-Hammer (1d12+5 Bludgeoning)",
+            "off_hand": "Steam-Buffered Kinetic Barrier (+4 AC, DR 2)",
+            "armor": "Cast-Iron Boiler Chassis (Heavy Plate, DR 4)",
+            "chest": "Cast-Iron Boiler Chassis (Heavy Plate, DR 4)"
+        },
+        "skills": {
+            "Sentinel Interception": {"mastery": 300, "tier": "Adept", "description": "Placing iron chassis between allies and harm.", "milestones_unlocked": ["Bodyguard Intercept", "Shield Ward", "Kinetic Absorption"]},
+            "Blast Furnace Engineering": {"mastery": 250, "tier": "Adept", "description": "Regulating steam pressure and thermal vents.", "milestones_unlocked": ["Overheat Discharge"]},
+            "Pneumatic Warfare": {"mastery": 220, "tier": "Journeyman", "description": "Heavy hammer strikes propelled by pistons.", "milestones_unlocked": ["Piston Slam"]}
+        },
+        "abilities": [
+            "Iron Curtain Intercept (Absorbs 75% of damage intended for Banki)",
+            "Steam Vent Blind (DC 14 CON vs Scalded/Blind)",
+            "Pneumatic Crater Slam (3d10 Bludgeoning + Stun)"
+        ],
+        "stances": {
+            "iron_curtain": {
+                "name": "Iron-Curtain Interception",
+                "label": "🛡️ Iron Curtain",
+                "tag": "[TITUS INTERCEPT]",
+                "tactical_effect": "Interposes iron frame; intercepts 75% of incoming damage to Banki, reducing it by DR 4.",
+                "desc": "Ultimate damage protection."
+            },
+            "steam_flare": {
+                "name": "Steam Exhaust Flare",
+                "label": "💨 Steam Flare",
+                "tag": "[TITUS STEAM]",
+                "tactical_effect": "Vents boiling steam in a 15ft cone; deals 2d8 Fire DMG and inflicts -3 to enemy attack rolls.",
+                "desc": "Area blindness and burn."
+            },
+            "concussive_smash": {
+                "name": "Pneumatic Slag Slam",
+                "label": "🔨 Slag Slam",
+                "tag": "[TITUS SMASH]",
+                "tactical_effect": "Brings slag-hammer down with 2d12+5 Bludgeoning DMG; destroys 40 points of Boss Break Gauge.",
+                "desc": "Heavy bludgeoning stagger."
+            }
+        },
+        "dual_tech_id": "foundry_forge_smash"
+    },
+    "Nyssa": {
+        "id": "companion_nyssa",
+        "name": "Nyssa Thorn-Weft",
+        "class": "Primal Shapeshifter / Beast-Warden",
+        "title": "Primal Shapeshifter / Beast-Warden",
+        "role": "Fluid Form-Shifting (Sabre-Cat Pounce DPS / Cave-Bear Fortitude)",
+        "level": 3,
+        "hp": 38,
+        "max_hp": 38,
+        "xp": 450,
+        "next_level_xp": 900,
+        "stance": "cat_pounce",
+        "morale": "Steady",
+        "affinity": 25,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "Delaware Water Gap Wolf Den (X:32, Y:30)",
+        "recruitment_requirements": {"min_level": 3, "col_cost": 0, "skill_check": "Survival 120 or Animal Empathy", "description": "Tame or cure the infected Alpha Dire-Wolf pack leader alongside Nyssa."},
+        "bio": "A beast-kin felis shapeshifter who flows between a deadly stealth sabre-cat and an armored, raging cave-bear.",
+        "loadout": {
+            "main_hand": "Obsidian Claw-Gauntlets (1d8+3 Slashing + Bleed)",
+            "off_hand": "Obsidian Claw-Gauntlets (1d8+3 Slashing)",
+            "armor": "Living Bramble Armor (DR 2, Thorns)",
+            "chest": "Living Bramble Armor (DR 2, Thorns)"
+        },
+        "equipped": {
+            "main_hand": "Obsidian Claw-Gauntlets (1d8+3 Slashing + Bleed)",
+            "off_hand": "Obsidian Claw-Gauntlets (1d8+3 Slashing)",
+            "armor": "Living Bramble Armor (DR 2, Thorns)",
+            "chest": "Living Bramble Armor (DR 2, Thorns)"
+        },
+        "skills": {
+            "Primal Shapeshifting": {"mastery": 270, "tier": "Adept", "description": "Metamorphic biology into apex predators.", "milestones_unlocked": ["Feline Quickstep", "Ursine Thickhide", "Predator Instinct"]},
+            "Bramble Entanglement": {"mastery": 200, "tier": "Journeyman", "description": "Summoning thorny vines from soil.", "milestones_unlocked": ["Grasping Roots"]},
+            "Predator Tracking": {"mastery": 220, "tier": "Journeyman", "description": "Scenting prey and tracking blood trails.", "milestones_unlocked": ["Blood Scent"]}
+        },
+        "abilities": [
+            "Sabre-Cat Pounce (3d8 Slashing + Knocks Prone + Bleed)",
+            "Cave-Bear Roar (Gains +25 Temporary HP + Taunts)",
+            "Thorn Bramble Spikes (Entangles foes, 1d8 Piercing/turn)"
+        ],
+        "stances": {
+            "cat_pounce": {
+                "name": "Sabre-Cat Pounce",
+                "label": "🐆 Sabre-Cat Pounce",
+                "tag": "[NYSSA POUNCE]",
+                "tactical_effect": "Pounces on vulnerable targets dealing 2d8+5 Slashing DMG and inflicting severe Bleed (8 DMG/turn).",
+                "desc": "High critical burst mode."
+            },
+            "bear_form": {
+                "name": "Bear-Form Fortitude",
+                "label": "🐻 Bear Fortitude",
+                "tag": "[NYSSA BEAR]",
+                "tactical_effect": "Shifts into giant cave-bear; gains +20 Temp HP, DR 3, and forces hostiles to focus on her.",
+                "desc": "Tanking form."
+            },
+            "bramble_trap": {
+                "name": "Bramble Entangle",
+                "label": "🌿 Bramble Entangle",
+                "tag": "[NYSSA ROOTS]",
+                "tactical_effect": "Summons living briars that root up to 2 enemies in place for 1 turn, preventing movement.",
+                "desc": "Area crowd control."
+            }
+        },
+        "dual_tech_id": "pack_hunt_ambush"
+    },
+    "Malakor": {
+        "id": "companion_malakor",
+        "name": "Malakor",
+        "class": "Eldritch Hexblade / Void-Pact Siphon",
+        "title": "Eldritch Hexblade / Void-Pact Siphon",
+        "role": "Anti-Mage Execution, Resource Siphon & Shadow Teleportation",
+        "level": 4,
+        "hp": 42,
+        "max_hp": 42,
+        "xp": 800,
+        "next_level_xp": 1200,
+        "stance": "void_edge",
+        "morale": "Steady",
+        "affinity": 20,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "Decommissioned Limestone Caverns (Pohatcong Sinkholes, X:42, Y:56)",
+        "recruitment_requirements": {"min_level": 3, "col_cost": 0, "item": "Corrupted Void-Shard", "description": "Deliver a Corrupted Void-Shard from an Elite Abyssal mob to seal a blood-oath binding pact."},
+        "bio": "A void-touched tiefling whose Greatsword 'Scourge-Drinker' drains enemy mana, active spell slots, and kinetic shielding.",
+        "loadout": {
+            "main_hand": "Void-Etched Greatsword (2d6+4 Slashing + Void Siphon)",
+            "off_hand": "Null-Glyph Buckler (+2 AC, Spell Absorber)",
+            "armor": "Shadow-Steel Hauberk (DR 2, Magic Resist)",
+            "chest": "Shadow-Steel Hauberk (DR 2, Magic Resist)"
+        },
+        "equipped": {
+            "main_hand": "Void-Etched Greatsword (2d6+4 Slashing + Void Siphon)",
+            "off_hand": "Null-Glyph Buckler (+2 AC, Spell Absorber)",
+            "armor": "Shadow-Steel Hauberk (DR 2, Magic Resist)",
+            "chest": "Shadow-Steel Hauberk (DR 2, Magic Resist)"
+        },
+        "skills": {
+            "Hexblade Greatsword": {"mastery": 280, "tier": "Adept", "description": "Heavy two-handed strikes imbued with void.", "milestones_unlocked": ["Void Cleave", "Severing Arc", "Soul Drinker"]},
+            "Eldritch Invocation": {"mastery": 240, "tier": "Journeyman", "description": "Channelling dark patronage from beyond.", "milestones_unlocked": ["Armor of Agathys"]},
+            "Anti-Magic Severing": {"mastery": 210, "tier": "Journeyman", "description": "Dispelling magical barriers and shields.", "milestones_unlocked": ["Nullify Matrix"]}
+        },
+        "abilities": [
+            "Void-Blade Smite (3d10 Void DMG + drains 20% enemy resource)",
+            "Spell-Eater Ward (Absorbs 1 spell and converts to 15 HP)",
+            "Shadow Step (Teleports 30ft behind target)"
+        ],
+        "stances": {
+            "void_edge": {
+                "name": "Void-Edge Siphon",
+                "label": "🌌 Void-Edge Siphon",
+                "tag": "[MALAKOR VOID]",
+                "tactical_effect": "Cleaves through target for 2d6+5 Void DMG, draining enemy combat resources and buffing Banki.",
+                "desc": "Anti-resource damage."
+            },
+            "spell_eater": {
+                "name": "Spell-Eater Ward",
+                "label": "🔮 Spell-Eater Ward",
+                "tag": "[MALAKOR WARD]",
+                "tactical_effect": "Raises void buckler; absorbs all magical projectile damage directed at the party this turn.",
+                "desc": "Magic damage negation."
+            },
+            "shadow_rend": {
+                "name": "Abyssal Step Execution",
+                "label": "👤 Abyssal Step",
+                "tag": "[MALAKOR SHADOW]",
+                "tactical_effect": "Blinks through reality into the backline, executing an unblockable strike dealing 3d8+4 Critical DMG.",
+                "desc": "Backline assassin strike."
+            }
+        },
+        "dual_tech_id": "void_abyss_cleave"
+    },
+    "Thorne": {
+        "id": "companion_thorne",
+        "name": "Dr. Alistair Thorne",
+        "class": "Alchemical Saboteur / Toxicologist",
+        "title": "Alchemical Saboteur / Toxicologist",
+        "role": "Armor-Stripping Vitriol, Toxic Cloud Control & Adrenaline Injections",
+        "level": 3,
+        "hp": 30,
+        "max_hp": 30,
+        "xp": 450,
+        "next_level_xp": 900,
+        "stance": "vitriol_salvo",
+        "morale": "Maniacal",
+        "affinity": 25,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "Abandoned Chemical Works (Phillipsburg Flats, X:26, Y:60)",
+        "recruitment_requirements": {"min_level": 3, "col_cost": 0, "quest": "chemical_leak", "description": "Neutralize the chemical vat leak (Crafting/Perception DC 13) and recover his stolen journals."},
+        "bio": "A manic chemical engineer and Elora's eccentric uncle. Dissolves monster armor with hyper-vitriol and juices allies with adrenaline.",
+        "loadout": {
+            "main_hand": "Pneumatic Acid-Siphon Cannon (1d8+3 Acid + Armor Melt)",
+            "off_hand": "Bandolier of Corrosive Flasks (Alchemical Focus)",
+            "armor": "Lead-Lined Hazard Apron (DR 1, Acid/Poison Immune)",
+            "chest": "Lead-Lined Hazard Apron (DR 1, Acid/Poison Immune)"
+        },
+        "equipped": {
+            "main_hand": "Pneumatic Acid-Siphon Cannon (1d8+3 Acid + Armor Melt)",
+            "off_hand": "Bandolier of Corrosive Flasks (Alchemical Focus)",
+            "armor": "Lead-Lined Hazard Apron (DR 1, Acid/Poison Immune)",
+            "chest": "Lead-Lined Hazard Apron (DR 1, Acid/Poison Immune)"
+        },
+        "skills": {
+            "Volatile Chemistry": {"mastery": 270, "tier": "Adept", "description": "Mixing unstable exothermic acids and gases.", "milestones_unlocked": ["Corrosive Brew", "Nitro Flask", "Thermite Compound"]},
+            "Toxicology": {"mastery": 230, "tier": "Journeyman", "description": "Formulating paralytic neurotoxins.", "milestones_unlocked": ["Neuro-Darts"]},
+            "Combat Bio-Stimulants": {"mastery": 210, "tier": "Journeyman", "description": "Adrenaline and stamina injections.", "milestones_unlocked": ["Adrenal Rush"]}
+        },
+        "abilities": [
+            "Hyper-Vitriol Acid Bomb (Melt target AC by -4 permanently)",
+            "Toxic Cloudkill Flask (15ft choking gas, 2d6 Poison/turn)",
+            "Adrenaline Bio-Stim (+4 STR/DEX to Banki for 2 turns)"
+        ],
+        "stances": {
+            "vitriol_salvo": {
+                "name": "Corrosive Acid Salvo",
+                "label": "🧪 Vitriol Salvo",
+                "tag": "[THORNE ACID]",
+                "tactical_effect": "Hurls bubbling acid flasks dealing 2d6+3 Acid DMG and permanently degrading target AC by -2.",
+                "desc": "Armor-shredding debuff."
+            },
+            "toxic_smokescreen": {
+                "name": "Cloudkill Smokescreen",
+                "label": "🌫️ Toxic Cloudkill",
+                "tag": "[THORNE SMOKE]",
+                "tactical_effect": "Detonates thick chemical smoke; blinds hostiles (-3 to hit) while party gains full concealment.",
+                "desc": "Obscuring defense."
+            },
+            "adrenal_injection": {
+                "name": "Adrenaline Stim Injection",
+                "label": "💉 Adrenal Stim",
+                "tag": "[THORNE STIM]",
+                "tactical_effect": "Injects Banki with hyper-adrenaline; Banki deals +1d10 bonus physical damage on all attacks this turn.",
+                "desc": "Allied damage booster."
+            }
+        },
+        "dual_tech_id": "corrosive_shatter_bomb"
+    },
+    "Teresa": {
+        "id": "companion_teresa",
+        "name": "Sister Teresa",
+        "class": "Inquisitor / Witch-Hunter",
+        "title": "Inquisitor / Witch-Hunter",
+        "role": "Silver Ranged Execution, Weakness Exposure & Anti-Aberration Stake",
+        "level": 3,
+        "hp": 36,
+        "max_hp": 36,
+        "xp": 450,
+        "next_level_xp": 900,
+        "stance": "silver_snipe",
+        "morale": "Resolute",
+        "affinity": 30,
+        "affinity_tier": "Acquaintance",
+        "recruited": False,
+        "active": False,
+        "recruitment_location": "Old Moravian Mission Ruins (Hope Township, X:50, Y:30)",
+        "recruitment_requirements": {"min_level": 2, "col_cost": 0, "dialogue": "truth_glyph", "description": "Pass her truth-testing glyph (WIS DC 13) or assist in exposing a cultist spy in Hope Township."},
+        "bio": "A former criminal prosecutor turned Silver Flame Inquisitor. Uses silver truth-runes and heavy stake crossbows to execute heretics.",
+        "loadout": {
+            "main_hand": "Silver-Chambered Crossbow (1d10+3 Piercing + Silver)",
+            "off_hand": "Blessed Consecrated Estoc (1d8+3 Piercing)",
+            "armor": "Inquisitor's Leather Duster (+2 WIS, DR 1)",
+            "chest": "Inquisitor's Leather Duster (+2 WIS, DR 1)"
+        },
+        "equipped": {
+            "main_hand": "Silver-Chambered Crossbow (1d10+3 Piercing + Silver)",
+            "off_hand": "Blessed Consecrated Estoc (1d8+3 Piercing)",
+            "armor": "Inquisitor's Leather Duster (+2 WIS, DR 1)",
+            "chest": "Inquisitor's Leather Duster (+2 WIS, DR 1)"
+        },
+        "skills": {
+            "Inquisitorial Crossbow": {"mastery": 260, "tier": "Adept", "description": "Driving heavy consecrated silver stakes.", "milestones_unlocked": ["Silver Stake", "Pinning Bolt", "Judgment Volley"]},
+            "Discernment of Truth": {"mastery": 240, "tier": "Journeyman", "description": "Seeing through illusions and shapeshifters.", "milestones_unlocked": ["True Sight"]},
+            "Cestus & Estoc Fencing": {"mastery": 190, "tier": "Journeyman", "description": "Close-range execution maneuvers.", "milestones_unlocked": ["Parry & Riposte"]}
+        },
+        "abilities": [
+            "Silver Stake Execution (3d10 Piercing vs Aberration/Undead)",
+            "Witch-Hunter's Brand (Target cannot turn invisible or heal for 2 turns)",
+            "Solemn Verdict (+3 Critical threat range to party)"
+        ],
+        "stances": {
+            "silver_snipe": {
+                "name": "Silver-Bolt Snipe",
+                "label": "🏹 Silver Snipe",
+                "tag": "[TERESA SNIPE]",
+                "tactical_effect": "Fires a silver-tipped stake dealing 2d8+4 Piercing DMG (+2d8 vs Aberrations/Undead) and pinning target.",
+                "desc": "Anti-fiend/undead sniper."
+            },
+            "truth_judgment": {
+                "name": "True-Sight Judgment",
+                "label": "⚖️ True-Sight Judgment",
+                "tag": "[TERESA JUDGMENT]",
+                "tactical_effect": "Paints target with silver flame; exposes physical weaknesses, increasing Banki's crit chance to 18-20.",
+                "desc": "Critical threat amplifier."
+            },
+            "witch_hunter_brand": {
+                "name": "Witch-Hunter's Brand",
+                "label": "🔥 Witch Brand",
+                "tag": "[TERESA BRAND]",
+                "tactical_effect": "Brands target with holy fire; target loses 8 HP/turn and cannot regenerate health or phase shift.",
+                "desc": "Anti-healing brand."
+            }
+        },
+        "dual_tech_id": "inquisition_execution"
     }
 }
 
@@ -4868,13 +5825,149 @@ DUAL_TECH_COMBOS = {
         "damage": "5d10+12 Critical Slashing DMG",
         "effect": "Guaranteed critical hit dealing 5d10+12 Slashing DMG and severe Bleed (10 DMG/turn).",
         "log_tag": "[DUAL-TECH: BANKI + KIBS -> SHADOW-FLANK EXECUTION]"
+    },
+    "valkyries_wrath": {
+        "id": "valkyries_wrath",
+        "name": "Valkyrie's Sky-Cleave",
+        "partners": ["Banki", "Valeria"],
+        "req_affinity": 50,
+        "desc": "Valeria lifts Banki into an aerial trajectory before hurling him downward in a terminal-velocity dive-bomb while unleashing radiant spear salvos.",
+        "damage": "4d10+10 Radiant Slashing + 2d8 Piercing AOE",
+        "effect": "Inflicts 4d10+10 Radiant Slashing DMG to primary target and 2d8 Piercing to surrounding foes with guaranteed Knockdown.",
+        "log_tag": "[DUAL-TECH: BANKI + VALERIA -> VALKYRIE'S SKY-CLEAVE]"
+    },
+    "grave_lord_cleave": {
+        "id": "grave_lord_cleave",
+        "name": "Grave-Lord Soul Reaver",
+        "partners": ["Banki", "Morrigan"],
+        "req_affinity": 50,
+        "desc": "Morrigan binds the enemy's life-force in necrotic soul-chains as Banki cleaves through the tether, detonating a necrotic siphon that leeches vital essence.",
+        "damage": "4d10+8 Slashing + 3d8 Necrotic DMG",
+        "effect": "Deals 4d10+8 Slashing + 3d8 Necrotic DMG; heals Banki and Morrigan for 50% of necrotic damage dealt.",
+        "log_tag": "[DUAL-TECH: BANKI + MORRIGAN -> GRAVE-LORD SOUL REAVER]"
+    },
+    "seismic_cataclysm": {
+        "id": "seismic_cataclysm",
+        "name": "Seismic Cataclysm",
+        "partners": ["Banki", "Garrick"],
+        "req_affinity": 50,
+        "desc": "Garrick channels ki into a seismic earth-breaker slam while Banki drives his Trench Hammer into the fractured faultline, launching explosive tectonic debris.",
+        "damage": "5d10+12 Bludgeoning Force DMG",
+        "effect": "Shatters 75 Break Gauge points (guaranteed boss STUN), dealing 5d10+12 Bludgeoning Force DMG in a 20ft radius.",
+        "log_tag": "[DUAL-TECH: BANKI + GARRICK -> SEISMIC CATACLYSM]"
+    },
+    "cyclone_arrow_storm": {
+        "id": "cyclone_arrow_storm",
+        "name": "Cyclone Arrow Tempest",
+        "partners": ["Banki", "Sariel"],
+        "req_affinity": 50,
+        "desc": "Sariel fires a spiral gale-force volley pinning the targets to the earth while Banki charges through the vortex with twin-axe whirlwind cleaves.",
+        "damage": "3d10+6 Slashing + 4d6 Wind-Piercing DMG",
+        "effect": "Pins targets for 1 turn (Immobilized) and deals 3d10+6 Slashing + 4d6 Piercing DMG across the line.",
+        "log_tag": "[DUAL-TECH: BANKI + SARIEL -> CYCLONE ARROW TEMPEST]"
+    },
+    "dawn_breaker_smite": {
+        "id": "dawn_breaker_smite",
+        "name": "Dawn-Breaker Radiant Smite",
+        "partners": ["Banki", "Kaelen"],
+        "req_affinity": 50,
+        "desc": "Brother Kaelen invokes the Sol-Altar's zenith light, wrapping Banki's weapons in blinding solar fire as Banki delivers an overhead solar execution strike.",
+        "damage": "4d10+10 Radiant/Fire DMG",
+        "effect": "Deals 4d10+10 Radiant DMG (+4d10 bonus vs Undead/Corrupted), Blinds targets for 2 turns, and restores 25 HP to all allies.",
+        "log_tag": "[DUAL-TECH: BANKI + KAELEN -> DAWN-BREAKER RADIANT SMITE]"
+    },
+    "volt_tempest_detonation": {
+        "id": "volt_tempest_detonation",
+        "name": "Volt-Tempest Plasma Detonation",
+        "partners": ["Banki", "Zedd"],
+        "req_affinity": 50,
+        "desc": "Zedd hurls a high-voltage plasma sphere into the target's center-mass, which Banki violently detonates with a thunderous kinetic hammer impact.",
+        "damage": "3d10+8 Bludgeoning + 4d8 Chain-Lightning DMG",
+        "effect": "Detonates in a chain-lightning shockwave leaping to up to 4 nearby hostiles, inflicting Stunned on a failed DC 15 CON save.",
+        "log_tag": "[DUAL-TECH: BANKI + ZEDD -> VOLT-TEMPEST PLASMA DETONATION]"
+    },
+    "valkyrie_war_chorus": {
+        "id": "valkyrie_war_chorus",
+        "name": "Valkyrie Battle Anthem",
+        "partners": ["Banki", "Daphne"],
+        "req_affinity": 50,
+        "desc": "Daphne weaves a resounding skaldic war-chant that synchronizes heartbeats and multiplies adrenaline, propelling Banki into a hyper-accelerated strike frenzy.",
+        "damage": "6d8+12 Sonic-Empowered Slashing DMG",
+        "effect": "Grants Banki +2 extra attacks this turn, deals 6d8+12 Sonic Slashing DMG, and grants all party members +4 Attack and +15 Temp HP for 3 turns.",
+        "log_tag": "[DUAL-TECH: BANKI + DAPHNE -> VALKYRIE BATTLE ANTHEM]"
+    },
+    "blood_twin_cleave": {
+        "id": "blood_twin_cleave",
+        "name": "Blood-Twin Berserker Cleave",
+        "partners": ["Banki", "Rok"],
+        "req_affinity": 50,
+        "desc": "Banki and Rok roar in feral unison, executing synchronised spinning greataxe and broadaxe cleaves that tear through armor like parchment.",
+        "damage": "6d12+16 Brutal Slashing DMG",
+        "effect": "Bypasses 100% of enemy Damage Reduction, inflicts 6d12+16 Slashing DMG and severe Arterial Bleed (15 DMG/turn for 3 turns).",
+        "log_tag": "[DUAL-TECH: BANKI + ROK -> BLOOD-TWIN BERSERKER CLEAVE]"
+    },
+    "temporal_shatter_strike": {
+        "id": "temporal_shatter_strike",
+        "name": "Temporal Stasis Shatter",
+        "partners": ["Banki", "Lyra"],
+        "req_affinity": 50,
+        "desc": "Lyra locks the enemy within a 3-second localized time-stop capsule; Banki unleashes four devastating attacks that detonate simultaneously the instant time resumes.",
+        "damage": "8d8+16 Chrono-Kinetic Force DMG",
+        "effect": "Enemy is helpless during setup; deals 8d8+16 Force DMG and resets enemy initiative/turn order to the very bottom.",
+        "log_tag": "[DUAL-TECH: BANKI + LYRA -> TEMPORAL STASIS SHATTER]"
+    },
+    "foundry_forge_smash": {
+        "id": "foundry_forge_smash",
+        "name": "Foundry Hydraulic Overdrive",
+        "partners": ["Banki", "Titus"],
+        "req_affinity": 50,
+        "desc": "Titus locks the target in steam-powered pneumatic vise-clamps while Banki strikes Titus's chest-anvil, driving a superheated hydraulic piston through the target.",
+        "damage": "5d10+14 Fire & Bludgeoning DMG",
+        "effect": "Deals 5d10+14 Fire/Bludgeoning DMG, permanently shreds target Armor Class by -4, and leaves the foe Prone.",
+        "log_tag": "[DUAL-TECH: BANKI + TITUS -> FOUNDRY HYDRAULIC OVERDRIVE]"
+    },
+    "pack_hunt_ambush": {
+        "id": "pack_hunt_ambush",
+        "name": "Apex Pack-Hunt Ambush",
+        "partners": ["Banki", "Nyssa"],
+        "req_affinity": 50,
+        "desc": "Nyssa takes Dire-Wolf aspect to drag the target down by the throat while Banki closes the pincer from the blindside with a merciless downward execution stroke.",
+        "damage": "4d10+10 Slashing + 3d8 Beast-Tear Piercing DMG",
+        "effect": "Knocks target Prone, inflicts Crippled status (-50% movement speed), and deals 4d10+10 Slashing + 3d8 Piercing DMG.",
+        "log_tag": "[DUAL-TECH: BANKI + NYSSA -> APEX PACK-HUNT AMBUSH]"
+    },
+    "void_abyss_cleave": {
+        "id": "void_abyss_cleave",
+        "name": "Void-Singularity Cleave",
+        "partners": ["Banki", "Malakor"],
+        "req_affinity": 50,
+        "desc": "Malakor rips open an eldritch void anomaly that collapses space and draws all surrounding foes into a singular vortex, right into Banki's full-force whirlwind sweep.",
+        "damage": "5d8 Slashing + 4d8 Void-Cold DMG (AOE)",
+        "effect": "Pulls all enemies in 30ft into melee range, deals 5d8 Slashing + 4d8 Void DMG, and inflicts -3 to all enemy attack rolls for 2 turns.",
+        "log_tag": "[DUAL-TECH: BANKI + MALAKOR -> VOID-SINGULARITY CLEAVE]"
+    },
+    "corrosive_shatter_bomb": {
+        "id": "corrosive_shatter_bomb",
+        "name": "Corrosive Slag Shatter",
+        "partners": ["Banki", "Thorne"],
+        "req_affinity": 50,
+        "desc": "Dr. Thorne hurls a concentrated vial of alchemical vitriol onto the enemy's armor plate, followed instantly by Banki's concussive hammer strike that shatters the brittle slag.",
+        "damage": "3d10+8 Bludgeoning + 4d6 Acid DMG",
+        "effect": "Completely dissolves enemy Damage Reduction (DR reduced to 0), deals 3d10+8 Bludgeoning + 4d6 Acid DMG, and leaves a lingering acid pool.",
+        "log_tag": "[DUAL-TECH: BANKI + THORNE -> CORROSIVE SLAG SHATTER]"
+    },
+    "inquisition_execution": {
+        "id": "inquisition_execution",
+        "name": "Grand Inquisitor's Execution",
+        "partners": ["Banki", "Teresa"],
+        "req_affinity": 50,
+        "desc": "Sister Teresa pins the condemned hostile to the earth with a consecrated heavy silver stake and recites the final rite while Banki delivers a thunderous decapitation blow.",
+        "damage": "6d10+15 Holy Slashing DMG",
+        "effect": "Instant execution threshold against foes below 25% HP; otherwise deals 6d10+15 Holy Slashing DMG and permanently prevents resurrection or undead reanimation.",
+        "log_tag": "[DUAL-TECH: BANKI + TERESA -> GRAND INQUISITOR'S EXECUTION]"
     }
 }
 
-
-# =====================================================================
-# 4-MEMBER PARTY ENGINE & COMPANION MANAGEMENT
-# =====================================================================
 
 def ensure_party_system(player_state):
     """
@@ -4918,9 +6011,10 @@ def get_active_party(player_state):
     return active_list
 
 
-def recruit_companion(player_state, companion_name):
+def recruit_companion(player_state, companion_name, check_requirements=False):
     """
     Recruits a companion from the living world into Banki's roster.
+    If check_requirements=True, verifies min_level and deducts col_cost if applicable.
     If the active party has fewer than 3 companions, automatically slots them into active duty.
     """
     comps = ensure_party_system(player_state)
@@ -4936,6 +6030,25 @@ def recruit_companion(player_state, companion_name):
     comp = comps[target]
     if comp.get("recruited", False):
         return {"success": False, "message": f"{comp['name']} is already recruited into your vanguard."}
+
+    if check_requirements:
+        req = comp.get("recruitment_requirements", {})
+        min_lvl = req.get("min_level", 1)
+        player_lvl = player_state.get("level", 1)
+        if player_lvl < min_lvl:
+            return {
+                "success": False,
+                "message": f"Requirement not met: Player level {player_lvl} is below required level {min_lvl} to recruit {comp['name']}."
+            }
+        col_cost = req.get("col_cost", 0)
+        player_col = player_state.get("col", 0)
+        if col_cost > 0:
+            if player_col < col_cost:
+                return {
+                    "success": False,
+                    "message": f"Requirement not met: Insufficient Col. Requires {col_cost} Col (you have {player_col} Col)."
+                }
+            player_state["col"] = player_col - col_cost
 
     comp["recruited"] = True
 
