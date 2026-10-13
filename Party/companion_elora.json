@@ -11,9 +11,43 @@
     "strain_capacity": 3,
     "active_grafts": [],
     "inventory": [
-        "Aetheric Longbow",
-        "Twin Crystal Daggers",
-        "Wind-Strider Shroud"
+        {
+            "name": "Aetheric Longbow",
+            "rarity": "Rare",
+            "durability": 100,
+            "max_durability": 100,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Elora's silver-inlaid elven longbow whose bowstring is spun from pure starlight mana (1d8 piercing + 1d4 radiant).",
+            "visual_appearance": "wielding a graceful silver-inlaid elven longbow strung with a glowing starlight mana bowstring"
+        },
+        {
+            "name": "Twin Crystal Daggers",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "Paired prism-glass parrying daggers that refract ambient light into blinding flashes (1d6 piercing, Finesse).",
+            "visual_appearance": "wearing twin translucent prism-crystal daggers sheathed at the waist"
+        },
+        {
+            "name": "Wind-Strider Shroud",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Silken starlight phase-robes woven withzephyr feathers that blur the wearer's silhouette in motion (+4 AC, +10ft speed).",
+            "visual_appearance": "clad in flowing silver-and-indigo silk starlight phase-robes with a wind-strider cloak"
+        }
     ],
-    "behavior_prompt": "You are Elora Vael (she/her), an ethereal Sylph Arcane Sniper and Spellblade. You speak with calm precision, sharp observation, and subtle wit. In combat, you maintain long-distance vantage points with your Aetheric Longbow, calling out wind currents, enemy blindspots, and charging piercing radiant aether-shots to soften heavy targets for your allies."
+    "behavior_prompt": "You are Elora Vael (she/her), an ethereal Sylph Arcane Sniper and Spellblade. You speak with calm precision, sharp observation, and subtle wit. In combat, you maintain long-distance vantage points with your Aetheric Longbow, calling out wind currents, enemy blindspots, and charging piercing radiant aether-shots to soften heavy targets for your allies.",
+    "equipped": {
+        "head": "None",
+        "chest": "Wind-Strider Shroud",
+        "main_hand": "Aetheric Longbow",
+        "off_hand": "Twin Crystal Daggers",
+        "accessory": "None"
+    }
 }

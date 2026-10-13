@@ -8104,5 +8104,1240 @@ def extract_turn_components(msg: dict) -> tuple:
     return content, mechanics_log, subagent_log
 
 
+# =====================================================================
+# PHASE M10: MASTER ITEM VISUAL & LORE COMPENDIUM + DYNAMIC APPEARANCE ENGINE
+# =====================================================================
+
+BASE_CHARACTER_ANATOMY = {
+    "banki": {
+        "name": "Banki",
+        "base_anatomy": "Burly, rugged Nordic warrior with a broad-shouldered muscular build, weathered skin, short dark full beard, piercing intense eyes, and dark undercut hair."
+    },
+    "companion_ren": {
+        "name": "Ren",
+        "base_anatomy": "Lean, athletic 17-year-old male high school senior and systems designer with messy dark hair and sharp, expressive eyes."
+    },
+    "companion_elora": {
+        "name": "Elora Thorne",
+        "base_anatomy": "Lithe, nimble high-elven woman with silver-braided hair, pointed ears, and luminousviolet-silver eyes."
+    },
+    "companion_torvald": {
+        "name": "Torvald Iron-Vein",
+        "base_anatomy": "Stocky, battle-hardened dwarven veteran with a thick braided iron-grey beard, scarred brow, and deep amber eyes."
+    },
+    "companion_kibs": {
+        "name": "Kibs Nine-Fingers",
+        "base_anatomy": "Wiry, agile street-scrapper rogue with sharp features, a missing left ring fingertip, and darting hazel eyes."
+    },
+    "companion_valeria": {
+        "name": "Valeria Vane",
+        "base_anatomy": "Tall, striking blonde valkyrie vanguard with braided golden hair, aristocratic features, and fierce sky-blue eyes."
+    },
+    "companion_morrigan": {
+        "name": "Morrigan Black-Thorn",
+        "base_anatomy": "Pale, gothic grave-binder woman with long flowing raven-black hair and haunting emerald-glowing eyes."
+    },
+    "companion_garrick": {
+        "name": "Garrick Stone-Grip",
+        "base_anatomy": "Heavily muscled, broad-chested martial artist monk with a scarred jaw, shaved head, and glowing tectonic ki-glyphs etched across his skin."
+    },
+    "companion_sariel": {
+        "name": "Sariel Swift-Wind",
+        "base_anatomy": "Graceful wood-elf ranger with windswept auburn hair, leaf-green eyes, and keen woodland markings."
+    },
+    "companion_kaelen": {
+        "name": "Brother Kaelen",
+        "base_anatomy": "Resolute, broad-shouldered Sol-Templar cleric with a cleanly shaved head, warm golden eyes, and radiant sun-sigil brands."
+    },
+    "companion_zedd": {
+        "name": "Zeddicus Volt-Spark",
+        "base_anatomy": "Wiry, eccentric plasma-mage with wild copper-streaked spiky hair, singed eyebrows, and electric-blue eyes."
+    },
+    "companion_daphne": {
+        "name": "Daphne Leclair",
+        "base_anatomy": "Charismatic, poised skaldic duelist with curled dark hair, expressive violet eyes, and a confident half-smile."
+    },
+    "companion_rok": {
+        "name": "Ragnarok 'Rok'",
+        "base_anatomy": "Towering, colossal battle-scarred barbarian juggernaut with fiery red war-braids and glowing crimson blood-rage tattoos."
+    },
+    "companion_lyra": {
+        "name": "Lyra Stargaze",
+        "base_anatomy": "Ethereal, slender chronomancer with cascading silver-white hair and starry indigo eyes."
+    },
+    "companion_titus": {
+        "name": "Titus Sterling",
+        "base_anatomy": "Imposing 7-foot-tall articulated bronze-and-steel clockwork automaton sentinel with a glowing amber ocular visor and chest furnace."
+    },
+    "companion_nyssa": {
+        "name": "Nyssa Thorn-Weft",
+        "base_anatomy": "Feral, athletic primal druid with tangled auburn hair woven with living bramble vines and glowing amber wolf-like eyes."
+    },
+    "companion_malakor": {
+        "name": "Malakor",
+        "base_anatomy": "Slender, fiend-touched hexblade warlock with ashen skin, swept-back obsidian horns, and glowing amethyst eyes."
+    },
+    "companion_thorne": {
+        "name": "Dr. Alistair Thorne",
+        "base_anatomy": "Gaunt, sharp-featured patrician alchemist with slick silver-streaked hair and cold steel-grey eyes."
+    },
+    "companion_teresa": {
+        "name": "Sister Teresa",
+        "base_anatomy": "Austere, stern-faced inquisitor with silver-blonde hair pulled into a tight bun and piercing pale-blue eyes."
+    }
+}
+
+CANONICAL_ITEM_CATALOG = {
+    # --- PLAYER WEAPONS & OFF-HANDS ---
+    "enchanted bearded axe": {
+        "name": "Enchanted Bearded Axe",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "A finely forged Nordic bearded war-axe with an ash-wood haft wrapped in cured hide; its swept black-iron blade hums with residual cyan kinetic mana (+1d6 slashing/force, thrown return resonance).",
+        "visual_appearance": "wielding a heavy black-iron Nordic bearded war-axe etched with glowing cyan Elder Futhark runes along the curved cutting edge and wrapped in dark leather around the ash haft"
+    },
+    "free (somatic futhark casting)": {
+        "name": "Free (Somatic Futhark Casting)",
+        "slot": "off_hand",
+        "rarity": "Unique",
+        "desc": "An intentionally unencumbered off-hand stance used by Wyrd-Weavers to trace Elder Futhark rune-sigils in mid-air, channeling raw kinetic and seismic spells without somatic penalty.",
+        "visual_appearance": "left hand kept open and unencumbered, fingers crackling with glowing cyan Elder Futhark holographic rune-sigils traced in mid-air"
+    },
+    "rusted iron sword": {
+        "name": "Rusted Iron Sword",
+        "slot": "main_hand",
+        "rarity": "Common",
+        "desc": "A jagged, balance-heavy salvage broadsword ground down from pre-collapse highway guardrail steel, wrapped at the tang with electrical tape (1d8 slashing).",
+        "visual_appearance": "wielding a jagged, pitted iron salvage broadsword with a cord-wrapped hilt"
+    },
+    "heavy scavenged mace": {
+        "name": "Heavy Scavenged Mace",
+        "slot": "main_hand",
+        "rarity": "Common",
+        "desc": "A brutal two-handed or heavy single-handed bludgeon forged from a steel drive-shaft welded to a heavy differential gear head (1d10 bludgeoning, +2 vs construct armor).",
+        "visual_appearance": "wielding a brutal heavy steel flange-mace forged from a welded industrial gear-head"
+    },
+    "scrap-plate shield": {
+        "name": "Scrap-Plate Shield",
+        "slot": "off_hand",
+        "rarity": "Common",
+        "desc": "A riveted heater shield hammered from layered street-sign aluminum and boilerplate steel (+2 AC, absorbs glancing kinetic blows).",
+        "visual_appearance": "carrying a battered, riveted scrap-iron heater shield reinforced with bolted steel crossbars on the off-arm"
+    },
+    "arcane stun-pistol": {
+        "name": "Arcane Stun-Pistol",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "A compact brass-and-steel MageTech sidearm powered by a miniature aether-cell that fires non-lethal or high-voltage arc-bolts (1d8 lightning, DC 12 CON stun).",
+        "visual_appearance": "aiming a compact brass-and-iron MageTech arc-pistol with a glowing blue mana-capacitor barrel"
+    },
+    "tanto combat knife": {
+        "name": "Tanto Combat Knife",
+        "slot": "off_hand",
+        "rarity": "Common",
+        "desc": "A high-carbon steel reverse-edge tanto survival blade with a matte non-reflective finish and G10 composite grip (1d6 piercing/slashing, Finesse).",
+        "visual_appearance": "holding a matte-black high-carbon tanto combat knife in a reverse grip"
+    },
+    "aetheric focusing wand": {
+        "name": "Aetheric Focusing Wand",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "A slender copper-bound quartz conductor rod that stabilizes raw leyline currents into focused arcane bolts (+1 spell attack rolls, 1d8 force).",
+        "visual_appearance": "channeling mana through a copper-wrapped crystalline quartz focusing wand"
+    },
+    "recurve hunting bow": {
+        "name": "Recurve Hunting Bow",
+        "slot": "main_hand",
+        "rarity": "Common",
+        "desc": "A laminated fiberglass-and-ash takedown recurve bow strung with high-tensile spectra cord, paired with a hip quiver of broadhead arrows (1d8 piercing, range 120ft).",
+        "visual_appearance": "holding a matte composite recurve hunting bow with a hip quiver of feathered broadhead arrows"
+    },
+    "chipped wood-axe": {
+        "name": "Chipped Wood-Axe",
+        "slot": "off_hand",
+        "rarity": "Common",
+        "desc": "A balanced camp hatchet with a hickory handle and a notched steel wedge head suited for close-quarters hacking and timber clearing (1d6 slashing).",
+        "visual_appearance": "gripping a notched hickory-handled camp hatchet"
+    },
+    "sanctified flail": {
+        "name": "Sanctified Flail",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "A heavy iron chain-flail whose spiked censer head is engraved with silvered cleansing wards that burn undead and abyssal flesh (1d8 bludgeoning + 1d4 radiant).",
+        "visual_appearance": "swinging a heavy chain-flail with a glowing silver-engraved spiked censer head"
+    },
+    "concealed trench daggers": {
+        "name": "Concealed Trench Daggers",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "Twin stiletto trench blades fitted with brass knuckle-guards, balanced for rapid armor-gap punctures (2d4 piercing, Finesse, +2 stealth draw).",
+        "visual_appearance": "wielding twin brass-knuckled trench stiletto daggers"
+    },
+    "kinetic shock-staff": {
+        "name": "Kinetic Shock-Staff",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "A resonant ironwood quarterstaff shod with copper induction rings and a quartz crown that discharges telekinetic shockwaves on impact (1d8 bludgeoning + 1d4 force).",
+        "visual_appearance": "holding a tall ironwood quarterstaff ringed with glowing copper induction coils and a violet quartz crown"
+    },
+    "reinforced spear": {
+        "name": "Reinforced Spear",
+        "slot": "main_hand",
+        "rarity": "Common",
+        "desc": "A long ash-shafted boar spear reinforced with steel langets and a cross-lugged leaf blade for keeping charging beasts at bay (1d8 piercing, Reach).",
+        "visual_appearance": "wielding a long steel-tipped boar spear with cross-guard lugs"
+    },
+    "twin scavenger daggers": {
+        "name": "Twin Scavenger Daggers",
+        "slot": "main_hand",
+        "rarity": "Common",
+        "desc": "A matched pair of leaf-bladed survival knives ground from leaf-spring steel with paracord-wrapped hilts (1d6 slashing, Finesse).",
+        "visual_appearance": "wielding a matched pair of paracord-wrapped scavenger daggers"
+    },
+    "fenrir's tusk": {
+        "name": "Fenrir's Tusk (Grade 5 Bearded Axe)",
+        "slot": "main_hand",
+        "rarity": "Legendary",
+        "desc": "An Einherjar-tier bearded war-axe forged from meteoric black-iron and rimed with eternal rime-frost (2d8 slashing + 1d6 cold).",
+        "visual_appearance": "wielding Fenrir's Tusk, a jagged meteoric black-iron bearded axe rimed with glowing ice-blue frost runes"
+    },
+    "fenrir's howl (grade 6 mythic great-axe)": {
+        "name": "Fenrir's Howl (Grade 6 Mythic Great-Axe)",
+        "slot": "main_hand",
+        "rarity": "Mythic",
+        "desc": "A legendary black-iron bearded greataxe infused with sub-zero aetheric frost and the gilded core resonance of the Spire Overlord (+6 ATK, 2d12 slashing/cold, Crystalline Frost Wave).",
+        "visual_appearance": "wielding Fenrir's Howl, a colossal mythic black-iron greataxe radiating a swirling aura of crystalline frost and golden Overlord runes"
+    },
+    "mjöllnir-null": {
+        "name": "Mjöllnir-Null (Grade 5 Trench Hammer)",
+        "slot": "off_hand",
+        "rarity": "Legendary",
+        "desc": "A heavy Einherjar kinetic trench maul whose magnetized strike-face discharges construct-shattering shockwaves (2d8 bludgeoning + 1d6 lightning).",
+        "visual_appearance": "wielding Mjöllnir-Null, a heavy rectangular runic trench warhammer crackling with blue magnetic lightning arcs"
+    },
+    "mjölnir-prime (grade 6 mythic titan-hammer)": {
+        "name": "Mjölnir-Prime (Grade 6 Mythic Titan-Hammer)",
+        "slot": "off_hand",
+        "rarity": "Mythic",
+        "desc": "An earth-shattering mythic trench hammer surging with overcharged magnetic kinetic conduits (+5 ATK, 3d8 bludgeoning/lightning, Kinetic Armor Shatter).",
+        "visual_appearance": "wielding Mjölnir-Prime, a massive gold-and-iron mythic titan warhammer wreathed in blinding voltaic plasma"
+    },
+
+    # --- PLAYER & GENERAL ARMOR / HEADGEAR ---
+    "threadbare scavenger tunic": {
+        "name": "Threadbare Scavenger Tunic",
+        "slot": "chest",
+        "rarity": "Common",
+        "desc": "Weathered pre-collapse canvas jacket and patched denim work-clothes reinforced at the elbows and shoulders with stitched leather scraps (+1 AC).",
+        "visual_appearance": "wearing a weathered, patched dark-canvas scavenger jacket over a rugged tunic with stitched leather shoulder pads"
+    },
+    "reinforced leather": {
+        "name": "Reinforced Leather",
+        "slot": "chest",
+        "rarity": "Uncommon",
+        "desc": "Supple, oil-darkenedboiled cuirbouilli leather breastplate and pauldrons reinforced with blackened steel rivets, cured beast-hide straps, and a heavy fur-trimmed collar (+3 AC, full mobility).",
+        "visual_appearance": "wearing rugged oil-darkened reinforced leather armor with riveted black-iron shoulder pauldrons, buckled chest straps, and a dark fur-trimmed collar"
+    },
+    "chainmail hauberk": {
+        "name": "Chainmail Hauberk",
+        "slot": "chest",
+        "rarity": "Uncommon",
+        "desc": "Interlocking rings of tempered high-carbon steel worn over a padded gambeson, offering reliable protection against slashing blades (+5 AC).",
+        "visual_appearance": "wearing a heavy interlocking steel chainmail hauberk over a quilted dark gambeson"
+    },
+    "black-iron runic plate": {
+        "name": "Black-Iron Runic Plate",
+        "slot": "chest",
+        "rarity": "Rare",
+        "desc": "Heavy articulated black-iron cuirass and pauldrons etched with glowing cyan Elder Futhark ward-runes and draped with a dire-wolf fur mantle (+8 AC).",
+        "visual_appearance": "clad in heavy articulated black-iron plate armor etched with glowing cyan Elder Futhark runes and a thick dire-wolf fur mantle draped over the shoulders"
+    },
+    "einherjar rig": {
+        "name": "Einherjar Rig (Grade 5 Power-Plate)",
+        "slot": "chest",
+        "rarity": "Legendary",
+        "desc": "Masterwork Grade 5 Aether-armored exo-cuirass powered by pressurized mana-conduits and interlocking dwarven steel plates (+8 AC, 250 durability).",
+        "visual_appearance": "clad in an imposing Grade 5 Einherjar exo-plate cuirass with glowing cyan mana-conduits and heavy rune-etched pauldrons"
+    },
+    "einherjar sovereign aegis (grade 6 mythic power-rig)": {
+        "name": "Einherjar Sovereign Aegis (Grade 6 Mythic Power-Rig)",
+        "slot": "chest",
+        "rarity": "Mythic",
+        "desc": "Impenetrable Grade 6 mythic runic plate engineered with living aether-conduits and sovereign golden ward lattices (+10 AC, DR 3, Aetheric Citadel Fortress).",
+        "visual_appearance": "clad in the radiant Einherjar Sovereign Aegis mythic full-plate armor, gleaming with black-iron, gilded Overlord trim, and blazing cyan force-wards"
+    },
+
+    # --- BOSS DROPS, GRAFT COMPONENTS & CAMPAIGN ITEMS ---
+    "spell slate: earth tremor hex": {
+        "name": "Spell Slate: Earth Tremor Hex",
+        "slot": "accessory",
+        "rarity": "Rare",
+        "desc": "A scorched crystalline data-matrix and basalt runic tablet salvaged from the Runic Quarry Golem. Channeling mana into its carved seismic glyphs unleashes a localized ground-shattering shockwave (Earth Tremor Hex: 2d6 force/bludgeoning in a 15ft cone, DC 13 DEX save or knocked Prone).",
+        "visual_appearance": "carrying a scorched basalt rune-slate glowing with amber seismic fracture glyphs at the belt"
+    },
+    "ration pack": {
+        "name": "Ration Pack",
+        "slot": "consumable",
+        "rarity": "Common",
+        "desc": "Vacuum-sealed military-grade nutrient bars, dried beef jerky, and electrolyte salt tablets. Restores 15 HP and clears mild travel fatigue when consumed during a short rest.",
+        "visual_appearance": "a compact olive-drab vacuum-sealed field ration pouch"
+    },
+    "bottled water": {
+        "name": "Bottled Water",
+        "slot": "consumable",
+        "rarity": "Common",
+        "desc": "Clean, uncontaminated spring water sealed in a pre-Integration plastic bottle. Prevents dehydration and restores 5 Stamina/Focus.",
+        "visual_appearance": "a sealed clear bottle of pure drinking water"
+    },
+    "survival rations": {
+        "name": "Survival Rations",
+        "slot": "consumable",
+        "rarity": "Common",
+        "desc": "High-calorie compressed oat-and-honey cakes with dried trail mix. Restores 10 HP and sustains 1 day of wilderness marching.",
+        "visual_appearance": "wrapped canvas packets of compressed trail rations"
+    },
+    "[graft component] silt-marrow's geothermal core piston (tier 1 magetech core)": {
+        "name": "[Graft Component] Silt-Marrow's Geothermal Core Piston (Tier 1 Magetech Core)",
+        "slot": "spine",
+        "rarity": "Rare",
+        "desc": "The primary pressurized brass-and-basalt geothermal heart piston extracted from the chest cavity of Silt-Marrow the Unhewn. Pulses with superheated volcanic steam and orange leyline embers. Can be surgically grafted by Doc Mercer into the Spine or Torso (+1 STR, +1 CON, +10 Fire Resistance, and 1d6 thermal steam retaliation against melee attackers; Strain: 2).",
+        "visual_appearance": "a glowing brass-and-basalt geothermal core piston venting wisps of incandescent orange steam along the spine and shoulder blades"
+    },
+    "[graft component] intact runic mind-matrix (tier 1 construct brain)": {
+        "name": "[Graft Component] Intact Runic Mind-Matrix (Tier 1 Construct Brain)",
+        "slot": "head",
+        "rarity": "Rare",
+        "desc": "A pristine, dodecahedral quartz-and-gold cognitive lattice harvested intact from Silt-Marrow's cranium. Hums with ancient autonomous excavation telemetry. Can be grafted into the Head/Neural slot by Doc Mercer (+2 INT, +1 Active Matrix Memory Slot, and tremor-sense within 30ft; Strain: 2).",
+        "visual_appearance": "a glowing golden quartz runic mind-matrix crown-node pulsing softly at the temple"
+    },
+    "basalt carapace plating x2": {
+        "name": "Basalt Carapace Plating x2",
+        "slot": "torso",
+        "rarity": "Uncommon",
+        "desc": "Two dense, interlocking slabs of calcified volcanic basalt armor harvested from Silt-Marrow's outer shell, veined with dormant amber runes. Can be surgically grafted by Doc Mercer as subdermal/torso carapace plating (+2 AC, DR 2 Physical, immunity to subterranean tremor knockdowns) or forged into heavy Basalt Armor at an anvil.",
+        "visual_appearance": "interlocking plates of dark volcanic basalt carapace veined with glowing amber runes across the torso and shoulders"
+    },
+    "basalt carapace plating": {
+        "name": "Basalt Carapace Plating",
+        "slot": "torso",
+        "rarity": "Uncommon",
+        "desc": "Dense, interlocking slabs of calcified volcanic basalt armor harvested from Silt-Marrow's outer shell, veined with dormant amber runes (+2 AC, DR 2 Physical).",
+        "visual_appearance": "interlocking plates of dark volcanic basalt carapace veined with glowing amber runes across the torso and shoulders"
+    },
+    "runic slag scrap x3": {
+        "name": "Runic Slag Scrap x3",
+        "slot": "material",
+        "rarity": "Common",
+        "desc": "Three heavy chunks of conductive arcane iron-slag salvaged from a shattered golem frame. Rich in residual mana conductivity; used for repairing Grade 1–3 weapons, rigging shrapnel traps, or smelting at a forge.",
+        "visual_appearance": "jagged chunks of metallic slag glowing faintly with residual blue rune-sparks"
+    },
+    "runic slag scrap": {
+        "name": "Runic Slag Scrap",
+        "slot": "material",
+        "rarity": "Common",
+        "desc": "Conductive arcane iron-slag harvested from a construct's frame. Used for field smithing repairs and smelting.",
+        "visual_appearance": "jagged chunks of metallic slag glowing faintly with residual blue rune-sparks"
+    },
+
+    # --- COMPANION SIGNATURE WEAPONS, ARMOR & ITEMS (ALL 18 COMPANIONS) ---
+    "aether-lock carbine": {
+        "name": "Aether-Lock Carbine",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Ren's signature Grade 2 brass-and-crystal MageTech caster carbine. Channels condensed radiant mana through a rifled quartz barrel to fire piercing kinetic-light bolts (1d10 radiant/force, range 100ft, never uses gunpowder).",
+        "visual_appearance": "wielding an ornate brass-and-crystal Aether-Lock MageTech caster carbine with glowing cyan mana conduits along the barrel"
+    },
+    "runic vanguard blade": {
+        "name": "Runic Vanguard Blade",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "A balanced single-edged magetech shortblade etched with defensive deflection glyphs along the fuller (1d6 slashing + +1 parry AC).",
+        "visual_appearance": "carrying a sleek rune-etched Vanguard shortblade at the hip"
+    },
+    "alchemical haze pellets": {
+        "name": "Alchemical Haze Pellets",
+        "slot": "accessory",
+        "rarity": "Uncommon",
+        "desc": "Pressurized glass spheres filled with luminescent smoke-screen reagent that detonate on impact to obscure line-of-sight and grant party disengage.",
+        "visual_appearance": "a belt bandolier of glowing alchemical smoke-haze glass spheres"
+    },
+    "midnight-blue leyline duster": {
+        "name": "Midnight-Blue Leyline Duster",
+        "slot": "chest",
+        "rarity": "Uncommon",
+        "desc": "A high-collared midnight-blue tailcoat duster woven with silver leyline thread over reinforced scholar's leather (+3 AC, +1 Arcane defense).",
+        "visual_appearance": "wearing a high-collared midnight-blue leyline duster coat trimmed with silver runic piping over reinforced leather vest"
+    },
+    "aetheric ocular lens": {
+        "name": "Aetheric Ocular Lens",
+        "slot": "head",
+        "rarity": "Rare",
+        "desc": "A brass wire-rimmed monocle visor fitted with a faceted cyan mana-crystal that displays enemy hitboxes, telegraph vectors, and structural weak points.",
+        "visual_appearance": "wearing wire-rimmed brass spectacles fitted with a glowing cyan Aetheric ocular lens over one eye"
+    },
+    "aetheric longbow": {
+        "name": "Aetheric Longbow",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Elora's silver-inlaid elven longbow whose bowstring is spun from pure starlight mana (1d8 piercing + 1d4 radiant).",
+        "visual_appearance": "wielding a graceful silver-inlaid elven longbow strung with a glowing starlight mana bowstring"
+    },
+    "twin crystal daggers": {
+        "name": "Twin Crystal Daggers",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "Paired prism-glass parrying daggers that refract ambient light into blinding flashes (1d6 piercing, Finesse).",
+        "visual_appearance": "wearing twin translucent prism-crystal daggers sheathed at the waist"
+    },
+    "wind-strider shroud": {
+        "name": "Wind-Strider Shroud",
+        "slot": "chest",
+        "rarity": "Rare",
+        "desc": "Silken starlight phase-robes woven withzephyr feathers that blur the wearer's silhouette in motion (+4 AC, +10ft speed).",
+        "visual_appearance": "clad in flowing silver-and-indigo silk starlight phase-robes with a wind-strider cloak"
+    },
+    "deepforged war-axe": {
+        "name": "Deepforged War-Axe",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Torvald's heavy dwarven gromril war-axe stamped with ancestral anvil runes (1d10 slashing, ignores 2 points of target armor).",
+        "visual_appearance": "wielding a heavy dwarven deepforged war-axe glowing with molten-gold forge runes"
+    },
+    "adamant bulwark tower shield": {
+        "name": "Adamant Bulwark Tower Shield",
+        "slot": "off_hand",
+        "rarity": "Rare",
+        "desc": "A massive castle-gate-sized tower pavise forged from adamant alloy that can anchor into the floor to provide total cover (+4 AC).",
+        "visual_appearance": "carrying a massive adamant bulwark tower shield wide as a fortress gate"
+    },
+    "runic repair mallet": {
+        "name": "Runic Repair Mallet",
+        "slot": "accessory",
+        "rarity": "Uncommon",
+        "desc": "A master-smith's rune-etched forging hammer capable of striking out dents and restoring armor durability mid-expedition.",
+        "visual_appearance": "a heavy rune-stamped smithing mallet hooked to the belt"
+    },
+    "deepforged runic plate armor": {
+        "name": "Deepforged Runic Plate Armor",
+        "slot": "chest",
+        "rarity": "Rare",
+        "desc": "Heavy dwarven gromril-and-steel plate armor engraved with glowing gold anvil-runes and soot-darkened forge pauldrons (+8 AC, Fire Resistance).",
+        "visual_appearance": "clad in heavy dwarven Deepforged Runic Plate Armor engraved with glowing molten-gold forge runes"
+    },
+    "serrated scrap dagger": {
+        "name": "Serrated Scrap Dagger",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "Kibs's wickedly notched gut-hook dagger ground from high-speed saw steel, designed to inflict deep bleeding wounds (1d6 piercing + Bleed).",
+        "visual_appearance": "wielding a wickedly serrated scrap-steel dagger"
+    },
+    "wrist shank": {
+        "name": "Wrist Shank",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "A spring-loaded stiletto blade mounted to a leather forearm bracer for instant surprise strikes (1d4 piercing).",
+        "visual_appearance": "wearing a spring-loaded steel wrist-shank bracer on the forearm"
+    },
+    "neurotoxin vials": {
+        "name": "Neurotoxin Vials",
+        "slot": "accessory",
+        "rarity": "Uncommon",
+        "desc": "Concentrated paralytic venom distilled from tunnel-crawler glands, used to coat throwing blades.",
+        "visual_appearance": "a leather chest-strap holding glowing green neurotoxin glass vials"
+    },
+    "skeleton lockpick set": {
+        "name": "Skeleton Lockpick Set",
+        "slot": "accessory",
+        "rarity": "Uncommon",
+        "desc": "Precision titanium tension wrenches, rakes, and runic ward-shims rolled in a oiled leather case (+3 to lockpicking and trap disarm).",
+        "visual_appearance": "an oiled leather roll of precision titanium lockpicks at the hip"
+    },
+    "scavenged shadow-shroud leathers": {
+        "name": "Scavenged Shadow-Shroud Leathers",
+        "slot": "chest",
+        "rarity": "Uncommon",
+        "desc": "Supple soot-blackened scavenger leather armor stitched with sound-dampening rat-pelts and concealed tool pockets (+4 AC, +2 Stealth).",
+        "visual_appearance": "wearing soot-blackened Scavenged Shadow-Shroud leather armor with a hooded mantle and utility pouches"
+    },
+    "winged aether-spear": {
+        "name": "Winged Aether-Spear",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Valeria's long silver-alloyed aerial lance with sweeping wing-lugs that channel diving wind-blasts (1d10 piercing + 1d6 thunder on dive).",
+        "visual_appearance": "wielding an ornate silver Winged Aether-Spear crackling with cyan wind-streams"
+    },
+    "solar aegis shield": {
+        "name": "Solar Aegis Shield",
+        "slot": "off_hand",
+        "rarity": "Rare",
+        "desc": "A polished sun-gold round shield emblazoned with a falcon crest that can flare with blinding solar radiance (+2 AC).",
+        "visual_appearance": "carrying a gleaming sun-gold Solar Aegis shield embossed with a soaring falcon crest"
+    },
+    "falcon crest mail": {
+        "name": "Falcon Crest Mail",
+        "slot": "chest",
+        "rarity": "Rare",
+        "desc": "Lightweight interlocking silver-and-azure valkyrie scale mail fitted with spinal ports for aerodynamic aether-glider wings (+6 AC).",
+        "visual_appearance": "clad in gleaming silver-and-azure Falcon Crest scale mail with luminous cyan aether-glider wings extending from the back"
+    },
+    "bone-chime scythe": {
+        "name": "Bone-Chime Scythe",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Morrigan's crescent war-scythe forged from black obsidian glass and hung with carved bone spirit-chimes (1d10 necrotic/slashing).",
+        "visual_appearance": "wielding a curved black-obsidian war-scythe hung with whispering bone chimes and trailing emerald soul-mist"
+    },
+    "soul-vessel phylactery": {
+        "name": "Soul-Vessel Phylactery",
+        "slot": "off_hand",
+        "rarity": "Rare",
+        "desc": "A wrought-iron lantern cage housing captured emerald wraith-wisps that siphon vitality from fallen foes.",
+        "visual_appearance": "holding a dark wrought-iron soul-lantern glowing with captive emerald spirit-wisps"
+    },
+    "obsidian shroud": {
+        "name": "Obsidian Shroud",
+        "slot": "chest",
+        "rarity": "Rare",
+        "desc": "Gothic midnight-black velvet and bone-ribbed vestments that drink in ambient light (+4 AC, necrotic resistance).",
+        "visual_appearance": "draped in a gothic obsidian-and-bone mantle shrouded in dark necrotic mist"
+    },
+    "granite-studded cestus": {
+        "name": "Granite-Studded Cestus",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Garrick's heavy iron-and-basalt striking gauntlets that amplify seismic ki-punches into armor-cracking impacts (1d8 bludgeoning + tremor stagger).",
+        "visual_appearance": "wearing heavy basalt-and-iron studded cestus gauntlets glowing with amber tectonic ki-runes"
+    },
+    "weighted linen wraps": {
+        "name": "Weighted Linen Wraps",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "Lead-weighted monastic forearm wraps inscribed with earth-grounding mantras (+1 AC when parrying).",
+        "visual_appearance": "forearms bound in rune-inscribed monastic linen hand-wraps"
+    },
+    "iron-thread gi": {
+        "name": "Iron-Thread Gi",
+        "slot": "chest",
+        "rarity": "Uncommon",
+        "desc": "Sleeveless martial arts training garb woven with flexible iron-silk thread, leaving the arms and chest free to vent tectonic ki (+4 AC).",
+        "visual_appearance": "wearing a sleeveless dark iron-thread martial arts gi revealing stone-grafted arms and glowing chest ki-glyphs"
+    },
+    "composite wind-recurve bow": {
+        "name": "Composite Wind-Recurve Bow",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Sariel's masterwork horn-and-ironwood recurve bow enchanted with silent wind-guiding glyphs (1d8 piercing, ignores wind penalties).",
+        "visual_appearance": "wielding an emerald-etched horn-and-ironwood recurve longbow"
+    },
+    "camouflage ghillie-cloak": {
+        "name": "Camouflage Ghillie-Cloak",
+        "slot": "chest",
+        "rarity": "Uncommon",
+        "desc": "Moss-green ranger leathers draped with a living autumn-leaf and lichen camouflage mantle (+4 AC, advantage on woodland stealth).",
+        "visual_appearance": "clad in camouflaged moss-green ranger leathers and a living autumn-leaf ghillie cloak"
+    },
+    "aether-tipped broadheads": {
+        "name": "Aether-Tipped Broadheads",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "A quiver of thirty razor-sharp hunting arrows tipped with armor-piercing green aether-crystals.",
+        "visual_appearance": "a leather back-quiver bristles with glowing green aether-tipped broadhead arrows"
+    },
+    "radiant war-flail": {
+        "name": "Radiant War-Flail",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Brother Kaelen's heavy sun-gold warhammer-flail whose head blazes with searing golden daylight (1d8 bludgeoning + 1d6 radiant).",
+        "visual_appearance": "wielding a heavy sun-gold war-flail blazing with radiant golden sunlight"
+    },
+    "sunstone focus censer": {
+        "name": "Sunstone Focus Censer",
+        "slot": "off_hand",
+        "rarity": "Rare",
+        "desc": "A swinging brass sanctuary censer burning consecrated solar resin that heals nearby allies and wards off shadow-fiends.",
+        "visual_appearance": "holding a glowing golden sunstone sanctuary censer trailing luminous incense"
+    },
+    "gilded crusader mail": {
+        "name": "Gilded Crusader Mail",
+        "slot": "chest",
+        "rarity": "Rare",
+        "desc": "Polished sun-gold breastplate worn over white Templar vestments embroidered with the Sol Invictus crest (+7 AC).",
+        "visual_appearance": "clad in a polished sun-gold breastplate over white hooded Sol-Templar vestments"
+    },
+    "galvanic arc staff": {
+        "name": "Galvanic Arc Staff",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Zeddicus's copper-coiled Tesla lightning rod topped with a spinning brass induction sphere (1d10 lightning, chains to adjacent targets).",
+        "visual_appearance": "wielding a copper-coiled Galvanic Arc Staff crackling with jumping blue lightning bolts"
+    },
+    "capacitor battery rig": {
+        "name": "Capacitor Battery Rig",
+        "slot": "off_hand",
+        "rarity": "Rare",
+        "desc": "A portable high-voltage Leyden-jar capacitor pack wired to heavy rubberized conduction gauntlets.",
+        "visual_appearance": "strapped with a dorsal brass Leyden-jar capacitor rig humming with electric arcs"
+    },
+    "spark-shield coat": {
+        "name": "Spark-Shield Coat",
+        "slot": "chest",
+        "rarity": "Uncommon",
+        "desc": "An insulated slate-leather leyline trenchcoat lined with grounded copper Faraday mesh (+4 AC, immunity to lightning stun).",
+        "visual_appearance": "wearing an insulated copper-mesh leyline trenchcoat and brass galvanic goggles"
+    },
+    "resonating aether-lute": {
+        "name": "Resonating Aether-Lute",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Daphne's masterwork acoustic-arcane lute fitted with a reinforced mithril neck that projects sonic shockwaves and inspiring battle-hymns.",
+        "visual_appearance": "strumming an ornate midnight-wood Aether-Lute glowing with vibrant violet harmonic strings"
+    },
+    "silvered stiletto": {
+        "name": "Silvered Stiletto",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "A needle-thin silvered dueling rapier concealed within the neck of the lute or drawn in the off-hand (1d6 piercing, Finesse).",
+        "visual_appearance": "holding a gleaming silvered dueling stiletto"
+    },
+    "velvet performer's doublet": {
+        "name": "Velvet Performer's Doublet",
+        "slot": "chest",
+        "rarity": "Uncommon",
+        "desc": "A flamboyant midnight-velvet skaldic coat lined with concealed mithril chain-links and a silver-threaded scarf (+4 AC, +2 CHA checks).",
+        "visual_appearance": "wearing a flamboyant midnight-velvet skaldic coat with silver brocade and a flowing silver-threaded scarf"
+    },
+    "twin serrated slag-cleavers": {
+        "name": "Twin Serrated Slag-Cleavers",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Ragnarok 'Rok's massive dual-wielded jagged butcher-axes forged from furnace-quenched crucible iron (2d8 slashing, blood-rage cleave).",
+        "visual_appearance": "hefting massive twin serrated crucible-iron slag-cleaver greataxes"
+    },
+    "spiked iron pauldrons": {
+        "name": "Spiked Iron Pauldrons",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "Heavy bone-and-iron shoulder plates spiked for brutal tackling charges (+1 AC, +1d6 ramming damage).",
+        "visual_appearance": "wearing jagged spiked bone-and-iron shoulder pauldrons"
+    },
+    "troll-hide kilt": {
+        "name": "Troll-Hide Kilt",
+        "slot": "chest",
+        "rarity": "Uncommon",
+        "desc": "Thick, regenerating cured troll-hide war-harness and kilt that leaves the chest open to channel tribal blood-runes (+5 AC).",
+        "visual_appearance": "wearing a heavy cured troll-hide war-kilt and leather harness over a bare chest covered in glowing crimson blood-runes"
+    },
+    "chrono-staff of moments": {
+        "name": "Chrono-Staff of Moments",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Lyra's slender astral staff crowned with nested, counter-rotating golden astrolabe rings that bend localized time.",
+        "visual_appearance": "holding a slender astral staff topped with spinning golden clockwork astrolabe rings"
+    },
+    "hourglass focus": {
+        "name": "Hourglass Focus",
+        "slot": "off_hand",
+        "rarity": "Rare",
+        "desc": "A floating crystal hourglass filled with upward-falling luminescent stardust used to rewind failed saving throws.",
+        "visual_appearance": "orbited by a floating crystal hourglass trickling glowing golden stardust"
+    },
+    "star-silk robes": {
+        "name": "Star-Silk Robes",
+        "slot": "chest",
+        "rarity": "Rare",
+        "desc": "Deep indigo chronomancer vestments embroidered with shifting golden constellation charts (+4 AC).",
+        "visual_appearance": "draped in deep indigo Star-Silk robes embroidered with glowing golden constellations"
+    },
+    "pneumatic slag-hammer": {
+        "name": "Pneumatic Slag-Hammer",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Titus's colossal piston-driven industrial pile-driver maul that vents superheated steam on impact (2d10 bludgeoning).",
+        "visual_appearance": "wielding a massive piston-driven Pneumatic Slag-Hammer venting pressurized white steam"
+    },
+    "steam-buffered kinetic barrier": {
+        "name": "Steam-Buffered Kinetic Barrier",
+        "slot": "off_hand",
+        "rarity": "Rare",
+        "desc": "A thick cast-iron siege pavise fitted with hydraulic shock-absorbers that nullify knockback (+3 AC).",
+        "visual_appearance": "holding a thick cast-iron hydraulic tower pavise shield"
+    },
+    "cast-iron boiler chassis": {
+        "name": "Cast-Iron Boiler Chassis",
+        "slot": "chest",
+        "rarity": "Rare",
+        "desc": "Titus's riveted bronze-and-steel automaton armor plating housing an incandescent amber aether-furnace core (+9 AC).",
+        "visual_appearance": "armored in heavy riveted bronze-and-steel boiler plating with a glowing amber chest furnace"
+    },
+    "obsidian claw-gauntlets": {
+        "name": "Obsidian Claw-Gauntlets",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Nyssa's feral wooden-and-obsidian talon bracers that channel venomous primal life-energy (2d6 slashing/poison).",
+        "visual_appearance": "wearing razor-sharp obsidian beast-claw gauntlets crackling with emerald primal energy"
+    },
+    "living bramble armor": {
+        "name": "Living Bramble Armor",
+        "slot": "chest",
+        "rarity": "Rare",
+        "desc": "Symbiotic ironwood bark and flowering razor-thorn vines that lash out at melee attackers (+5 AC, 1d4 piercing thorns).",
+        "visual_appearance": "clad in living ironwood bark-armor interwoven with flexing green razor-thorn vines"
+    },
+    "fang talisman": {
+        "name": "Fang Talisman",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "An ancestral dire-predator fang fetish strung on sinew that amplifies wild-shape ferocity.",
+        "visual_appearance": "wearing a necklace of carved dire-wolf fangs glowing with green druidic runes"
+    },
+    "void-etched greatsword": {
+        "name": "Void-Etched Greatsword",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Malakor's two-handed translucent purple void-glass blade that slices through dimensional wards (2d6 slashing + 1d6 force/necrotic).",
+        "visual_appearance": "wielding a translucent purple void-glass greatsword trailing shadowy dark-matter tendrils"
+    },
+    "null-glyph buckler": {
+        "name": "Null-Glyph Buckler",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "A floating obsidian-iron parrying disk inscribed with spell-devouring abyssal sigils (+2 AC vs spells).",
+        "visual_appearance": "guarded by a floating obsidian Null-Glyph buckler on the off-arm"
+    },
+    "shadow-steel hauberk": {
+        "name": "Shadow-Steel Hauberk",
+        "slot": "chest",
+        "rarity": "Rare",
+        "desc": "Matte-black scale armor forged from abyssal alloy and draped in a tattered shadow-silk cloak (+6 AC).",
+        "visual_appearance": "clad in matte-black Shadow-Steel scale mail beneath a tattered dark-matter warlock cloak"
+    },
+    "pneumatic acid-siphon cannon": {
+        "name": "Pneumatic Acid-Siphon Cannon",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Dr. Thorne's brass-and-glass pressurized alchemical sprayer rifle that projects streams of armor-melting vitriol (2d6 acid, -2 target AC).",
+        "visual_appearance": "aiming a brass-and-glass Pneumatic Acid-Siphon sprayer rifle filled with bubbling neon-green vitriol"
+    },
+    "bandolier of corrosive flasks": {
+        "name": "Bandolier of Corrosive Flasks",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "Lead-stoppered borosilicate volatile alchemical grenades ready for rapid lobbing (catalytic fire, acid, and cryo-mist).",
+        "visual_appearance": "wearing a leather chest-bandolier packed with glowing multicolor alchemical reagent flasks"
+    },
+    "lead-lined hazard apron": {
+        "name": "Lead-Lined Hazard Apron",
+        "slot": "chest",
+        "rarity": "Uncommon",
+        "desc": "An acid-resistant slate-grey alchemist's lab duster and vulcanized rubber surgeon's apron (+4 AC, immunity to acid splash).",
+        "visual_appearance": "wearing an acid-resistant slate-grey lab duster and heavy rubberized alchemist's hazard apron"
+    },
+    "silver-chambered crossbow": {
+        "name": "Silver-Chambered Crossbow",
+        "slot": "main_hand",
+        "rarity": "Rare",
+        "desc": "Sister Teresa's heavy repeating mechanical arbalest loaded with consecrated silver-tipped stakes (1d10 piercing + 1d6 radiant vs fiends/undead).",
+        "visual_appearance": "wielding a heavy steel-and-walnut repeating mechanical crossbow loaded with glowing silver stakes"
+    },
+    "blessed consecrated estoc": {
+        "name": "Blessed Consecrated Estoc",
+        "slot": "off_hand",
+        "rarity": "Rare",
+        "desc": "A rigid, cruciform-hilted silvered thrusting sword designed to pierce monster hearts (1d8 piercing).",
+        "visual_appearance": "carrying a cruciform-hilted silvered Inquisitor estoc blade"
+    },
+    "inquisitor's leather duster": {
+        "name": "Inquisitor's Leather Duster",
+        "slot": "chest",
+        "rarity": "Rare",
+        "desc": "An austere, high-collared charcoal-black leather witch-hunter coat pinned with silver purity seals and paired with a wide-brimmed hat (+5 AC).",
+        "visual_appearance": "wearing a high-collared charcoal witch-hunter leather duster pinned with silver seals and a wide-brimmed inquisitor hat"
+    },
+
+    # --- TRAPS, SALVAGE MATERIALS & COMMODITIES ---
+    "serrated tripwire coils": {
+        "name": "Serrated Tripwire Coils",
+        "slot": "material",
+        "rarity": "Common",
+        "desc": "Spools of razor-notched monofilament wire used for rigging perimeter bleed-traps.",
+        "visual_appearance": "coils of glinting razor-serrated monofilament wire"
+    },
+    "anchors and tension pins": {
+        "name": "Anchors and Tension Pins",
+        "slot": "material",
+        "rarity": "Common",
+        "desc": "Hardened steel pitons and spring-loaded trigger pins used to anchor snares into stone or timber.",
+        "visual_appearance": "steel piton anchors and spring tension pins"
+    },
+    "heavy highway snares": {
+        "name": "Heavy Highway Snares",
+        "slot": "material",
+        "rarity": "Uncommon",
+        "desc": "Braided steel tow-cable nooses salvaged from highway wreckers, capable of hoisting large beasts.",
+        "visual_appearance": "heavy braided steel tow-cable snares"
+    },
+    "carbon line spools": {
+        "name": "Carbon Line Spools",
+        "slot": "material",
+        "rarity": "Uncommon",
+        "desc": "High-tensile woven carbon-fiber cordage with a 2,000-lb breaking strength.",
+        "visual_appearance": "spools of matte-black high-tensile carbon fiber cord"
+    },
+    "crate of marrow-jars": {
+        "name": "Crate of Marrow-Jars",
+        "slot": "material",
+        "rarity": "Uncommon",
+        "desc": "Sealed mason jars of pungent, rendered monster bone-marrow pheromones used to lure apex predators into ambush corridors.",
+        "visual_appearance": "glass jars filled with glowing amber monster marrow"
+    },
+    "corroded micro-capacitor": {
+        "name": "Corroded Micro-Capacitor",
+        "slot": "material",
+        "rarity": "Common",
+        "desc": "A salvaged magetech charge-cylinder still holding a volatile electrical potential; used for EMP shock-mines and weapon upgrades.",
+        "visual_appearance": "a copper-fin micro-capacitor cylinder sparking with static"
+    },
+    "frayed copper wiring": {
+        "name": "Frayed Copper Wiring",
+        "slot": "material",
+        "rarity": "Common",
+        "desc": "Lengths of stripped conductive copper cabling salvaged from ruined conduits.",
+        "visual_appearance": "coils of stripped conductive copper wire"
+    },
+    "titanium wire scrap": {
+        "name": "Titanium Wire Scrap",
+        "slot": "material",
+        "rarity": "Uncommon",
+        "desc": "Lightweight, high-tensile titanium alloy struts harvested from construct joints.",
+        "visual_appearance": "gleaming silver titanium alloy struts and wire"
+    },
+    "rendered chimera marrow": {
+        "name": "Rendered Chimera Marrow",
+        "slot": "material",
+        "rarity": "Uncommon",
+        "desc": "Nutrient-dense, mana-infused bone marrow harvested from mutated beasts; prized for campfire cooking and bio-grafting.",
+        "visual_appearance": "a sealed vial of luminescent crimson chimera marrow"
+    },
+    "hardened chitin plates": {
+        "name": "Hardened Chitin Plates",
+        "slot": "material",
+        "rarity": "Uncommon",
+        "desc": "Layered insectoid exoskeletal plates resilient against acid and slashing blows.",
+        "visual_appearance": "iridescent dark chitin armor plates"
+    },
+    "mutated sinew cord": {
+        "name": "Mutated Sinew Cord",
+        "slot": "material",
+        "rarity": "Common",
+        "desc": "Elastic, high-draw monster tendon fibers ideal for bowstrings and armor lacing.",
+        "visual_appearance": "braided cords of tough crimson monster sinew"
+    },
+    "scrap iron plate": {
+        "name": "Scrap Iron Plate",
+        "slot": "material",
+        "rarity": "Common",
+        "desc": "Heavy structural iron plating suitable for patching shields, chest armor, and fortifications.",
+        "visual_appearance": "riveted slabs of heavy salvage iron plate"
+    },
+    "tainted metallic scrap": {
+        "name": "Tainted Metallic Scrap",
+        "slot": "material",
+        "rarity": "Common",
+        "desc": "Scorched metal fragments twisted by aetheric radiation; can be refined down at a smithy.",
+        "visual_appearance": "scorched fragments of warped metallic scrap"
+    },
+    "refined aether-alloy": {
+        "name": "Refined Aether-Alloy",
+        "slot": "material",
+        "rarity": "Rare",
+        "desc": "Pure, high-grade dwarven-and-magetech ingot gleaming with internal blue leyline veins; required for Grade 4–6 Mythic forging.",
+        "visual_appearance": "a gleaming silver-blue ingot veined with glowing leyline light"
+    },
+    "aetheric repair flux": {
+        "name": "Aetheric Repair Flux",
+        "slot": "consumable",
+        "rarity": "Uncommon",
+        "desc": "Alchemical welding paste that fuses micro-fractures in metal, leather, and runic crystal, restoring 50 durability to any item.",
+        "visual_appearance": "a brass canister of luminescent blue welding repair paste"
+    }
+}
+
+
+def get_item_details(item_name_or_dict, inventory: list = None) -> dict:
+    """
+    Resolves full item metadata (name, slot, rarity, desc, visual_appearance) for any item in the game.
+    Guarantees every item has a complete lore/mechanical description (`desc`) and a vivid `visual_appearance`
+    for dynamic character rendering in the Image Generator.
+    """
+    raw_name = ""
+    existing_desc = ""
+    existing_vis = ""
+    existing_rarity = "Common"
+    existing_slot = None
+
+    if isinstance(item_name_or_dict, dict):
+        raw_name = str(item_name_or_dict.get("name", "Unknown Item")).strip()
+        existing_desc = str(item_name_or_dict.get("desc", item_name_or_dict.get("description", ""))).strip()
+        existing_vis = str(item_name_or_dict.get("visual_appearance", "")).strip()
+        existing_rarity = str(item_name_or_dict.get("rarity", "Common")).strip()
+        existing_slot = item_name_or_dict.get("slot")
+    else:
+        raw_name = str(item_name_or_dict or "").strip()
+
+    if not raw_name or raw_name.lower() == "none":
+        return {
+            "name": "None",
+            "slot": existing_slot or "none",
+            "rarity": "Common",
+            "desc": "Nothing equipped in this slot.",
+            "visual_appearance": "unarmored / bare"
+        }
+
+    # Check inventory if provided for custom descriptions
+    if inventory and isinstance(inventory, list) and (not existing_desc or not existing_vis):
+        for inv_item in inventory:
+            if isinstance(inv_item, dict):
+                inv_name = str(inv_item.get("name", "")).strip()
+                if inv_name.lower() == raw_name.lower() or raw_name.lower() in inv_name.lower():
+                    if not existing_desc and inv_item.get("desc"):
+                        existing_desc = str(inv_item["desc"]).strip()
+                    if not existing_vis and inv_item.get("visual_appearance"):
+                        existing_vis = str(inv_item["visual_appearance"]).strip()
+                    if inv_item.get("rarity"):
+                        existing_rarity = str(inv_item["rarity"]).strip()
+                    break
+
+    # Normalize lookup key (normalize curly apostrophes, lowercase, strip trailing qty like ' x2')
+    norm_key = raw_name.replace("’", "'").lower().strip()
+    norm_no_qty = re.sub(r'\s+x\d+$', '', norm_key).strip()
+    norm_no_parens = re.sub(r'\s*\([^)]*\)\s*', ' ', norm_no_qty).strip()
+
+    # 1. Exact or normalized match in CANONICAL_ITEM_CATALOG
+    for candidate in (norm_key, norm_no_qty, norm_no_parens):
+        if candidate in CANONICAL_ITEM_CATALOG:
+            cat_entry = copy.deepcopy(CANONICAL_ITEM_CATALOG[candidate])
+            cat_entry["name"] = raw_name
+            if existing_desc and len(existing_desc) > len(cat_entry.get("desc", "")):
+                cat_entry["desc"] = existing_desc
+            if existing_vis:
+                cat_entry["visual_appearance"] = existing_vis
+            return cat_entry
+
+    # 2. Substring match in CANONICAL_ITEM_CATALOG
+    for k, cat_entry in CANONICAL_ITEM_CATALOG.items():
+        if k in norm_key or norm_no_qty in k:
+            res = copy.deepcopy(cat_entry)
+            res["name"] = raw_name
+            if existing_desc and len(existing_desc) > len(res.get("desc", "")):
+                res["desc"] = existing_desc
+            if existing_vis:
+                res["visual_appearance"] = existing_vis
+            return res
+
+    # 3. Check CANONICAL_GRAFTS
+    for g_key, g_data in CANONICAL_GRAFTS.items():
+        g_name_low = g_data["name"].lower()
+        if g_key in norm_key or g_name_low in norm_key or norm_no_qty in g_name_low:
+            desc_str = f"{g_data['description']} (Effect: {g_data['effect']} | Strain: {g_data['strain']})"
+            vis_str = existing_vis or f"visibly integrated {g_data['name']} ({g_data['description'].lower().rstrip('.')})"
+            return {
+                "name": raw_name,
+                "slot": (g_data.get("allowed_slots") or ["graft"])[0],
+                "rarity": "Rare",
+                "desc": existing_desc or desc_str,
+                "visual_appearance": vis_str
+            }
+
+    # 4. Check MYTHIC_RECIPES & HOMESTEAD_TROPHIES
+    for m_key, m_data in MYTHIC_RECIPES.items():
+        if m_data["name"].lower() in norm_key or norm_no_qty in m_data["name"].lower():
+            return {
+                "name": raw_name,
+                "slot": m_data.get("slot", "main_hand"),
+                "rarity": "Mythic",
+                "desc": existing_desc or f"{m_data['description']} ({m_data['active_technique']['name']}: {m_data['active_technique']['desc']})",
+                "visual_appearance": existing_vis or f"equipped with the mythic {m_data['name']} ({m_data['description'].lower().rstrip('.')})"
+            }
+    for t_key, t_data in HOMESTEAD_TROPHIES.items():
+        if t_data["name"].lower() in norm_key or norm_no_qty in t_data["name"].lower():
+            return {
+                "name": raw_name,
+                "slot": "accessory",
+                "rarity": "Legendary",
+                "desc": existing_desc or f"Apex Boss Trophy: {t_data['name']}. Grants {t_data['buff_name']}: {t_data['desc']}",
+                "visual_appearance": existing_vis or f"bearing the {t_data['name']} trophy emblem"
+            }
+
+    # 5. Check PERSONAL_RELICS from character_generator if importable
+    try:
+        import backend.character_generator as cg
+        for r_key, r_data in getattr(cg, "PERSONAL_RELICS", {}).items():
+            r_name_low = r_data["name"].lower()
+            if r_key in norm_key or r_name_low in norm_key or norm_no_qty in r_name_low:
+                return {
+                    "name": raw_name,
+                    "slot": "accessory",
+                    "rarity": r_data.get("rarity", "Unique"),
+                    "desc": existing_desc or f"{r_data['desc']} | Mechanics: {r_data.get('mechanics', '')}",
+                    "visual_appearance": existing_vis or f"carrying their pre-Integration {r_data['name']} ({r_data['desc'].split('.')[0].lower()})"
+                }
+    except Exception:
+        pass
+
+    # 6. Intelligent Procedural Synthesizer for any emergent/custom item
+    low = norm_key
+    inferred_slot = existing_slot or "item"
+    if any(w in low for w in ["helm", "hat", "hood", "crown", "visor", "goggles", "spectacles", "lens", "mask", "circlet"]):
+        inferred_slot = "head"
+        vis_default = f"wearing {raw_name} on the head"
+        desc_default = f"Protective headgear ({raw_name}) forged for survival in the Fractured Overlay."
+    elif any(w in low for w in ["armor", "plate", "leather", "tunic", "robe", "duster", "coat", "mail", "hauberk", "cuirass", "rig", "vest", "shroud", "mantle", "gi", "kilt", "apron"]):
+        inferred_slot = "chest"
+        vis_default = f"clad in {raw_name} torso armor"
+        desc_default = f"Protective body armor ({raw_name}) reinforced against physical and aetheric strikes."
+    elif any(w in low for w in ["shield", "buckler", "pavise", "aegis", "censer", "lantern", "phylactery", "quiver", "bandolier"]):
+        inferred_slot = "off_hand"
+        vis_default = f"carrying {raw_name} in the off-hand"
+        desc_default = f"Tactical off-hand equipment ({raw_name}) providing defensive warding or combat utility."
+    elif any(w in low for w in ["axe", "sword", "blade", "hammer", "mace", "flail", "dagger", "knife", "bow", "crossbow", "spear", "lance", "scythe", "staff", "wand", "carbine", "pistol", "cannon", "cestus", "claws", "cleaver", "lute", "estoc", "rapier"]):
+        inferred_slot = "main_hand"
+        vis_default = f"wielding {raw_name}"
+        desc_default = f"Combat weapon ({raw_name}) balanced for lethal engagements in the Fractured Overlay."
+    elif any(w in low for w in ["graft", "piston", "matrix", "carapace", "gland", "tendon", "cortex", "ocular", "spine"]):
+        inferred_slot = "graft"
+        vis_default = f"augmented with an integrated {raw_name}"
+        desc_default = f"Bio-arcane or magetech graft component ({raw_name}) compatible with Doc Mercer's surgical table."
+    else:
+        vis_default = f"carrying {raw_name}"
+        desc_default = f"Field-recovered item ({raw_name}) from the Fractured Overlay."
+
+    return {
+        "name": raw_name,
+        "slot": inferred_slot,
+        "rarity": existing_rarity or "Common",
+        "desc": existing_desc if existing_desc else desc_default,
+        "visual_appearance": existing_vis if existing_vis else vis_default
+    }
+
+
+def enrich_item_dict(item, inventory: list = None) -> dict:
+    """
+    Converts a string or partial item dictionary into a fully described item dictionary
+    containing `name`, `rarity`, `durability`, `max_durability`, `qty`, `slot`, `desc`, and `visual_appearance`.
+    """
+    details = get_item_details(item, inventory=inventory)
+    if isinstance(item, dict):
+        enriched = copy.deepcopy(item)
+        enriched.setdefault("name", details["name"])
+        enriched.setdefault("rarity", details["rarity"])
+        grade = get_item_grade(enriched)
+        default_dur = ITEM_GRADE_SCALING.get(grade, {}).get("default_durability", 100)
+        enriched.setdefault("durability", default_dur)
+        enriched.setdefault("max_durability", default_dur)
+        enriched.setdefault("qty", 1)
+        enriched["slot"] = enriched.get("slot") or details["slot"]
+        if not enriched.get("desc") or not str(enriched.get("desc")).strip():
+            enriched["desc"] = details["desc"]
+        if not enriched.get("visual_appearance") or not str(enriched.get("visual_appearance")).strip():
+            enriched["visual_appearance"] = details["visual_appearance"]
+        return enriched
+    else:
+        raw_str = str(item).strip()
+        qty = 1
+        if " x" in raw_str.lower():
+            parts = re.split(r'\s+x', raw_str, flags=re.IGNORECASE)
+            if len(parts) == 2 and parts[1].isdigit():
+                qty = int(parts[1])
+        grade = get_item_grade(raw_str)
+        default_dur = ITEM_GRADE_SCALING.get(grade, {}).get("default_durability", 100)
+        return {
+            "name": details["name"],
+            "rarity": details["rarity"],
+            "durability": default_dur,
+            "max_durability": default_dur,
+            "qty": qty,
+            "slot": details["slot"],
+            "desc": details["desc"],
+            "visual_appearance": details["visual_appearance"]
+        }
+
+
+def enrich_inventory_list(inventory: list) -> list:
+    """Ensures every item in an inventory list is a fully described dict with `desc` and `visual_appearance`."""
+    if not isinstance(inventory, list):
+        return []
+    return [enrich_item_dict(item, inventory=inventory) for item in inventory]
+
+
+def build_character_visual_profile(character_state: dict, entity_id: str = "player") -> str:
+    """
+    Dynamically constructs a character's visual description for the Image Generator based on:
+    1. Base Physical Anatomy (face, build, hair, eyes, lineage traits)
+    2. Currently Equipped Gear (`head`, `chest`, `main_hand`, `off_hand`, `accessory`) + Durability Wear State
+    3. Installed Magitech & Bio-Grafts (`grafts`, `graft_system`, `active_grafts`)
+    """
+    if not isinstance(character_state, dict):
+        return ""
+
+    name = character_state.get("name", entity_id)
+    race = character_state.get("race", character_state.get("species_or_type", "Human"))
+    char_class = character_state.get("class", character_state.get("role", "Survivor"))
+    inv = character_state.get("inventory", [])
+
+    # 1. Resolve Base Physical Anatomy (without hardcoded armor/weapons)
+    lookup_id = entity_id.lower()
+    name_low = name.lower()
+    base_anat = None
+    if lookup_id in BASE_CHARACTER_ANATOMY:
+        base_anat = BASE_CHARACTER_ANATOMY[lookup_id]["base_anatomy"]
+    elif name_low in BASE_CHARACTER_ANATOMY:
+        base_anat = BASE_CHARACTER_ANATOMY[name_low]["base_anatomy"]
+    else:
+        for k, v in BASE_CHARACTER_ANATOMY.items():
+            if v["name"].lower() in name_low or name_low in v["name"].lower():
+                base_anat = v["base_anatomy"]
+                break
+
+    if not base_anat:
+        base_anat = f"{race} {char_class} named {name}"
+
+    # 2. Resolve Currently Equipped Gear per slot
+    equipped = character_state.get("equipped", {})
+    gear_dur = character_state.get("gear_durability", {})
+
+    # If companion sheet lacks an explicit `equipped` dict, infer from their inventory
+    if not equipped and inv:
+        inferred_eq = {"head": "None", "chest": "None", "main_hand": "None", "off_hand": "None", "accessory": "None"}
+        for it in inv:
+            det = get_item_details(it, inventory=inv)
+            s = det.get("slot", "item")
+            if s in inferred_eq and inferred_eq[s] == "None":
+                inferred_eq[s] = det["name"]
+            elif s == "main_hand" and inferred_eq["main_hand"] != "None" and inferred_eq["off_hand"] == "None":
+                inferred_eq["off_hand"] = det["name"]
+        equipped = inferred_eq
+
+    slot_descriptions = []
+    for slot in ["head", "chest", "main_hand", "off_hand", "accessory"]:
+        item_val = equipped.get(slot, "None") if isinstance(equipped, dict) else "None"
+        slot_label = slot.replace("_", " ").upper()
+        if not item_val or str(item_val).strip().lower() == "none":
+            if slot == "head":
+                slot_descriptions.append("HEAD: Bare-headed (no helmet; hair and face clearly visible)")
+            elif slot == "chest":
+                slot_descriptions.append("CHEST: Simple survivor attire (no heavy armor equipped)")
+            elif slot == "main_hand":
+                slot_descriptions.append("MAIN HAND: Unarmed / empty-handed")
+            elif slot == "off_hand":
+                slot_descriptions.append("OFF HAND: Empty / free hand")
+            continue
+
+        det = get_item_details(item_val, inventory=inv)
+        vis_text = det.get("visual_appearance", det.get("desc", str(item_val)))
+
+        # Check durability state for visual battle-wear
+        wear_tag = ""
+        if isinstance(gear_dur, dict) and slot in gear_dur and isinstance(gear_dur[slot], dict):
+            cur_d = gear_dur[slot].get("cur", 100)
+            max_d = gear_dur[slot].get("max", 100)
+            d_state = get_durability_state(cur_d, max_d)
+            if d_state["is_broken"]:
+                wear_tag = " [VISUALLY SHATTERED / BROKEN & CRACKED]"
+            elif d_state["is_dulled"]:
+                wear_tag = " [HEAVILY BATTLE-SCARRED, SCORCHED & NOTCHED]"
+            elif d_state["state"] == "Worn":
+                wear_tag = " [WEATHERED & BATTLE-TESTED]"
+
+        slot_descriptions.append(f"{slot_label}: {det['name']} — {vis_text}{wear_tag}")
+
+    # 3. Resolve Active / Installed Grafts
+    graft_visuals = []
+    # Check player['grafts'] dict
+    p_grafts = character_state.get("grafts", {})
+    if isinstance(p_grafts, dict):
+        for g_slot, g_val in p_grafts.items():
+            if g_val:
+                g_det = get_item_details(g_val, inventory=inv)
+                graft_visuals.append(f"{g_slot.upper()} GRAFT: {g_det['name']} ({g_det['visual_appearance']})")
+
+    # Check player['graft_system']['installed_grafts']
+    sys_grafts = character_state.get("graft_system", {}).get("installed_grafts", {})
+    if isinstance(sys_grafts, dict):
+        for g_slot, g_val in sys_grafts.items():
+            if g_val:
+                g_det = get_item_details(g_val, inventory=inv)
+                entry_str = f"{g_slot.upper()} GRAFT: {g_det['name']} ({g_det['visual_appearance']})"
+                if entry_str not in graft_visuals:
+                    graft_visuals.append(entry_str)
+
+    # Check companion['active_grafts'] list
+    act_grafts = character_state.get("active_grafts", [])
+    if isinstance(act_grafts, list):
+        for g_val in act_grafts:
+            if g_val:
+                g_det = get_item_details(g_val, inventory=inv)
+                g_slot = g_val.get("slot", "graft") if isinstance(g_val, dict) else "graft"
+                graft_visuals.append(f"{str(g_slot).upper()} GRAFT: {g_det['name']} ({g_det['visual_appearance']})")
+
+    graft_line = f" | ACTIVE GRAFTS: {'; '.join(graft_visuals)}" if graft_visuals else " | ACTIVE GRAFTS: None installed"
+
+    return (
+        f"* {name} ({race} {char_class}):\n"
+        f"  - Base Physical Appearance: {base_anat}\n"
+        f"  - Equipped Gear (MUST BE DEPICTED ACCURATELY): {' | '.join(slot_descriptions)}{graft_line}"
+    )
+
+
+def build_scene_visual_manifest(player_state: dict = None, active_companions: list = None, base_dir: str = None) -> str:
+    """
+    Builds the complete multi-character Dynamic Equipped-Gear Visual Manifest for the current scene,
+    combining the Player's live equipped items/grafts with all active Companions' sheets from Party/*.json.
+    """
+    import os
+    import json
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    lines = []
+    if player_state and isinstance(player_state, dict):
+        lines.append(build_character_visual_profile(player_state, entity_id="banki" if player_state.get("name", "").lower() == "banki" else "player"))
+
+    # Determine active companions
+    comp_ids = []
+    if active_companions:
+        for c in active_companions:
+            if isinstance(c, dict):
+                cid = c.get("id", c.get("entity_id", f"companion_{c.get('name', 'ren').lower()}"))
+            else:
+                cid = str(c)
+                if not cid.startswith("companion_"):
+                    cid = f"companion_{cid.lower()}"
+            comp_ids.append(cid)
+    else:
+        # Check player_state['party'] or default to companion_ren
+        if player_state and isinstance(player_state, dict):
+            party_data = player_state.get("party", {})
+            if isinstance(party_data, dict):
+                for cname, cdict in party_data.items():
+                    if isinstance(cdict, dict) and cdict.get("active", False):
+                        cid = cdict.get("id", f"companion_{cname.lower().split()[0]}")
+                        comp_ids.append(cid)
+        if not comp_ids:
+            comp_ids = ["companion_ren"]
+
+    party_dir = os.path.join(base_dir, "Party")
+    for cid in comp_ids:
+        p_file = os.path.join(party_dir, f"{cid}.json")
+        if os.path.exists(p_file):
+            try:
+                with open(p_file, "r", encoding="utf-8") as f:
+                    c_sheet = json.load(f)
+                lines.append(build_character_visual_profile(c_sheet, entity_id=cid))
+            except Exception:
+                pass
+
+    return "\n".join(lines)
+
+
 
 

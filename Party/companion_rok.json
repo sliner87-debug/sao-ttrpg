@@ -13,13 +13,48 @@
         {
             "name": "Troll-Blood Adrenal Pump",
             "slot": "Torso",
-            "effect": "Regenerate +4 HP/turn when below 50% HP, +2d6 Berserk Melee DMG"
+            "effect": "Regenerate +4 HP/turn when below 50% HP, +2d6 Berserk Melee DMG",
+            "visual_appearance": "carrying Troll-Blood Adrenal Pump"
         }
     ],
     "inventory": [
-        "Twin Serrated Slag-Cleavers",
-        "Spiked Iron Pauldrons",
-        "Troll-Hide Kilt"
+        {
+            "name": "Twin Serrated Slag-Cleavers",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Ragnarok 'Rok's massive dual-wielded jagged butcher-axes forged from furnace-quenched crucible iron (2d8 slashing, blood-rage cleave).",
+            "visual_appearance": "hefting massive twin serrated crucible-iron slag-cleaver greataxes"
+        },
+        {
+            "name": "Spiked Iron Pauldrons",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "Heavy bone-and-iron shoulder plates spiked for brutal tackling charges (+1 AC, +1d6 ramming damage).",
+            "visual_appearance": "wearing jagged spiked bone-and-iron shoulder pauldrons"
+        },
+        {
+            "name": "Troll-Hide Kilt",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Thick, regenerating cured troll-hide war-harness and kilt that leaves the chest open to channel tribal blood-runes (+5 AC).",
+            "visual_appearance": "wearing a heavy cured troll-hide war-kilt and leather harness over a bare chest covered in glowing crimson blood-runes"
+        }
     ],
-    "behavior_prompt": "You are Ragnarok 'Rok', a brutal Blood-Rager marauder. You speak with guttural gravel and raw warrior pride. In combat, you ignore defense, roaring as you charge the largest monster on the field, cleaving with both axes and soaking damage."
+    "behavior_prompt": "You are Ragnarok 'Rok', a brutal Blood-Rager marauder. You speak with guttural gravel and raw warrior pride. In combat, you ignore defense, roaring as you charge the largest monster on the field, cleaving with both axes and soaking damage.",
+    "equipped": {
+        "head": "None",
+        "chest": "Troll-Hide Kilt",
+        "main_hand": "Twin Serrated Slag-Cleavers",
+        "off_hand": "Spiked Iron Pauldrons",
+        "accessory": "None"
+    }
 }

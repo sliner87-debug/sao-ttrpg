@@ -102,13 +102,18 @@ def get_subagent_action(api_key: str, entity_id: str, visible_room: dict, player
         ac = party_sheet.get("ac")
         if hp is not None and max_hp is not None:
             mech_lines.append(f"- Current Health: {hp}/{max_hp} HP (Armor Class: {ac})")
+        eq = party_sheet.get("equipped", {})
+        if isinstance(eq, dict) and any(v and v != "None" for v in eq.values()):
+            eq_strs = [f"{k}: {v}" for k, v in eq.items() if v and v != "None"]
+            mech_lines.append(f"- Equipped Gear: {', '.join(eq_strs)}")
         grafts = party_sheet.get("active_grafts", [])
         if grafts:
             g_strs = [f"{g.get('name')} [{g.get('slot')} slot: {g.get('effect')}]" if isinstance(g, dict) else str(g) for g in grafts]
             mech_lines.append(f"- Active Grafts & Implants: {', '.join(g_strs)}")
         inv = party_sheet.get("inventory", [])
         if inv:
-            mech_lines.append(f"- Tactical Inventory: {', '.join([str(i) for i in inv])}")
+            inv_strs = [f"{i.get('name')} ({i.get('desc', '')})" if isinstance(i, dict) else str(i) for i in inv]
+            mech_lines.append(f"- Tactical Inventory: {'; '.join(inv_strs)}")
             
     mechanical_section = ""
     if mech_lines:

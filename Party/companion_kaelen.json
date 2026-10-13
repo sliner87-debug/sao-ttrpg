@@ -13,13 +13,48 @@
         {
             "name": "Solar Core Stigmatic Heart",
             "slot": "Torso",
-            "effect": "+1d8 Radiant DMG to flail, passive +5 HP/turn aura when near allies under 50% HP"
+            "effect": "+1d8 Radiant DMG to flail, passive +5 HP/turn aura when near allies under 50% HP",
+            "visual_appearance": "carrying Solar Core Stigmatic Heart"
         }
     ],
     "inventory": [
-        "Radiant War-Flail",
-        "Sunstone Focus Censer",
-        "Gilded Crusader Mail"
+        {
+            "name": "Radiant War-Flail",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Brother Kaelen's heavy sun-gold warhammer-flail whose head blazes with searing golden daylight (1d8 bludgeoning + 1d6 radiant).",
+            "visual_appearance": "wielding a heavy sun-gold war-flail blazing with radiant golden sunlight"
+        },
+        {
+            "name": "Sunstone Focus Censer",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "A swinging brass sanctuary censer burning consecrated solar resin that heals nearby allies and wards off shadow-fiends.",
+            "visual_appearance": "holding a glowing golden sunstone sanctuary censer trailing luminous incense"
+        },
+        {
+            "name": "Gilded Crusader Mail",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Polished sun-gold breastplate worn over white Templar vestments embroidered with the Sol Invictus crest (+7 AC).",
+            "visual_appearance": "clad in a polished sun-gold breastplate over white hooded Sol-Templar vestments"
+        }
     ],
-    "behavior_prompt": "You are Brother Kaelen, a Sol-Templar paladin and frontline combat medic. You prioritize keeping Banki and allies healthy, dispelling debilitating curses, and crushing dark creatures with radiant solar bursts."
+    "behavior_prompt": "You are Brother Kaelen, a Sol-Templar paladin and frontline combat medic. You prioritize keeping Banki and allies healthy, dispelling debilitating curses, and crushing dark creatures with radiant solar bursts.",
+    "equipped": {
+        "head": "None",
+        "chest": "Gilded Crusader Mail",
+        "main_hand": "Radiant War-Flail",
+        "off_hand": "Sunstone Focus Censer",
+        "accessory": "None"
+    }
 }

@@ -13,13 +13,48 @@
         {
             "name": "Dorsal Capacitor Rig & Dynamo",
             "slot": "Spine",
-            "effect": "Stores 100 Galvanic Charge, releases chain lightning shocks"
+            "effect": "Stores 100 Galvanic Charge, releases chain lightning shocks",
+            "visual_appearance": "clad in Dorsal Capacitor Rig & Dynamo torso armor"
         }
     ],
     "inventory": [
-        "Galvanic Arc Staff",
-        "Capacitor Battery Rig",
-        "Spark-Shield Coat"
+        {
+            "name": "Galvanic Arc Staff",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Zeddicus's copper-coiled Tesla lightning rod topped with a spinning brass induction sphere (1d10 lightning, chains to adjacent targets).",
+            "visual_appearance": "wielding a copper-coiled Galvanic Arc Staff crackling with jumping blue lightning bolts"
+        },
+        {
+            "name": "Capacitor Battery Rig",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "A portable high-voltage Leyden-jar capacitor pack wired to heavy rubberized conduction gauntlets.",
+            "visual_appearance": "strapped with a dorsal brass Leyden-jar capacitor rig humming with electric arcs"
+        },
+        {
+            "name": "Spark-Shield Coat",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "An insulated slate-leather leyline trenchcoat lined with grounded copper Faraday mesh (+4 AC, immunity to lightning stun).",
+            "visual_appearance": "wearing an insulated copper-mesh leyline trenchcoat and brass galvanic goggles"
+        }
     ],
-    "behavior_prompt": "You are Zeddicus Volt-Spark, an eccentric electrical plasma-evoker. You speak fast with manic excitement. You fry clusters of enemies with chain lightning, zap armored constructs with targeted dielectric breakdown, and charge Banki's weapons with crackling lightning buffs."
+    "behavior_prompt": "You are Zeddicus Volt-Spark, an eccentric electrical plasma-evoker. You speak fast with manic excitement. You fry clusters of enemies with chain lightning, zap armored constructs with targeted dielectric breakdown, and charge Banki's weapons with crackling lightning buffs.",
+    "equipped": {
+        "head": "None",
+        "chest": "Spark-Shield Coat",
+        "main_hand": "Galvanic Arc Staff",
+        "off_hand": "Capacitor Battery Rig",
+        "accessory": "None"
+    }
 }

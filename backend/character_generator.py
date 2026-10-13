@@ -1487,15 +1487,23 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
         if "mechanics" in relic:
             feats_list.append(f"Relic Attunement ({relic['name']}): {relic['mechanics']}")
     
+    import backend.mechanics as mechanics
+    mh_details = mechanics.get_item_details(main_hand_w)
+    water_details = mechanics.get_item_details("Bottled Water")
+    ration_details = mechanics.get_item_details("Survival Rations")
+    relic_enriched = mechanics.enrich_item_dict(relic)
+
     starter_inventory = [
-        relic,
+        relic_enriched,
         {
             "name": main_hand_w,
-            "rarity": "Common",
+            "rarity": mh_details.get("rarity", "Common"),
             "durability": 45,
             "max_durability": 50,
             "qty": 1,
-            "desc": f"Starting Grade 1 weapon ({main_hand_w})."
+            "slot": "main_hand",
+            "desc": mh_details["desc"],
+            "visual_appearance": mh_details["visual_appearance"]
         },
         {
             "name": "Bottled Water",
@@ -1503,7 +1511,9 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
             "durability": 1,
             "max_durability": 1,
             "qty": 2,
-            "desc": "Clean, sealed drinking water from before the collapse."
+            "slot": "consumable",
+            "desc": water_details["desc"],
+            "visual_appearance": water_details["visual_appearance"]
         },
         {
             "name": "Survival Rations",
@@ -1511,18 +1521,23 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
             "durability": 1,
             "max_durability": 1,
             "qty": 2,
-            "desc": "Vacuum-sealed nutrient paste and dried trail mix."
+            "slot": "consumable",
+            "desc": ration_details["desc"],
+            "visual_appearance": ration_details["visual_appearance"]
         }
     ]
     
     if off_hand_w and off_hand_w != "None":
+        oh_details = mechanics.get_item_details(off_hand_w)
         starter_inventory.append({
             "name": off_hand_w,
-            "rarity": "Common",
+            "rarity": oh_details.get("rarity", "Common"),
             "durability": 45,
             "max_durability": 50,
             "qty": 1,
-            "desc": f"Starting Grade 1 off-hand equipment ({off_hand_w})."
+            "slot": "off_hand",
+            "desc": oh_details["desc"],
+            "visual_appearance": oh_details["visual_appearance"]
         })
         
     # 6. Starting Equipped Slots

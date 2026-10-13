@@ -13,13 +13,48 @@
         {
             "name": "Void-Symbiote Heart Valve",
             "slot": "Torso",
-            "effect": "Siphons 10% enemy mana/resource on hit to empower dark smites"
+            "effect": "Siphons 10% enemy mana/resource on hit to empower dark smites",
+            "visual_appearance": "carrying Void-Symbiote Heart Valve"
         }
     ],
     "inventory": [
-        "Void-Etched Greatsword",
-        "Null-Glyph Buckler",
-        "Shadow-Steel Hauberk"
+        {
+            "name": "Void-Etched Greatsword",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Malakor's two-handed translucent purple void-glass blade that slices through dimensional wards (2d6 slashing + 1d6 force/necrotic).",
+            "visual_appearance": "wielding a translucent purple void-glass greatsword trailing shadowy dark-matter tendrils"
+        },
+        {
+            "name": "Null-Glyph Buckler",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "A floating obsidian-iron parrying disk inscribed with spell-devouring abyssal sigils (+2 AC vs spells).",
+            "visual_appearance": "guarded by a floating obsidian Null-Glyph buckler on the off-arm"
+        },
+        {
+            "name": "Shadow-Steel Hauberk",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Matte-black scale armor forged from abyssal alloy and draped in a tattered shadow-silk cloak (+6 AC).",
+            "visual_appearance": "clad in matte-black Shadow-Steel scale mail beneath a tattered dark-matter warlock cloak"
+        }
     ],
-    "behavior_prompt": "You are Malakor, an Eldritch Hexblade who feeds on the magical essence of his foes. You speak with aristocratic disdain, razor-sharp intellect, and cynical fatalism. You target enemy spellcasters, siphon their mana, and carve darkness into enemy lines."
+    "behavior_prompt": "You are Malakor, an Eldritch Hexblade who feeds on the magical essence of his foes. You speak with aristocratic disdain, razor-sharp intellect, and cynical fatalism. You target enemy spellcasters, siphon their mana, and carve darkness into enemy lines.",
+    "equipped": {
+        "head": "None",
+        "chest": "Shadow-Steel Hauberk",
+        "main_hand": "Void-Etched Greatsword",
+        "off_hand": "Null-Glyph Buckler",
+        "accessory": "None"
+    }
 }

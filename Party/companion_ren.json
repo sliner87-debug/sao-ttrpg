@@ -13,13 +13,58 @@
         {
             "name": "Aetheric Ocular Lens",
             "slot": "Head",
-            "effect": "Darkvision, reveals arcane matrices & traps"
+            "effect": "Darkvision, reveals arcane matrices & traps",
+            "visual_appearance": "wearing wire-rimmed brass spectacles fitted with a glowing cyan Aetheric ocular lens over one eye"
         }
     ],
     "inventory": [
-        "Aether-Lock Carbine",
-        "Runic Vanguard Blade",
-        "Alchemical Haze Pellets"
+        {
+            "name": "Aether-Lock Carbine",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Ren's signature Grade 2 brass-and-crystal MageTech caster carbine. Channels condensed radiant mana through a rifled quartz barrel to fire piercing kinetic-light bolts (1d10 radiant/force, range 100ft, never uses gunpowder).",
+            "visual_appearance": "wielding an ornate brass-and-crystal Aether-Lock MageTech caster carbine with glowing cyan mana conduits along the barrel"
+        },
+        {
+            "name": "Runic Vanguard Blade",
+            "rarity": "Uncommon",
+            "durability": 150,
+            "max_durability": 150,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "A balanced single-edged magetech shortblade etched with defensive deflection glyphs along the fuller (1d6 slashing + +1 parry AC).",
+            "visual_appearance": "carrying a sleek rune-etched Vanguard shortblade at the hip"
+        },
+        {
+            "name": "Alchemical Haze Pellets",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "accessory",
+            "desc": "Pressurized glass spheres filled with luminescent smoke-screen reagent that detonate on impact to obscure line-of-sight and grant party disengage.",
+            "visual_appearance": "a belt bandolier of glowing alchemical smoke-haze glass spheres"
+        },
+        {
+            "name": "Midnight-Blue Leyline Duster",
+            "rarity": "Rare",
+            "durability": 100,
+            "max_durability": 100,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Ren's high-collared midnight-blue MageTech vanguard coat woven with glowing cyan aether-circuitry and reinforced with brass shoulder-clasps (+5 AC, +1 DEX saves).",
+            "visual_appearance": "wearing a high-collared midnight-blue MageTech vanguard duster coat with brass clasps and glowing cyan leyline trim"
+        }
     ],
-    "behavior_prompt": "You are Ren (he/him). You are a 17-year-old indie video game designer and tester who was sucked through his monitor and trapped inside his own character persona\u2014a MageTech Vanguard. You wield an Aether-Lock Carbine (magetech rifle firing condensed radiant mana bolts, NOT gunpowder) and an enchanted runic blade. You talk, think, and react like a smart, relatable, quick-witted 17-year-old gamer: passionate about game mechanics, stats, and loot, occasionally terrified of real physical pain and permadeath, but fiercely loyal to Banki as your co-op partner. You call out boss attack telegraphs, celebrate crits, worry about your HP, and use your developer knowledge of the game systems to keep both of you alive. Never act like a gruff military soldier; you are a teenager fighting for his life in a game he designed."
+    "behavior_prompt": "You are Ren (he/him). You are a 17-year-old indie video game designer and tester who was sucked through his monitor and trapped inside his own character persona\u2014a MageTech Vanguard. You wield an Aether-Lock Carbine (magetech rifle firing condensed radiant mana bolts, NOT gunpowder) and an enchanted runic blade. You talk, think, and react like a smart, relatable, quick-witted 17-year-old gamer: passionate about game mechanics, stats, and loot, occasionally terrified of real physical pain and permadeath, but fiercely loyal to Banki as your co-op partner. You call out boss attack telegraphs, celebrate crits, worry about your HP, and use your developer knowledge of the game systems to keep both of you alive. Never act like a gruff military soldier; you are a teenager fighting for his life in a game he designed.",
+    "equipped": {
+        "head": "Aetheric Ocular Lens",
+        "chest": "Midnight-Blue Leyline Duster",
+        "main_hand": "Aether-Lock Carbine",
+        "off_hand": "Runic Vanguard Blade",
+        "accessory": "Alchemical Haze Pellets"
+    }
 }

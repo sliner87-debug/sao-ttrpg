@@ -883,12 +883,10 @@ def apply_player_state_updates(state_updates):
     inv_add = state_updates.get("inventory_add") or []
     if isinstance(inv_add, list):
         for item in inv_add:
-            if isinstance(item, dict) and "name" in item:
-                st.session_state.player["inventory"].append(item)
-                st.toast(f"📦 Acquired: {item['name']}!", icon="🎁")
-            elif isinstance(item, str) and item.strip():
-                st.session_state.player["inventory"].append({"name": item, "rarity": "Common", "durability": 100, "max_durability": 100, "qty": 1, "desc": ""})
-                st.toast(f"📦 Acquired: {item}!", icon="🎁")
+            if (isinstance(item, dict) and "name" in item) or (isinstance(item, str) and item.strip()):
+                enriched_item = mechanics.enrich_item_dict(item, inventory=st.session_state.player.get("inventory", []))
+                st.session_state.player["inventory"].append(enriched_item)
+                st.toast(f"📦 Acquired: {enriched_item['name']}!", icon="🎁")
                 
     inv_remove = state_updates.get("inventory_remove") or []
     if isinstance(inv_remove, list):
@@ -1213,8 +1211,13 @@ def render_game_hud():
                 cur_d = d.get("cur", 100)
                 max_d = d.get("max", 100)
                 state_info = mechanics.get_durability_state(cur_d, max_d) if hasattr(mechanics, "get_durability_state") else {"label": f"{cur_d}/{max_d}", "pct": cur_d / max_d if max_d > 0 else 1.0, "is_broken": cur_d <= 0, "is_dulled": cur_d < max_d * 0.25}
+                item_det = mechanics.get_item_details(item, inventory=player.get("inventory", [])) if hasattr(mechanics, "get_item_details") else {"desc": "", "visual_appearance": ""}
                 st.markdown(f"**{slot_label}:** {item}")
                 st.caption(f"{grade_badge} | {state_info['label']}")
+                if item_det.get("desc"):
+                    st.caption(f"📖 *Lore & Mechanics:* {item_det['desc']}")
+                if item_det.get("visual_appearance"):
+                    st.caption(f"🎨 *Visual Appearance:* {item_det['visual_appearance']}")
                 pct_val = max(0.0, min(1.0, float(state_info.get("pct", cur_d / max_d if max_d > 0 else 1.0))))
                 st.progress(pct_val, text=f"{cur_d} / {max_d} Durability ({int(pct_val * 100)}%)")
                 if state_info.get("is_broken"):
@@ -1255,7 +1258,10 @@ def render_game_hud():
             g_val = grafts.get(s_key)
             if g_val:
                 g_name = g_val.get("name", str(g_val)) if isinstance(g_val, dict) else str(g_val)
+                g_det = mechanics.get_item_details(g_val, inventory=player.get("inventory", [])) if hasattr(mechanics, "get_item_details") else {}
                 st.write(f"- **{s_label}:** 🟢 `{g_name}`")
+                if g_det.get("desc"):
+                    st.caption(f"  ↳ {g_det['desc']}")
             else:
                 st.write(f"- **{s_label}:** *Empty*")
         
@@ -1297,11 +1303,23 @@ def render_game_hud():
             
     with st.expander("🎒 Backpack Inventory", expanded=False):
         rarity_colors = {"Common": "⚪", "Uncommon": "🟢", "Rare": "🔵", "Epic": "🟣", "Legendary": "🟠", "Mythic": "🔴", "Unique": "✨"}
-        for item in player.get("inventory", []):
+        if hasattr(mechanics, "enrich_inventory_list"):
+            player["inventory"] = mechanics.enrich_inventory_list(player.get("inventory", []))
+        for idx, item in enumerate(player.get("inventory", [])):
             if isinstance(item, dict):
                 icon = rarity_colors.get(item.get("rarity", "Common"), "⚪")
-                st.write(f"{icon} **{item.get('name', 'Unknown')}** (x{item.get('qty', 1)})")
+                i_name = item.get('name', 'Unknown')
+                i_slot = item.get('slot', 'item')
+                st.write(f"{icon} **{i_name}** (x{item.get('qty', 1)})")
                 st.caption(f"Durability: {item.get('durability', 0)}/{item.get('max_durability', 0)} | {item.get('desc', '')}")
+                if item.get("visual_appearance"):
+                    st.caption(f"🎨 *Visual:* {item['visual_appearance']}")
+                if i_slot in ["head", "chest", "main_hand", "off_hand", "accessory"] and player.get("equipped", {}).get(i_slot) != i_name:
+                    if st.button(f"⚔️ Equip to {i_slot.replace('_', ' ').title()}", key=f"btn_equip_inv_{idx}_{i_slot}"):
+                        player.setdefault("equipped", {})[i_slot] = i_name
+                        save_game(player, st.session_state.messages)
+                        st.toast(f"Equipped {i_name} to {i_slot.replace('_', ' ').title()}! Visual profile updated.", icon="⚔️")
+                        st.rerun()
             else:
                 st.write(f"- {item}")
                 
@@ -2035,6 +2053,8 @@ def render_game_hud():
                             continue
                         seen_unique.add(matched_uk)
                     deduped_inv.append(item)
+                if hasattr(mechanics, "enrich_inventory_list"):
+                    deduped_inv = mechanics.enrich_inventory_list(deduped_inv)
                 player_obj["inventory"] = deduped_inv
 
             # 2. Detect and strip the Silt-Marrow post-kill collapse loop if present in uploaded messages
@@ -2295,8 +2315,8 @@ if prompt := (dev_prompt or chat_prompt):
                 subagent_log_lines.append(f"**[{icon} {actor_name} — SubAgent Mind]**\n> *\"{thought}\"*\n> **Intent:** {intent}")
             subagent_log = "\n\n".join(subagent_log_lines) if subagent_log_lines else ""
             
-            # c. Resolve the turn (Read Player Action + SubAgent Action Queue)
-            turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=ai_prompt)
+            # c. Resolve the turn (Read Player Action + SubAgent Action Queue + Live Equipped Gear)
+            turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=ai_prompt, player_state=st.session_state.player)
             
             narrative = turn_data.get("narrative_recap", "Error parsing narrative.")
             
@@ -2483,12 +2503,12 @@ if prompt := (dev_prompt or chat_prompt):
                 with st.expander("🧠 SubAgent Thoughts & Planned Actions (Click to open/close)", expanded=False):
                     st.markdown(subagent_log)
             
-            # 2. Generate Scene Image matching Main Branch styling and character canons
+            # 2. Generate Scene Image matching Main Branch styling and live equipped gear / grafts
             image_data = None
             if image_prompt:
                 try:
                     with st.spinner("Rendering scene illustration..."):
-                        image_bytes, img_error = gm_engine.generate_scene_image(api_key, image_prompt)
+                        image_bytes, img_error = gm_engine.generate_scene_image(api_key, image_prompt, player_state=st.session_state.player)
                         if image_bytes:
                             b64_img = base64.b64encode(image_bytes).decode("utf-8")
                             image_data = f"data:image/png;base64,{b64_img}"

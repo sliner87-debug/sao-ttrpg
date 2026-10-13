@@ -202,8 +202,9 @@ Return ONLY the data the players can clearly observe. Output EXACTLY matching th
 
 generate_visible_room = generate_visible_state
 
-def resolve_turn(api_key: str, player_action: str):
+def resolve_turn(api_key: str, player_action: str, player_state: dict = None):
     """Takes the player action + AI queue, calculates math, updates master state."""
+    from backend import mechanics
     client = genai.Client(api_key=api_key)
     master_state_path = os.path.join(".game_state", "secret_master_state.json")
     queue_path = os.path.join("Staging_Ground", "action_queue.json")
@@ -212,6 +213,18 @@ def resolve_turn(api_key: str, player_action: str):
     master_state = load_json(master_state_path)
     action_queue = load_json(queue_path) or []
     
+    if player_state is None:
+        save_path = "save_game.json"
+        if os.path.exists(save_path):
+            try:
+                s_data = load_json(save_path)
+                if s_data and isinstance(s_data, dict) and "player" in s_data:
+                    player_state = s_data["player"]
+            except Exception:
+                pass
+
+    dynamic_visual_manifest = mechanics.build_scene_visual_manifest(player_state=player_state)
+
     rules = ""
     if os.path.exists(rules_path):
         with open(rules_path, "r", encoding="utf-8") as f:
@@ -232,7 +245,7 @@ CORE GM BEHAVIOR RULES:
 3. COMBAT AFTERMATH & GRAFT HARVESTING:
    - ONLY on the exact turn when an active, living hostile combatant's HP is reduced from >0 to 0 (or when the player explicitly harvests an unharvested corpse for the first time): set `encounter_active=false`, award encounter XP and Col in `player_state_updates`, drop appropriate monster graft components into `player_state_updates.inventory_add`, and add the slain entity's ID to `cleared_entities`.
    - CRITICAL ANTI-LOOP MANDATE: If `Current Master State.entities` has NO living hostiles, the combat encounter is ALREADY resolved. NEVER re-award boss loot drops, NEVER repeat cave-in/collapse hazards or steam vents, and NEVER pull the party back into a previous tunnel or mine shaft! Always ground your narrative strictly in `Current Master State.environment.location`.
-4. INVENTORY & SPELL LOOT: Whenever you narrate that the player loots, inspects, or identifies an item or spell slate, you MUST include it in player_state_updates.inventory_add so it actually lands on their character sheet.
+4. INVENTORY & SPELL LOOT (FULL ITEM DESCRIPTIONS REQUIRED): Whenever you narrate that the player loots, inspects, or identifies an item or spell slate, you MUST include it in `player_state_updates.inventory_add` with its full description so it lands on their character sheet.
 5. AUTONOMOUS SUBAGENTS: Each entity in the queue (Companions, Monsters, NPCs) is an autonomous SubAgent with their own quirks, fears, and tactical goals. Resolve how their queued actions collide with each other and with the Human Player's action.
 6. MECHANICAL TRANSPARENCY & CLEAN NARRATIVE: Explicitly simulate all dice rolls, attacks vs AC, saving throws vs DC, and damage math in the `combat_logs` array. In `narrative_recap`, tell a dramatic, cinematic story WITHOUT embedding bracketed formulas like '[Attack: 1d20+5...]' in the story prose. Put all crunch into `combat_logs`.
 7. SAFE-ZONE & LIVING WORLD (WASHINGTON BOROUGH): When players rest or interact in the Washington Borough Safe-Zone:
@@ -272,28 +285,31 @@ CORE GM BEHAVIOR RULES:
      * Ensure `player_state_updates.location` is populated with the new location string.
    - If in a safe zone, town, or clinic, clear all dungeon hazards (collapses, falling shale, superheated steam, traps) and ensure all companion dialogue and intents reflect the calm safety of the sanctuary.
 
-16. CANONICAL SCENE IMAGE GENERATION PROMPT & CHARACTER ART VISUAL CANONS:
+16. CANONICAL SCENE IMAGE GENERATION PROMPT & DYNAMIC EQUIPPED-GEAR VISUALS:
    - You MUST populate `image_prompt` with a vivid, cinematic prompt for a high-quality dark anime illustration of the turn's key moment or current scene.
-   - CRITICAL VISUAL CONSISTENCY MANDATE: You MUST describe characters accurately according to their canonical visual designs:
-     * Banki (Player): Burly, rugged Nordic warrior with a short dark beard and undercut hair, clad in heavy black-iron plate armor etched with glowing cyan Elder Futhark runes, a massive dire-wolf fur mantle draped over broad shoulders, wielding an enchanted bearded war-axe and a heavy trench hammer.
-     * Ren (Companion): Lean, athletic 17-year-old high school senior and systems designer with messy dark hair, wire-rimmed brass spectacles or glowing aetheric ocular lens over one eye, wearing a midnight-blue leyline duster over scholar's garb, wielding an ornate brass-and-crystal MageTech caster firearm (magic-powered with glowing mana conduits, NOT gunpowder or lead) and carrying a glowing runic slate grimoire.
-     * Elora Thorne (Companion): Nimble elven spellblade with silver-braided hair, wearing silk starlight phase-robes, wielding a starlight aether-rapier and glowing caster gauntlet.
-     * Torvald Iron-Vein (Companion): Veteran dwarven vanguard in deepforged runic plate armor, wielding a massive adamant tower shield wide as a castle gate and a heavy war-axe.
-     * Kibs Nine-Fingers (Companion): Scrapper rogue cloaked in scavenged shrouds, serrated wrist daggers, mechanical optical goggles.
-     * Valeria Vane (Companion): Striking blonde aerial Valkyrie in gleaming falcon-crest mail with aerodynamic aether-glider struts forming luminous cyan wings along her spine, wielding an ornate winged aether-spear and solar aegis shield.
-     * Morrigan Black-Thorn (Companion): Pale gothic abyssal grave-binder with flowing raven hair, obsidian-and-bone mantle, shrouded in dark necrotic mist and ethereal emerald soul-wisps, wielding an obsidian scythe and bone wand.
-     * Garrick Stone-Grip (Companion): Muscular martial artist with stone-grafted obsidian-scaled arms and glowing tectonic ki-glyphs across his chest, wearing monk trousers and iron-plated hand wraps.
-     * Sariel Swift-Wind (Companion): Graceful emerald-eyed wood-elf beast-stalker ranger clad in camouflaged moss-green leathers and autumn leaf cloaks, carrying an elegant recurve aether-longbow and twin hunting daggers.
-     * Brother Kaelen (Companion): Resolute shaved-head Sol-Templar priest in polished sun-gold breastplate and white hooded vestments, channeling radiant golden sunlight through a heavy solar warhammer and glowing sunstone medallion.
-     * Zeddicus Volt-Spark (Companion): Eccentric plasma-mage with wild copper-streaked spiky hair, brass galvanic conduction goggles, crackling lightning arcs dancing across his fingers and insulated leyline coat.
-     * Daphne Leclair (Companion): Charismatic violet-eyed bard in flamboyant midnight-velvet skaldic coat and silver-threaded scarf, strumming a glowing aether-resonant lute-blade.
-     * Ragnarok 'Rok' (Companion): Massive battle-scarred barbarian juggernaut with fiery red war-braids, tribal runic tattoos pulsating crimson with blood-rage, wielding a colossal dual-bearded greataxe and spiked bone pauldrons.
-     * Lyra Stargaze (Companion): Ethereal silver-haired chronomancer in deep indigo robes embroidered with golden constellation diagrams, surrounded by floating ticking clockwork dials and orbital astrolabe rings.
-     * Titus Sterling (Companion): Imposing 7-foot bronze-and-steel clockwork automaton sentinel with a glowing amber ocular furnace in its chest, steam hissing from shoulder exhaust valves, armed with a pneumatic piledriver flail and iron tower pavise.
-     * Nyssa Thorn-Weft (Companion): Wild primal druid with braided bramble vines in auburn hair, living thorn-woven bark-armor, amber wolf-like eyes, and shifting beastial claws crackling with green primal life-energy.
-     * Malakor (Companion): Slender dark-cloaked tiefling/fiend-touched hexblade warlock with swept-back obsidian horns, glowing amethyst eyes, wielding a translucent purple void-glass greatsword trailing shadowy dark-matter tendrils.
-     * Dr. Alistair Thorne (Companion): Sharp-featured patrician alchemical toxicologist in an acid-resistant slate-grey lab duster, reinforced rubber gloves, bandoliers of pressurized glowing vials, and an alchemical sprayer pistol.
-     * Sister Teresa (Companion): Austere, piercing-eyed inquisitor in a high-collared charcoal duster and wide-brimmed witch-hunter hat, wielding a heavy consecrated silver-stake mechanical crossbow and twin sanctified estocs.
+   - CRITICAL EQUIPPED-GEAR & GRAFT VISUAL MANDATE: Characters' visual appearances in `image_prompt` MUST dynamically match their **exact currently equipped gear (`HEAD`, `CHEST`, `MAIN HAND`, `OFF HAND`, `ACCESSORY`) and `ACTIVE GRAFTS`** listed in the Live Equipped-Gear Visual Manifest below!
+   - NEVER depict a character wearing armor or wielding weapons they do NOT currently have equipped! For example, if the Player's CHEST slot is `Reinforced Leather` and HEAD is `Bare-headed`, describe them wearing rugged oil-darkened reinforced leather armor and bare-headed—do NOT describe them in heavy plate armor unless they actually equip plate armor!
+   - If the player equips a new item or installs a new graft during this turn, immediately update `image_prompt` to show the newly equipped gear or newly grafted body part!
+   - LIVE EQUIPPED-GEAR & GRAFT VISUAL MANIFEST (ACTIVE PARTY):
+{dynamic_visual_manifest}
+   - ADDITIONAL NPC / COMPANION VISUAL CANONS (IF PRESENT IN SCENE):
+     * Elora Thorne: Lithe high-elven spellblade with silver-braided hair, wearing Wind-Strider starlight silk robes, wielding an Aetheric Longbow and Twin Crystal Daggers.
+     * Torvald Iron-Vein: Stocky dwarven vanguard with braided iron-grey beard, wearing Deepforged Runic Plate, wielding a Deepforged War-Axe and massive Adamant Bulwark Tower Shield.
+     * Kibs Nine-Fingers: Wiry street-scrapper rogue in scavenged shadow-shroud leathers, wielding a Serrated Scrap Dagger and spring-loaded Wrist Shank.
+     * Valeria Vane: Tall blonde aerial Valkyrie in gleaming Falcon Crest Mail with luminous cyan Aether-Glider wings along her spine, wielding a Winged Aether-Spear and Solar Aegis Shield.
+     * Morrigan Black-Thorn: Pale gothic grave-binder with raven hair in an Obsidian Shroud, wielding a Bone-Chime Scythe and Soul-Vessel Phylactery lantern.
+     * Garrick Stone-Grip: Muscular monk with shaved head, Calcified Granite Dermis arms, and glowing tectonic chest ki-glyphs, wearing a sleeveless Iron-Thread Gi and Granite-Studded Cestus gauntlets.
+     * Sariel Swift-Wind: Wood-elf ranger with auburn hair in a Camouflage Ghillie-Cloak, wielding a Composite Wind-Recurve Bow.
+     * Brother Kaelen: Shaved-head Sol-Templar cleric in Gilded Crusader Mail and white vestments, wielding a Radiant War-Flail and Sunstone Focus Censer.
+     * Zeddicus Volt-Spark: Spiky copper-haired plasma-mage in a Spark-Shield Coat and brass galvanic goggles, wielding a Galvanic Arc Staff and dorsal Capacitor Battery Rig.
+     * Daphne Leclair: Violet-eyed skaldic duelist in a midnight-velvet Performer's Doublet, strumming a Resonating Aether-Lute and wielding a Silvered Stiletto.
+     * Ragnarok 'Rok': Towering red-braided barbarian with glowing crimson blood-rage tattoos, wearing a Troll-Hide Kilt and Spiked Iron Pauldrons, wielding Twin Serrated Slag-Cleavers.
+     * Lyra Stargaze: Silver-haired chronomancer in deep indigo Star-Silk Robes, holding a Chrono-Staff of Moments and orbited by a floating Hourglass Focus.
+     * Titus Sterling: 7-foot bronze-and-steel clockwork automaton in a Cast-Iron Boiler Chassis with a glowing amber chest furnace, wielding a Pneumatic Slag-Hammer and Steam-Buffered Kinetic Barrier.
+     * Nyssa Thorn-Weft: Auburn-haired primal druid in Living Bramble Armor, wearing Obsidian Claw-Gauntlets crackling with emerald primal energy.
+     * Malakor: Ashen-skinned tiefling hexblade with swept-back obsidian horns in a Shadow-Steel Hauberk, wielding a translucent purple Void-Etched Greatsword and Null-Glyph Buckler.
+     * Dr. Alistair Thorne: Sharp-featured alchemist in a Lead-Lined Hazard Apron and Bandolier of Corrosive Flasks, aiming a Pneumatic Acid-Siphon Cannon.
+     * Sister Teresa: Austere inquisitor in a high-collared Inquisitor's Leather Duster and wide-brimmed witch-hunter hat, wielding a Silver-Chambered Crossbow and Blessed Consecrated Estoc.
      * Doc Mercer (NPC): Grizzled cyber-physician and flesh-weaver in a bloodstained leather surgeon's apron and brass magnifying loupes, surrounded by steam pistons, glowing blue mana vats, and articulated surgical needles in an ancient stone catacomb clinic.
 
 Current Master State:
@@ -439,9 +455,11 @@ Output matching TurnResolutionSchema.
     
     return resolution
 
-def generate_scene_image(api_key: str, prompt: str):
+def generate_scene_image(api_key: str, prompt: str, player_state: dict = None, active_companions: list = None):
     """
-    Generates a scene illustration matching Main branch styling and character visual canons.
+    Generates a scene illustration matching Main branch styling and dynamically reflecting
+    each character's currently equipped gear (`head`, `chest`, `main_hand`, `off_hand`, `accessory`)
+    and installed Golem/Bio-Grafts.
     Uses gemini-3.1-flash-lite-image with fallback to gemini-2.5-flash-image.
     Returns (image_bytes, error_string).
     """
@@ -449,8 +467,28 @@ def generate_scene_image(api_key: str, prompt: str):
         return None, "No API key provided"
     if not prompt:
         return None, "No prompt provided"
-        
-    full_prompt = f"Dark anime art style, high quality, masterpiece. {prompt}"
+
+    from backend import mechanics
+    if player_state is None:
+        save_path = "save_game.json"
+        if os.path.exists(save_path):
+            try:
+                s_data = load_json(save_path)
+                if s_data and isinstance(s_data, dict) and "player" in s_data:
+                    player_state = s_data["player"]
+            except Exception:
+                pass
+
+    gear_manifest = mechanics.build_scene_visual_manifest(player_state=player_state, active_companions=active_companions)
+    if gear_manifest:
+        full_prompt = (
+            f"Dark anime art style, high quality, masterpiece. {prompt}\n\n"
+            f"[STRICT EQUIPPED GEAR & CHARACTER APPEARANCE REFERENCE — RENDER EXACT EQUIPPED ITEMS & GRAFTS BELOW]:\n"
+            f"{gear_manifest}"
+        )
+    else:
+        full_prompt = f"Dark anime art style, high quality, masterpiece. {prompt}"
+
     client = genai.Client(api_key=api_key)
     
     # 1. Attempt primary model

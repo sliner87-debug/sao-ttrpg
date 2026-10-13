@@ -84,12 +84,24 @@
         },
         "inventory": [
             {
+                "name": "Reinforced Leather",
+                "rarity": "Uncommon",
+                "durability": 75,
+                "max_durability": 75,
+                "qty": 1,
+                "slot": "chest",
+                "desc": "Supple, oil-darkenedboiled cuirbouilli leather breastplate and pauldrons reinforced with blackened steel rivets, cured beast-hide straps, and a heavy fur-trimmed collar (+3 AC, full mobility).",
+                "visual_appearance": "wearing rugged oil-darkened reinforced leather armor with riveted black-iron shoulder pauldrons, buckled chest straps, and a dark fur-trimmed collar"
+            },
+            {
                 "name": "Enchanted Bearded Axe",
                 "rarity": "Uncommon",
                 "durability": 48,
                 "max_durability": 50,
                 "qty": 1,
-                "desc": "A finely forged bearded axe humming with residual kinetic mana."
+                "desc": "A finely forged bearded axe humming with residual kinetic mana.",
+                "slot": "main_hand",
+                "visual_appearance": "wielding a heavy black-iron Nordic bearded war-axe etched with glowing cyan Elder Futhark runes along the curved cutting edge and wrapped in dark leather around the ash haft"
             },
             {
                 "name": "Spell Slate: Earth Tremor Hex",
@@ -97,7 +109,9 @@
                 "durability": 100,
                 "max_durability": 100,
                 "qty": 1,
-                "desc": "Scorched crystalline data-matrix salvaged from the Runic Quarry Golem."
+                "desc": "Scorched crystalline data-matrix salvaged from the Runic Quarry Golem.",
+                "slot": "accessory",
+                "visual_appearance": "carrying a scorched basalt rune-slate glowing with amber seismic fracture glyphs at the belt"
             },
             {
                 "name": "Ration Pack",
@@ -105,7 +119,9 @@
                 "durability": 1,
                 "max_durability": 1,
                 "qty": 1,
-                "desc": "Standard survival food."
+                "desc": "Standard survival food.",
+                "slot": "consumable",
+                "visual_appearance": "a compact olive-drab vacuum-sealed field ration pouch"
             },
             {
                 "name": "[Graft Component] Silt-Marrow's Geothermal Core Piston (Tier 1 Magetech Core)",
@@ -113,7 +129,9 @@
                 "durability": 100,
                 "max_durability": 100,
                 "qty": 1,
-                "desc": ""
+                "desc": "The primary pressurized brass-and-basalt geothermal heart piston extracted from the chest cavity of Silt-Marrow the Unhewn. Pulses with superheated volcanic steam and orange leyline embers. Can be surgically grafted by Doc Mercer into the Spine or Torso (+1 STR, +1 CON, +10 Fire Resistance, and 1d6 thermal steam retaliation against melee attackers; Strain: 2).",
+                "slot": "spine",
+                "visual_appearance": "a glowing brass-and-basalt geothermal core piston venting wisps of incandescent orange steam along the spine and shoulder blades"
             },
             {
                 "name": "[Graft Component] Intact Runic Mind-Matrix (Tier 1 Construct Brain)",
@@ -121,7 +139,9 @@
                 "durability": 100,
                 "max_durability": 100,
                 "qty": 1,
-                "desc": ""
+                "desc": "A pristine, dodecahedral quartz-and-gold cognitive lattice harvested intact from Silt-Marrow's cranium. Hums with ancient autonomous excavation telemetry. Can be grafted into the Head/Neural slot by Doc Mercer (+2 INT, +1 Active Matrix Memory Slot, and tremor-sense within 30ft; Strain: 2).",
+                "slot": "head",
+                "visual_appearance": "a glowing golden quartz runic mind-matrix crown-node pulsing softly at the temple"
             },
             {
                 "name": "Basalt Carapace Plating x2",
@@ -129,7 +149,9 @@
                 "durability": 100,
                 "max_durability": 100,
                 "qty": 1,
-                "desc": ""
+                "desc": "Two dense, interlocking slabs of calcified volcanic basalt armor harvested from Silt-Marrow's outer shell, veined with dormant amber runes. Can be surgically grafted by Doc Mercer as subdermal/torso carapace plating (+2 AC, DR 2 Physical, immunity to subterranean tremor knockdowns) or forged into heavy Basalt Armor at an anvil.",
+                "slot": "torso",
+                "visual_appearance": "interlocking plates of dark volcanic basalt carapace veined with glowing amber runes across the torso and shoulders"
             },
             {
                 "name": "Runic Slag Scrap x3 (Rarity: Common, Durability: 50/50, Qty: 3, Desc: Conductive arcane metal scrap harvested from the golem's frame)",
@@ -137,7 +159,9 @@
                 "durability": 100,
                 "max_durability": 100,
                 "qty": 1,
-                "desc": ""
+                "desc": "Three heavy chunks of conductive arcane iron-slag salvaged from a shattered golem frame. Rich in residual mana conductivity; used for repairing Grade 1\u20133 weapons, rigging shrapnel traps, or smelting at a forge.",
+                "slot": "material",
+                "visual_appearance": "jagged chunks of metallic slag glowing faintly with residual blue rune-sparks"
             }
         ],
         "quests": [

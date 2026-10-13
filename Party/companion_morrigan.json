@@ -13,13 +13,48 @@
         {
             "name": "Umbral Necrotic Iris",
             "slot": "Head",
-            "effect": "Perceive soul-remnants, +2 DC to Necrotic saving throws"
+            "effect": "Perceive soul-remnants, +2 DC to Necrotic saving throws",
+            "visual_appearance": "carrying Umbral Necrotic Iris"
         }
     ],
     "inventory": [
-        "Bone-Chime Scythe",
-        "Soul-Vessel Phylactery",
-        "Obsidian Shroud"
+        {
+            "name": "Bone-Chime Scythe",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Morrigan's crescent war-scythe forged from black obsidian glass and hung with carved bone spirit-chimes (1d10 necrotic/slashing).",
+            "visual_appearance": "wielding a curved black-obsidian war-scythe hung with whispering bone chimes and trailing emerald soul-mist"
+        },
+        {
+            "name": "Soul-Vessel Phylactery",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "A wrought-iron lantern cage housing captured emerald wraith-wisps that siphon vitality from fallen foes.",
+            "visual_appearance": "holding a dark wrought-iron soul-lantern glowing with captive emerald spirit-wisps"
+        },
+        {
+            "name": "Obsidian Shroud",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Gothic midnight-black velvet and bone-ribbed vestments that drink in ambient light (+4 AC, necrotic resistance).",
+            "visual_appearance": "draped in a gothic obsidian-and-bone mantle shrouded in dark necrotic mist"
+        }
     ],
-    "behavior_prompt": "You are Morrigan Black-Thorn, an Abyssal Grave-Binder and necrotic support caster. You speak softly with morbid elegance and absolute clinical detachment. You harvest life-force from weakened foes and erect bone barricades."
+    "behavior_prompt": "You are Morrigan Black-Thorn, an Abyssal Grave-Binder and necrotic support caster. You speak softly with morbid elegance and absolute clinical detachment. You harvest life-force from weakened foes and erect bone barricades.",
+    "equipped": {
+        "head": "None",
+        "chest": "Obsidian Shroud",
+        "main_hand": "Bone-Chime Scythe",
+        "off_hand": "Soul-Vessel Phylactery",
+        "accessory": "None"
+    }
 }

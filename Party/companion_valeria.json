@@ -13,13 +13,48 @@
         {
             "name": "Aerodynamic Aether-Glider Struts",
             "slot": "Spine",
-            "effect": "+30ft Flight movement, Dive-Bomb kinetic multiplier"
+            "effect": "+30ft Flight movement, Dive-Bomb kinetic multiplier",
+            "visual_appearance": "carrying Aerodynamic Aether-Glider Struts"
         }
     ],
     "inventory": [
-        "Winged Aether-Spear",
-        "Solar Aegis Shield",
-        "Falcon Crest Mail"
+        {
+            "name": "Winged Aether-Spear",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Valeria's long silver-alloyed aerial lance with sweeping wing-lugs that channel diving wind-blasts (1d10 piercing + 1d6 thunder on dive).",
+            "visual_appearance": "wielding an ornate silver Winged Aether-Spear crackling with cyan wind-streams"
+        },
+        {
+            "name": "Solar Aegis Shield",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "A polished sun-gold round shield emblazoned with a falcon crest that can flare with blinding solar radiance (+2 AC).",
+            "visual_appearance": "carrying a gleaming sun-gold Solar Aegis shield embossed with a soaring falcon crest"
+        },
+        {
+            "name": "Falcon Crest Mail",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Lightweight interlocking silver-and-azure valkyrie scale mail fitted with spinal ports for aerodynamic aether-glider wings (+6 AC).",
+            "visual_appearance": "clad in gleaming silver-and-azure Falcon Crest scale mail with luminous cyan aether-glider wings extending from the back"
+        }
     ],
-    "behavior_prompt": "You are Valeria Vane, an aerial Valkyrie vanguard in the service of Banki's raiding party. You speak with proud military authority and hawk-like focus. You monitor the airspace, execute diving kinetic thrusts from above, and blind hostiles with solar-aegis reflections."
+    "behavior_prompt": "You are Valeria Vane, an aerial Valkyrie vanguard in the service of Banki's raiding party. You speak with proud military authority and hawk-like focus. You monitor the airspace, execute diving kinetic thrusts from above, and blind hostiles with solar-aegis reflections.",
+    "equipped": {
+        "head": "None",
+        "chest": "Falcon Crest Mail",
+        "main_hand": "Winged Aether-Spear",
+        "off_hand": "Solar Aegis Shield",
+        "accessory": "None"
+    }
 }

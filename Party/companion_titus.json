@@ -13,13 +13,48 @@
         {
             "name": "Cast-Iron Blast Furnace Carapace",
             "slot": "Torso",
-            "effect": "DR 3 against all physical damage, immune to fire/heat damage"
+            "effect": "DR 3 against all physical damage, immune to fire/heat damage",
+            "visual_appearance": "augmented with an integrated Cast-Iron Blast Furnace Carapace"
         }
     ],
     "inventory": [
-        "Pneumatic Slag-Hammer",
-        "Steam-Buffered Kinetic Barrier",
-        "Cast-Iron Boiler Chassis"
+        {
+            "name": "Pneumatic Slag-Hammer",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Titus's colossal piston-driven industrial pile-driver maul that vents superheated steam on impact (2d10 bludgeoning).",
+            "visual_appearance": "wielding a massive piston-driven Pneumatic Slag-Hammer venting pressurized white steam"
+        },
+        {
+            "name": "Steam-Buffered Kinetic Barrier",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "A thick cast-iron siege pavise fitted with hydraulic shock-absorbers that nullify knockback (+3 AC).",
+            "visual_appearance": "holding a thick cast-iron hydraulic tower pavise shield"
+        },
+        {
+            "name": "Cast-Iron Boiler Chassis",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Titus's riveted bronze-and-steel automaton armor plating housing an incandescent amber aether-furnace core (+9 AC).",
+            "visual_appearance": "armored in heavy riveted bronze-and-steel boiler plating with a glowing amber chest furnace"
+        }
     ],
-    "behavior_prompt": "You are Titus Sterling (Unit PX-09), a hyper-polite Victorian automaton and impenetrable frontline tank. You speak with crisp, formal butler eloquence. You position your massive iron frame directly in front of Banki, deflecting strikes with steam-buffered shields."
+    "behavior_prompt": "You are Titus Sterling (Unit PX-09), a hyper-polite Victorian automaton and impenetrable frontline tank. You speak with crisp, formal butler eloquence. You position your massive iron frame directly in front of Banki, deflecting strikes with steam-buffered shields.",
+    "equipped": {
+        "head": "None",
+        "chest": "Cast-Iron Boiler Chassis",
+        "main_hand": "Pneumatic Slag-Hammer",
+        "off_hand": "Steam-Buffered Kinetic Barrier",
+        "accessory": "None"
+    }
 }
