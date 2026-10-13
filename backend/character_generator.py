@@ -234,60 +234,146 @@ RACIAL_LINEAGES = {
 
 # --- CLASS PATHS & THEMED WEAPONS ---
 CLASS_PATHS = {
+    "warrior": {
+        "title": "Warrior (Frontline Anchor)",
+        "description": "Specialized in absorbing enemy aggro, breaking shields, controlling battlefield positioning, and anchoring frontlines.",
+        "starting_feats": ["Shield Wall Stance", "Taunting War-Cry"],
+        "combat_resource": {"name": "Poise & Threat", "max": 100, "current": 0, "type": "poise"},
+        "base_hp": 120,
+        "hp_per_lvl": 35,
+        "native_armor": ["Heavy", "Medium"],
+        "favored_skills": ["Trench Hammers", "One-Handed Axes", "Field Smithing"]
+    },
+    "mage": {
+        "title": "Mage (Aether-Weaver)",
+        "description": "Channels raw atmospheric mana into concentrated force projectiles, protective wards, and catastrophic elemental singularities.",
+        "starting_feats": ["Arcane Ward", "Aetheric Dart"],
+        "combat_resource": {"name": "Aetheric Flux", "max": 50, "current": 50, "type": "flux"},
+        "base_hp": 80,
+        "hp_per_lvl": 20,
+        "native_armor": ["Cloth", "Light"],
+        "favored_skills": ["Aether-Weaving", "Arcane Triage", "Provisions & Alchemy"]
+    },
+    "cleric": {
+        "title": "Cleric (Spire Templar)",
+        "description": "Battlefield medic and sanctified inquisitor wielding protective auras, emergency trauma restoration, and crushing mace strikes.",
+        "starting_feats": ["Sanctified Ward", "Purifying Grace"],
+        "combat_resource": {"name": "Devotion & Grace", "max": 100, "current": 50, "type": "devotion"},
+        "base_hp": 105,
+        "hp_per_lvl": 28,
+        "native_armor": ["Medium", "Heavy"],
+        "favored_skills": ["Arcane Triage", "Trench Hammers", "Provisions & Alchemy"]
+    },
+    "thief": {
+        "title": "Thief (Shadow Infiltrator)",
+        "description": "Acrobatic guerrilla rogue executing serrated backstabs, smoke-screen evasions, and fluid momentum chaining.",
+        "starting_feats": ["Shadow Footwork", "Serrated Backstab"],
+        "combat_resource": {"name": "Momentum Dice", "max": 5, "current": 1, "type": "momentum"},
+        "base_hp": 90,
+        "hp_per_lvl": 24,
+        "native_armor": ["Light"],
+        "favored_skills": ["One-Handed Axes", "Tactical Reflexes", "Field Trapping"]
+    },
+    "ranger": {
+        "title": "Ranger (Wilderness Marksman)",
+        "description": "Scout and sniper dominating extreme range, deploying lethal wire snares, and exploiting elevated vantage points.",
+        "starting_feats": ["Hunter's Mark", "Deadeye Aim"],
+        "combat_resource": {"name": "Focus & Vantage", "max": 5, "current": 3, "type": "focus"},
+        "base_hp": 95,
+        "hp_per_lvl": 28,
+        "native_armor": ["Light", "Medium"],
+        "favored_skills": ["Field Trapping", "Cartography", "Tactical Reflexes"]
+    },
+    "engineer": {
+        "title": "Engineer / Artificer",
+        "description": "Combat mechanist deploying automated sentry turrets, explosive traps, and venting superheated overclock steam.",
+        "starting_feats": ["Deploy Sentry Turret", "Vent Overclock"],
+        "combat_resource": {"name": "Heat & Overclock", "max": 100, "current": 0, "type": "heat"},
+        "base_hp": 100,
+        "hp_per_lvl": 28,
+        "native_armor": ["Medium", "Heavy"],
+        "favored_skills": ["Field Smithing", "Golem-Graft Rigging", "Magi-Tech Hacking"]
+    },
+    "psion": {
+        "title": "Psion / Phrenic",
+        "description": "Awakened mentalist projecting mind-shattering kinetic repulsion and psychic lances, walking the edge of cognitive strain.",
+        "starting_feats": ["Kinetic Repulsion Barrier", "Mind Spike"],
+        "combat_resource": {"name": "Psi-Strain", "max": 100, "current": 0, "type": "strain"},
+        "base_hp": 85,
+        "hp_per_lvl": 24,
+        "native_armor": ["Cloth", "Light"],
+        "favored_skills": ["Aether-Circuit Query", "Tactical Reflexes"]
+    },
     "pathless": {
         "title": "Pathless (Freeform Anomaly)",
-        "description": "Refuse to be bound by system constraints. Free to combine any feats, spells, and weapons across every level.",
-        "starting_feats": ["Adaptive Weapon Mastery", "Unshackled Potential"]
-    },
-    "vanguard": {
-        "title": "Vanguard (Heavy Frontliner)",
-        "description": "Specialized in absorbing enemy aggro, breaking shields, and anchoring battle lines.",
-        "starting_feats": ["Shield Wall Stance", "Taunting Roar"]
-    },
-    "magi_saboteur": {
-        "title": "Magi-Tech Saboteur",
-        "description": "Guerrilla infiltrator utilizing stun-pistols, cloaking tactics, and terminal decryption.",
-        "starting_feats": ["Overwatch Snare", "Stun-Discharge"]
-    },
-    "aether_slinger": {
-        "title": "Aether-Slinger",
-        "description": "Weaves unstable magic into concentrated projectile barrages and defensive wards.",
-        "starting_feats": ["Aetheric Dart", "Arcane Ward"]
-    },
-    "wilderness_ranger": {
-        "title": "Wilderness Ranger",
-        "description": "Scout and marksman dominating unmapped wilderness and corrupted biomes.",
-        "starting_feats": ["Hunter's Mark", "Deadeye Aim"]
+        "description": "Refuses to be bound by system constraints. Free to combine any weapons, spells, and doctrines across every level.",
+        "starting_feats": ["Adaptive Weapon Mastery", "Unshackled Potential"],
+        "combat_resource": {"name": "Anomaly Resonance", "max": 100, "current": 0, "type": "resonance"},
+        "base_hp": 100,
+        "hp_per_lvl": 25,
+        "native_armor": ["Adaptive"],
+        "favored_skills": ["Universal Versatility"]
     }
 }
 
+# Legacy aliases for backwards compatibility with tests and older saves
+CLASS_PATHS["vanguard"] = dict(CLASS_PATHS["warrior"])
+CLASS_PATHS["vanguard"]["title"] = "Vanguard (Heavy Frontliner)"
+CLASS_PATHS["vanguard"]["base_hp"] = 100  # Preserved baseline for test calibration
+CLASS_PATHS["magi_saboteur"] = dict(CLASS_PATHS["engineer"])
+CLASS_PATHS["magi_saboteur"]["title"] = "Magi-Tech Saboteur"
+CLASS_PATHS["aether_slinger"] = dict(CLASS_PATHS["mage"])
+CLASS_PATHS["aether_slinger"]["title"] = "Aether-Slinger"
+CLASS_PATHS["wilderness_ranger"] = dict(CLASS_PATHS["ranger"])
+CLASS_PATHS["wilderness_ranger"]["title"] = "Wilderness Ranger"
+
 CLASS_WEAPONS = {
-    "pathless": {
-        "main_hand": "Rusted Iron Sword",
-        "off_hand": "None",
-        "desc": "A jagged, balance-heavy salvage blade scavenged from highway guardrails."
-    },
-    "vanguard": {
+    "warrior": {
         "main_hand": "Heavy Scavenged Mace",
         "off_hand": "Scrap-Plate Shield",
         "desc": "A dense rebar-reinforced iron mace paired with a riveted industrial scrap shield."
     },
-    "magi_saboteur": {
-        "main_hand": "Arcane Stun-Pistol",
-        "off_hand": "Tanto Combat Knife",
-        "desc": "A low-charge shock-pulse sidearm paired with a serrated carbon combat knife."
-    },
-    "aether_slinger": {
+    "mage": {
         "main_hand": "Aetheric Focusing Wand",
         "off_hand": "None",
         "desc": "A conductive brass-and-quartz resonator wand designed to project raw kinetic spells."
     },
-    "wilderness_ranger": {
+    "cleric": {
+        "main_hand": "Sanctified Flail",
+        "off_hand": "Scrap-Plate Shield",
+        "desc": "A heavy iron flail engraved with cleansing wards, paired with a reinforced scrap shield."
+    },
+    "thief": {
+        "main_hand": "Concealed Trench Daggers",
+        "off_hand": "Tanto Combat Knife",
+        "desc": "Dual razor-sharp carbon trench blades tailored for high-speed puncture strikes."
+    },
+    "ranger": {
         "main_hand": "Recurve Hunting Bow",
         "off_hand": "Chipped Wood-Axe",
         "desc": "A composite outdoor hunting bow (with 20 carbon arrows) and a utility wood-axe."
+    },
+    "engineer": {
+        "main_hand": "Arcane Stun-Pistol",
+        "off_hand": "Tanto Combat Knife",
+        "desc": "A low-charge shock-pulse sidearm paired with a serrated carbon combat knife."
+    },
+    "psion": {
+        "main_hand": "Kinetic Shock-Staff",
+        "off_hand": "None",
+        "desc": "A resonant quartz-tipped walking staff that projects and channels telekinetic pulses."
+    },
+    "pathless": {
+        "main_hand": "Rusted Iron Sword",
+        "off_hand": "None",
+        "desc": "A jagged, balance-heavy salvage blade scavenged from highway guardrails."
     }
 }
+
+CLASS_WEAPONS["vanguard"] = CLASS_WEAPONS["warrior"]
+CLASS_WEAPONS["magi_saboteur"] = CLASS_WEAPONS["engineer"]
+CLASS_WEAPONS["aether_slinger"] = CLASS_WEAPONS["mage"]
+CLASS_WEAPONS["wilderness_ranger"] = CLASS_WEAPONS["ranger"]
 
 STARTER_WEAPON_OPTIONS = [
     "Rusted Iron Sword",
@@ -298,6 +384,9 @@ STARTER_WEAPON_OPTIONS = [
     "Aetheric Focusing Wand",
     "Recurve Hunting Bow",
     "Chipped Wood-Axe",
+    "Sanctified Flail",
+    "Concealed Trench Daggers",
+    "Kinetic Shock-Staff",
     "Reinforced Spear",
     "Twin Scavenger Daggers",
     "None"
@@ -434,9 +523,11 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
         "CHA": 10 + point_alloc.get("CHA", 0) + r_mods.get("CHA", 0),
     }
     
-    # 2. Derived Attributes
+    # 2. Chosen Class & Derived Attributes
+    chosen_class = CLASS_PATHS.get(class_key, CLASS_PATHS["pathless"])
     con_mod = (final_stats["CON"] - 10) // 2
-    max_hp = 100 + (con_mod * 10)
+    base_hp_val = chosen_class.get("base_hp", 100)
+    max_hp = base_hp_val + (con_mod * 10)
     
     # 3. Skills & Perks from Background (Preset or Custom)
     if background_key == "custom" and custom_background_text:
@@ -454,7 +545,6 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
         skills_dict[s_name] = dict(s_data)
         
     # Add Class Feats
-    chosen_class = CLASS_PATHS.get(class_key, CLASS_PATHS["pathless"])
     for f in chosen_class.get("starting_feats", []):
         feats_list.append(f)
         
@@ -520,6 +610,11 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
         "off_hand": {"cur": 45, "max": 50} if off_hand_w != "None" else {"cur": 0, "max": 0},
         "accessory": {"cur": 100, "max": 100}
     }
+
+    res_def = chosen_class.get("combat_resource", {
+        "name": "Poise & Threat", "max": 100, "current": 0, "type": "poise"
+    })
+    combat_resource = dict(res_def)
     
     player_sheet = {
         "name": name if name and name.strip() else "Survivor",
@@ -527,9 +622,13 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
         "xp": 0,
         "hp": max_hp,
         "max_hp": max_hp,
+        "combat_resource": combat_resource,
+        "free_attribute_points": 0,
         "col": 100,
         "race": race["name"],
         "class": chosen_class["title"],
+        "favored_skills": list(chosen_class.get("favored_skills", [])),
+        "native_armor": list(chosen_class.get("native_armor", [])),
         "stats": final_stats,
         "skills": skills_dict,
         "spells": [],

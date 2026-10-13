@@ -978,3 +978,594 @@ def migrate_player_skills(player_state: dict) -> dict:
         return player_state
     else:
         return new_skills
+
+
+# ==============================================================================
+# ⚔️ PHASE B2: BASE CLASS FEATS TREE & ASYMMETRIC COMBAT RESOURCE ENGINE
+# ==============================================================================
+
+# --- TIER 1 CLASS FEATS TREES (Levels 1, 3, 6, 10) ---
+CLASS_FEATS_TREE = {
+    "warrior": {
+        "title": "Warrior (Frontline Anchor)",
+        "resource": {"name": "Poise & Threat", "max": 100, "start": 0, "type": "poise"},
+        "level_1": [
+            "Shield Wall Stance (Active): Enter fortified defensive stance; gain +3 AC and Advantage on CON saves, movement halved.",
+            "Taunting War-Cry (Active): Spend 20 Poise to force enemies within 30ft to make a WIS save (DC 13) or focus attacks on you."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Unyielding Mass", "type": "Passive", "desc": "Max Poise increased by +25. You cannot be knocked down or moved against your will by creatures equal or smaller."},
+            {"id": "B", "name": "Retaliatory Bulwark", "type": "Passive", "desc": "Successfully blocking an attack reflects 1d6 + CON mod kinetic damage back to attacker."},
+            {"id": "C", "name": "Inspiring Bastion", "type": "Active", "desc": "Spend 30 Poise to rally companions within 30ft; grants +10 temporary HP for 3 turns."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Guard Break", "type": "Active", "desc": "Spend 40 Poise on melee strike to shatter enemy defenses, reducing target AC by -3 for 2 turns."},
+            {"id": "B", "name": "Bodyguard Intercept", "type": "Reaction", "desc": "When an adjacent ally is struck, instantly swap positions and absorb the hit using your Armor Class."},
+            {"id": "C", "name": "Seismic Tremor", "type": "Active", "desc": "Slam weapon into ground, dealing 2d8 bludgeoning damage and knocking down enemies in 10ft."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Unbreakable Bastion", "type": "Passive", "desc": "Gain 10% resistance to all physical damage. Max Poise increased to 125."},
+            {"id": "B", "name": "Colossus Cleave", "type": "Active", "desc": "Spend 50 Poise to swing in a 180-degree arc, dealing weapon damage + 2d10 to all adjacent foes."},
+            {"id": "C", "name": "Battlefield Commander", "type": "Active", "desc": "Spend 40 Poise to command all party members to strike simultaneously with Advantage."}
+        ]
+    },
+    "mage": {
+        "title": "Mage (Aether-Weaver)",
+        "resource": {"name": "Aetheric Flux", "max": 50, "start": 50, "type": "flux"},
+        "level_1": [
+            "Arcane Ward (Active): Conjure aetheric barrier absorbing up to 25 + (5 x Lvl) damage.",
+            "Aetheric Dart (Active): Fire concentrated force bolt dealing 1d8 + INT mod force damage (costs 5 Flux)."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Mana Forking", "type": "Passive", "desc": "Single-target offensive spells have a 35% chance to fork and strike a second adjacent target for half damage."},
+            {"id": "B", "name": "Leyline Conduit", "type": "Passive", "desc": "Standing within 15ft of an aether conduit doubles Flux regeneration to +20 Flux/turn."},
+            {"id": "C", "name": "Kinetic Repulsion Pulse", "type": "Reaction", "desc": "When an enemy enters melee reach, spend 15 Flux to trigger a shockwave pushing them back 15ft."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Overcharge Singularity", "type": "Active", "desc": "Spend 40 Flux to unleash a localized gravity vortex dealing 3d10 force damage in 15ft radius."},
+            {"id": "B", "name": "Dimensional Blink", "type": "Active", "desc": "Spend 20 Flux to instantaneously teleport up to 30ft to an unoccupied space in line of sight."},
+            {"id": "C", "name": "Crystalline Rail-Lance", "type": "Active", "desc": "Spend 25 Flux to fire a crystalline beam piercing up to 3 enemies in a straight line."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Arcane Conduit Overdrive", "type": "Passive", "desc": "Spells deal 20% increased force/elemental damage when cast at or above 30 Flux."},
+            {"id": "B", "name": "Event Horizon", "type": "Active", "desc": "Spend 45 Flux to create a gravitational collapse that pulls enemies in 30ft and immobilizes them."},
+            {"id": "C", "name": "Aetheric Aegis", "type": "Active", "desc": "Spend 35 Flux to grant all party members a 30 HP protective energy barrier for 3 turns."}
+        ]
+    },
+    "cleric": {
+        "title": "Cleric (Spire Templar)",
+        "resource": {"name": "Devotion & Grace", "max": 100, "start": 50, "type": "devotion"},
+        "level_1": [
+            "Sanctified Ward (Active Stance): Project 15ft aura; allies within gain +2 to saving throws and +1 AC.",
+            "Purifying Grace (Active): Spend 25 Devotion to heal ally for 2d8 + WIS mod and cleanse one bleed/poison."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Consecrated Smite", "type": "Passive", "desc": "Melee strikes generate +10 Devotion and deal +1d6 radiant damage against corrupt/undead foes."},
+            {"id": "B", "name": "Martyr's Exchange", "type": "Reaction", "desc": "When an ally in 30ft takes lethal damage, spend 30 Devotion to absorb 50% onto yourself."},
+            {"id": "C", "name": "Cleansing Radiance", "type": "Active", "desc": "Spend 35 Devotion to emit a pulse that blinds adjacent enemies and grants allies +15 temp HP."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Aegis of the Spire", "type": "Active", "desc": "Spend 50 Devotion to project a golden dome for 2 turns preventing all enemy projectile entry."},
+            {"id": "B", "name": "Rebuke the Corrupt", "type": "Active", "desc": "Unleash pillar of light dealing 3d8 + WIS mod radiant damage and knocking down aberrant targets."},
+            {"id": "C", "name": "Divine Resurgence", "type": "Passive", "desc": "Once per day, when HP drops to 0, instantly revive at 25% HP and emit radial heal pulse."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Wrath of the Heavens", "type": "Active", "desc": "Spend 50 Devotion to call down radiant storm dealing 4d8 radiant damage and applying Blindness."},
+            {"id": "B", "name": "Hand of Salvation", "type": "Active", "desc": "Spend 45 Devotion to fully heal an ally below 25% HP and grant them Immunity to all damage for 1 turn."},
+            {"id": "C", "name": "Aura of the Incorruptible", "type": "Passive", "desc": "All party members within 30ft gain +3 to all saving throws and immune to Fear and Charm."}
+        ]
+    },
+    "thief": {
+        "title": "Thief (Shadow Infiltrator)",
+        "resource": {"name": "Momentum Dice", "max": 5, "start": 1, "type": "momentum"},
+        "level_1": [
+            "Shadow Footwork (Active Stance): Gain +2 to Dodge DC and ignore terrain movement penalties.",
+            "Serrated Backstab (Active): Spend 1 Momentum to strike from stealth or flank for +2d6 precision bleed damage."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Fluid Evasion", "type": "Passive", "desc": "Whenever an enemy misses an attack against you, immediately generate +1 Momentum die."},
+            {"id": "B", "name": "Pocket Blind", "type": "Active", "desc": "Spend 1 Momentum die to blind target eyes; target suffers Disadvantage on attack rolls for 2 turns."},
+            {"id": "C", "name": "Opportunistic Sprint", "type": "Active", "desc": "Spend 1 Momentum die to take Dash and Disengage simultaneously as a free bonus action."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Shadow-Vanish", "type": "Active", "desc": "Spend 2 Momentum dice to drop smoke pellet and re-enter full Stealth in plain sight."},
+            {"id": "B", "name": "Severing Tendon", "type": "Active", "desc": "Spend 2 Momentum on critical strike to reduce target movement to 0 and disable reaction attacks."},
+            {"id": "C", "name": "Cunning Double-Strike", "type": "Passive", "desc": "Dual-wielding off-hand strikes have a 50% chance not to consume an action when spending Momentum."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Death Lotus", "type": "Active", "desc": "Spend 3 Momentum to teleport between up to 4 enemies in 30ft, striking each for critical damage."},
+            {"id": "B", "name": "Phase Shadow", "type": "Passive", "desc": "When dropping below 30% HP, automatically vanish into shadow for 2 turns without taking damage."},
+            {"id": "C", "name": "Expose Fatal Flaw", "type": "Active", "desc": "Spend 2 Momentum to analyze target; all party members deal +50% critical damage to target for 2 turns."}
+        ]
+    },
+    "ranger": {
+        "title": "Ranger (Wilderness Marksman)",
+        "resource": {"name": "Focus & Vantage", "max": 5, "start": 3, "type": "focus"},
+        "level_1": [
+            "Hunter's Mark (Active): Mark target within 60ft as quarry; attacks deal +1d6 damage and ignore cover.",
+            "Deadeye Aim (Passive): Ranged attacks ignore cover and gain +2 to hit when standing still."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Predator's Camouflage", "type": "Passive", "desc": "Advantage on Stealth in wild/ruined biomes; first shot from stealth does not break cover."},
+            {"id": "B", "name": "Crippling Pin", "type": "Active", "desc": "Spend 1 Focus charge to shoot enemy servo/leg; target movement reduced to 0 for 1 turn."},
+            {"id": "C", "name": "Quick-Step Disengage", "type": "Reaction", "desc": "When enemy closes to melee, spend 1 Focus to vault backward 15ft without provoking attacks of opportunity."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Culling Shot", "type": "Active", "desc": "Spend 2 Focus charges to fire execution shot; deals triple damage against targets below 30% HP."},
+            {"id": "B", "name": "Shrapnel Rain", "type": "Active", "desc": "Spend 2 Focus charges to blanket 20ft area with explosive shrapnel dealing 3d6 bleed damage."},
+            {"id": "C", "name": "Wild Instincts", "type": "Passive", "desc": "You can never be surprised in combat, and automatically roll with Advantage on Initiative checks."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Apex Predator", "type": "Passive", "desc": "Attacks against quarry expand critical threat range to 18-20 and deal x3 critical damage."},
+            {"id": "B", "name": "Ballistic Barrage", "type": "Active", "desc": "Spend 3 Focus charges to fire a stream of 5 piercing arrows into a single target."},
+            {"id": "C", "name": "Perimeter Lockdown", "type": "Active", "desc": "Spend 2 Focus charges to deploy a network of concealed trip-mines covering 40ft."}
+        ]
+    },
+    "engineer": {
+        "title": "Engineer / Artificer",
+        "resource": {"name": "Heat & Overclock", "max": 100, "start": 0, "type": "heat"},
+        "level_1": [
+            "Deploy Sentry Turret (Active): Deploy kinetic/shock turret that fires 1d6 damage each turn (builds 20 Heat).",
+            "Vent Overclock (Active): Vent Heat in 10ft frontal cone dealing damage equal to 50% of vented Heat."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Conductive Wiretap", "type": "Passive", "desc": "Hacking enemy terminal/construct reveals sector stats and grants +2 to hit mechanized foes."},
+            {"id": "B", "name": "Heat-Sink Plating", "type": "Passive", "desc": "While Heat is above 50%, armor gains +3 AC and radiates 1d6 fire damage to melee attackers."},
+            {"id": "C", "name": "Overclock Surge", "type": "Active", "desc": "Spend 40 Heat to take an additional Standard Action on your current combat turn."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Automated Decoy Drones", "type": "Active", "desc": "Deploy 2 holographic decoy drones that draw enemy attacks away from party for 2 turns."},
+            {"id": "B", "name": "EMP Shock-Discharge", "type": "Active", "desc": "Spend 50 Heat to discharge EMP burst that stuns constructs for 1 turn and disables energy weapons."},
+            {"id": "C", "name": "Recursive Logic Virus", "type": "Active", "desc": "Upload corrupt logic into cybernetic/golem enemy, forcing it to attack nearest ally for 1 turn."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Automated Siege Golem", "type": "Active", "desc": "Deploy heavy mechanized combat turret with 60 HP that taunts enemies and fires flak cannons."},
+            {"id": "B", "name": "Core Melt Downcharge", "type": "Active", "desc": "Vent 100% Heat into tactical blast dealing 5d10 thermal/kinetic damage in 20ft radius."},
+            {"id": "C", "name": "Nanite Patch Field", "type": "Passive", "desc": "Deploying gadgets or venting heat automatically repairs party armor and restores 10 HP."}
+        ]
+    },
+    "psion": {
+        "title": "Psion / Phrenic",
+        "resource": {"name": "Psi-Strain", "max": 100, "start": 0, "type": "strain"},
+        "level_1": [
+            "Kinetic Repulsion Barrier (Active Stance): Deflect projectiles (+3 AC vs ranged), builds +10% Strain/turn.",
+            "Mind Spike (Active): Unleash psychic jolt dealing 1d10 + INT mod damage, bypassing armor (builds +15% Strain)."
+        ],
+        "level_3": [
+            {"id": "A", "name": "High-Strain Resonance", "type": "Passive", "desc": "While Psi-Strain is above 50%, all psychic abilities deal +25% bonus damage and +2 save DC."},
+            {"id": "B", "name": "Telekinetic Toss", "type": "Active", "desc": "Hurl an enemy or heavy terrain object up to 30ft for 2d8 bludgeoning damage (builds +20% Strain)."},
+            {"id": "C", "name": "Neural Dampening", "type": "Reaction", "desc": "When an ally suffers mental debuff, charm, or fear, spend 15% Strain to negate it instantly."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Psychokinetic Implosion", "type": "Active", "desc": "Compress atmosphere in 15ft sphere, crushing for 3d10 force damage and pulling foes together (+35% Strain)."},
+            {"id": "B", "name": "Neural Overwrite", "type": "Active", "desc": "Invade organic enemy motor cortex; contested WIS check to control target action for 1 turn (+40% Strain)."},
+            {"id": "C", "name": "Subconscious Flush", "type": "Active", "desc": "Once per combat, instantly vent all Psi-Strain to 0%, deafening adjacent foes for 1 turn."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Mind Over Matter", "type": "Passive", "desc": "You can use INT modifier in place of STR or DEX for attack rolls, physical saves, and AC."},
+            {"id": "B", "name": "Psionic Cataclysm", "type": "Active", "desc": "Suffer 40% Strain to detonate psychic shockwave dealing 5d8 force damage and stunning foes in 25ft."},
+            {"id": "C", "name": "Neural Puppet Master", "type": "Active", "desc": "Suffer 35% Strain to seize complete control of an enemy commander or elite construct for 2 full turns."}
+        ]
+    },
+    "pathless": {
+        "title": "Pathless (Freeform Anomaly)",
+        "resource": {"name": "Anomaly Resonance", "max": 100, "start": 0, "type": "resonance"},
+        "level_1": [
+            "Adaptive Weapon Mastery (Passive): Equip and dual-wield any weapon combination without off-hand penalties.",
+            "Unshackled Potential (Passive): Can choose any 1 starting ability from any of the 7 anchor classes."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Cross-Discipline Synergy", "type": "Passive", "desc": "Executing a melee attack grants +2 to hit and +1d6 damage on your next ranged or magical action."},
+            {"id": "B", "name": "Adaptive Will", "type": "Passive", "desc": "Max Anomaly Resonance increased to 125. Reroll one failed saving throw per combat encounter."},
+            {"id": "C", "name": "System Glitch Step", "type": "Active", "desc": "Spend 25 Resonance to phase-shift through collision for 1 turn, passing through obstacles."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Stolen Doctrine", "type": "Passive", "desc": "Choose any 1 Level 3 or Level 6 Class Feat from any of the seven anchor classes."},
+            {"id": "B", "name": "Glitched Blade Edge", "type": "Active", "desc": "Spend 40 Resonance to coat weapons in null-void data; attacks bypass physical AC for 1 turn."},
+            {"id": "C", "name": "Dual-Core Overclock", "type": "Active", "desc": "Spend 50 Resonance to gain an extra Standard Action this turn."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Sovereign Glitch", "type": "Passive", "desc": "Equip weapons and armor of any grade or category without stat prerequisites or penalties."},
+            {"id": "B", "name": "Dimensional Tear", "type": "Active", "desc": "Spend 50 Resonance to slash reality, dealing 4d12 null-void damage that bypasses all defenses."},
+            {"id": "C", "name": "Limitless Resonance", "type": "Passive", "desc": "Max Resonance increased to 150. Generating Resonance restores 5% of max HP per trigger."}
+        ]
+    }
+}
+
+# Legacy alias mappings
+CLASS_FEATS_TREE["vanguard"] = CLASS_FEATS_TREE["warrior"]
+CLASS_FEATS_TREE["magi_saboteur"] = CLASS_FEATS_TREE["engineer"]
+CLASS_FEATS_TREE["aether_slinger"] = CLASS_FEATS_TREE["mage"]
+CLASS_FEATS_TREE["wilderness_ranger"] = CLASS_FEATS_TREE["ranger"]
+
+# --- ASYMMETRIC COMBAT RESOURCE ENGINE ---
+
+def normalize_class_key(class_str):
+    """Maps class titles or raw strings to canonical dictionary keys."""
+    if not class_str or not isinstance(class_str, str):
+        return "pathless"
+    c_low = class_str.lower()
+    if "warrior" in c_low or "vanguard" in c_low:
+        return "warrior"
+    if "cleric" in c_low or "templar" in c_low:
+        return "cleric"
+    if "thief" in c_low or "rogue" in c_low or "infiltrator" in c_low:
+        return "thief"
+    if "ranger" in c_low or "hunter" in c_low or "marksman" in c_low:
+        return "ranger"
+    if "engineer" in c_low or "artificer" in c_low or "saboteur" in c_low:
+        return "engineer"
+    if "psion" in c_low or "phrenic" in c_low or "mentalist" in c_low:
+        return "psion"
+    if "mage" in c_low or "slinger" in c_low or "arcanist" in c_low or "wizard" in c_low:
+        return "mage"
+    return "pathless"
+
+def initialize_combat_resource(player):
+    """
+    Ensures player dictionary has a valid combat_resource sub-dictionary.
+    Initializes resource according to player's class doctrine.
+    """
+    if "combat_resource" not in player or not isinstance(player["combat_resource"], dict) or "name" not in player["combat_resource"]:
+        c_key = normalize_class_key(player.get("class", "pathless"))
+        c_data = CLASS_FEATS_TREE.get(c_key, CLASS_FEATS_TREE["pathless"])
+        r_info = c_data["resource"]
+        player["combat_resource"] = {
+            "name": r_info["name"],
+            "current": r_info["start"],
+            "max": r_info["max"],
+            "type": r_info["type"]
+        }
+    return player["combat_resource"]
+
+def update_combat_resource(player, delta):
+    """
+    Adjusts the player's combat resource by delta (positive or negative).
+    Clamps within bounds (0 to max). For psion/strain, handles push-your-luck warning.
+    Returns transaction summary dict.
+    """
+    res = initialize_combat_resource(player)
+    old_val = res.get("current", 0)
+    max_val = res.get("max", 100)
+    r_type = res.get("type", "generic")
+    
+    new_val = max(0, min(max_val, old_val + delta))
+    res["current"] = new_val
+    
+    warning = None
+    if r_type == "strain":
+        if new_val >= 100:
+            warning = "CRITICAL PSYCHIC OVERLOAD! Backlash triggers self-stun and nosebleed trauma!"
+        elif new_val >= 75:
+            warning = "WARNING: Cognitive strain approaching dangerous threshold (75%+)."
+    elif r_type == "heat":
+        if new_val >= 100:
+            warning = "OVERHEAT DETECTED! Chassis venting required to prevent burn damage!"
+            
+    return {
+        "name": res["name"],
+        "old": old_val,
+        "new": new_val,
+        "max": max_val,
+        "delta": delta,
+        "warning": warning
+    }
+
+def get_combat_resource_display(player):
+    """Returns formatted display info for HUD rendering."""
+    res = initialize_combat_resource(player)
+    cur = res.get("current", 0)
+    m = res.get("max", 100)
+    pct = round(cur / m, 2) if m > 0 else 0.0
+    r_type = res.get("type", "generic")
+    
+    if r_type == "strain":
+        display_str = f"{cur}% / {m}% Strain"
+    elif r_type in ["momentum", "focus"]:
+        display_str = f"{cur} / {m} Charges"
+    else:
+        display_str = f"{cur} / {m}"
+        
+    return {
+        "name": res.get("name", "Combat Resource"),
+        "current": cur,
+        "max": m,
+        "percentage": pct,
+        "type": r_type,
+        "display": display_str
+    }
+
+# --- ARCHETYPE HP SCALING & LEVEL PROGRESSION ---
+
+ARCHETYPE_HP_GROWTH = {
+    "warrior": 35,
+    "cleric": 28,
+    "engineer": 28,
+    "ranger": 28,
+    "thief": 24,
+    "psion": 24,
+    "mage": 20,
+    "pathless": 25
+}
+
+def get_archetype_hp_growth(player_class):
+    """Calculates base HP growth per level for the character's class."""
+    k = normalize_class_key(player_class)
+    return ARCHETYPE_HP_GROWTH.get(k, 25)
+
+def apply_level_up(player, chosen_feat=None, stat_allocations=None):
+    """
+    Levels up the character:
+    - Increments level
+    - Adds archetype HP (+ CON mod)
+    - Adds 2 free attribute points (or applies allocated points)
+    - Appends chosen_feat to feats if provided
+    """
+    player["level"] = player.get("level", 1) + 1
+    con = player.get("stats", {}).get("CON", 10)
+    con_mod = (con - 10) // 2
+    
+    hp_gain = get_archetype_hp_growth(player.get("class", "pathless")) + con_mod
+    player["max_hp"] = player.get("max_hp", 100) + hp_gain
+    player["hp"] = player.get("hp", 100) + hp_gain
+    
+    # Free attribute points
+    player["free_attribute_points"] = player.get("free_attribute_points", 0) + 2
+    
+    if stat_allocations and isinstance(stat_allocations, dict):
+        allocate_attribute_points(player, stat_allocations)
+        
+    if chosen_feat:
+        if "feats" not in player or not isinstance(player["feats"], list):
+            player["feats"] = []
+        feat_entry = chosen_feat if isinstance(chosen_feat, str) else chosen_feat.get("name", str(chosen_feat))
+        if feat_entry not in player["feats"]:
+            player["feats"].append(feat_entry)
+            
+    return {
+        "new_level": player["level"],
+        "hp_gain": hp_gain,
+        "max_hp": player["max_hp"],
+        "free_points": player["free_attribute_points"]
+    }
+
+def allocate_attribute_points(player, allocations):
+    """
+    Spends free attribute points into STR, DEX, CON, INT, WIS, CHA.
+    allocations = {"STR": 1, "CON": 1}
+    """
+    avail = player.get("free_attribute_points", 0)
+    total_requested = sum(v for v in allocations.values() if isinstance(v, int) and v > 0)
+    if total_requested > avail:
+        raise ValueError(f"Cannot allocate {total_requested} points; only {avail} free points available.")
+        
+    stats = player.setdefault("stats", {"STR": 10, "DEX": 10, "CON": 10, "INT": 10, "WIS": 10, "CHA": 10})
+    for s_name, pts in allocations.items():
+        if pts > 0 and s_name in stats:
+            stats[s_name] += pts
+            
+    player["free_attribute_points"] = avail - total_requested
+    return stats
+
+# --- HARMONIZED DUAL-GATE EVOLUTION ENGINE ---
+
+def check_evolution_eligibility(player):
+    """
+    Evaluates whether player meets the Harmonized Dual-Gate requirements for Class Evolution:
+    - Tier 2 (Level 10): Level >= 10, Sector 1 Boss defeated, at least 1 skill at Journeyman (100+).
+    - Tier 3 (Level 25): Level >= 25, Regional Boss defeated, at least 1 skill at Adept/Master (350+).
+    """
+    lvl = player.get("level", 1)
+    skills = player.get("skills", {})
+    bosses = player.get("bosses_defeated", [])
+    if isinstance(bosses, str):
+        bosses = [bosses]
+        
+    # Check max skill mastery
+    max_mastery = 0
+    top_skill = None
+    if isinstance(skills, dict):
+        for s_name, s_data in skills.items():
+            m = s_data.get("mastery", 0) if isinstance(s_data, dict) else (int(s_data) if isinstance(s_data, (int, float)) else 0)
+            if m > max_mastery:
+                max_mastery = m
+                top_skill = s_name
+                
+    sector_boss_down = any("sector 1" in str(b).lower() or "gilded" in str(b).lower() or "spire" in str(b).lower() for b in bosses) or player.get("sector_boss_defeated", False)
+    regional_boss_down = any("regional" in str(b).lower() or "sector 5" in str(b).lower() for b in bosses) or player.get("regional_boss_defeated", False)
+    
+    current_tier = player.get("class_tier", 1)
+    
+    # Tier 2 Check
+    if current_tier == 1:
+        reasons = []
+        unmet = []
+        
+        if lvl >= 10:
+            reasons.append(f"Level Requirement Met: Level {lvl} >= 10")
+        else:
+            unmet.append(f"Level Requirement Unmet: Level {lvl} / 10")
+            
+        if sector_boss_down:
+            reasons.append("Sector 1 Spire Boss Defeated")
+        else:
+            unmet.append("Sector 1 Spire Boss Not Yet Slayed")
+            
+        if max_mastery >= 100:
+            reasons.append(f"Skill Mastery Milestone Met: '{top_skill}' Mastery {max_mastery} >= 100 (Journeyman)")
+        else:
+            unmet.append(f"Skill Mastery Milestone Unmet: Highest Mastery {max_mastery} / 100")
+            
+        eligible = len(unmet) == 0
+        return {
+            "eligible": eligible,
+            "target_tier": 2,
+            "current_tier": 1,
+            "reasons": reasons,
+            "unmet_conditions": unmet,
+            "top_skill": top_skill,
+            "top_mastery": max_mastery
+        }
+        
+    # Tier 3 Check
+    elif current_tier == 2:
+        reasons = []
+        unmet = []
+        
+        if lvl >= 25:
+            reasons.append(f"Level Requirement Met: Level {lvl} >= 25")
+        else:
+            unmet.append(f"Level Requirement Unmet: Level {lvl} / 25")
+            
+        if regional_boss_down:
+            reasons.append("Regional Spire Boss Defeated")
+        else:
+            unmet.append("Regional Spire Boss Not Yet Slayed")
+            
+        if max_mastery >= 350:
+            reasons.append(f"Skill Mastery Milestone Met: '{top_skill}' Mastery {max_mastery} >= 350")
+        else:
+            unmet.append(f"Skill Mastery Milestone Unmet: Highest Mastery {max_mastery} / 350")
+            
+        eligible = len(unmet) == 0
+        return {
+            "eligible": eligible,
+            "target_tier": 3,
+            "current_tier": 2,
+            "reasons": reasons,
+            "unmet_conditions": unmet,
+            "top_skill": top_skill,
+            "top_mastery": max_mastery
+        }
+        
+    return {
+        "eligible": False,
+        "target_tier": current_tier,
+        "current_tier": current_tier,
+        "reasons": ["Maximum class evolution tier reached."],
+        "unmet_conditions": []
+    }
+
+def generate_curated_evolutions(player):
+    """
+    Synthesizes player behavioral telemetry to produce the 3 Curated Evolution Options:
+    1. Pure Specialization (Advancement of Anchor doctrine)
+    2. Fused Hybrid Melded Path (Synergy between Anchor class and highest off-spec skill)
+    3. Unique Deed / Thematic Path (Emerged from relics, titles, and unique deeds)
+    """
+    c_key = normalize_class_key(player.get("class", "warrior"))
+    skills = player.get("skills", {})
+    
+    # Identify secondary skill domain
+    skill_names = list(skills.keys())
+    has_magic = any("aether" in s.lower() or "circuit" in s.lower() for s in skill_names)
+    has_tech = any("hack" in s.lower() or "smith" in s.lower() or "rig" in s.lower() for s in skill_names)
+    has_stealth = any("reflex" in s.lower() or "trap" in s.lower() or "dagger" in s.lower() for s in skill_names)
+    has_healing = any("triage" in s.lower() or "provisions" in s.lower() or "surgery" in s.lower() for s in skill_names)
+    has_heavy_arms = any("hammer" in s.lower() or "axe" in s.lower() for s in skill_names)
+    
+    # Pure Evolution
+    pure_map = {
+        "warrior": {"title": "Ironclad Juggernaut", "desc": "Immovable defensive fortress wielding kinetic shockwaves, reinforced poise, and armor-crush dominance."},
+        "mage": {"title": "Singularity Arcanist", "desc": "Commands gravitational collapse and catastrophic raw mana rifts."},
+        "cleric": {"title": "High Templar Inquisitor", "desc": "Radiant frontline judge wielding holy retribution, martyr shields, and divine storm aegis."},
+        "thief": {"title": "Ghost Operative", "desc": "Phantasmal assassin mastering monomolecular strikes, shadow-teleportation, and untraceable stealth."},
+        "ranger": {"title": "Phantom Sniper", "desc": "Extreme-distance sniper penetrating armor plates with anti-materiel precision."},
+        "engineer": {"title": "Cyber-Mancer", "desc": "Deploys multi-turret defensive grids and overrides robotic/golem neural links."},
+        "psion": {"title": "Awakened Telekineticist", "desc": "Bends physical reality and atmospheric pressure with unbridled mental telekinesis."},
+        "pathless": {"title": "Sovereign Anomaly", "desc": "The ultimate unrestricted conduit, transcending system tier limits."}
+    }
+    pure_choice = pure_map.get(c_key, pure_map["pathless"])
+    
+    # Hybrid Melded Evolution
+    if c_key == "warrior":
+        if has_magic:
+            hybrid_choice = {"title": "Spellblade Runeknight", "desc": "Fuses weapon strikes with condensed arcane flux, detonating runic charges on impact."}
+        elif has_healing:
+            hybrid_choice = {"title": "Paladin Crusader", "desc": "Absorbs party trauma while releasing waves of sanctified healing on heavy melee cleaves."}
+        elif has_tech:
+            hybrid_choice = {"title": "Siege Engineer Vanguard", "desc": "Reinforces frontline armor with motorized hydraulics, rocket-boosted hammer strikes, and field repairs."}
+        else:
+            hybrid_choice = {"title": "Skirmisher Duelist", "desc": "Blends heavy weapon strikes with fluid evasive footwork and lethal counter-ripostes."}
+    elif c_key == "mage":
+        if has_heavy_arms:
+            hybrid_choice = {"title": "Battle-Mage Golem-Breaker", "desc": "Arms cloth wards with crushing melee weaponry, channeling spells directly through physical impacts."}
+        elif has_stealth:
+            hybrid_choice = {"title": "Arcane Trickster", "desc": "Weaves visual illusions, silent mana daggers, and phase-blink backstabs."}
+        else:
+            hybrid_choice = {"title": "Chrono-Weaver", "desc": "Manipulates local system tick-rates to accelerate allies and decelerate enemy attacks."}
+    elif c_key == "thief":
+        if has_magic:
+            hybrid_choice = {"title": "Shadow-Weaver", "desc": "Infuses daggers with dark aether and walks through shadows between dimensions."}
+        elif has_tech:
+            hybrid_choice = {"title": "Magi-Tech Saboteur", "desc": "Infiltrates enemy perimeters with EMP flash-grenades, tripwire snares, and automated decryption."}
+        else:
+            hybrid_choice = {"title": "Nightstalker Assassin", "desc": "Poisons blades with synthesized neurotoxins and executes guaranteed critical bleed combos."}
+    elif c_key == "ranger":
+        if has_magic:
+            hybrid_choice = {"title": "Aether-Archer", "desc": "Fires arrows of pure compressed light that pierce physical obstacles and illuminate weak points."}
+        elif has_heavy_arms:
+            hybrid_choice = {"title": "Sector Warden", "desc": "Commands perimeter combat beasts and anchors choke-points with barbed traps and heavy spears."}
+        else:
+            hybrid_choice = {"title": "Wilderness Survivalist", "desc": "Masters environmental poisons, natural camouflage, and relentless target tracking."}
+    else:
+        hybrid_choice = {"title": "Resonant Synthesist", "desc": "Seamlessly fuses contrasting combat disciplines into a personalized tactical style."}
+        
+    # Unique Deed / Thematic Path
+    # If the player has Nordic / Berserker themes (like Banki) or Anomaly
+    equipped = player.get("equipped", {})
+    weapons_str = f"{equipped.get('main_hand', '')} {equipped.get('off_hand', '')}".lower()
+    if "axe" in weapons_str or "hammer" in weapons_str or "fenrir" in weapons_str or "mjölnir" in weapons_str:
+        unique_choice = {
+            "title": "Nordic Berserker of the Rift",
+            "desc": "Unleashes untamed mythical wrath, dual-wielding axes and demolition hammers to shatter the virtual overlay itself."
+        }
+    elif "smartphone" in str(player.get("inventory", [])):
+        unique_choice = {
+            "title": "Old-World Echo Agent",
+            "desc": "Channels pre-integration Earth memories and corrupted terminal code to disrupt System logic."
+        }
+    else:
+        unique_choice = {
+            "title": "Glitch-Blade Sovereign",
+            "desc": "Carves through reality using corrupted source code, bypassing physical Armor Class and terrain barriers."
+        }
+        
+    return [
+        {"tier": 2, "category": "Pure Specialization", **pure_choice},
+        {"tier": 2, "category": "Hybrid Melded Path", **hybrid_choice},
+        {"tier": 2, "category": "Unique Deed Path", **unique_choice}
+    ]
+
+def apply_class_evolution(player, evolution_choice):
+    """
+    Applies the chosen Tier 2 / Tier 3 Class Evolution:
+    - Updates player["class"] title
+    - Increments player["class_tier"]
+    - Upgrades or fuses combat_resource
+    - Awards celebratory evolution feat
+    """
+    new_title = evolution_choice.get("title", "Evolved Archetype")
+    new_tier = evolution_choice.get("tier", 2)
+    
+    player["class"] = new_title
+    player["class_tier"] = new_tier
+    
+    # Evolve resource pool
+    res = initialize_combat_resource(player)
+    res["max"] = int(res.get("max", 100) * 1.25)
+    res["current"] = res["max"]
+    
+    # Add Evolution Master Feat
+    if "feats" not in player or not isinstance(player["feats"], list):
+        player["feats"] = []
+        
+    evo_feat = f"Class Evolution: {new_title} (Tier {new_tier}): {evolution_choice.get('desc', 'Awakened specialization.')}"
+    player["feats"].append(evo_feat)
+    
+    return {
+        "new_class": new_title,
+        "new_tier": new_tier,
+        "evolved_resource": res,
+        "unlocked_feat": evo_feat
+    }

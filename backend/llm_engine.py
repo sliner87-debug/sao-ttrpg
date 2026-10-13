@@ -639,6 +639,7 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     # Calculate live mechanical parameters
     encumbrance = mechanics.calculate_encumbrance(player_state)
     armor_class = mechanics.calculate_ac(player_state, encumbrance)
+    res_info = mechanics.get_combat_resource_display(player_state) if hasattr(mechanics, "get_combat_resource_display") else {"name": "Resource", "display": "N/A"}
 
     # Locate active entities and secrets for the Encounter Director
     entities_in_room = []
@@ -677,6 +678,7 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     
     CURRENT STATE:
     Player: {player_state['name']} (HP: {player_state['hp']}/{player_state['max_hp']} | Level: {player_state.get('level', 1)} | AC: {armor_class})
+    Class Doctrine: {player_state.get('class', 'Warrior')} (Tier {player_state.get('class_tier', 1)}) | Resource: {res_info['name']} ({res_info['display']})
     Encumbrance: {encumbrance['current_weight_lbs']}/{encumbrance['max_weight_lbs']} lbs ({encumbrance['tier']}) - Penalties: {json.dumps(encumbrance['penalties'])}
     Location: {current_location}
     GPS Coordinates: X: {map_state.get('player_x', 50)}, Y: {map_state.get('player_y', 50)}
@@ -719,12 +721,13 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     - "combat_logs": A list of strings showing the exact dice math and damage for the turn. Leave empty if no combat or skill check occurred.
     - "global_news_add": A list of strings showing macro world events (e.g. continental faction movements). MUST BE POPULATED IF THE PLAYER SKIPS TIME OR SLEEPS.
     - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged man with a short beard and undercut hair, wearing a heavy black-iron chainmail hauberk and a massive synthetic dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a gaunt, exhausted young man with messy dark hair, wearing cracked glasses and a threadbare corporate hoodie, holding a glowing cyan digital clipboard.
-    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
+    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
       Additionally, use the following complex schemas for skills, inventory, factions, and quests:
       - "inventory_add": List of dicts, e.g. [{{"name": "Rusted Iron Sword", "rarity": "Common", "durability": 45, "max_durability": 50, "qty": 1, "desc": "A chipped blade scavenged from the ruins."}}]
       - "inventory_remove": List of strings (item names to delete).
       - "durability_updates": Dict of item_name (or slot) to new durability or negative delta (e.g. {{"Fenrir's Tusk": 98, "Einherjar Rig": -2}}).
       - "skill_updates": List of dicts, e.g. [{{"name": "One-Handed Swords", "mastery_change": 3, "description": "Increases accuracy and damage with short blades."}}]
+      - "combat_resource_change": Integer delta to the player's archetype resource (e.g. +15 Poise on blocking a hit, +20 Heat on gadget, +15 Strain on mental spike, -25 Flux on spell).
       - "node_updates": Dict of node_name to color, e.g. {{"Washington_Borough": "red", "Oxford_Mines": "blue"}}
       - "quests_add": List of dicts, e.g. [{{"title": "Slay the Boar", "desc": "Kill 5 boars in the ruins", "reward": "500 Col, 200 XP"}}]
       - "quests_complete": List of strings matching the exact titles of completed quests.
@@ -768,6 +771,14 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
                 for u in unlocks:
                     target = "spells_add" if u.get("perk_type") == "spell" or u.get("target_slot") == "spells" else "feats_add"
                     state_updates.setdefault(target, []).append(u["name"])
+
+            # Apply combat resource updates
+            res_change = state_updates.get("combat_resource_change")
+            if res_change is not None and isinstance(res_change, (int, float)):
+                if hasattr(mechanics, "update_combat_resource"):
+                    res_tx = mechanics.update_combat_resource(player_state, int(res_change))
+                    if res_tx.get("warning"):
+                        result.setdefault("combat_logs", []).append(f"⚠️ [SYSTEM: {res_tx['warning']}]")
 
         return result
     except Exception as e:

@@ -288,7 +288,8 @@ def render_sidebar_calibration_preview():
         for s in ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
     }
     con_m = (prev_stats["CON"] - 10) // 2
-    prev_hp = 100 + (con_m * 10)
+    base_hp_val = prev_class.get("base_hp", 100)
+    prev_hp = base_hp_val + (con_m * 10)
     
     class_def_w = cg.CLASS_WEAPONS.get(st.session_state.get("cg_class_key", "pathless"), cg.CLASS_WEAPONS["pathless"])
     main_w = st.session_state.get("cg_main_hand", class_def_w["main_hand"]) if st.session_state.get("cg_custom_weapons", False) else class_def_w["main_hand"]
@@ -300,6 +301,7 @@ def render_sidebar_calibration_preview():
         "hp": prev_hp,
         "max_hp": prev_hp,
         "col": 100,
+        "class": prev_class["title"],
         "stats": prev_stats,
         "equipped": {
             "head": "None", 
@@ -318,6 +320,9 @@ def render_sidebar_calibration_preview():
     
     st.progress(1.0, text=f"HP: {prev_hp} / {prev_hp}")
     st.progress(0.0, text="XP: 0 / 1000")
+    if hasattr(mechanics, "get_combat_resource_display"):
+        mock_res = mechanics.get_combat_resource_display(mock_p)
+        st.progress(mock_res["percentage"], text=f"⚡ {mock_res['name']}: {mock_res['display']}")
     st.write(f"**Level:** 1 | **AC:** {mock_ac} 🛡️ | **Col:** 100 🪙")
     
     st.divider()
@@ -598,7 +603,8 @@ def render_character_calibration_wizard():
         st.markdown("### ⚔️ Stage 4: Combat Doctrine & Class Path")
         st.write("Choose your philosophical approach to surviving the death-game. Structured classes provide specialized tactical frameworks, while the Pathless walk an unconstrained anomaly path.")
         
-        class_keys = list(cg.CLASS_PATHS.keys())
+        canonical_keys = ["warrior", "mage", "cleric", "thief", "ranger", "engineer", "psion", "pathless"]
+        class_keys = [k for k in canonical_keys if k in cg.CLASS_PATHS]
         class_titles = [cg.CLASS_PATHS[k]["title"] for k in class_keys]
         cur_c_idx = class_keys.index(st.session_state.cg_class_key) if st.session_state.cg_class_key in class_keys else 0
         
@@ -614,7 +620,15 @@ def render_character_calibration_wizard():
         
         st.info(f"**Doctrine Summary:** {class_obj['description']}")
         
-        st.markdown("##### 🎖️ Starting Class Feats & Techniques:")
+        # Display Core Stats & Scaling
+        c_meta1, c_meta2, c_meta3 = st.columns(3)
+        c_meta1.metric("Base HP", f"{class_obj.get('base_hp', 100)} HP", f"+{class_obj.get('hp_per_lvl', 25)}/lvl")
+        c_meta2.metric("Combat Resource", class_obj.get("combat_resource", {}).get("name", "Stamina"))
+        c_meta3.metric("Native Armor", ", ".join(class_obj.get("native_armor", ["Cloth"])))
+
+        st.caption(f"**Favored Skill Affinities (+25% Mastery XP):** {', '.join(class_obj.get('favored_skills', []))}")
+        
+        st.markdown("##### 🎖️ Fixed Iconic Duo (Level 1 Baseline Feats):")
         for cf in class_obj["starting_feats"]:
             st.success(f"🔹 **{cf}**")
             
@@ -806,14 +820,29 @@ with st.sidebar:
         xp_current = player.get("xp", 0)
         xp_percent = max(0.0, min(1.0, xp_current / xp_max))
         st.progress(xp_percent, text=f"XP: {xp_current} / {xp_max}")
+
+        # Asymmetric Tactical Combat Resource Bar
+        if hasattr(mechanics, "get_combat_resource_display"):
+            res_disp = mechanics.get_combat_resource_display(player)
+            st.progress(res_disp["percentage"], text=f"⚡ {res_disp['name']}: {res_disp['display']}")
     
         st.write(f"**Level:** {player['level']} | **AC:** {armor_class} 🛡️ | **Col:** {player['col']} 🪙")
+
+        free_pts = player.get("free_attribute_points", 0)
+        if free_pts > 0:
+            st.info(f"✨ **{free_pts} Free Attribute Points Available!** (Allocate in Character Build below)")
     
         st.divider()
     
         with st.expander("🧬 Character Build", expanded=False):
             st.write(f"**Race:** {player['race']}")
-            st.write(f"**Class:** {player['class']}")
+            tier_num = player.get("class_tier", 1)
+            tier_badge = "👑 Tier 2 (Evolved)" if tier_num >= 2 else "⚔️ Tier 1 (Anchor)"
+            st.write(f"**Class:** {player['class']} *({tier_badge})*")
+            if player.get("favored_skills"):
+                st.caption(f"**Favored Skills (+25% XP):** {', '.join(player['favored_skills'])}")
+            if player.get("native_armor"):
+                st.caption(f"**Native Armor Conditioning:** {', '.join(player['native_armor'])}")
             st.write("**Core Stats:**")
             cols = st.columns(3)
             cols[0].write(f"STR: {player['stats']['STR']}")
@@ -823,6 +852,17 @@ with st.sidebar:
             cols[0].write(f"INT: {player['stats']['INT']}")
             cols[1].write(f"WIS: {player['stats']['WIS']}")
             cols[2].write(f"CHA: {player['stats']['CHA']}")
+
+            # Free Attribute Points Allocator
+            if player.get("free_attribute_points", 0) > 0:
+                st.markdown("---")
+                st.markdown(f"##### ✨ Spend Attribute Points ({player['free_attribute_points']} remaining)")
+                chosen_stat = st.selectbox("Stat to Increase (+1)", ["STR", "DEX", "CON", "INT", "WIS", "CHA"], key="sb_spend_stat_hud")
+                if st.button(f"Confirm +1 to {chosen_stat}", use_container_width=True, key="btn_confirm_stat_inc_hud"):
+                    mechanics.allocate_attribute_points(player, {chosen_stat: 1})
+                    save_game(player, st.session_state.messages)
+                    st.success(f"+1 added to {chosen_stat}!")
+                    st.rerun()
         
         with st.expander("⚖️ Encumbrance & Carry Physics", expanded=False):
             st.write(f"**Status:** {encumbrance['label']}")
@@ -1242,6 +1282,63 @@ if st.session_state.get("character_creation_mode", False):
 st.title("🗡️ The Fractured Overlay")
 st.caption("A Death-Game TTRPG powered by the Cardinal System AI.")
 
+# --- CLASS EVOLUTION MODAL / BANNER (Harmonized Dual-Gate) ---
+if hasattr(mechanics, "check_evolution_eligibility"):
+    evo_status = mechanics.check_evolution_eligibility(player)
+    if evo_status.get("eligible"):
+        with st.container():
+            st.success(f"👑 **CARDINAL SYSTEM ANNOUNCEMENT: CLASS EVOLUTION UNLOCKED!** (Tier {evo_status['target_tier']})")
+            st.markdown("You have satisfied the Harmonized Dual-Gate requirements: Level reached, Boss vanquished, and Skill Mastery proven.")
+            with st.expander(f"✨ Calibrate Tier {evo_status['target_tier']} Evolution Pathways", expanded=True):
+                st.write("The Cardinal System has evaluated your behavioral combat telemetry and forged 3 tailored evolutions:")
+                curated_paths = mechanics.generate_curated_evolutions(player)
+                cols = st.columns(3)
+                for idx, p_opt in enumerate(curated_paths):
+                    with cols[idx]:
+                        st.markdown(f"**{p_opt['category']}**")
+                        st.subheader(p_opt['title'])
+                        st.caption(p_opt['desc'])
+                        if st.button(f"Awaken as {p_opt['title']}", key=f"btn_awaken_evo_{idx}", use_container_width=True):
+                            res = mechanics.apply_class_evolution(player, p_opt)
+                            announcement = f"### 👑 CLASS EVOLUTION AWAKENED!\n\n**{player['name']}** has evolved into **{res['new_class']}** (Tier {res['new_tier']})!\n\n- Combat Resource pool increased to {res['evolved_resource']['max']} (+25%)\n- Unlocked Master Feat: *{res['unlocked_feat']}*"
+                            st.session_state.messages.append({"role": "system", "content": announcement, "image_path": None})
+                            save_game(player, st.session_state.messages)
+                            st.balloons()
+                            st.rerun()
+
+# --- LEVEL-UP CLASS FEAT SELECTION (Levels 3, 6, 10) ---
+if hasattr(mechanics, "CLASS_FEATS_TREE"):
+    p_lvl = player.get("level", 1)
+    c_key = mechanics.normalize_class_key(player.get("class", "warrior"))
+    c_tree = mechanics.CLASS_FEATS_TREE.get(c_key, mechanics.CLASS_FEATS_TREE["pathless"])
+    
+    for milestone_lvl in [3, 6, 10]:
+        if p_lvl >= milestone_lvl:
+            lvl_k = f"level_{milestone_lvl}"
+            tier_feats = c_tree.get(lvl_k, [])
+            feat_names = [f["name"].lower() for f in tier_feats if isinstance(f, dict)]
+            has_chosen = any(any(fn in str(pf).lower() for fn in feat_names) for pf in player.get("feats", []))
+            
+            if not has_chosen and tier_feats:
+                with st.container():
+                    st.info(f"✨ **LEVEL {milestone_lvl} CLASS DOCTRINE FEAT CHOICE AVAILABLE!**")
+                    with st.expander(f"Select 1 of 3 Specialized Feats (Level {milestone_lvl})", expanded=True):
+                        st.write("Sculpt your archetype path by selecting one specialized doctrine technique:")
+                        f_cols = st.columns(3)
+                        for f_idx, f_opt in enumerate(tier_feats):
+                            with f_cols[f_idx]:
+                                st.markdown(f"**Option {f_opt['id']}: {f_opt['name']}**")
+                                st.caption(f"*{f_opt['type']}* — {f_opt['desc']}")
+                                if st.button(f"Adopt {f_opt['name']}", key=f"btn_pick_feat_{milestone_lvl}_{f_idx}", use_container_width=True):
+                                    feat_str = f"{f_opt['name']} ({f_opt['type']}): {f_opt['desc']}"
+                                    if "feats" not in player: player["feats"] = []
+                                    player["feats"].append(feat_str)
+                                    msg = f"### ✨ CLASS FEAT UNLOCKED: {f_opt['name']}\n\n**{player['name']}** adopted the **{f_opt['name']}** doctrine (*{f_opt['type']}*).\n\n*{f_opt['desc']}*"
+                                    st.session_state.messages.append({"role": "system", "content": msg, "image_path": None})
+                                    save_game(player, st.session_state.messages)
+                                    st.success(f"Unlocked {f_opt['name']}!")
+                                    st.rerun()
+
 # Render Chat History
 for msg in st.session_state.messages:
     avatar = "👾" if msg["role"] == "system" else "👤"
@@ -1376,6 +1473,16 @@ if prompt := (dev_prompt or chat_prompt):
                         st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + int(clean_hp)))
                     except ValueError:
                         pass
+
+                # Combat Resource Updates
+                res_change = state_updates.get("combat_resource_change")
+                if res_change:
+                    try:
+                        clean_rc = int(str(res_change).replace(",", "").replace(" ", ""))
+                        if hasattr(mechanics, "update_combat_resource"):
+                            mechanics.update_combat_resource(st.session_state.player, clean_rc)
+                    except ValueError:
+                        pass
                         
                 xp_change = state_updates.get("xp_change")
                 if xp_change:
@@ -1385,16 +1492,19 @@ if prompt := (dev_prompt or chat_prompt):
                             st.session_state.player["xp"] += clean_xp
                             st.toast(f"✨ Gained {clean_xp} XP!")
                             
-                            # Level up loop
+                            # Level up loop (Archetype Scaling + Free Attribute Points)
                             while st.session_state.player["xp"] >= st.session_state.player["level"] * 1000:
                                 st.session_state.player["xp"] -= st.session_state.player["level"] * 1000
-                                st.session_state.player["level"] += 1
-                                st.session_state.player["max_hp"] += 25
-                                st.session_state.player["hp"] = st.session_state.player["max_hp"]
-                                for s in st.session_state.player["stats"]:
-                                    st.session_state.player["stats"][s] += 1
-                                st.balloons()
-                                st.success(f"🎉 **LEVEL UP!** You are now Level {st.session_state.player['level']}! Max HP and Core Stats increased!")
+                                if hasattr(mechanics, "apply_level_up"):
+                                    lvl_info = mechanics.apply_level_up(st.session_state.player)
+                                    st.balloons()
+                                    st.success(f"🎉 **LEVEL UP!** You are now Level {lvl_info['new_level']}! (+{lvl_info['hp_gain']} Max HP, +2 Free Attribute Points)")
+                                else:
+                                    st.session_state.player["level"] += 1
+                                    st.session_state.player["max_hp"] += 25
+                                    st.session_state.player["hp"] = st.session_state.player["max_hp"]
+                                    st.balloons()
+                                    st.success(f"🎉 **LEVEL UP!** You are now Level {st.session_state.player['level']}!")
                     except ValueError:
                         pass
                 

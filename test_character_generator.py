@@ -76,15 +76,23 @@ def run_tests():
         assert_check(all(s in r_data["stat_mods"] for s in ["STR", "DEX", "CON", "INT", "WIS", "CHA"]), f"'{r_k}' has complete 6-stat modifiers")
         assert_check(len(r_data["racial_abilities"]) >= 2, f"'{r_k}' has >= 2 racial abilities")
 
-    # --- TEST 4: ALL 5 CLASS PATHS & THEMED WEAPONS ---
-    print("\n[TEST 4] Verifying 5 Class Paths & Themed Loadouts...")
-    expected_classes = ["pathless", "vanguard", "magi_saboteur", "aether_slinger", "wilderness_ranger"]
-    for c_k in expected_classes:
-        assert_check(c_k in cg.CLASS_PATHS, f"Class '{c_k}' registered")
-        assert_check(len(cg.CLASS_PATHS[c_k]["starting_feats"]) >= 2, f"'{c_k}' has starting feats")
+    # --- TEST 4: ALL 7 ANCHOR CLASSES + PATHLESS & THEMED LOADOUTS ---
+    print("\n[TEST 4] Verifying 7 Anchor Classes + Pathless & Themed Loadouts...")
+    anchor_classes = ["warrior", "mage", "cleric", "thief", "ranger", "engineer", "psion", "pathless"]
+    for c_k in anchor_classes:
+        assert_check(c_k in cg.CLASS_PATHS, f"Anchor Class '{c_k}' registered")
+        c_def = cg.CLASS_PATHS[c_k]
+        assert_check(len(c_def["starting_feats"]) == 2, f"'{c_k}' has fixed iconic duo (2 starting feats)")
+        assert_check("combat_resource" in c_def and "name" in c_def["combat_resource"], f"'{c_k}' has asymmetric combat resource")
         assert_check(c_k in cg.CLASS_WEAPONS, f"'{c_k}' has defined starting weapons loadout")
         w_loadout = cg.CLASS_WEAPONS[c_k]
         assert_check("main_hand" in w_loadout and "off_hand" in w_loadout, f"'{c_k}' has main_hand and off_hand")
+
+    # Legacy alias compatibility checks
+    legacy_classes = ["vanguard", "magi_saboteur", "aether_slinger", "wilderness_ranger"]
+    for c_k in legacy_classes:
+        assert_check(c_k in cg.CLASS_PATHS, f"Legacy Class alias '{c_k}' registered")
+        assert_check(c_k in cg.CLASS_WEAPONS, f"Legacy Class alias '{c_k}' has weapons")
 
     # --- TEST 5: ALL 5 PERSONAL RELICS ---
     print("\n[TEST 5] Verifying 5 Pre-Integration Personal Relics...")
