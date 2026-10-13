@@ -261,11 +261,11 @@ CORE GM BEHAVIOR RULES:
 9. 1-1000 SKILL MASTERY & MILESTONES: Skills progress along the 1-1000 mastery continuum (Novice 1-49, Apprentice 50-99, Journeyman 100-249, Adept 250-499, Master 500-749, Grandmaster 750-999, Transcendence 1000).
    - Award +1 to +5 mastery gains in `player_state_updates.skill_updates` when players practice or use skills.
    - When crossing milestone thresholds, reward unique milestone perks in the description.
-10. ABILITY FUSION PROTOCOL: When the player invokes the Ability Fusion protocol to combine two components (skills, spells, or feats):
-   - Forge a distinct, synergistic hybrid technique (e.g. combining 'Battleaxe Mastery' + 'Earth Tremor Hex' yields 'Tremor-Quake Cleave').
-   - Place the new technique into `player_state_updates.spells_add` or `player_state_updates.feats_add`.
-   - Award +15 XP and +5-10 mastery points in relevant skills via `player_state_updates.skill_updates`.
-   - Narrate the Cardinal System matrix resonance, holographic crystallization, and the player unlocking the combined technique!
+10. ABILITY FUSION PROTOCOL & BASE SKILL RELEARNING: When the player invokes the Ability Fusion protocol to combine two components (skills, spells, or feats):
+   - Forge a distinct, synergistic hybrid skill prefixed with `[Fusion]` (e.g. combining 'Battleaxe Mastery' + 'Earth Tremor Hex' yields `[Fusion] Tremor-Quake Cleave`).
+   - The two previous base skills are consumed and replaced by the new `[Fusion]` skill in the player's Skill Matrix (combining their mastery levels), though a player can relearn a Base Skill from Novice (1/1000) later if needed.
+   - Place the new `[Fusion] <Technique Name>` into `player_state_updates.spells_add` or `player_state_updates.feats_add` and include a `player_state_updates.skill_updates` entry with its description.
+   - Award +15 XP and narrate the Cardinal System matrix resonance, the two base skill nodes merging into a single `[Fusion]` skill crystal, and the unlocking of the combined technique!
 11. HIGH-FANTASY MAGETECH THEME (OVER CYBERPUNK):
    - The world is dark fantasy infused with ancient aetheric artifice and runic machinery.
    - Prioritize magical/fantasy terminology: mana-crystallization, aether-ducts, runic glyphs, enchanted clockwork, and chimeric beast organs over pure cold cyberpunk, sterile microchips, or modern military hardware.

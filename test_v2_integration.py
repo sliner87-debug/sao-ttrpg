@@ -59,8 +59,12 @@ class TestV2Integration(unittest.TestCase):
         self.assertEqual(penalty_info["total_grafts"], 1)
 
     def test_ability_fusion_protocol(self):
-        """Validates fusing two abilities into a unique synergistic technique."""
+        """Validates fusing two skills/abilities replaces them with a [Fusion] Skill and allows relearning a Base skill."""
         p = self.player
+        p["skills"] = {
+            "Battleaxe Mastery": {"mastery": 60, "description": "Heavy cleaving axe techniques."},
+            "Earth Tremor Hex": {"mastery": 40, "description": "Seismic ground-shattering runes."}
+        }
         start_xp = p.get("xp", 0)
         fusion_res = mechanics.fuse_abilities(
             p,
@@ -71,13 +75,32 @@ class TestV2Integration(unittest.TestCase):
         )
         self.assertTrue(fusion_res["success"])
         self.assertEqual(fusion_res["fused_name"], "Tremor-Quake Cleave")
+        self.assertEqual(fusion_res["fusion_skill_key"], "[Fusion] Tremor-Quake Cleave")
         self.assertEqual(p["xp"], start_xp + 15)
+
+        # Verify previous two skills were consumed and replaced by [Fusion] Tremor-Quake Cleave
+        self.assertNotIn("Battleaxe Mastery", p["skills"])
+        self.assertNotIn("Earth Tremor Hex", p["skills"])
+        self.assertIn("[Fusion] Tremor-Quake Cleave", p["skills"])
+        self.assertEqual(p["skills"]["[Fusion] Tremor-Quake Cleave"]["mastery"], 80)
         
         # Verify it appears in fused_abilities list and feats
         fused_list = mechanics.get_fused_abilities(p)
         self.assertEqual(len(fused_list), 1)
         self.assertEqual(fused_list[0]["name"], "Tremor-Quake Cleave")
         self.assertTrue(any("Tremor-Quake Cleave" in f for f in p["feats"]))
+
+        # Verify consumed base skills can be relearned while keeping the [Fusion] Skill
+        relearnable = mechanics.get_relearnable_base_skills(p)
+        fused_relearn_names = [r["name"] for r in relearnable if r.get("was_fused")]
+        self.assertIn("Battleaxe Mastery", fused_relearn_names)
+        self.assertIn("Earth Tremor Hex", fused_relearn_names)
+
+        relearn_res = mechanics.relearn_base_skill(p, "Battleaxe Mastery", starting_mastery=1)
+        self.assertTrue(relearn_res["success"])
+        self.assertIn("Battleaxe Mastery", p["skills"])
+        self.assertEqual(p["skills"]["Battleaxe Mastery"]["mastery"], 1)
+        self.assertIn("[Fusion] Tremor-Quake Cleave", p["skills"])
 
     def test_four_companion_sheets_exist(self):
         """Verifies all 4 companions exist in Party/ and Entities/ with correct attributes."""

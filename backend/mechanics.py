@@ -2815,16 +2815,23 @@ def calculate_spellcasting_graft_penalty(player_state):
 # ABILITY FUSION PROTOCOL (THE DUAL SYSTEM)
 # =====================================================================
 
-def fuse_abilities(player_state, component_a_name, component_b_name, custom_fused_name=None, custom_desc=None):
+def fuse_abilities(player_state, component_a_name, component_b_name, custom_fused_name=None, custom_desc=None, custom_mechanics=None):
     """
     Implements V2's Ability Fusion Protocol:
-    Combines two active abilities (skills, spells, or feats) into a synergistic hybrid ability.
-    Validates components, awards +15 XP, updates mastery, and registers the technique in player['fused_abilities'].
+    Combines two skills/abilities (component_a_name and component_b_name), removes the two
+    previous base skills from active skills/spells/feats, archives them in
+    `player['archived_base_skills']` so they can be relearned later if needed, and replaces
+    them with a new `[Fusion] <Name>` skill in `player['skills']`, `player['feats']`, and
+    `player['fused_abilities']`.
     """
     if not isinstance(player_state, dict):
         return {"success": False, "message": "Invalid player state."}
         
     fused_abilities = player_state.setdefault("fused_abilities", [])
+    skills_dict = player_state.setdefault("skills", {})
+    spells_list = player_state.setdefault("spells", [])
+    feats_list = player_state.setdefault("feats", [])
+    archived_base = player_state.setdefault("archived_base_skills", {})
     
     clean_a = str(component_a_name).strip()
     clean_b = str(component_b_name).strip()
@@ -2836,46 +2843,149 @@ def fuse_abilities(player_state, component_a_name, component_b_name, custom_fuse
         return {"success": False, "message": "Cannot fuse an ability with itself."}
         
     if not custom_fused_name:
-        first_word = clean_a.split()[0] if clean_a else "Aether"
-        second_word = clean_b.split()[-1] if clean_b else "Burst"
-        fused_name = f"{first_word}-{second_word} Convergence"
+        first_word = clean_a.replace("[Fusion]", "").strip().split()[0] if clean_a else "Aether"
+        second_word = clean_b.replace("[Fusion]", "").strip().split()[-1] if clean_b else "Burst"
+        clean_fused = f"{first_word}-{second_word} Convergence"
     else:
-        fused_name = custom_fused_name.strip()
+        raw_custom = custom_fused_name.strip()
+        if raw_custom.startswith("[") and raw_custom.endswith("]") and not raw_custom.lower().startswith("[fusion]"):
+            raw_custom = raw_custom[1:-1].strip()
+        if raw_custom.lower().startswith("[fusion]"):
+            clean_fused = raw_custom[len("[fusion]"):].strip()
+        else:
+            clean_fused = raw_custom
+            
+    fusion_skill_key = f"[Fusion] {clean_fused}"
         
     if not custom_desc:
         fused_desc = f"Synergistic fusion of [{clean_a}] and [{clean_b}]. Unleashes resonant hybrid arcane-tactical force."
     else:
         fused_desc = custom_desc.strip()
+
+    if not custom_mechanics:
+        fused_mech = (
+            f"• Fusion Components: {clean_a} + {clean_b}\n"
+            f"• Power Rating: Tier 3 Fused Convergence Skill\n"
+            f"• Game Mechanics: Combines the primary tactical and elemental effects of [{clean_a}] and [{clean_b}] into a single Standard Action strike/cast with a +2 Synergy bonus to attack/DC and +1d8 bonus resonance damage."
+        )
+    else:
+        fused_mech = custom_mechanics.strip()
         
     # Check if already fused
     for fa in fused_abilities:
-        if isinstance(fa, dict) and fa.get("name", "").lower() == fused_name.lower():
-            return {"success": False, "message": f"Technique '{fused_name}' has already been forged in the Matrix."}
+        if isinstance(fa, dict) and fa.get("name", "").lower() == clean_fused.lower():
+            return {"success": False, "message": f"Technique '{clean_fused}' has already been forged in the Matrix."}
+
+    # Consume and archive Component A and Component B from skills, spells, and feats
+    consumed_masteries = []
+    consumed_from_spells = False
+
+    for comp_name in (clean_a, clean_b):
+        comp_low = comp_name.lower()
+        found_skill_data = None
+        matched_skill_keys = [k for k in list(skills_dict.keys()) if k.lower() == comp_low]
+        for mk in matched_skill_keys:
+            s_entry = skills_dict.pop(mk, None)
+            if isinstance(s_entry, dict):
+                m_val = int(s_entry.get("mastery", 1))
+                consumed_masteries.append(m_val)
+                found_skill_data = s_entry
+            else:
+                consumed_masteries.append(1)
+                found_skill_data = {"mastery": 1, "description": str(s_entry or "")}
+
+        # Check spells
+        matched_spells = [sp for sp in list(spells_list) if str(sp).strip().lower() == comp_low or str(sp).strip("[]").lower() == comp_low]
+        for msp in matched_spells:
+            spells_list.remove(msp)
+            consumed_from_spells = True
+
+        # Check feats
+        matched_feats = [ft for ft in list(feats_list) if str(ft).strip().lower() == comp_low or str(ft).strip("[]").lower() == comp_low]
+        for mft in matched_feats:
+            feats_list.remove(mft)
+
+        # Archive the base skill so the player can relearn it later if needed
+        if not comp_name.lower().startswith("[fusion]"):
+            prev_arch = archived_base.get(comp_name, {})
+            archived_base[comp_name] = {
+                "name": comp_name,
+                "previous_mastery": found_skill_data.get("mastery", prev_arch.get("previous_mastery", 1)) if isinstance(found_skill_data, dict) else 1,
+                "description": (
+                    found_skill_data.get("description", "")
+                    if isinstance(found_skill_data, dict) and found_skill_data.get("description")
+                    else prev_arch.get("description", f"Foundational base skill ({comp_name}) previously fused into {fusion_skill_key}.")
+                ),
+                "fused_into": fusion_skill_key,
+                "was_spell": bool(matched_spells) or prev_arch.get("was_spell", False),
+            }
+
+    # Calculate combined mastery for the new [Fusion] Skill
+    if len(consumed_masteries) >= 2:
+        m1, m2 = consumed_masteries[0], consumed_masteries[1]
+        combined_mastery = min(1000, max(m1, m2) + max(10, min(m1, m2) // 2))
+    elif len(consumed_masteries) == 1:
+        combined_mastery = min(1000, consumed_masteries[0] + 15)
+    else:
+        combined_mastery = 50
+
+    tier_label = get_skill_tier(combined_mastery) if "get_skill_tier" in globals() else "Apprentice"
+    unlocked_ms = [th for th in (50, 100, 250, 500, 750, 1000) if combined_mastery >= th]
+
+    # Insert replacement [Fusion] skill into player_state['skills']
+    skills_dict[fusion_skill_key] = {
+        "mastery": combined_mastery,
+        "tier": tier_label,
+        "description": f"[Fused from {clean_a} + {clean_b}] {fused_desc}",
+        "is_fusion": True,
+        "components": [clean_a, clean_b],
+        "milestones_unlocked": unlocked_ms
+    }
+
+    # Replace any slotted component references in active Matrix memory
+    slotted_container = player_state.get("slotted_abilities")
+    if isinstance(slotted_container, dict) and isinstance(slotted_container.get("active"), list):
+        new_active = []
+        replaced_slot = False
+        for sl in slotted_container["active"]:
+            if str(sl).strip().lower() in (clean_a.lower(), clean_b.lower()):
+                if not replaced_slot and fusion_skill_key not in new_active:
+                    new_active.append(fusion_skill_key)
+                    replaced_slot = True
+            else:
+                new_active.append(sl)
+        slotted_container["active"] = new_active
             
     record = {
-        "name": fused_name,
+        "name": clean_fused,
+        "skill_key": fusion_skill_key,
         "components": [clean_a, clean_b],
         "description": fused_desc,
+        "mechanics": fused_mech,
+        "mastery": combined_mastery,
         "tier": "Fused",
         "power_rating": 3
     }
     fused_abilities.append(record)
     
-    # Add to feats or spells
-    feats = player_state.setdefault("feats", [])
-    feat_entry = f"[{fused_name}]"
-    if feat_entry not in feats and fused_name not in feats:
-        feats.append(feat_entry)
+    # Add [Fusion] skill to feats (and spells if a spell component was consumed)
+    if fusion_skill_key not in feats_list and clean_fused not in feats_list:
+        feats_list.append(fusion_skill_key)
+    if consumed_from_spells and fusion_skill_key not in spells_list:
+        spells_list.append(fusion_skill_key)
         
-    # Award XP & Skill mastery
+    # Award XP
     player_state["xp"] = player_state.get("xp", 0) + 15
     
     return {
         "success": True,
-        "fused_name": fused_name,
+        "fused_name": clean_fused,
+        "fusion_skill_key": fusion_skill_key,
+        "consumed_components": [clean_a, clean_b],
+        "combined_mastery": combined_mastery,
         "technique": record,
         "xp_awarded": 15,
-        "log": f"🔮 [ABILITY FUSION SUCCESS: Fused '{clean_a}' + '{clean_b}' -> '{fused_name}'! (+15 XP)]"
+        "log": f"🔮 [ABILITY FUSION SUCCESS: Combined & replaced '{clean_a}' + '{clean_b}' -> '{fusion_skill_key}' (Mastery {combined_mastery}/1000, +15 XP)!]"
     }
 
 def get_fused_abilities(player_state):
@@ -2883,6 +2993,131 @@ def get_fused_abilities(player_state):
     if not isinstance(player_state, dict):
         return []
     return player_state.get("fused_abilities", [])
+
+
+def get_relearnable_base_skills(player_state):
+    """
+    Returns a list of Base Skills that the player can relearn.
+    Includes:
+      1. Base skills previously consumed by Ability Fusion (`archived_base_skills` and `fused_abilities.components`).
+      2. Canonical foundational skills from `CANONICAL_MILESTONES` not currently in `player_state['skills']`.
+    """
+    if not isinstance(player_state, dict):
+        return []
+
+    current_skill_lows = {str(k).strip().lower() for k in player_state.get("skills", {}).keys()}
+    relearnable = []
+    seen = set()
+
+    # 1. Consumed base skills from archived_base_skills
+    archived = player_state.get("archived_base_skills", {})
+    if isinstance(archived, dict):
+        for s_name, s_info in archived.items():
+            clean_n = str(s_name).strip()
+            if not clean_n or clean_n.lower().startswith("[fusion]"):
+                continue
+            if clean_n.lower() not in current_skill_lows and clean_n.lower() not in seen:
+                seen.add(clean_n.lower())
+                relearnable.append({
+                    "name": clean_n,
+                    "description": s_info.get("description", f"Base skill previously fused into {s_info.get('fused_into', 'a [Fusion] Skill')}."),
+                    "previous_mastery": s_info.get("previous_mastery", 1),
+                    "fused_into": s_info.get("fused_into", ""),
+                    "was_fused": True
+                })
+
+    # 2. Check components recorded inside fused_abilities (for backwards compatibility with older saves)
+    for fa in player_state.get("fused_abilities", []):
+        if isinstance(fa, dict):
+            f_into = fa.get("skill_key") or f"[Fusion] {fa.get('name', 'Convergence')}"
+            for comp in fa.get("components", []):
+                clean_c = str(comp).strip()
+                if not clean_c or clean_c.lower().startswith("[fusion]"):
+                    continue
+                if clean_c.lower() not in current_skill_lows and clean_c.lower() not in seen:
+                    seen.add(clean_c.lower())
+                    relearnable.append({
+                        "name": clean_c,
+                        "description": f"Base component skill previously fused into {f_into}.",
+                        "previous_mastery": 1,
+                        "fused_into": f_into,
+                        "was_fused": True
+                    })
+
+    # 3. Canonical base skills from CANONICAL_MILESTONES not currently known
+    for canon_skill in globals().get("CANONICAL_MILESTONES", {}).keys():
+        clean_canon = str(canon_skill).strip()
+        if clean_canon.lower() not in current_skill_lows and clean_canon.lower() not in seen:
+            seen.add(clean_canon.lower())
+            relearnable.append({
+                "name": clean_canon,
+                "description": f"Foundational Crucible discipline ({clean_canon}). Can be trained from Novice (1/1000).",
+                "previous_mastery": 0,
+                "fused_into": "",
+                "was_fused": False
+            })
+
+    return relearnable
+
+
+def relearn_base_skill(player_state, skill_name, starting_mastery=1):
+    """
+    Relearns a Base Skill (such as one previously consumed in an Ability Fusion)
+    without removing the player's `[Fusion]` skill.
+    Starts the relearned base skill at Novice (`starting_mastery`, default 1/1000).
+    """
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    clean_name = str(skill_name or "").strip()
+    if not clean_name:
+        return {"success": False, "message": "Skill name is required to relearn a base skill."}
+
+    if clean_name.lower().startswith("[fusion]"):
+        return {"success": False, "message": "Only Base Skills can be relearned directly; [Fusion] skills must be forged via the Ability Fusion Protocol."}
+
+    skills_dict = player_state.setdefault("skills", {})
+    for existing_k in skills_dict.keys():
+        if existing_k.lower() == clean_name.lower():
+            return {"success": False, "message": f"Base skill '{existing_k}' is already active in your Skill Matrix."}
+
+    archived = player_state.get("archived_base_skills", {})
+    arch_entry = None
+    if isinstance(archived, dict):
+        for k, v in archived.items():
+            if k.lower() == clean_name.lower():
+                arch_entry = v
+                break
+
+    init_m = max(1, min(1000, int(starting_mastery)))
+    tier_label = get_skill_tier(init_m) if "get_skill_tier" in globals() else "Novice"
+    desc = (
+        arch_entry.get("description")
+        if isinstance(arch_entry, dict) and arch_entry.get("description")
+        else f"Relearned foundational base skill ({clean_name}). Progresses along the 1–1000 Mastery continuum."
+    )
+
+    skills_dict[clean_name] = {
+        "mastery": init_m,
+        "tier": tier_label,
+        "description": desc,
+        "milestones_unlocked": [th for th in (50, 100, 250, 500, 750, 1000) if init_m >= th],
+        "relearned": True
+    }
+
+    if isinstance(arch_entry, dict) and arch_entry.get("was_spell"):
+        spells_list = player_state.setdefault("spells", [])
+        if clean_name not in spells_list:
+            spells_list.append(clean_name)
+
+    return {
+        "success": True,
+        "skill_name": clean_name,
+        "mastery": init_m,
+        "tier": tier_label,
+        "message": f"🔄 Relearned Base Skill '{clean_name}' at {tier_label} Mastery ({init_m}/1000)!"
+    }
+
 
 
 
@@ -9594,13 +9829,17 @@ def get_spell_or_power_details(entry, player_state: dict = None) -> dict:
     narrative description and exact game mechanics.
     """
     if isinstance(entry, dict):
-        raw_name = str(entry.get("name", entry.get("title", "Unknown Power"))).strip()
+        if entry.get("tier") == "Fused" or entry.get("skill_key"):
+            raw_name = str(entry.get("skill_key") or f"[Fusion] {entry.get('name', 'Convergence')}").strip()
+            existing_cat = "Fused Convergence Skill (Rule 10)"
+        else:
+            raw_name = str(entry.get("name", entry.get("title", "Unknown Power"))).strip()
+            existing_cat = str(entry.get("category", entry.get("type", "Spell / Power"))).strip()
         existing_desc = str(entry.get("description", entry.get("desc", ""))).strip()
         existing_mech = str(entry.get("mechanics", entry.get("effect", ""))).strip()
-        existing_cat = str(entry.get("category", entry.get("type", "Spell / Power"))).strip()
-        existing_act = str(entry.get("action_type", "Standard Action / Passive")).strip()
-        existing_cost = str(entry.get("cost", "Standard")).strip()
-        existing_rng = str(entry.get("range", "Self / Combat Reach")).strip()
+        existing_act = str(entry.get("action_type", "Standard Action")).strip()
+        existing_cost = str(entry.get("cost", "20 Combat Resource / Stamina")).strip()
+        existing_rng = str(entry.get("range", "Hybrid Combat Range")).strip()
         if existing_desc and existing_mech:
             return {
                 "name": raw_name,
@@ -9613,8 +9852,8 @@ def get_spell_or_power_details(entry, player_state: dict = None) -> dict:
             }
     else:
         raw_str = str(entry or "").strip()
-        # Strip surrounding brackets like "[Aether-Burst Convergence]"
-        if raw_str.startswith("[") and raw_str.endswith("]"):
+        # Strip surrounding brackets like "[Aether-Burst Convergence]" unless it is a "[Fusion] ..." prefix
+        if raw_str.startswith("[") and raw_str.endswith("]") and not raw_str.lower().startswith("[fusion]"):
             raw_str = raw_str[1:-1].strip()
         raw_name = raw_str
         existing_desc = ""
@@ -9715,16 +9954,20 @@ def get_spell_or_power_details(entry, player_state: dict = None) -> dict:
         for fa in player_state.get("fused_abilities", []):
             if isinstance(fa, dict):
                 fa_name = fa.get("name", "")
-                if fa_name.lower() == norm_clean or fa_name.lower() in norm_full:
+                fa_skill_key = fa.get("skill_key") or (fa_name if fa_name.lower().startswith("[fusion]") else f"[Fusion] {fa_name}")
+                if (
+                    (fa_name and (fa_name.lower() == norm_clean or fa_name.lower() in norm_full))
+                    or (fa_skill_key and (fa_skill_key.lower() == norm_clean or fa_skill_key.lower() == norm_full))
+                ):
                     comps = " + ".join(fa.get("components", []))
                     return {
-                        "name": fa_name,
-                        "category": "Fused Convergence Technique (Rule 10)",
+                        "name": fa_skill_key,
+                        "category": "Fused Convergence Skill (Rule 10)",
                         "action_type": "Standard Action",
                         "cost": "20 Combat Resource / Stamina",
                         "range": "Hybrid Combat Range",
                         "description": fa.get("description", f"Synergistic fusion of {comps} forged in the Cardinal Ability Fusion Chamber."),
-                        "mechanics": (
+                        "mechanics": fa.get("mechanics") or (
                             f"• Fusion Components: {comps}\n"
                             f"• Power Rating: Tier {fa.get('power_rating', 3)} Fused Technique\n"
                             f"• Game Mechanics: Combines the primary effects of [{comps}] into a single Standard Action strike/cast with a +2 Synergy bonus to hit/DC and +1d8 bonus resonance damage."

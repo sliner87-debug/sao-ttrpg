@@ -906,11 +906,69 @@ def apply_player_state_updates(state_updates):
                     st.session_state.player["inventory"].remove(existing_item)
                     break
 
+    # Check if an Ability Fusion was initiated by the player this turn
+    pending_fusion = st.session_state.pop("pending_fusion_components", None)
+    consumed_this_turn_lows = set()
+    forged_fusion_lows = set()
+
+    if pending_fusion and isinstance(pending_fusion, (list, tuple)) and len(pending_fusion) >= 2:
+        comp_a, comp_b = str(pending_fusion[0]).strip(), str(pending_fusion[1]).strip()
+        consumed_this_turn_lows = {comp_a.lower(), comp_b.lower()}
+
+        # Try to extract custom fused name & description proposed by the GM in spells_add, feats_add, or skill_updates
+        custom_fused_name = None
+        custom_fused_desc = None
+
+        for k_check in ("spells_add", "feats_add"):
+            for cand in (state_updates.get(k_check) or []):
+                cand_str = cand.get("name", "") if isinstance(cand, dict) else str(cand)
+                cand_clean = cand_str.replace("[Fusion]", "").strip(" []")
+                if cand_clean and cand_clean.lower() not in consumed_this_turn_lows:
+                    if ":" in cand_clean:
+                        h_part, d_part = cand_clean.split(":", 1)
+                        custom_fused_name = h_part.strip()
+                        custom_fused_desc = d_part.strip()
+                    else:
+                        custom_fused_name = cand_clean
+                    break
+            if custom_fused_name:
+                break
+
+        for su in (state_updates.get("skill_updates") or []):
+            if isinstance(su, dict) and "name" in su:
+                su_name = str(su["name"]).strip()
+                su_clean = su_name.replace("[Fusion]", "").strip(" []")
+                if su_clean and su_clean.lower() not in consumed_this_turn_lows:
+                    if not custom_fused_name:
+                        custom_fused_name = su_clean
+                    if su.get("description") and not custom_fused_desc:
+                        custom_fused_desc = str(su["description"]).strip()
+
+        f_res = mechanics.fuse_abilities(
+            st.session_state.player,
+            comp_a,
+            comp_b,
+            custom_fused_name=custom_fused_name,
+            custom_desc=custom_fused_desc
+        )
+        if f_res.get("success"):
+            f_key = f_res.get("fusion_skill_key", f"[Fusion] {f_res.get('fused_name', '')}")
+            forged_fusion_lows = {
+                f_res.get("fused_name", "").lower(),
+                f_key.lower(),
+                f"[{f_res.get('fused_name', '').lower()}]"
+            }
+            st.toast(f"🔮 Fused [{comp_a}] + [{comp_b}] ➔ {f_key}!", icon="✨")
+
     for k in ["spells_add", "feats_add", "racial_abilities_add"]:
         adds = state_updates.get(k) or []
         if isinstance(adds, list):
             target_list = k.replace("_add", "")
             for a in adds:
+                a_str = str(a).strip()
+                a_clean_low = a_str.replace("[Fusion]", "").strip(" []").split(":", 1)[0].strip().lower()
+                if a_clean_low in consumed_this_turn_lows or a_clean_low in forged_fusion_lows or a_str.lower() in forged_fusion_lows:
+                    continue
                 if a not in st.session_state.player.get(target_list, []):
                     st.session_state.player.setdefault(target_list, []).append(a)
                     st.toast(f"🔮 Learned {target_list[:-1].capitalize()}: {a}!")
@@ -938,7 +996,13 @@ def apply_player_state_updates(state_updates):
     if isinstance(skill_updates, list):
         for su in skill_updates:
             if isinstance(su, dict) and "name" in su:
-                name = su["name"]
+                name = str(su["name"]).strip()
+                name_clean_low = name.replace("[Fusion]", "").strip(" []").lower()
+                # Do not re-add base skills in the exact turn they were consumed by Ability Fusion
+                if name.lower() in consumed_this_turn_lows or name_clean_low in consumed_this_turn_lows:
+                    continue
+                if name.lower() in forged_fusion_lows or name_clean_low in forged_fusion_lows:
+                    continue
                 change = int(su.get("mastery_change", 1))
                 desc = su.get("description", "")
                 if name in st.session_state.player.get("skills", {}):
@@ -1278,19 +1342,45 @@ def render_game_hud():
                 mastery = s_data.get('mastery', 1)
                 desc = s_data.get('description', '')
                 unlocked_ms = s_data.get('milestones_unlocked', [])
+                is_fusion = s_data.get('is_fusion', False) or str(s_name).lower().startswith("[fusion]")
+                comps = s_data.get('components', [])
             else:
                 mastery = 1
                 desc = str(s_data)
                 unlocked_ms = []
+                is_fusion = str(s_name).lower().startswith("[fusion]")
+                comps = []
                 
             tier_name, next_th = get_mastery_tier_info(mastery)
-            st.write(f"**{s_name}** `[{tier_name}]` ({mastery}/1000)")
+            fusion_badge = " ✨" if is_fusion else ""
+            st.write(f"**{s_name}**{fusion_badge} `[{tier_name}]` ({mastery}/1000)")
             pct = min(1.0, mastery / float(next_th)) if next_th > 0 else 1.0
             st.progress(pct, text=f"{mastery}/{next_th} to next milestone")
+            if comps:
+                st.caption(f"🔗 *Combined from:* `{' + '.join(str(c) for c in comps)}`")
             if desc:
                 st.caption(desc)
             if unlocked_ms:
                 st.caption(f"🏅 *Milestones Unlocked:* {', '.join(str(m) for m in unlocked_ms)}")
+
+        relearnable_in_skills = [
+            r for r in (mechanics.get_relearnable_base_skills(player) if hasattr(mechanics, "get_relearnable_base_skills") else [])
+            if r.get("was_fused")
+        ]
+        if relearnable_in_skills:
+            st.divider()
+            st.caption("🔄 **Consumed Base Skills Available to Relearn:**")
+            rel_names_sm = [f"{r['name']} (fused into {r['fused_into']})" for r in relearnable_in_skills]
+            sel_idx_sm = st.selectbox("Select Base Skill", range(len(relearnable_in_skills)), format_func=lambda i: rel_names_sm[i], key="relearn_skill_sm_select")
+            if st.button("🔄 Relearn Selected Base Skill (Mastery 1/1000)", key="btn_relearn_sm", use_container_width=True):
+                chosen_base = relearnable_in_skills[sel_idx_sm]["name"]
+                r_res = mechanics.relearn_base_skill(player, chosen_base, starting_mastery=1)
+                if r_res.get("success"):
+                    save_game(player, st.session_state.messages)
+                    st.toast(r_res.get("message", f"Relearned {chosen_base}!"), icon="🔄")
+                    st.rerun()
+                else:
+                    st.warning(r_res.get("message", "Could not relearn skill."))
 
     all_spells_powers = mechanics.get_all_player_spells_and_powers(player) if hasattr(mechanics, "get_all_player_spells_and_powers") else []
     with st.expander(f"🔮 Spells & Powers ({len(all_spells_powers)})", expanded=False):
@@ -1340,18 +1430,75 @@ def render_game_hud():
                             st.rerun()
 
     with st.expander("🔮 Ability Fusion Chamber", expanded=False):
-        st.caption("Combine 2 abilities to forge a new synergistic technique (Rule 10).")
-        all_pool = list(player.get("skills", {}).keys()) + player.get("spells", []) + player.get("feats", [])
+        st.caption("Combine 2 skills or abilities to replace them with a unified **[Fusion] Skill** (Rule 10). Consumed Base Skills can be relearned at Novice (1/1000) if needed.")
+        raw_pool = list(player.get("skills", {}).keys()) + player.get("spells", []) + player.get("feats", [])
+        all_pool = []
+        for item_p in raw_pool:
+            s_p = str(item_p).strip()
+            if s_p and s_p not in all_pool:
+                all_pool.append(s_p)
+
         if len(all_pool) >= 2:
             f_col1, f_col2 = st.columns(2)
             ab1 = f_col1.selectbox("Component A", all_pool, key="fusion_select_a")
             ab2 = f_col2.selectbox("Component B", [x for x in all_pool if x != ab1] or all_pool, key="fusion_select_b")
-            if st.button("✨ Initiate Ability Fusion", use_container_width=True):
-                st.session_state.pending_dev_command = f"I invoke the Cardinal System Ability Fusion protocol to combine [{ab1}] and [{ab2}] into a new synergistic technique. Calculate the logic and register the fusion."
-                st.rerun()
+            custom_f_name_input = st.text_input("Optional Custom [Fusion] Name", value="", placeholder="Leave blank for GM / Cardinal auto-naming", key="fusion_custom_name_input")
+            fb_col1, fb_col2 = st.columns(2)
+            with fb_col1:
+                if st.button("✨ Fuse with GM Narrative", use_container_width=True):
+                    st.session_state.pending_fusion_components = [ab1, ab2]
+                    name_clause = f" named '[Fusion] {custom_f_name_input.strip()}'" if custom_f_name_input.strip() else ""
+                    st.session_state.pending_dev_command = (
+                        f"I invoke the Cardinal System Ability Fusion protocol to combine and replace [{ab1}] and [{ab2}] "
+                        f"into a new synergistic [Fusion] Skill{name_clause}. Narrate the matrix convergence and register the fusion."
+                    )
+                    st.rerun()
+            with fb_col2:
+                if st.button("⚡ Instant Matrix Fuse", use_container_width=True):
+                    f_res = mechanics.fuse_abilities(
+                        player,
+                        ab1,
+                        ab2,
+                        custom_fused_name=custom_f_name_input.strip() or None
+                    )
+                    if f_res.get("success"):
+                        save_game(player, st.session_state.messages)
+                        st.toast(f_res.get("log", "Fusion complete!"), icon="🔮")
+                        st.rerun()
+                    else:
+                        st.warning(f_res.get("message", "Fusion failed."))
         else:
-            st.caption("Need at least 2 abilities to fuse.")
-            
+            st.caption("Need at least 2 skills or abilities to fuse.")
+
+        st.divider()
+        st.markdown("**🔄 Relearn Base Skill**")
+        st.caption("Relearn a previously fused Base Skill (or a foundational Crucible discipline) starting at Novice (`1/1000`) while keeping your `[Fusion]` skill.")
+        relearn_list = mechanics.get_relearnable_base_skills(player) if hasattr(mechanics, "get_relearnable_base_skills") else []
+        if relearn_list:
+            def _fmt_relearn(idx: int) -> str:
+                entry = relearn_list[idx]
+                if entry.get("was_fused"):
+                    return f"🔄 {entry['name']} — [Previously fused into {entry.get('fused_into', '[Fusion] Skill')}]"
+                return f"📘 {entry['name']} — [Foundational Base Skill]"
+
+            sel_rel_idx = st.selectbox(
+                "Base Skill to Relearn",
+                range(len(relearn_list)),
+                format_func=_fmt_relearn,
+                key="fusion_chamber_relearn_select"
+            )
+            if st.button("🔄 Relearn Base Skill (1/1000)", key="btn_fusion_chamber_relearn", use_container_width=True):
+                target_skill_name = relearn_list[sel_rel_idx]["name"]
+                rel_res = mechanics.relearn_base_skill(player, target_skill_name, starting_mastery=1)
+                if rel_res.get("success"):
+                    save_game(player, st.session_state.messages)
+                    st.toast(rel_res.get("message", f"Relearned {target_skill_name}!"), icon="🔄")
+                    st.rerun()
+                else:
+                    st.warning(rel_res.get("message", "Could not relearn skill."))
+        else:
+            st.caption("All known base skills are currently active in your Skill Matrix.")
+
     with st.expander("🎒 Backpack Inventory", expanded=False):
         rarity_colors = {"Common": "⚪", "Uncommon": "🟢", "Rare": "🔵", "Epic": "🟣", "Legendary": "🟠", "Mythic": "🔴", "Unique": "✨"}
         if hasattr(mechanics, "enrich_inventory_list"):
@@ -2470,28 +2617,6 @@ if prompt := (dev_prompt or chat_prompt):
                     for slot, item in equip.items():
                         if slot in st.session_state.player["equipped"]:
                             st.session_state.player["equipped"][slot] = item
-                            
-                skill_updates = state_updates.get("skill_updates") or []
-                if isinstance(skill_updates, list):
-                    for su in skill_updates:
-                        if isinstance(su, dict) and "name" in su:
-                            name = su["name"]
-                            change = int(su.get("mastery_change", 1))
-                            desc = su.get("description", "")
-                            
-                            if name in st.session_state.player["skills"]:
-                                st.session_state.player["skills"][name]["mastery"] = min(1000, st.session_state.player["skills"][name]["mastery"] + change)
-                                if desc: st.session_state.player["skills"][name]["description"] = desc
-                            else:
-                                st.session_state.player["skills"][name] = {"mastery": max(1, change), "description": desc}
-                                
-                for k in ["spells_add", "feats_add", "racial_abilities_add"]:
-                    adds = state_updates.get(k) or []
-                    if isinstance(adds, list):
-                        target_list = k.replace("_add", "")
-                        for a in adds:
-                            if a not in st.session_state.player[target_list]:
-                                st.session_state.player[target_list].append(a)
                                 
                 for k in ["spells_remove", "feats_remove", "racial_abilities_remove"]:
                     removes = state_updates.get(k) or []
@@ -2532,6 +2657,8 @@ if prompt := (dev_prompt or chat_prompt):
                         if search_title.lower() in active_title.lower():
                             st.session_state.player["quests"].remove(active_q)
                             break
+            elif st.session_state.get("pending_fusion_components"):
+                apply_player_state_updates({})
 
             combat_logs = turn_data.get("combat_logs", [])
             hp_changes = turn_data.get("hp_changes", {})
