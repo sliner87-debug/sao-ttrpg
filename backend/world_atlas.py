@@ -2190,19 +2190,196 @@ def format_zone_gm_briefing(zone: Optional[Dict[str, Any]]) -> str:
     grafts_str = ", ".join(zone.get("signature_grafts", [])) or "None"
     comps_str = ", ".join(zone.get("stationed_companions", [])) or "None"
 
+    quadrant = zone.get("quadrant", "Inner Core (0-25 mi)")
+    v_layers = VERTICAL_LAYERS_BY_SECTOR.get(quadrant, {})
+    v_above = ", ".join(v_layers.get("above_ground", [])[:4]) or "Local Ridges & Towers"
+    v_street = ", ".join(v_layers.get("street_level", [])[:4]) or "Regional Highways & Rail"
+    v_sub = ", ".join(v_layers.get("subterranean", [])[:4]) or "Bedrock Tunnels & Shafts"
+    v_water = ", ".join(v_layers.get("below_waterline", [])[:4]) or "River Channels & Reservoirs"
+
     return f"""
 [ACTIVE 100-MILE ATLAS ZONE TELEMETRY]:
 - Zone Designation: {zone['name']} — "{zone.get('subtitle', '')}"
-- Classification: {cat_str} | Quadrant: {zone.get('quadrant', '')} ({zone.get('distance_miles', 0)} mi {zone.get('compass_dir', '')} of Washington Borough)
+- Classification: {cat_str} | Quadrant: {quadrant} ({zone.get('distance_miles', 0)} mi {zone.get('compass_dir', '')} of Washington Borough)
 - Recommended Level Range: Lv. {zone.get('level_min', 1)}–{zone.get('level_max', 10)} | Safe-Zone Status: {zone.get('is_safe_zone', False)}
 - Controlling Faction: {zone.get('controlling_faction', 'Unclaimed')}
 - Resident Fantasy Races & Enclaves (D&D / Pathfinder / Fantasy Series): {races_str}
 - Real-World Geography & History: {zone.get('real_world_lore', '')}
 - Cardinal System Merge Architecture: {zone.get('system_merge_lore', '')}
 - Special Zone Mechanics: {zone.get('special_mechanics', '')}
+- Sector 4-Layer Vertical Engineering Context:
+  * Layer 1 (Above-Ground / Skyscrapers / Mountains): {v_above}
+  * Layer 2 (Street-Level Highways & Surface Rail): {v_street}
+  * Layer 3 (Subterranean Tunnels / Subways / Bunkers / Mines): {v_sub}
+  * Layer 4 (Below-the-Waterline Bathymetry & Submerged Ruins): {v_water}
 - Local & Dispersed Monster Ecology (D&D 3.5e/5E, Pathfinder 1E/2E, Witcher, FF, Monster Hunter, SAO): {monsters_str} (Dispersed Highlights: {disp_monsters_str})
 - Zone Boss / Apex Spawn: {zone.get('boss') or zone.get('apex_fantasy_spawn') or 'None'} (Apex Multi-Universe Threat: {zone.get('apex_fantasy_spawn', 'None')})
 - Harvestable Regional Ores & Resources: {res_str}
 - Signature Golem & Monster Grafts: {grafts_str}
 - Known Companion Sightings at Node: {comps_str}
 """
+
+
+# =============================================================================
+# 4-LAYER VERTICAL ENGINEERING SURVEY REGISTRY BY SECTOR
+# =============================================================================
+VERTICAL_LAYERS_BY_SECTOR: Dict[str, Dict[str, Any]] = {
+    "Inner Core (0-25 mi)": {
+        "sector_code": "Sector 1 (Primary Core: 0–25 Mi)",
+        "vertical_span_ft": "+1,603 ft ASL (Catfish Fire Tower) to -2,700 ft (Oxford Washington Mine)",
+        "above_ground": [
+            "Bethlehem Steel Blast Furnaces A–E (240 ft tall, 5 furnaces & 20 Cowper stoves)",
+            "Picatinny Arsenal Armaments Test Tower (200 ft) & 6,500-Acre Gorge Complex",
+            "Paulinskill Viaduct (1,100 ft long x 115 ft high hollow-spandrel concrete arches)",
+            "Delaware River Viaduct (1,452 ft long x 65 ft high)",
+            "Yards Creek Pumped-Storage Upper Reservoir (1,555 ft ASL, 700-ft penstock drop)",
+            "UACNJ Jenny Jump Astronomical Observatory (6 domes at 1,100 ft ASL)",
+            "Cornish & Beethoven 5-Story Brick Organ Factories (Washington Borough)"
+        ],
+        "street_level": [
+            "NJ-31 & NJ-57 Crossroads (Washington Borough Broad St & Belvidere Ave)",
+            "I-78 & I-80 (Delaware Water Gap S-Curve Gorge Expressways)",
+            "US-22, US-46, US-206, NJ-15, NJ-24, NJ-94, PA-33, PA-611",
+            "Norfolk Southern Lehigh Line (30-40 freight trains/day) & Washington Secondary",
+            "NJ Transit Morristown/Boonton Line & Raritan Valley Line (High Bridge)",
+            "Lackawanna Cut-Off & 3.1-Mile Pequest Fill (110 ft tall embankment)",
+            "Dover & Rockaway River RR (Picatinny Military Spur) & Bel-Del Railway"
+        ],
+        "subterranean": [
+            "Van Nest Gap (Oxford) Rail Tunnel (3,002 ft 1862 brick/gneiss bore + central air shaft, 1.6 mi N of Washington)",
+            "Musconetcong / Pattenburg Twin Rail Bores (4,893 ft longest rail tunnel in NJ)",
+            "Manunka Chunk Twin Bores (938 ft side-by-side tunnels) & Roseville Tunnel (1,024 ft)",
+            "AT&T Long Lines Netcong Nuclear Bunker (45,000 sq ft, 2 subterranean levels, EMP-shielded)",
+            "AT&T Long Lines Chester Hardened Coaxial Node & 600+ Picatinny Earth-Covered Bunkers",
+            "Oxford Washington Mine (-2,700 ft depth, 15 flooded levels) & Mount Hope New Leonard Shaft (-2,694 ft)",
+            "Sterling Hill Zinc Mine (-2,675 ft, 35 mi UV-fluorescent tunnels) & Hibernia 1.5-Mi Bat Tunnel"
+        ],
+        "below_waterline": [
+            "Merrill Creek Reservoir (-225 ft deepest water in NJ + 200-ft submerged tower & 3.2-mi rock tunnel)",
+            "Round Valley Reservoir (-180 ft depth + submerged 19th-century village of McPherson)",
+            "Spruce Run Reservoir (-73 ft depth + submerged 1760 Union Forge ruins)",
+            "Lake Hopatcong (-58 ft depth + submerged 1750/1828 dams & sunken steamboats)",
+            "Delaware Water Gap (-61 ft bedrock scour hole) & Morris Canal Subterranean Scotch-Turbine Vaults"
+        ]
+    },
+    "West & Northwest (25-100 mi)": {
+        "sector_code": "Sector 2 (West & NW: 25–100 Mi)",
+        "vertical_span_ft": "+2,215 ft ASL (Camelback / High Point) to -2,200 ft (Southern Anthracite Synclines)",
+        "above_ground": [
+            "Allentown PPL Building (322 ft / 24 stories) & Five City Center (200 ft)",
+            "Reading Pagoda atop Mt. Penn (886 ft ASL cliffside overlook, 620-ft drop)",
+            "11-Story Locust Summit Central Coal Breaker (158 ft tall) & Huber Breaker Site",
+            "Tunkhannock (Nicholson) Viaduct (2,375 ft long x 240 ft high concrete arch bridge)",
+            "Tobyhanna Army Depot (1,400-acre DoD C4ISR radar & satcom complex at 2,130 ft ASL)",
+            "High Point Monument (1,803 ft peak + 220 ft obelisk) & Concrete City (1911 ghost town)"
+        ],
+        "street_level": [
+            "I-80, I-81, I-84, I-380, I-78 & I-476 (PA Turnpike Northeast Extension)",
+            "US-22, US-209, US-309, US-222, US-6, US-11, PA-61 (buckled Centralia highway)",
+            "Norfolk Southern Allentown Classification Hump Yard (46 tracks, 190 acres)",
+            "Norfolk Southern Enola / Harrisburg Yards & Steamtown NHS Roundhouse (Scranton)",
+            "Reading Blue Mountain & Northern RR (Lehigh Gorge Mainline) & Delaware-Lackawanna RR"
+        ],
+        "subterranean": [
+            "Laurel Line Crown Avenue Tunnel (4,747 ft interurban bore under Scranton)",
+            "Lehigh Tunnel Twin Highway Bores (4,380 ft through Blue Mountain on I-476)",
+            "Vosburg Tunnel (3,902 ft), Nesquehoning Tunnel (3,800 ft piercing 50-ft Mammoth Coal Vein!), Mahanoy Tunnel (3,558 ft)",
+            "7.8-Mile Jeddo Mine Drainage Tunnel (41,200+ ft subterranean river beneath Hazleton, 40M+ gal/day)",
+            "7.5-Mile Lausanne Drainage Tunnel, 3.06-Mile Audenried Tunnel & 1.42-Mile Butler Mine Tunnel",
+            "Centralia Burning Underground Coal Seams (1,000°F–1,350°F pyrolysis down to -300 ft)",
+            "Lansford No. 9, Pioneer Tunnel, Lackawanna #190 Slope (-300 ft) & AT&T Finland/Dalmatia Nuclear Bunkers"
+        ],
+        "below_waterline": [
+            "1959 Knox Mine Disaster Riverbed Breach (Port Griffith — 10.3B gal & 30 rail cars swallowed into mine workings)",
+            "Lake Wallenpaupack (-60 ft depth + submerged 19th-century town of Wilsonville & 17 mi of roads)",
+            "Beltzville Lake (-127 ft depth + submerged village of Pohopoco & covered bridges)",
+            "Harveys Lake (-102 ft depth + sunken steamboats *Natoma* & *A.R.iser* and underwater piers)",
+            "Lehigh Gorge Submerged 1838 Stone Dams & 30-Foot High Locks"
+        ]
+    },
+    "North & East (25-100 mi)": {
+        "sector_code": "Sector 3 (North & East: 25–100 Mi)",
+        "vertical_span_ft": "+4,180 ft ASL (Slide Mountain) / +1,776 ft (One WTC) to -1,114 ft BSL (Catskill Aqueduct Siphon)",
+        "above_ground": [
+            "One World Trade Center (1,776 ft), Central Park Tower (1,550 ft), Empire State (1,454 ft), Steinway (1,428 ft), One Vanderbilt (1,401 ft)",
+            "33 Thomas Street AT&T Long Lines Building (550-ft windowless nuclear-hardened TITANPOINTE tower)",
+            "99 Hudson St (900 ft, Jersey City) & Brooklyn Tower (1,066 ft)",
+            "George Washington Bridge (604-ft towers, 14 lanes), Verrazzano-Narrows (693-ft towers), Brooklyn/Manhattan/Queensboro Bridges",
+            "West Point USMA Granite Fortress & US Bullion Depository (~22% of US gold reserves)",
+            "Sandy Hook Nike Missile Base NY-56, Bell Labs CMB Horn Antenna, Camp Evans Radar & Brookhaven Lab"
+        ],
+        "street_level": [
+            "I-95 (NJ Turnpike / Cross Bronx), I-80, I-87 (NY Thruway), I-287, I-78, I-495 (LIE), I-278 (BQE)",
+            "Garden State Parkway, Palisades Interstate Parkway & Taconic State Parkway",
+            "Amtrak Northeast Corridor, NJ Transit (11 lines), MTA Metro-North & LIRR",
+            "Sunnyside Yard (182 acres, Queens), Hoboken Terminal (17 tracks), Oak Island Hump Yard & Croton-Harmon Yard"
+        ],
+        "subterranean": [
+            "NYC Subway System (472 stations, 850 track miles, reaching -180 ft in Manhattan Schist at 190th/191st St + 1904 City Hall Ghost Station)",
+            "Grand Central Terminal Undercity (67 tracks on 2 levels + -180 ft Grand Central Madison LIRR caverns + -109 ft secret M42 vault + FDR's Track 61)",
+            "28+ Subaqueous Hudson & East River Tubes (PATH Tubes -97 ft, Amtrak North/East River Tunnels, 63rd St Double-Deck -130 ft, Holland/Lincoln/Brooklyn-Battery Tunnels)",
+            "Otisville Tunnel (5,314 ft), Edgewater (5,057 ft), Weehawken (-160 ft station), Bergen Arches & West Point CSX Tunnel (under USMA Parade Ground)",
+            "Catskill Aqueduct Hudson Siphon (-1,114 ft below sea level in granite!) & 85-Mile Delaware Aqueduct (-600 to -900 ft)",
+            "NYC Water Tunnels #1, #2, and #3 (-500 to -800 ft in bedrock)",
+            "Federal Reserve Bank of NY Gold Vault (-80 ft, 6,331 tons gold, 90-ton cylinder lock), Rosendale Iron Mountain Nuclear Cave Vaults & Brookhaven 2.4-Mi RHIC Collider Tunnel"
+        ],
+        "below_waterline": [
+            "Hudson River Fjord 'World's End' at West Point (-216 ft depth + submerged 1778 Great Iron Chain cribs & 200+ wrecks)",
+            "Ashokan Reservoir (-190 ft depth + 12 submerged Catskill villages including Olivebridge & West Hurley)",
+            "Rondout Reservoir (-175 ft, 3 drowned towns), Kensico (-155 ft, intact 1885 stone dam 110 ft underwater!) & New Croton (-141 ft, intact 1842 dam)",
+            "Boonton Reservoir (-105 ft, submerged Old Boonton Ironworks) & Wanaque Reservoir (-90 ft, submerged Boardville)",
+            "East River 'Hell Gate' (-108 ft blasted tidal trench & 1780 British treasure frigate HMS *Hussar* wreck)"
+        ]
+    },
+    "South & Southwest (25-100 mi)": {
+        "sector_code": "Sector 4 (South & SW: 25–100 Mi)",
+        "vertical_span_ft": "+1,121 ft (Comcast Tech Center) to -1,400 ft (French Creek & Cornwall Mine Shafts)",
+        "above_ground": [
+            "Philadelphia Skyline: Comcast Tech Center (1,121 ft), Comcast Center (974 ft), One & Two Liberty Place (945 ft / 848 ft), BNY Mellon (792 ft)",
+            "Philadelphia City Hall (548-ft world's tallest freestanding masonry building with 22-ft-thick walls)",
+            "Atlantic City Ocean Casino (710 ft), Barnegat Lighthouse (165 ft) & Princeton Cleveland Tower (173 ft)",
+            "Walt Whitman Bridge (2,000-ft span), Ben Franklin Bridge (1,750-ft span + PATCO rail decks) & Commodore Barry Bridge (1,644-ft cantilever)",
+            "Lakehurst Hangar No. 1 (966x350x224 ft airship cathedral + 1.5-mi jet catapult tracks)",
+            "Princeton PPPL Fusion Tokamak (100M °C), Limerick (507-ft) & Three Mile Island (372-ft) Nuclear Cooling Towers",
+            "Doylestown's 3 'Mercer Mile' Poured-Concrete Castles (Fonthill, 6-Story Mercer Museum, Tile Works) & Eastern State Penitentiary"
+        ],
+        "street_level": [
+            "I-95, NJ Turnpike, I-195, I-295, I-76 (Schuylkill Expressway & PA Turnpike), I-276, I-476, I-676",
+            "Atlantic City Expressway, Garden State Parkway, US-1, US-30, US-130, US-202, US-206, NJ-70, NJ-72",
+            "Amtrak Northeast Corridor & Keystone Corridor (110 mph Philly-Lancaster-Harrisburg)",
+            "SEPTA Regional Rail (13 lines), PATCO High-Speed Line, NJ Transit River Line & Atlantic City Line",
+            "Conrail Pavonia Hump Yard (Camden), Greenwich Yard (South Philly) & 30th Street Station"
+        ],
+        "subterranean": [
+            "SEPTA Broad Street 4-Track Subway (stacked 3 levels deep beneath City Hall + sealed 1989 Spring Garden & unfinished 1915 Arch St Ghost Stations)",
+            "SEPTA Market-Frankford Subway (+ twin underwater Schuylkill tubes) & Subway-Surface Trolley Tunnels",
+            "PATCO Locust Street Subway (+ Franklin Square Station), 1.7-Mile Center City Commuter Tunnel & 3.5-Mile Center City Underground Pedestrian Concourse",
+            "Pennsylvania Ave Subway/Tunnel (2,888-ft Callowhill Cut), Black Rock Tunnel (1,932 ft, 1837) & Union Canal Tunnel (729 ft, 1827 — oldest US tunnel)",
+            "Princeton Firestone Library 3-Level Subterranean Book Vaults (70+ miles of underground shelving) & 12-Mile Campus Steam Tunnel Grid",
+            "Cornwall Iron Mine (-1,225 ft vertical / 2,985 ft incline shafts) & French Creek Mine (-1,400 ft incline)",
+            "Fort Mifflin 1771 Subterranean Brick Casemates & Eastern State Penitentiary's Willie Sutton 97-ft Escape Tunnel"
+        ],
+        "below_waterline": [
+            "Delaware River 45-Ft Shipping Channel, Navy Yard Reserve Basin ('Ghost Fleet') & 1,092-ft Battleship Drydocks #2 & #3",
+            "Submerged 1777 Revolutionary War *Chevaux-de-Frise* (iron-tipped river frames) & sunken 64-gun British warship HMS *Augusta* wreck",
+            "Cornwall 400-Foot-Deep Flooded Open-Pit Crater Lake (submerged mining shovels, crushers & haul roads)",
+            "The Blue Hole of Winslow (55°F artesian spring) & 17.7-Trillion-Gallon Kirkwood-Cohansey Subterranean Aquifer",
+            "Mullica River 1778 Chestnut Neck Shipwrecks, Lake Galena (-55 ft, submerged New Galena lead mines & 1832 bridge) & Marsh Creek Lake (-75 ft, submerged Milford Mills)"
+        ]
+    }
+}
+
+
+def get_sector_vertical_layers(quadrant_or_zone_id: str) -> Dict[str, Any]:
+    """
+    Returns the 4-layer vertical engineering survey (Above-Ground, Street-Level,
+    Subterranean, Below-the-Waterline) for a sector quadrant or zone ID.
+    """
+    if quadrant_or_zone_id in VERTICAL_LAYERS_BY_SECTOR:
+        return VERTICAL_LAYERS_BY_SECTOR[quadrant_or_zone_id]
+    zone = WORLD_ATLAS_ZONES.get(quadrant_or_zone_id) or resolve_zone_from_location(quadrant_or_zone_id)
+    if zone:
+        q = zone.get("quadrant", "Inner Core (0-25 mi)")
+        return VERTICAL_LAYERS_BY_SECTOR.get(q, VERTICAL_LAYERS_BY_SECTOR["Inner Core (0-25 mi)"])
+    return VERTICAL_LAYERS_BY_SECTOR["Inner Core (0-25 mi)"]
+

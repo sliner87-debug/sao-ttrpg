@@ -6,22 +6,61 @@ Handles mathematical crunch, dice logic, encumbrance physics, and equipment stat
 import math
 import copy
 import re
-from backend.world_atlas import (
-    WORLD_ATLAS_ZONES,
-    resolve_zone_from_location,
-    is_location_safe_zone,
-    get_zones_by_category,
-    get_zone_salvage_yields,
-    calculate_travel_telemetry,
-    format_zone_gm_briefing,
-)
-from backend.bestiary_compendium import (
-    BESTIARY_COMPENDIUM,
-    ZONE_DISPERSED_ECOLOGY,
-    get_zone_dispersed_ecology,
-    search_bestiary,
-    roll_random_zone_encounter,
-)
+try:
+    from backend.world_atlas import (
+        WORLD_ATLAS_ZONES,
+        resolve_zone_from_location as _wa_resolve_zone,
+        is_location_safe_zone as _wa_is_safe_zone,
+        get_zones_by_category,
+        get_zone_salvage_yields,
+        calculate_travel_telemetry,
+        format_zone_gm_briefing,
+        get_sector_vertical_layers,
+    )
+except Exception:
+    WORLD_ATLAS_ZONES = {}
+    _wa_resolve_zone = None
+    _wa_is_safe_zone = None
+    get_zones_by_category = None
+    get_zone_salvage_yields = None
+    calculate_travel_telemetry = None
+    format_zone_gm_briefing = None
+    get_sector_vertical_layers = None
+
+try:
+    from backend.bestiary_compendium import (
+        BESTIARY_COMPENDIUM,
+        ZONE_DISPERSED_ECOLOGY,
+        get_zone_dispersed_ecology,
+        search_bestiary,
+        roll_random_zone_encounter,
+    )
+except Exception:
+    BESTIARY_COMPENDIUM = {}
+    ZONE_DISPERSED_ECOLOGY = {}
+    get_zone_dispersed_ecology = None
+    search_bestiary = None
+    roll_random_zone_encounter = None
+
+def resolve_zone_from_location(location_name: str, x: int = None, y: int = None):
+    """Resilient wrapper delegating to backend.world_atlas.resolve_zone_from_location."""
+    try:
+        if _wa_resolve_zone:
+            return _wa_resolve_zone(location_name, x=x, y=y)
+        import backend.world_atlas as _wa
+        return _wa.resolve_zone_from_location(location_name, x=x, y=y)
+    except Exception:
+        return None
+
+def is_location_safe_zone(location_name: str, x: int = None, y: int = None) -> bool:
+    """Resilient wrapper delegating to backend.world_atlas.is_location_safe_zone."""
+    try:
+        if _wa_is_safe_zone:
+            return _wa_is_safe_zone(location_name, x=x, y=y)
+        import backend.world_atlas as _wa
+        return _wa.is_location_safe_zone(location_name, x=x, y=y)
+    except Exception:
+        return False
 
 # --- ITEM WEIGHT HEURISTICS ---
 DEFAULT_WEIGHT_MAP = {

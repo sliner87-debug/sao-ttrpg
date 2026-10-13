@@ -1,15 +1,23 @@
 import streamlit as st
 import json
 import os
+import sys
 import time
-import importlib
 import base64
 import re
+
+# Ensure base directory is in sys.path for clean, reliable imports
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 import backend.gm_engine as gm_engine
 import backend.actor_engine as actor_engine
 import backend.mechanics as mechanics
 import backend.character_generator as cg
-importlib.reload(cg)
+import backend.world_atlas as world_atlas
+import backend.bestiary_compendium as bestiary
+
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="The Fractured Overlay", page_icon="🗡️", layout="wide")
@@ -2051,9 +2059,9 @@ def render_game_hud():
 
     # Regional Hub & Fast Actions + 100-Mile Fractured Atlas
     curr_loc = st.session_state.player.get("location", "")
-    active_atlas_zone = mechanics.resolve_zone_from_location(curr_loc, x=map_state.get("player_x"), y=map_state.get("player_y"))
+    active_atlas_zone = world_atlas.resolve_zone_from_location(curr_loc, x=map_state.get("player_x"), y=map_state.get("player_y"))
     is_in_safe_zone = (
-        mechanics.is_location_safe_zone(curr_loc, x=map_state.get("player_x"), y=map_state.get("player_y"))
+        world_atlas.is_location_safe_zone(curr_loc, x=map_state.get("player_x"), y=map_state.get("player_y"))
         or "washington" in curr_loc.lower()
         or (map_state.get("player_x") == 50 and map_state.get("player_y") == 50)
     )
@@ -2147,7 +2155,7 @@ def render_game_hud():
 
         quad_filter = None if sel_quad_label.startswith("All") else sel_quad_label
         cat_filter = cat_label_map[sel_cat_label]
-        filtered_zones = mechanics.get_zones_by_category(category=cat_filter, quadrant=quad_filter)
+        filtered_zones = world_atlas.get_zones_by_category(category=cat_filter, quadrant=quad_filter)
 
         if not filtered_zones:
             st.info("No zones match the selected filters.")
@@ -2169,8 +2177,8 @@ def render_game_hud():
 
             sel_zone_label = st.selectbox("Select Destination Zone:", list(zone_Display_map.keys()), key="atlas_zone_select")
             target_z_id = zone_Display_map[sel_zone_label]
-            target_z = mechanics.WORLD_ATLAS_ZONES[target_z_id]
-            telemetry = mechanics.calculate_travel_telemetry(curr_loc, target_z_id, st.session_state.player)
+            target_z = world_atlas.WORLD_ATLAS_ZONES[target_z_id]
+            telemetry = world_atlas.calculate_travel_telemetry(curr_loc, target_z_id, st.session_state.player)
 
             with st.container(border=True):
                 lv_min, lv_max = target_z.get("level_range", (1, 5))
@@ -2193,6 +2201,27 @@ def render_game_hud():
                     st.caption(f"🦾 **Harvestable Grafts:** {', '.join(target_z['signature_grafts'])}")
                 if target_z.get("environmental_hazards"):
                     st.caption(f"⚠️ **Hazards:** {', '.join(target_z['environmental_hazards'])}")
+
+                try:
+                    import backend.world_atlas as wa_mod
+                    v_info = wa_mod.get_sector_vertical_layers(target_z_id)
+                    if v_info:
+                        with st.expander(f"📐 4-Layer Pre-Initialization Engineering Survey ({v_info.get('sector_code', '')})"):
+                            st.caption(f"**Vertical Datum Span:** `{v_info.get('vertical_span_ft', '')}`")
+                            st.markdown("**🏙️ Layer 1 — Above-Ground Skyscrapers, Bridges & Mountain Installations:**")
+                            for item in v_info.get("above_ground", [])[:4]:
+                                st.caption(f"• {item}")
+                            st.markdown("**🛣️ Layer 2 — Street-Level Highways & Surface Railroads:**")
+                            for item in v_info.get("street_level", [])[:4]:
+                                st.caption(f"• {item}")
+                            st.markdown("**🚇 Layer 3 — Subterranean Tunnels, Subways, Nuclear Bunkers & Deep Mines:**")
+                            for item in v_info.get("subterranean", [])[:4]:
+                                st.caption(f"• {item}")
+                            st.markdown("**🌊 Layer 4 — Below-the-Waterline Bathymetry & Submerged Ruins:**")
+                            for item in v_info.get("below_waterline", [])[:4]:
+                                st.caption(f"• {item}")
+                except Exception:
+                    pass
 
                 if st.button(f"🧭 Dispatch Expedition to {target_z['name']}", key=f"btn_travel_{target_z_id}", use_container_width=True):
                     st.session_state.player["location"] = target_z["name"]
@@ -2231,7 +2260,7 @@ def render_game_hud():
                 "Elder Scrolls",
             ]
             sel_origin = st.selectbox("Filter by Source Universe:", origin_opts, key="bestiary_origin_filter")
-            matched_creatures = mechanics.search_bestiary(origin_system=sel_origin)
+            matched_creatures = bestiary.search_bestiary(origin_system=sel_origin)
             if matched_creatures:
                 c_map = {f"[Lv.{c['cr_level']}] {c['name']} ({c['origin']})": c for c in matched_creatures}
                 sel_c_label = st.selectbox("Select Creature Entry:", list(c_map.keys()), key="bestiary_creature_select")
@@ -2245,13 +2274,13 @@ def render_game_hud():
                         for ab in c_entry["signature_abilities"]:
                             st.caption(f"• {ab}")
                     if c_entry.get("habitats"):
-                        hab_names = [mechanics.WORLD_ATLAS_ZONES[h]["name"] if h in mechanics.WORLD_ATLAS_ZONES else h for h in c_entry["habitats"]]
+                        hab_names = [world_atlas.WORLD_ATLAS_ZONES[h]["name"] if h in world_atlas.WORLD_ATLAS_ZONES else h for h in c_entry["habitats"]]
                         st.caption(f"🗺️ **100-Mile Habitats:** {', '.join(hab_names)}")
                     if c_entry.get("loot_drops"):
                         st.caption(f"💎 **Harvestable Spoils & Grafts:** {', '.join(c_entry['loot_drops'])}")
 
         with b_tab2:
-            race_map = {f"{r_data['name']} [{r_data.get('genre', 'Fantasy')}]": r_data for r_data in character_generator.RACIAL_LINEAGES.values()}
+            race_map = {f"{r_data['name']} [{r_data.get('genre', 'Fantasy')}]": r_data for r_data in cg.RACIAL_LINEAGES.values()}
             sel_r_label = st.selectbox("Inspect Lineage:", list(race_map.keys()), key="bestiary_race_select")
             r_entry = race_map[sel_r_label]
             with st.container(border=True):
