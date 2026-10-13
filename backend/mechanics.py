@@ -189,8 +189,16 @@ def calculate_ac(player_state, encumbrance=None):
     if "shield" in off_hand:
         shield_bonus = 0 if dur_pens.get("shield_broken", False) else 2
     
+    # Golem-Grafts AC Bonus
+    graft_ac_bonus = 0
+    installed_grafts = player_state.get("graft_system", {}).get("installed_grafts", {})
+    if isinstance(installed_grafts, dict) and "dermal" in installed_grafts:
+        if installed_grafts["dermal"].get("key") == "subdermal_carapace_weave":
+            graft_ac_bonus += 2
+            
     ac_pen = dur_pens.get("ac_penalty", 0)
-    return max(10, base_ac + armor_bonus + shield_bonus - ac_pen)
+    return max(10, base_ac + armor_bonus + shield_bonus + graft_ac_bonus - ac_pen)
+
 
 
 # =====================================================================
@@ -2322,4 +2330,470 @@ def salvage_materials(player_state, target_type="construct", d20_roll=None):
         "total_roll": total_roll,
         "log": log
     }
+
+
+# =====================================================================
+# PHASE M4: GOLEM-GRAFTS & ABILITY SLOTTING MATRIX
+# =====================================================================
+
+CANONICAL_GRAFTS = {
+    "golem_hydraulic_arm": {
+        "key": "golem_hydraulic_arm",
+        "name": "Golem Hydraulic Arm",
+        "allowed_slots": ["arm_left", "arm_right"],
+        "strain": 15,
+        "col_cost": 2500,
+        "stat_bonuses": {"STR": 2},
+        "description": "Titan-hydraulic pistons allow single-handed structural crushing and grant +2 STR checks.",
+        "effect": "+2 STR, +10 unarmed bludgeoning damage"
+    },
+    "aether_resonant_ocular": {
+        "key": "aether_resonant_ocular",
+        "name": "Aether-Resonant Ocular",
+        "allowed_slots": ["ocular"],
+        "strain": 10,
+        "col_cost": 1800,
+        "stat_bonuses": {"WIS": 2},
+        "description": "Crystalline runic lens revealing invisible entities, secret conduits, and ley-line currents.",
+        "effect": "+2 WIS, Darkvision (120ft) & Ley-Line Sight (+3 to investigate secrets)"
+    },
+    "subdermal_carapace_weave": {
+        "key": "subdermal_carapace_weave",
+        "name": "Subdermal Carapace Weave",
+        "allowed_slots": ["dermal"],
+        "strain": 20,
+        "col_cost": 3500,
+        "stat_bonuses": {"CON": 1},
+        "description": "Flexible graphene-chitin mesh woven beneath skin layers, blunting incoming ballistic and slashing impacts.",
+        "effect": "+2 AC, Damage Reduction (DR 2 Physical), +1 CON"
+    },
+    "spring_loaded_golem_greaves": {
+        "key": "spring_loaded_golem_greaves",
+        "name": "Spring-Loaded Golem Greaves",
+        "allowed_slots": ["leg_left", "leg_right"],
+        "strain": 12,
+        "col_cost": 2000,
+        "stat_bonuses": {"DEX": 1},
+        "description": "Pneumatic kickback joints amplifying leap distance, running velocity, and acrobatic recovery.",
+        "effect": "+10ft Movement Speed, +2 to DEX saving throws, +1 DEX"
+    },
+    "neural_overclock_cortex": {
+        "key": "neural_overclock_cortex",
+        "name": "Neural Overclock Cortex",
+        "allowed_slots": ["neural"],
+        "strain": 18,
+        "col_cost": 4000,
+        "stat_bonuses": {"INT": 2},
+        "description": "Liquid-crystal synaptic booster allowing multi-threaded thought processes and expanded ability memory.",
+        "effect": "+2 INT, +1 Active Ability Slot in Matrix Memory"
+    },
+    "leyline_conduit_spine": {
+        "key": "leyline_conduit_spine",
+        "name": "Leyline Conduit Spine",
+        "allowed_slots": ["spine"],
+        "strain": 14,
+        "col_cost": 3000,
+        "stat_bonuses": {"WIS": 1, "INT": 1},
+        "description": "Gold-threaded spinal shunt maintaining pure mana flow around metallic limbs, shielding spellcasters from graft interference.",
+        "effect": "Harmonizes 2 installed grafts (negates spellcaster penalty), +15 Max Combat Resource"
+    }
+}
+
+BODY_GRAFT_SLOTS = ["arm_left", "arm_right", "leg_left", "leg_right", "spine", "ocular", "dermal", "neural"]
+
+HARMONIZATION_FEATS = {
+    "leyline_conduits": {
+        "name": "Leyline Conduits",
+        "tier": 1,
+        "description": "Gold-threaded conduits woven through bone negate the spellcasting interference of 1 installed Golem-Graft.",
+        "effect": "Negates the -2 Arcane DC penalty for 1 installed Golem-Graft."
+    },
+    "aether_infused_prosthetic": {
+        "name": "Aether-Infused Prosthetic",
+        "tier": 2,
+        "description": "Channel spells directly through metallic limbs, turning golem prosthetics into arcane focuses.",
+        "effect": "+1d4 force/elemental damage to touch and ranged spells channeled through grafts."
+    },
+    "overclocked_matrix": {
+        "name": "Overclocked Matrix",
+        "tier": 3,
+        "description": "Temporarily push cybernetic capacity past safe limits to cast without standard resource drain.",
+        "effect": "Once per encounter, spend 10 Graft Strain to cast an active spell without consuming mana/flux."
+    }
+}
+
+def get_max_graft_strain(player_state):
+    """
+    Max Graft Capacity = (CON * 2) + (Level * 3).
+    """
+    stats = player_state.get("stats", {})
+    con_val = stats.get("CON", 10)
+    level_val = player_state.get("level", 1)
+    return (con_val * 2) + (level_val * 3)
+
+def get_current_graft_strain(player_state):
+    """
+    Calculates total strain from all currently installed golem-grafts.
+    """
+    grafts = player_state.get("graft_system", {}).get("installed_grafts", {})
+    total_strain = 0
+    if isinstance(grafts, dict):
+        for slot, graft_data in grafts.items():
+            if isinstance(graft_data, dict):
+                total_strain += int(graft_data.get("strain", 0))
+    elif isinstance(grafts, list):
+        for g in grafts:
+            if isinstance(g, dict):
+                total_strain += int(g.get("strain", 0))
+    return total_strain
+
+def get_graft_rejection_status(player_state):
+    """
+    Checks if player is suffering from 'System Rejection' due to exceeding Strain capacity.
+    """
+    max_strain = get_max_graft_strain(player_state)
+    cur_strain = get_current_graft_strain(player_state)
+    overflow = max(0, cur_strain - max_strain)
+
+    if overflow == 0:
+        return {
+            "status": "Stable",
+            "label": "🟢 System Stable",
+            "is_rejecting": False,
+            "overflow": 0,
+            "hp_drain": 0,
+            "save_penalty": 0,
+            "description": "Bio-mechanical interfaces operating within physiological tolerances."
+        }
+    else:
+        hp_drain = overflow * 2
+        save_penalty = 2
+        return {
+            "status": "System Rejection",
+            "label": f"🔴 System Rejection (Overflow: +{overflow} Strain)",
+            "is_rejecting": True,
+            "overflow": overflow,
+            "hp_drain": hp_drain,
+            "save_penalty": save_penalty,
+            "description": f"Excessive cybernetic strain is poisoning organic flesh! Suffering -{hp_drain} Max HP and -{save_penalty} to all saving throws."
+        }
+
+def install_graft(player_state, graft_key, body_slot, surgeon_fee_col=None):
+    """
+    Surgically installs a Golem-Graft into a designated body slot during safe-zone clinic downtime.
+    """
+    if graft_key not in CANONICAL_GRAFTS:
+        return {"success": False, "message": f"Unknown graft key '{graft_key}'."}
+
+    graft_def = CANONICAL_GRAFTS[graft_key]
+
+    if body_slot not in BODY_GRAFT_SLOTS:
+        return {"success": False, "message": f"Invalid body slot '{body_slot}'."}
+
+    if body_slot not in graft_def["allowed_slots"]:
+        allowed_str = ", ".join(graft_def["allowed_slots"])
+        return {"success": False, "message": f"{graft_def['name']} can only be installed in: {allowed_str}."}
+
+    # Ensure graft_system data container
+    if "graft_system" not in player_state or not isinstance(player_state["graft_system"], dict):
+        player_state["graft_system"] = {
+            "installed_grafts": {},
+            "current_strain": 0,
+            "max_strain": get_max_graft_strain(player_state)
+        }
+
+    installed = player_state["graft_system"].setdefault("installed_grafts", {})
+
+    if body_slot in installed and installed[body_slot]:
+        existing_name = installed[body_slot].get("name", "Graft")
+        return {"success": False, "message": f"Body slot '{body_slot}' is already occupied by '{existing_name}'. Extract it first."}
+
+    # Verify Col
+    cost = graft_def["col_cost"] if surgeon_fee_col is None else int(surgeon_fee_col)
+    player_col = player_state.get("col", 0)
+    if player_col < cost:
+        return {"success": False, "message": f"Insufficient Col for surgery (Requires {cost:,} Col, has {player_col:,} Col)."}
+
+    # Deduct Col
+    player_state["col"] = player_col - cost
+
+    # Install
+    graft_record = {
+        "key": graft_key,
+        "name": graft_def["name"],
+        "slot": body_slot,
+        "strain": graft_def["strain"],
+        "stat_bonuses": graft_def["stat_bonuses"],
+        "effect": graft_def["effect"],
+        "description": graft_def["description"]
+    }
+    installed[body_slot] = graft_record
+
+    # Apply permanent stat bonuses
+    stats = player_state.setdefault("stats", {"STR": 10, "DEX": 10, "CON": 10, "INT": 10, "WIS": 10, "CHA": 10})
+    for stat, bonus in graft_def["stat_bonuses"].items():
+        if stat in stats:
+            stats[stat] += bonus
+
+    # Update strain tracking
+    cur_strain = get_current_graft_strain(player_state)
+    max_strain = get_max_graft_strain(player_state)
+    player_state["graft_system"]["current_strain"] = cur_strain
+    player_state["graft_system"]["max_strain"] = max_strain
+
+    rejection = get_graft_rejection_status(player_state)
+
+    log = (
+        f"[SURGERY SUCCESS: Installed {graft_def['name']} into {body_slot.title()}! "
+        f"Cost: {cost:,} Col | Strain: {cur_strain}/{max_strain} ({rejection['label']}) | "
+        f"Bonuses: {graft_def['effect']}]"
+    )
+
+    return {
+        "success": True,
+        "graft": graft_record,
+        "cost": cost,
+        "current_strain": cur_strain,
+        "max_strain": max_strain,
+        "rejection": rejection,
+        "log": log
+    }
+
+def remove_graft(player_state, body_slot, removal_fee_col=500):
+    """
+    Surgically extracts an installed Golem-Graft, freeing body slot and strain.
+    """
+    graft_sys = player_state.get("graft_system", {})
+    installed = graft_sys.get("installed_grafts", {})
+
+    if body_slot not in installed or not installed[body_slot]:
+        return {"success": False, "message": f"No graft installed in slot '{body_slot}'."}
+
+    player_col = player_state.get("col", 0)
+    fee = int(removal_fee_col)
+    if player_col < fee:
+        return {"success": False, "message": f"Insufficient Col for surgical extraction (Requires {fee:,} Col)."}
+
+    player_state["col"] = player_col - fee
+    graft_record = installed.pop(body_slot)
+
+    # Revert stat bonuses
+    stats = player_state.setdefault("stats", {})
+    for stat, bonus in graft_record.get("stat_bonuses", {}).items():
+        if stat in stats:
+            stats[stat] = max(1, stats[stat] - bonus)
+
+    # Update strain tracking
+    cur_strain = get_current_graft_strain(player_state)
+    max_strain = get_max_graft_strain(player_state)
+    graft_sys["current_strain"] = cur_strain
+    graft_sys["max_strain"] = max_strain
+
+    # Return salvage scrap to inventory
+    inv = player_state.setdefault("inventory", [])
+    salvage_name = f"Extracted {graft_record['name']} Core"
+    inv.append({
+        "name": salvage_name,
+        "rarity": "Rare",
+        "durability": 50,
+        "max_durability": 100,
+        "qty": 1,
+        "desc": f"Extracted cybernetic prosthetic salvaged from {body_slot}."
+    })
+
+    log = f"[SURGERY EXTRACT: Removed {graft_record['name']} from {body_slot}. Fee: {fee:,} Col | Strain reduced to {cur_strain}/{max_strain}]"
+
+    return {
+        "success": True,
+        "removed_graft": graft_record,
+        "fee": fee,
+        "current_strain": cur_strain,
+        "max_strain": max_strain,
+        "salvaged_item": salvage_name,
+        "log": log
+    }
+
+def calculate_spellcasting_graft_penalty(player_state):
+    """
+    Calculates Arcane DC / spell attack penalty caused by installed metal/golem grafts.
+    Baseline: -2 per installed graft for spellcasters (Mage, Cleric, Psion).
+    Feat 'Leyline Conduits': negates penalty for 1 graft.
+    Graft 'Leyline Conduit Spine': harmonizes 2 grafts.
+    """
+    p_class = normalize_class_key(player_state.get("class", "warrior"))
+    is_caster = p_class in ["mage", "cleric", "psion", "aether_slinger"]
+
+    if not is_caster:
+        return {"penalty": 0, "net_grafts": 0, "harmonized": 0}
+
+    installed = player_state.get("graft_system", {}).get("installed_grafts", {})
+    count = len(installed)
+
+    if count == 0:
+        return {"penalty": 0, "net_grafts": 0, "harmonized": 0}
+
+    # Check for harmonization feats / spinal conduit
+    harmonized = 0
+    feats = [str(f).lower() for f in player_state.get("feats", [])]
+    if any("leyline conduit" in f for f in feats):
+        harmonized += 1
+
+    # Check if Leyline Conduit Spine installed
+    if "spine" in installed and installed["spine"].get("key") == "leyline_conduit_spine":
+        harmonized += 2
+
+    net_unharmonized = max(0, count - harmonized)
+    penalty = net_unharmonized * 2
+
+    return {
+        "penalty": penalty,
+        "total_grafts": count,
+        "harmonized": harmonized,
+        "net_unharmonized": net_unharmonized
+    }
+
+
+# =====================================================================
+# ABILITY & SPELL SLOTTING / MATRIX MEMORY ENGINE
+# =====================================================================
+
+def get_max_ability_slots(player_state):
+    """
+    Slot Caps:
+    - Levels 1–10: 5 Active Slots
+    - Levels 11–20: 10 Active Slots
+    - +1 bonus slot if 'Neural Overclock Cortex' is installed
+    """
+    lvl = player_state.get("level", 1)
+    base_slots = 10 if lvl >= 11 else 5
+
+    # Check for neural graft bonus
+    installed = player_state.get("graft_system", {}).get("installed_grafts", {})
+    bonus_slots = 0
+    if "neural" in installed and installed["neural"].get("key") == "neural_overclock_cortex":
+        bonus_slots += 1
+
+    return base_slots + bonus_slots
+
+def get_slotted_abilities(player_state):
+    """
+    Retrieves current list of actively slotted spells and techniques.
+    """
+    matrix = player_state.get("slotted_abilities", {})
+    if isinstance(matrix, dict):
+        active = matrix.get("active", [])
+        if isinstance(active, list):
+            return active
+    elif isinstance(matrix, list):
+        return matrix
+    return []
+
+def get_available_abilities(player_state):
+    """
+    Aggregates all unlocked active abilities available to be slotted into the Matrix.
+    Combines:
+    - Active Sword Skills / Techniques from player['spells']
+    - Active Techniques from player['feats'] (filtering out purely passive feats)
+    - Racial active abilities (e.g. Telekinetic Grip, Psionic Shielding)
+    """
+    available = []
+    seen = set()
+
+    def add_ability(name, source="Ability"):
+        clean_name = name.split("(")[0].split(":")[0].strip()
+        if clean_name and clean_name.lower() not in seen:
+            seen.add(clean_name.lower())
+            available.append({"name": clean_name, "raw": name, "source": source})
+
+    # Spells and active sword skills
+    for s in player_state.get("spells", []):
+        add_ability(str(s), source="Spell / Technique")
+
+    # Racial abilities
+    for r in player_state.get("racial_abilities", []):
+        r_str = str(r)
+        if "Flaw" not in r_str:
+            add_ability(r_str, source="Racial Power")
+
+    # Active Feats (filtering out purely passive perks)
+    for f in player_state.get("feats", []):
+        f_str = str(f)
+        f_lower = f_str.lower()
+        if any(w in f_lower for w in ["active", "skill", "strike", "burst", "slash", "charge", "wave", "blast", "toss", "step", "shield"]):
+            if not any(w in f_lower for w in ["passive", "evolution:"]):
+                add_ability(f_str, source="Feat / Maneuver")
+
+    return available
+
+def slot_ability(player_state, ability_name):
+    """
+    Slots an ability into active matrix memory.
+    """
+    max_slots = get_max_ability_slots(player_state)
+    matrix = player_state.setdefault("slotted_abilities", {
+        "max_slots": max_slots,
+        "active": []
+    })
+    if not isinstance(matrix.get("active"), list):
+        matrix["active"] = []
+
+    matrix["max_slots"] = max_slots
+    active = matrix["active"]
+
+    clean_target = ability_name.split("(")[0].split(":")[0].strip()
+
+    # Check if already slotted
+    for item in active:
+        if item.lower() == clean_target.lower():
+            return {"success": False, "message": f"'{clean_target}' is already slotted in Active Memory."}
+
+    if len(active) >= max_slots:
+        return {
+            "success": False,
+            "message": f"Active Memory is full ({len(active)}/{max_slots} slots). Unslot an ability first."
+        }
+
+    active.append(clean_target)
+    return {
+        "success": True,
+        "slotted_ability": clean_target,
+        "used_slots": len(active),
+        "max_slots": max_slots,
+        "message": f"Slotted '{clean_target}' into Active Memory ({len(active)}/{max_slots})."
+    }
+
+def unslot_ability(player_state, ability_name):
+    """
+    Unslots an ability from active matrix memory.
+    """
+    matrix = player_state.setdefault("slotted_abilities", {"max_slots": get_max_ability_slots(player_state), "active": []})
+    active = matrix.setdefault("active", [])
+
+    clean_target = ability_name.split("(")[0].split(":")[0].strip().lower()
+    match_idx = -1
+    for idx, item in enumerate(active):
+        if item.split("(")[0].split(":")[0].strip().lower() == clean_target:
+            match_idx = idx
+            break
+
+    if match_idx == -1:
+        return {"success": False, "message": f"'{ability_name}' is not currently slotted."}
+
+    removed = active.pop(match_idx)
+    return {
+        "success": True,
+        "unslotted_ability": removed,
+        "used_slots": len(active),
+        "max_slots": matrix.get("max_slots", 5),
+        "message": f"Unslotted '{removed}' from Active Memory."
+    }
+
+def is_ability_slotted(player_state, ability_name):
+    """
+    Verifies if a specific ability or technique is loaded in active memory.
+    """
+    active = get_slotted_abilities(player_state)
+    target = ability_name.split("(")[0].split(":")[0].strip().lower()
+    return any(a.split("(")[0].split(":")[0].strip().lower() == target for a in active)
+
 

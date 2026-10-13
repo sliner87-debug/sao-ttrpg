@@ -643,6 +643,11 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     armor_class = mechanics.calculate_ac(player_state, encumbrance)
     res_info = mechanics.get_combat_resource_display(player_state) if hasattr(mechanics, "get_combat_resource_display") else {"name": "Resource", "display": "N/A"}
     dur_pens = mechanics.calculate_durability_penalties(player_state) if hasattr(mechanics, "calculate_durability_penalties") else {}
+    cur_strain = mechanics.get_current_graft_strain(player_state) if hasattr(mechanics, "get_current_graft_strain") else 0
+    max_strain = mechanics.get_max_graft_strain(player_state) if hasattr(mechanics, "get_max_graft_strain") else 10
+    rejection = mechanics.get_graft_rejection_status(player_state) if hasattr(mechanics, "get_graft_rejection_status") else {"is_rejecting": False, "label": "🟢 Stable", "description": "Normal"}
+    slotted_abs = mechanics.get_slotted_abilities(player_state) if hasattr(mechanics, "get_slotted_abilities") else []
+    max_slots = mechanics.get_max_ability_slots(player_state) if hasattr(mechanics, "get_max_ability_slots") else 5
 
     # Locate active entities and secrets for the Encounter Director
     entities_in_room = []
@@ -684,6 +689,8 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     Class Doctrine: {player_state.get('class', 'Warrior')} (Tier {player_state.get('class_tier', 1)}) | Resource: {res_info['name']} ({res_info['display']})
     Encumbrance: {encumbrance['current_weight_lbs']}/{encumbrance['max_weight_lbs']} lbs ({encumbrance['tier']}) - Penalties: {json.dumps(encumbrance['penalties'])}
     Gear Durability: {json.dumps(player_state.get('gear_durability', {}))} (Active Wear Penalties: ATK -{dur_pens.get('atk_penalty', 0)}, AC -{dur_pens.get('ac_penalty', 0)})
+    Grafts & Cyber-Strain: {cur_strain}/{max_strain} Strain ({rejection.get('label', 'Stable')}) | Installed: {json.dumps(player_state.get('graft_system', {}).get('installed_grafts', {}))}
+    Active Slotted Abilities ({len(slotted_abs)}/{max_slots} slots): {json.dumps(slotted_abs)}
     Active Traps Deployed: {json.dumps(player_state.get('active_traps', []))}
     Location: {current_location}
     GPS Coordinates: X: {map_state.get('player_x', 50)}, Y: {map_state.get('player_y', 50)}
@@ -720,17 +727,22 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     12. LIVING WORLD SIMULATION (GLOBAL FACTIONS): If the player's prompt implies they are resting, sleeping, or skipping time, YOU MUST simulate factions moving off-screen. Update local node colors via `node_updates`. You MUST also generate 1-3 global/continental news blurbs and push them to the `global_news_add` array (e.g. "[GLOBAL] The Neo-Vatican has declared a crusade on the Berlin Glitch-Hives."). THIS IS MANDATORY IF TIME PASSES.
     13. ACTIVE QUESTS & BOUNTIES: When the player accepts a task from an NPC or discovers a primary objective, add it to the HUD using `quests_add`. When they accomplish the goal, put it in `quests_complete`.
     14. LEVELING & XP: The player earns XP by defeating enemies, finding secrets, and completing quests. Whenever they do, you MUST output a positive integer in 'xp_change' (e.g., 50 for minor, 500 for boss/quest).
+    15. GOLEM-GRAFTS & ABILITY MATRIX:
+        - Golem-Grafts grant powerful biomechanical bonuses (such as +2 AC from Subdermal Carapace Weave or +1 active slot from Neural Cortex) but generate Cyber-Strain. If current strain ({cur_strain}) exceeds max ({max_strain}), the player is under System Rejection (taking HP damage per turn and suffering -2 to all saves). Mention this biological recoil in the narrative!
+        - Combat Subroutine Gating: Active Sword Skills, Spells, and active tactical maneuvers can ONLY be executed if loaded in 'Active Slotted Abilities': {json.dumps(slotted_abs)}. If the player attempts an unslotted technique outside a safe zone, inform them in the narrative that their system matrix did not have the combat subroutine cached in active memory!
     
     Format your response EXACTLY as a JSON object with FIVE keys:
     - "narrative": The markdown formatted story/dialogue. 
     - "combat_logs": A list of strings showing the exact dice math and damage for the turn. Leave empty if no combat or skill check occurred.
     - "global_news_add": A list of strings showing macro world events (e.g. continental faction movements). MUST BE POPULATED IF THE PLAYER SKIPS TIME OR SLEEPS.
     - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged man with a short beard and undercut hair, wearing a heavy black-iron chainmail hauberk and a massive synthetic dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a gaunt, exhausted young man with messy dark hair, wearing cracked glasses and a threadbare corporate hoodie, holding a glowing cyan digital clipboard.
-    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
+    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates", "graft_installs", "ability_slots". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
       Additionally, use the following complex schemas for skills, inventory, factions, and quests:
       - "inventory_add": List of dicts, e.g. [{{"name": "Rusted Iron Sword", "rarity": "Common", "durability": 45, "max_durability": 50, "qty": 1, "desc": "A chipped blade scavenged from the ruins."}}]
       - "inventory_remove": List of strings (item names to delete).
       - "durability_updates": Dict of item_name (or slot) to new durability or negative delta (e.g. {{"Fenrir's Tusk": 98, "Einherjar Rig": -2}}).
+      - "graft_installs": List of dicts, e.g. [{{"graft_key": "subdermal_carapace_weave", "slot": "integument"}}]
+      - "ability_slots": List of strings (technique/spell names to slot into active memory).
       - "skill_updates": List of dicts, e.g. [{{"name": "One-Handed Swords", "mastery_change": 3, "description": "Increases accuracy and damage with short blades."}}]
       - "combat_resource_change": Integer delta to the player's archetype resource (e.g. +15 Poise on blocking a hit, +20 Heat on gadget, +15 Strain on mental spike, -25 Flux on spell).
       - "node_updates": Dict of node_name to color, e.g. {{"Washington_Borough": "red", "Oxford_Mines": "blue"}}

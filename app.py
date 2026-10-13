@@ -1062,6 +1062,126 @@ with st.sidebar:
                 for sp in spells:
                     st.markdown(f"- {sp}")
             
+        with st.expander("🔮 Slotted Ability Matrix", expanded=False):
+            max_slots = mechanics.get_max_ability_slots(player) if hasattr(mechanics, "get_max_ability_slots") else 5
+            slotted = mechanics.get_slotted_abilities(player) if hasattr(mechanics, "get_slotted_abilities") else []
+            used_slots = len(slotted)
+            
+            st.markdown(f"##### 🧠 Active Memory Matrix `[{used_slots} / {max_slots} Slots]`")
+            st.progress(min(1.0, used_slots / max_slots) if max_slots > 0 else 0.0, text=f"{used_slots} / {max_slots} Active Slots Used")
+            
+            # Slotted abilities list
+            if slotted:
+                st.markdown("**Currently Slotted Techniques & Spells:**")
+                for s_idx, ab_name in enumerate(slotted):
+                    col_ab, col_btn = st.columns([3, 1])
+                    col_ab.markdown(f"🔹 **{ab_name}**")
+                    if col_btn.button("Unslot", key=f"btn_unslot_hud_{s_idx}"):
+                        mechanics.unslot_ability(player, ab_name)
+                        save_game(player, st.session_state.messages)
+                        st.toast(f"Unslotted '{ab_name}' from Matrix Memory.")
+                        st.rerun()
+            else:
+                st.caption("No abilities slotted in active memory. Slot techniques below to use in combat!")
+
+            st.divider()
+            
+            # Safe Zone Slotting Reconfiguration
+            loc_str = str(player.get("location", "")).lower()
+            is_safe = any(w in loc_str for w in ["borough", "safe", "town", "taphouse", "anvil", "haven", "outpost", "clinic"])
+            
+            if is_safe:
+                st.markdown("##### ⚡ Reconfigure Active Memory:")
+                avail_pool = mechanics.get_available_abilities(player) if hasattr(mechanics, "get_available_abilities") else []
+                unslotted_pool = [a for a in avail_pool if not mechanics.is_ability_slotted(player, a["name"])]
+                
+                if unslotted_pool:
+                    for a_idx, ab_item in enumerate(unslotted_pool):
+                        col_a, col_b = st.columns([3, 1])
+                        col_a.markdown(f"**{ab_item['name']}** *({ab_item['source']})*")
+                        if used_slots < max_slots:
+                            if col_b.button("Slot", key=f"btn_slot_hud_{a_idx}"):
+                                mechanics.slot_ability(player, ab_item["name"])
+                                save_game(player, st.session_state.messages)
+                                st.toast(f"Slotted '{ab_item['name']}' into Active Memory!", icon="⚡")
+                                st.rerun()
+                        else:
+                            col_b.caption("Full")
+                else:
+                    st.caption("All unlocked abilities are currently slotted.")
+            else:
+                st.caption("🔒 *Active Memory is locked during wilderness exploration/combat. Rest in a Safe Zone to reconfigure.*")
+
+        with st.expander("🦾 Golem-Grafts & Cyber-Strain", expanded=False):
+            max_strain = mechanics.get_max_graft_strain(player) if hasattr(mechanics, "get_max_graft_strain") else 86
+            cur_strain = mechanics.get_current_graft_strain(player) if hasattr(mechanics, "get_current_graft_strain") else 0
+            rejection = mechanics.get_graft_rejection_status(player) if hasattr(mechanics, "get_graft_rejection_status") else {"status": "Stable", "label": "🟢 Stable", "is_rejecting": False}
+            
+            st.markdown(f"##### 🧬 Cyber-Biological Strain Gauge `[{cur_strain} / {max_strain}]`")
+            prog_strain = min(1.0, cur_strain / max_strain) if max_strain > 0 else 0.0
+            st.progress(prog_strain, text=f"{cur_strain} / {max_strain} Strain ({rejection['label']})")
+            
+            if rejection.get("is_rejecting"):
+                st.error(f"🚨 **SYSTEM REJECTION ACTIVE:** {rejection['description']}")
+            else:
+                st.success(f"{rejection['label']} — Organic flesh harmonized with cybernetics.")
+                
+            # Spellcaster graft penalty notice if applicable
+            if hasattr(mechanics, "calculate_spellcasting_graft_penalty"):
+                c_pen = mechanics.calculate_spellcasting_graft_penalty(player)
+                if c_pen["penalty"] > 0:
+                    st.warning(f"⚠️ **Mana Interference:** -{c_pen['penalty']} to Arcane DC / Spell Attack due to unharmonized metal.")
+
+            st.divider()
+            st.markdown("##### 🦾 Installed Golem-Grafts:")
+            installed_grafts = player.get("graft_system", {}).get("installed_grafts", {})
+            if hasattr(mechanics, "BODY_GRAFT_SLOTS"):
+                for b_slot in mechanics.BODY_GRAFT_SLOTS:
+                    slot_title = b_slot.replace("_", " ").title()
+                    if b_slot in installed_grafts and installed_grafts[b_slot]:
+                        g_obj = installed_grafts[b_slot]
+                        col_g1, col_g2 = st.columns([3, 1])
+                        col_g1.markdown(f"🔹 **{slot_title}:** {g_obj.get('name')} `[+{g_obj.get('strain', 0)} Strain]`")
+                        col_g1.caption(f"↳ *{g_obj.get('effect')}*")
+                        if col_g2.button("Extract", key=f"btn_extract_graft_{b_slot}"):
+                            ext_res = mechanics.remove_graft(player, b_slot)
+                            if ext_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.toast(f"Surgically extracted {g_obj.get('name')}!", icon="🔧")
+                                st.rerun()
+                            else:
+                                st.error(ext_res["message"])
+                    else:
+                        st.caption(f"- **{slot_title}:** Organic flesh (Empty)")
+
+            # Safe Zone Cyber-Clinic
+            loc_str = str(player.get("location", "")).lower()
+            is_safe = any(w in loc_str for w in ["borough", "safe", "town", "taphouse", "anvil", "haven", "outpost", "clinic"])
+            if is_safe and hasattr(mechanics, "CANONICAL_GRAFTS"):
+                st.divider()
+                st.markdown("##### 🏥 Cyber-Clinic: Deepforger Artificer")
+                st.caption(f"Available Col: **{player.get('col', 0):,} Col**")
+                
+                g_keys = list(mechanics.CANONICAL_GRAFTS.keys())
+                sel_g_key = st.selectbox("Select Golem-Graft to Install:", g_keys, format_func=lambda k: f"{mechanics.CANONICAL_GRAFTS[k]['name']} ({mechanics.CANONICAL_GRAFTS[k]['col_cost']:,} Col, +{mechanics.CANONICAL_GRAFTS[k]['strain']} Strain)", key="sb_clinic_graft_sel")
+                
+                g_selected = mechanics.CANONICAL_GRAFTS[sel_g_key]
+                st.write(f"**Description:** {g_selected['description']}")
+                st.info(f"**Mechanical Effect:** {g_selected['effect']}")
+                
+                avail_target_slots = g_selected["allowed_slots"]
+                sel_target_slot = st.selectbox("Select Installation Body Slot:", avail_target_slots, key="sb_clinic_slot_sel")
+                
+                if st.button(f"Surgically Install {g_selected['name']} ({g_selected['col_cost']:,} Col)", key="btn_install_graft_clinic", use_container_width=True):
+                    s_res = mechanics.install_graft(player, sel_g_key, sel_target_slot)
+                    if s_res["success"]:
+                        save_game(player, st.session_state.messages)
+                        st.toast(f"Successfully installed {g_selected['name']} into {sel_target_slot.title()}!", icon="🦾")
+                        st.success(s_res["log"])
+                        st.rerun()
+                    else:
+                        st.error(s_res["message"])
+
         with st.expander("🎒 Backpack Inventory", expanded=False):
             rarity_colors = {"Common": "⚪", "Uncommon": "🟢", "Rare": "🔵", "Epic": "🟣", "Legendary": "🟠", "Mythic": "🔴", "Unique": "✨"}
             for item in player.get("inventory", []):
@@ -1352,6 +1472,54 @@ with st.sidebar:
                     s_res = mechanics.salvage_materials(st.session_state.player, sel_salv, d20_roll=16)
                     save_game(st.session_state.player, st.session_state.messages)
                     st.success(s_res.get("log", "Salvaged."))
+                    st.rerun()
+
+        # --- Phase M4 Dev Test Bench: Golem-Grafts & Ability Matrix ---
+        with st.expander("🦾 Phase M4 Bench: Golem-Grafts & Ability Matrix", expanded=False):
+            st.markdown("##### 🦾 Golem-Graft Surgery Tester")
+            g_keys = list(mechanics.CANONICAL_GRAFTS.keys()) if hasattr(mechanics, "CANONICAL_GRAFTS") else []
+            b_slots = mechanics.BODY_GRAFT_SLOTS if hasattr(mechanics, "BODY_GRAFT_SLOTS") else ["arm_left", "arm_right", "leg_left", "leg_right", "spine", "ocular", "dermal", "neural"]
+            
+            sel_g_dev = st.selectbox("Graft to Install (Free Dev):", g_keys, key="dev_sel_graft_bench")
+            sel_slot_dev = st.selectbox("Target Body Slot:", b_slots, key="dev_sel_slot_bench")
+            
+            col_g1, col_g2 = st.columns(2)
+            if col_g1.button("Force Install Graft (0 Col)", key="dev_btn_force_install_graft"):
+                if hasattr(mechanics, "install_graft"):
+                    res_g = mechanics.install_graft(st.session_state.player, sel_g_dev, sel_slot_dev, surgeon_fee_col=0)
+                    save_game(st.session_state.player, st.session_state.messages)
+                    if res_g["success"]:
+                        st.toast(res_g["log"], icon="🦾")
+                    else:
+                        st.error(res_g["message"])
+                    st.rerun()
+            if col_g2.button("Force Extract Slot (0 Col)", key="dev_btn_force_extract_graft"):
+                if hasattr(mechanics, "remove_graft"):
+                    res_ext = mechanics.remove_graft(st.session_state.player, sel_slot_dev, removal_fee_col=0)
+                    save_game(st.session_state.player, st.session_state.messages)
+                    if res_ext["success"]:
+                        st.toast(res_ext["log"], icon="🔧")
+                    else:
+                        st.error(res_ext["message"])
+                    st.rerun()
+
+            st.markdown("##### 🔮 Ability Matrix Slot Tester")
+            avail_abs = mechanics.get_available_abilities(st.session_state.player) if hasattr(mechanics, "get_available_abilities") else []
+            ab_names = [a["name"] for a in avail_abs] if avail_abs else ["Horizontal Square", "Telekinetic Grip"]
+            sel_ab_dev = st.selectbox("Select Ability to Slot/Unslot:", ab_names, key="dev_sel_ab_bench")
+            
+            col_a1, col_a2 = st.columns(2)
+            if col_a1.button("Slot Ability in Memory", key="dev_btn_slot_ab_bench"):
+                if hasattr(mechanics, "slot_ability"):
+                    res_sl = mechanics.slot_ability(st.session_state.player, sel_ab_dev)
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.toast(res_sl.get("message", "Slotted."))
+                    st.rerun()
+            if col_a2.button("Unslot Ability", key="dev_btn_unslot_ab_bench"):
+                if hasattr(mechanics, "unslot_ability"):
+                    res_un = mechanics.unslot_ability(st.session_state.player, sel_ab_dev)
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.toast(res_un.get("message", "Unslotted."))
                     st.rerun()
 
         st.divider()
@@ -1701,6 +1869,20 @@ if prompt := (dev_prompt or chat_prompt):
                     for t_ref in triggered_traps:
                         if hasattr(mechanics, "trigger_field_trap"):
                             mechanics.trigger_field_trap(st.session_state.player, t_ref)
+
+                # Golem-Grafts & Ability Slotting State Updates
+                graft_installs = state_updates.get("graft_installs") or []
+                if isinstance(graft_installs, list):
+                    for gi in graft_installs:
+                        if isinstance(gi, dict) and "graft_key" in gi and "slot" in gi:
+                            if hasattr(mechanics, "install_graft"):
+                                mechanics.install_graft(st.session_state.player, gi["graft_key"], gi["slot"], surgeon_fee_col=0)
+                                
+                ability_slots = state_updates.get("ability_slots") or []
+                if isinstance(ability_slots, list):
+                    for ab in ability_slots:
+                        if hasattr(mechanics, "slot_ability"):
+                            mechanics.slot_ability(st.session_state.player, str(ab))
                             
                 # Handle Skill Mastery updates with Milestone Auto-Unlocker
                 skill_updates = state_updates.get("skill_updates") or []
