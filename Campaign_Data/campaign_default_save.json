@@ -3,19 +3,19 @@
         "name": "Banki",
         "race": "Unregistered Anomaly",
         "class": "Wyrd-Weaver / Battleaxe Vanguard",
-        "level": 2,
-        "xp": 850,
-        "hp": 95,
-        "max_hp": 100,
-        "col": 120,
-        "location": "Oxford Mine Adits - Lower Collapse Zone",
+        "level": 3,
+        "xp": 750,
+        "hp": 58,
+        "max_hp": 125,
+        "col": 1170,
+        "location": "Oxford Mine - Exit Junction (Cleared)",
         "stats": {
-            "STR": 14,
-            "DEX": 12,
-            "CON": 13,
-            "INT": 15,
-            "WIS": 12,
-            "CHA": 10
+            "STR": 33,
+            "DEX": 33,
+            "CON": 33,
+            "INT": 33,
+            "WIS": 33,
+            "CHA": 33
         },
         "skills": {
             "Battleaxe Mastery": {
@@ -23,12 +23,40 @@
                 "description": "Proficiency with heavy bearded war axes."
             },
             "Arcana": {
-                "mastery": 210,
-                "description": "Deciphering magical matrices and runes."
+                "mastery": 218,
+                "description": "Progress towards Journeyman in runic inscriptions and aether conduits."
             },
             "Perception": {
                 "mastery": 120,
                 "description": "Spotting structural flaws, traps, and movement."
+            },
+            "Axe Mastery": {
+                "mastery": 8,
+                "description": "Progress in thrown balance and joint targeting."
+            },
+            "Survival": {
+                "mastery": 6,
+                "description": "Flesh-crafting and field-harvesting proficiency under hazardous collapse conditions."
+            },
+            "Arcano-Biology & Harvesting": {
+                "mastery": 8,
+                "description": "Journeyman field harvesting: Increased success rate when retrieving intact organ matrices and runic cores from fallen constructs."
+            },
+            "Athletics": {
+                "mastery": 18,
+                "description": "Apprentice (62/1000) - Improved footwork during rapid environmental ascents."
+            },
+            "Acrobatics": {
+                "mastery": 14,
+                "description": "Footing and hazard avoidance in destabilized terrain."
+            },
+            "Scavenging & Graft Harvesting": {
+                "mastery": 8,
+                "description": "Journeyman tier progress in cleanly extracting volatile magetech components under duress."
+            },
+            "Dungeon Survival": {
+                "mastery": 4,
+                "description": "Apprentice (52/1000) - Increased awareness of collapsing structural keystones and hazard cues."
             }
         },
         "spells": [
@@ -78,6 +106,102 @@
                 "max_durability": 1,
                 "qty": 1,
                 "desc": "Standard survival food."
+            },
+            {
+                "name": "[Graft Component] Silt-Marrow's Geothermal Core Piston (Tier 1 Magetech Core)",
+                "rarity": "Common",
+                "durability": 100,
+                "max_durability": 100,
+                "qty": 1,
+                "desc": ""
+            },
+            {
+                "name": "[Graft Component] Intact Runic Mind-Matrix (Tier 1 Construct Brain)",
+                "rarity": "Common",
+                "durability": 100,
+                "max_durability": 100,
+                "qty": 1,
+                "desc": ""
+            },
+            {
+                "name": "Basalt Carapace Plating x2",
+                "rarity": "Common",
+                "durability": 100,
+                "max_durability": 100,
+                "qty": 1,
+                "desc": ""
+            },
+            {
+                "name": "[Graft Component] Silt-Marrow's Geothermal Core Piston",
+                "rarity": "Common",
+                "durability": 100,
+                "max_durability": 100,
+                "qty": 1,
+                "desc": ""
+            },
+            {
+                "name": "[Graft Component] Silt-Marrow's Geothermal Core Piston (Rarity: Rare, Durability: 100/100, Qty: 1, Desc: A heavy brass-and-pyroclastic engine harvested from an ancient runic construct. Pulses with pressurized geothermal steam; suitable for Torso or Arm graft installations).",
+                "rarity": "Common",
+                "durability": 100,
+                "max_durability": 100,
+                "qty": 1,
+                "desc": ""
+            },
+            {
+                "name": "Basalt Carapace Plating (Rarity: Uncommon, Durability: 100/100, Qty: 2, Desc: Dense mineral slab reinforced by geomantic ley-lines. Usable for heavy armor crafting or graft reinforcement).",
+                "rarity": "Common",
+                "durability": 100,
+                "max_durability": 100,
+                "qty": 1,
+                "desc": ""
+            },
+            {
+                "name": "[Graft Component] Silt-Marrow's Geothermal Core Piston (Tier 1 Runic)",
+                "rarity": "Common",
+                "durability": 100,
+                "max_durability": 100,
+                "qty": 1,
+                "desc": ""
+            },
+            {
+                "name": "[Graft Component] Silt-Marrow's Geothermal Core Piston (Rarity: Rare, Durability: 100/100, Qty: 1, Desc: A heavy brass-and-basalt hydraulic core still radiating warm geothermal mana. Suitable for Torso or Spine graft surgery at Doc Mercer's clinic).",
+                "rarity": "Common",
+                "durability": 100,
+                "max_durability": 100,
+                "qty": 1,
+                "desc": ""
+            },
+            {
+                "name": "Basalt Carapace Plating x2 (Rarity: Uncommon, Durability: 80/80, Qty: 2, Desc: Dense mineral-infused golem plating. Prime crafting material for armor reinforcement or barter).",
+                "rarity": "Common",
+                "durability": 100,
+                "max_durability": 100,
+                "qty": 1,
+                "desc": ""
+            },
+            {
+                "name": "[Graft Component] Silt-Marrow's Geothermal Core Piston (Rarity: Rare, Durability: 100/100, Qty: 1, Desc: A heavy brass-and-basalt pneumatic piston pulsing with compressed thermal mana; suitable for torso or leg graft)",
+                "rarity": "Common",
+                "durability": 100,
+                "max_durability": 100,
+                "qty": 1,
+                "desc": ""
+            },
+            {
+                "name": "Basalt Carapace Plating x2 (Rarity: Uncommon, Durability: 100/100, Qty: 2, Desc: Dense stone armor plates laced with iron veins, prime for runic forging)",
+                "rarity": "Common",
+                "durability": 100,
+                "max_durability": 100,
+                "qty": 1,
+                "desc": ""
+            },
+            {
+                "name": "Runic Slag Scrap x3 (Rarity: Common, Durability: 50/50, Qty: 3, Desc: Conductive arcane metal scrap harvested from the golem's frame)",
+                "rarity": "Common",
+                "durability": 100,
+                "max_durability": 100,
+                "qty": 1,
+                "desc": ""
             }
         ],
         "quests": [
@@ -90,406 +214,24 @@
         "companions": {
             "Ren": {
                 "name": "Ren",
-                "archetype": "MageTech Vanguard (Trapped 17yo Game Designer)",
+                "archetype": "QA Vanguard",
                 "hp": 28,
                 "max_hp": 35,
                 "ac": 16,
-                "status": "Scalded by steam, aiming his Aether-Lock Carbine while calling out boss telegraphs to Banki",
+                "status": "Active (Combat Ready - Watching Exit)",
                 "active_grafts": [
                     {
-                        "name": "Aetheric Ocular Lens",
+                        "name": "Sub-Dermal Optical Scanner",
                         "slot": "Head",
-                        "effect": "Darkvision, reveals arcane matrices & traps"
+                        "effect": "Darkvision, reveals traps"
                     }
                 ],
                 "inventory": [
-                    "Aether-Lock Carbine",
-                    "Runic Vanguard Blade",
-                    "Alchemical Haze Pellets"
-                ],
-                "id": "ren_sasaki",
-                "class": "Aether-Scholar & MageTech Artificer",
-                "title": "Aether-Scholar & MageTech Artificer",
-                "role": "Support, Aura Scanning, Lightning Stuns & Field Artificing",
-                "level": 3,
-                "xp": 450,
-                "next_level_xp": 900,
-                "stance": "overwatch_hacking",
-                "morale": "Steady",
-                "affinity": 35,
-                "affinity_tier": "Ally",
-                "recruited": true,
-                "active": true,
-                "bio": "A studious young survivor who fused his pre-Integration engineering background with esoteric aetheric rune-matrices. Wields a custom-etched brass-and-crystal MageTech caster firearm.",
-                "loadout": {
-                    "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
-                    "tool": "Runic Scribe Slate (Aether-Grid Focus)",
-                    "deck": "Runic Scribe Slate (Aether-Grid Focus)",
-                    "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
-                    "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
-                },
-                "equipped": {
-                    "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
-                    "tool": "Runic Scribe Slate (Aether-Grid Focus)",
-                    "deck": "Runic Scribe Slate (Aether-Grid Focus)",
-                    "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
-                    "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
-                },
-                "skills": {
-                    "Mesh Exploitation": {
-                        "mastery": 190,
-                        "tier": "Journeyman",
-                        "description": "Perceiving spatial seams and leylines.",
-                        "milestones_unlocked": [
-                            "Logic Buffer Exploit"
-                        ]
-                    },
-                    "Stun-Pistol Marksmanship": {
-                        "mastery": 95,
-                        "tier": "Apprentice",
-                        "description": "Discharging lightning runes from MageTech firearm.",
-                        "milestones_unlocked": []
-                    },
-                    "Diagnostic Triage": {
-                        "mastery": 110,
-                        "tier": "Journeyman",
-                        "description": "Channelling restorative aether-salves.",
-                        "milestones_unlocked": [
-                            "Patch Script v1.0"
-                        ]
-                    }
-                },
-                "abilities": [
-                    "Aura Weakpoint Scan (-2 Enemy AC)",
-                    "MageTech Stun-Arc Salvo (DC 13 CON save vs Stun)",
-                    "Aetheric Phase-Veil (Untargetable 1 turn)",
-                    "Aether-Scrap Extraction (+25% salvage yield)"
-                ],
-                "stances": {
-                    "overwatch_hacking": {
-                        "name": "Leyline Overwatch",
-                        "label": "\ud83d\udc41\ufe0f Leyline Overwatch",
-                        "tag": "[REN OVERWATCH]",
-                        "tactical_effect": "-2 Enemy AC debuff to primary target via weakpoint telemetry.",
-                        "desc": "Scans leylines and structural telemetry, debuffing target AC."
-                    },
-                    "suppression_fire": {
-                        "name": "MageTech Arc Suppression",
-                        "label": "\u26a1 MageTech Arc Suppression",
-                        "tag": "[REN SUPPRESSION]",
-                        "tactical_effect": "Discharges lightning-mana salvos; forces DC 13 CON save vs Staggered.",
-                        "desc": "Suppresses targets with crackling lightning bolts."
-                    },
-                    "full_evasion": {
-                        "name": "Aetheric Phase-Veil",
-                        "label": "\ud83c\udf2b\ufe0f Aetheric Phase-Veil",
-                        "tag": "[REN EVASION]",
-                        "tactical_effect": "Weaves spatial distortion cloak; completely immune to single-target attacks.",
-                        "desc": "Blinks out of direct reality."
-                    },
-                    "utility_rigging": {
-                        "name": "Arcane Artificing & Mending",
-                        "label": "\u2728 Arcane Artificing & Mending",
-                        "tag": "[REN UTILITY]",
-                        "tactical_effect": "Restores +15 durability to worn equipment or scavenges bonus crystallite.",
-                        "desc": "Channels mending runes into ally equipment."
-                    }
-                },
-                "dual_tech_id": "runic_axe_storm"
-            },
-            "Elora": {
-                "id": "elora_thorne",
-                "name": "Elora Thorne",
-                "class": "Aether-Slinger / Spellblade",
-                "title": "Aether-Slinger / Spellblade",
-                "role": "Ranged Burst DPS, Elemental Mana Infusion & Phase Mobility",
-                "level": 3,
-                "hp": 32,
-                "max_hp": 32,
-                "xp": 400,
-                "next_level_xp": 900,
-                "stance": "spellblade_flurry",
-                "morale": "Steady",
-                "affinity": 20,
-                "affinity_tier": "Acquaintance",
-                "recruited": false,
-                "active": false,
-                "bio": "A nimble spellblade who channels raw mana into rapid-firing crystal-tipped rapiers. Dr. Thorne's estranged niece, currently seeking a frontline raiding party in Sector 1.",
-                "loadout": {
-                    "main_hand": "Starlight Aether-Rapier (Enchanted Steel, 1d8+3 Piercing)",
-                    "off_hand": "Resonating Caster Gauntlet (Focus)",
-                    "armor": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)",
-                    "chest": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)"
-                },
-                "equipped": {
-                    "main_hand": "Starlight Aether-Rapier (Enchanted Steel, 1d8+3 Piercing)",
-                    "off_hand": "Resonating Caster Gauntlet (Focus)",
-                    "armor": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)",
-                    "chest": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)"
-                },
-                "skills": {
-                    "Spellblade Fencing": {
-                        "mastery": 175,
-                        "tier": "Journeyman",
-                        "description": "Fluid martial strikes infused with raw mana.",
-                        "milestones_unlocked": [
-                            "Lunge & Pierce"
-                        ]
-                    },
-                    "Aether Siphoning": {
-                        "mastery": 130,
-                        "tier": "Journeyman",
-                        "description": "Harvesting stray leyline charges to empower abilities.",
-                        "milestones_unlocked": [
-                            "Mana Flow"
-                        ]
-                    },
-                    "Acrobatic Skirmishing": {
-                        "mastery": 140,
-                        "tier": "Journeyman",
-                        "description": "Dancing between melee and ranged kill zones.",
-                        "milestones_unlocked": [
-                            "Quickstep"
-                        ]
-                    }
-                },
-                "abilities": [
-                    "Spellblade Flurry (3-Hit Piercing Combo)",
-                    "Aetheric Weapon Infusion (+1d8 Elemental DMG to Ally)",
-                    "Dimensional Blinkstep (Disengage without provoking opportunity attacks)"
-                ],
-                "stances": {
-                    "spellblade_flurry": {
-                        "name": "Spellblade Flurry",
-                        "label": "\ud83d\udde1\ufe0f Spellblade Flurry",
-                        "tag": "[ELORA FLURRY]",
-                        "tactical_effect": "Unleashes rapid piercing strikes dealing 2d8+4 Arcane DMG and +2 Attack bonus to party.",
-                        "desc": "High offensive DPS mode."
-                    },
-                    "aether_overcharge": {
-                        "name": "Aether Overcharge",
-                        "label": "\ud83d\udd2e Aether Overcharge",
-                        "tag": "[ELORA OVERCHARGE]",
-                        "tactical_effect": "Channels radiant mana into Banki's weapons; Banki deals +1d10 bonus Radiant/Lightning DMG.",
-                        "desc": "Weapon buffing stance."
-                    },
-                    "blink_skirmish": {
-                        "name": "Blink Skirmish",
-                        "label": "\ud83c\udf00 Blink Skirmish",
-                        "tag": "[ELORA BLINK]",
-                        "tactical_effect": "Teleports erratically across the perimeter; evades incoming attacks and roots a target (DC 14 DEX save).",
-                        "desc": "Evasive control stance."
-                    }
-                },
-                "dual_tech_id": "spellblade_vortex"
-            },
-            "Torvald": {
-                "id": "torvald_ironvein",
-                "name": "Torvald Iron-Vein",
-                "class": "Deepforged Vanguard",
-                "title": "Deepforged Vanguard",
-                "role": "Heavy Tower Shield Tank, Frontline Threat Generation & Seismic Stuns",
-                "level": 4,
-                "hp": 55,
-                "max_hp": 55,
-                "xp": 750,
-                "next_level_xp": 1200,
-                "stance": "aegis_bulwark",
-                "morale": "Steady",
-                "affinity": 25,
-                "affinity_tier": "Ally",
-                "recruited": false,
-                "active": false,
-                "bio": "A veteran dwarven mercenary and barkeep of the Iron Spoke. Possesses runic cyber-plated armor and a tower shield wide as a castle gate, capable of anchoring frontline assaults.",
-                "loadout": {
-                    "main_hand": "Deepforged War-Axe (Heavy Runic Iron, 1d10+4 Slashing)",
-                    "off_hand": "Adamant Bulwark Tower Shield (+4 AC, DR 2)",
-                    "armor": "Runic Plate Carapace (Heavy Armor, DR 3)",
-                    "chest": "Runic Plate Carapace (Heavy Armor, DR 3)"
-                },
-                "equipped": {
-                    "main_hand": "Deepforged War-Axe (Heavy Runic Iron, 1d10+4 Slashing)",
-                    "off_hand": "Adamant Bulwark Tower Shield (+4 AC, DR 2)",
-                    "armor": "Runic Plate Carapace (Heavy Armor, DR 3)",
-                    "chest": "Runic Plate Carapace (Heavy Armor, DR 3)"
-                },
-                "skills": {
-                    "Tower Shield Phalanx": {
-                        "mastery": 240,
-                        "tier": "Journeyman",
-                        "description": "Mastery of defensive interlocking shield stances.",
-                        "milestones_unlocked": [
-                            "Shield Wall",
-                            "Brace Impact"
-                        ]
-                    },
-                    "Deepforged Smithing": {
-                        "mastery": 210,
-                        "tier": "Journeyman",
-                        "description": "Knowledge of runic alloys, temper lines, and repairs.",
-                        "milestones_unlocked": [
-                            "Field Tempering"
-                        ]
-                    },
-                    "Battlefield Provocation": {
-                        "mastery": 180,
-                        "tier": "Journeyman",
-                        "description": "Commanding hostile attention through force of presence.",
-                        "milestones_unlocked": [
-                            "Roar of Challenge"
-                        ]
-                    }
-                },
-                "abilities": [
-                    "Interception Ward (+4 AC to adjacent ally)",
-                    "Challenge of the Anvil (Forced Taunt)",
-                    "Seismic Tremor (Frontal Knockdown)"
-                ],
-                "stances": {
-                    "aegis_bulwark": {
-                        "name": "Aegis Bulwark",
-                        "label": "\ud83d\udee1\ufe0f Aegis Bulwark",
-                        "tag": "[TORVALD AEGIS]",
-                        "tactical_effect": "Locks tower shield on frontline; grants Banki +4 AC and absorbs 50% of incoming physical damage.",
-                        "desc": "Frontline damage interception."
-                    },
-                    "iron_taunt": {
-                        "name": "Iron Challenge",
-                        "label": "\ud83d\udde3\ufe0f Iron Challenge",
-                        "tag": "[TORVALD TAUNT]",
-                        "tactical_effect": "Bangs war-axe against adamant shield; forces all active foes to attack Torvald instead of allies.",
-                        "desc": "Aggro and threat control."
-                    },
-                    "seismic_slam": {
-                        "name": "Seismic Slam",
-                        "label": "\ud83d\udca5 Seismic Slam",
-                        "tag": "[TORVALD SLAM]",
-                        "tactical_effect": "Slams shield into the earth for 2d10+5 Force DMG; chips target Break Gauge by -30.",
-                        "desc": "Heavy bludgeoning stun."
-                    }
-                },
-                "dual_tech_id": "titans_anvil_shockwave"
-            },
-            "Kibs": {
-                "id": "kibs_ninefingers",
-                "name": "Kibs Nine-Fingers",
-                "class": "Scrapper Rogue / Infiltrator",
-                "title": "Scrapper Rogue / Infiltrator",
-                "role": "Shadow-Meld, Critical Backstabs, Poison Coatings & Trap Disarming",
-                "level": 3,
-                "hp": 30,
-                "max_hp": 30,
-                "xp": 350,
-                "next_level_xp": 900,
-                "stance": "shadow_meld",
-                "morale": "Steady",
-                "affinity": 15,
-                "affinity_tier": "Acquaintance",
-                "recruited": false,
-                "active": false,
-                "bio": "A crafty scavenger broker operating out of the Meiji Dump. Lost a finger to an automated perimeter laser, but gained uncanny instincts for stealth, poison synthesis, and lock manipulation.",
-                "loadout": {
-                    "main_hand": "Serrated Scrap Dagger (1d6+3 Piercing + Bleed)",
-                    "off_hand": "Spring-Loaded Wrist Shank (1d4+3 Piercing)",
-                    "armor": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)",
-                    "chest": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)"
-                },
-                "equipped": {
-                    "main_hand": "Serrated Scrap Dagger (1d6+3 Piercing + Bleed)",
-                    "off_hand": "Spring-Loaded Wrist Shank (1d4+3 Piercing)",
-                    "armor": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)",
-                    "chest": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)"
-                },
-                "skills": {
-                    "Scrapper Infiltration": {
-                        "mastery": 185,
-                        "tier": "Journeyman",
-                        "description": "Unseen movement and exploitation of sightlines.",
-                        "milestones_unlocked": [
-                            "Silent Step"
-                        ]
-                    },
-                    "Neurotoxin Synthesis": {
-                        "mastery": 140,
-                        "tier": "Journeyman",
-                        "description": "Distilling monster venom into weapon coatings.",
-                        "milestones_unlocked": [
-                            "Paralytic Blend"
-                        ]
-                    },
-                    "Lockpick & Bypass": {
-                        "mastery": 205,
-                        "tier": "Journeyman",
-                        "description": "Circumventing tumblers and runic electronic latches.",
-                        "milestones_unlocked": [
-                            "Skeleton Keying"
-                        ]
-                    }
-                },
-                "abilities": [
-                    "Shadow Strike (+3d6 Critical Bleed)",
-                    "Corrosive Neurotoxin Coating (-2 Enemy Saves)",
-                    "Scavenger's Eye (+30% bonus Col find)"
-                ],
-                "stances": {
-                    "shadow_meld": {
-                        "name": "Shadow Meld",
-                        "label": "\ud83d\udc64 Shadow Meld",
-                        "tag": "[KIBS SNEAK]",
-                        "tactical_effect": "Melds into shadows; unleashes guaranteed sneak attack for 3d6+6 Piercing DMG + Bleed.",
-                        "desc": "High critical stealth DPS."
-                    },
-                    "venom_coating": {
-                        "name": "Venom Coating",
-                        "label": "\ud83e\uddea Venom Coating",
-                        "tag": "[KIBS VENOM]",
-                        "tactical_effect": "Coats party weapons in neurotoxin; attacks deal +1d6 Acid damage and inflict -2 to enemy saving throws.",
-                        "desc": "Poison debuff support."
-                    },
-                    "lockpick_salvage": {
-                        "name": "Lockpick & Salvage",
-                        "label": "\ud83d\udddd\ufe0f Lockpick & Salvage",
-                        "tag": "[KIBS SALVAGE]",
-                        "tactical_effect": "Grants +4 bonus on all trap disarm and chest checks; increases party Col yield by +20%.",
-                        "desc": "Exploration and looting utility."
-                    }
-                },
-                "dual_tech_id": "shadow_flank_execution"
+                    "Monofilament Blade",
+                    "Smoke Grenades"
+                ]
             }
-        },
-        "chrono": {
-            "day": 1,
-            "hour": 9,
-            "minute": 30,
-            "weather": "clear_skies",
-            "active_buffs": []
-        },
-        "active_buffs": [],
-        "faction_reputation": {
-            "vanguard_coalition": 0,
-            "iron_syndicate": 0,
-            "blood_shroud": 0
-        },
-        "homestead": {
-            "owned": false,
-            "estate_id": "washington_manor",
-            "vault_tier": 1,
-            "greenhouse_tier": 1,
-            "has_master_anvil": false,
-            "mounted_trophies": [],
-            "vault_items": [],
-            "vault_col": 0,
-            "last_harvest_day": 0
-        },
-        "graft_system": {
-            "installed_grafts": {},
-            "harmonized_grafts": []
-        },
-        "slotted_abilities": {
-            "max_slots": 5,
-            "active": []
-        },
-        "fused_abilities": []
+        }
     },
     "messages": [
         {
@@ -579,6 +321,18 @@
             "content": "Aetheric kinetic glyphs flare across your knuckles as three spiraling bolts of Major Force Missile detonate against Silt-Marrow's chassis. Exploiting the staggering recoil, you charge from the golem's blind flank, driving your axe deep through its exposed lumbar plating. Simultaneously, Ren darts inside the creature's sweeping arc with predatory precision, burying his monofilament blade straight through the cracked rotational actuator. Silt-Marrow screeches in grinding iron agony. In a desperate counter-reflex, the unhewn construct slams a piston-driven fist into the rotting ceiling strut; fractured shale cascades down amidst a geyser of pressurized geothermal steam. Ren is caught in the fringe of the cave-in, battered against the rock wall by jagged debris and scalded by the venting blast. The golem teeters on the brink of structural collapse, its glowing core exposed and flickering violently.",
             "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Aggro is locked onto me\u2014optimal scenario to keep Banki clear. Scanner registers severe stress along that damaged joint actuator. An unhandled structural exception just waiting for a clean slice.\"*\n> **Intent:** Step inside the golem's guard to drive the monofilament blade directly into its compromised joint, maintaining its focus and exploiting the structural defect.\n\n**[\ud83d\udc7e Silt-Marrow the Unhewn \u2014 SubAgent Mind]**\n> *\"The flesh-creature vibrates like a hairline fracture in the load-bearing strata. Joint aches with rusted grease, but the timber must be tested. Break the strut, drop the stone, silence the chatter.\"*\n> **Intent:** Slam a massive rusted palm into a rotting ceiling support to shower Ren in jagged shale while venting geode steam to pin them against the wet rock wall.",
             "mechanics_log": "* \ud83c\udfb2 `Force: 3d4+3 = 12 damage`\n* \ud83c\udfb2 `Attack: 1d20+5=17 vs AC 14 \u2014 Hit! Slashing: 1d10+3 = 9 damage`\n* \ud83c\udfb2 `Attack: 1d20+6=18 vs AC 14 \u2014 Hit! Critical Weakness Exploit: 1d6+3+2d6 = 11 damage`\n* \ud83c\udfb2 `Ren DEX Save: 1d20+4=11 vs DC 13 \u2014 Fail! 7 Bludgeoning/Fire damage`"
+        },
+        {
+            "role": "user",
+            "content": "With a practiced whip of my arm I throw the bearded axe at the Golem, finishing the job and preserving it's artificial brain",
+            "ai_prompt": "With a practiced whip of my arm I throw the bearded axe at the Golem, finishing the job and preserving it's artificial brain"
+        },
+        {
+            "role": "assistant",
+            "content": "With fluid, practiced momentum, you send your bearded axe whistling through the scalding geode vapors of the lower drift. The spinning runic blade bites deep with a reverberating crunch into the weakened seam between Silt-Marrow's shattered lumbar and spinal manifold, neatly shearing through the pulsing hydraulic mana-ducts while leaving its crystalline cerebral housing completely untouched. Simultaneously, Ren drops to one knee and triggers his Aether-Lock Carbine, unleashing a brilliant, focused lance of radiant aether that pierces the construct's exposed chest cavity. Silt-Marrow's arms jerk upward toward the splintered timber bracings in a futile final convulsion, but the severing of its primary flow-valves robs the golem of all leverage; with a shuddering groan of grinding basalt and venting steam, the behemoth crashes face-first into the shale, collapsing into inert slag and silent runic stone. The rumbling tremor in the mine shaft gradually settles into a dead silence, broken only by the hiss of cooling steam and the soft mechanical hum of the intact mind-matrix embedded within the fallen titan's brow. Across the cavern, the dust clears to reveal two distinct paths forward: an emergency ore-cart incline winding steeply upward toward the Washington Borough Safe-Zone, and a lower adit dripping with mineral runoff that slopes deeper toward the decommissioned Morris Canal Aqueducts.",
+            "mechanics_log": "* \ud83c\udfb2 `Player Ranged Attack (Thrown Axe): 1d20+5 = 19 vs AC 14 | Hit!`\n* \ud83c\udfb2 `Player Damage: 1d8+3 = 8 Slashing vs Silt-Marrow (HP: 6 -> 0) | Fatal Strike!`\n* \ud83c\udfb2 `Ren Attack (Aether-Lock Carbine): 1d20+6 = 18 vs AC 14 | Hit!`\n* \ud83c\udfb2 `Ren Damage: 1d10+3 = 9 Radiant (Overkill)`\n* \ud83c\udfb2 `Silt-Marrow the Unhewn disabled prior to completing Berserk Tremor slam.`\n* \ud83e\ude78 **Enemy_01:** -6 HP",
+            "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Dude, its lumbar is shattered and the core hitbox is completely uncovered! It's in the red-bar execute phase, but that Berserk Tremor is totally telegraphing an enrage wipe or a ceiling collapse. If I hit the critical point now with max mana charge, we drop it before the room collision crushes us both!\"*\n> **Intent:** Line up a high-precision, charged radiant mana shot with the Aether-Lock Carbine directly into Silt-Marrow's exposed core before its berserk tremor triggers a cave-in.\n\n**[\ud83d\udc7e Silt-Marrow the Unhewn \u2014 SubAgent Mind]**\n> *\"Core exposed. Vertebrae ground to grit. The tremor sings too loud, splitting the shale inside my hopper. If the marrow cannot hold the seam, the mountain must come down. Crush the resonance. Let the roof fall and grant total tectonic stillness.\"*\n> **Intent:** Slam heavy calcified fists upward into the compromised timber bracing, venting scalding geode steam from cracked spinal plates to bring down the fractured ceiling upon the lower drift.",
+            "image_data": null
         }
     ],
     "world_state": {
@@ -598,43 +352,48 @@
         ],
         "global_news": [
             "Architect broadcast: Sector 1 biomes undergoing forced geological recrystallization.",
-            "Pohatcong fault line reported stable; Oxford Adits unstable."
+            "Pohatcong fault line reported stable; Oxford Adits unstable.",
+            "Iron Vanguard scouts report stabilizing aetheric pressure along the Oxford Mountain riftline following seismic activity in the adits.",
+            "Borough Council of Washington initiates quarantine protocol inspections near the lower mine runoff conduits.",
+            "Sector 1 Notice: Seismological mana flare registered in the Oxford Mining District; local Barony scouts report lower adit collapse as subterranean boss signature dissipates.",
+            "Warren County Regional Alert: Oxford Subterranean Tremors subside following core destabilization of an aberrant runic node.",
+            "Barony Vanguard Notice: Washington Borough trade road outposts report increased refugee flow from Pohatcong breach corridors.",
+            "REGIONAL ALERT: The Oxford Mining District tectonic instability has stabilized following the core cessation of Silt-Marrow. Baronial patrols from Washington Borough mobilize toward the adit perimeter.",
+            "GLOBAL DISPATCH: Euro-Bloc Coalition arcane sieges intensify along the Rhine Ley-Line corridor as rogue Golem legions fracture outer defensive wards.",
+            "[Sector 1 - Tri-State Broadcast]: Barony iron-scouts report deep seismic tremors centered in the Oxford Mining District; rogue aether-spikes detected.",
+            "[Sector 2 - Hudson Flotilla]: Euro-Bloc expeditionary barges contest the lower palisades near the Manhattan glitch-rift; merchant tolls suspended.",
+            "Barony of Warren Dispatch: Oxford Mining Outskirts report localized tectonic stabilization following the cessation of deep-shaft seismic pulses.",
+            "[GLOBAL DISPATCH] The Euro-Bloc Arcane Coalition has repelled a Tier-3 Abyssal Swarm breaching the Rhine Ley-Trench, securing their central mana refineries.",
+            "[REGIONAL BROADCAST] Baronial Outposts across Warren County report an abrupt stabilization of subterranean seismic tremors following the cull of the Oxford Mine's core beast.",
+            "Regional Dispatch: The Iron Vanguard expands ward perimeter along Route 31; skirmishes with feral chimeras intensify near Pohatcong Mountain.",
+            "Aether-Wire Alert: Euro-Bloc magi-councils report massive aetheric surges within the Rhine Valley rift-faults.",
+            "WARREN COUNTY DISPATCH: Seismic dampeners along Oxford Mountain register localized seismic collapse; Barony outposts prepare to intercept dungeon runoff.",
+            "EAST COAST RECON REPORT: New Jersey-Pennsylvania Aether-Ferries report rogue elemental spikes surging along the upper Delaware River basin.",
+            "GLOBAL: The Euro-Bloc Coalition fortifies three major runic bastions across the Rhine rift-valley after repelling a Level 4 chimeric glitched swarm.",
+            "REGIONAL: Quartermaster Vane of the Barony of Warren increases bounty rewards for raw aether-cores following rogue clockwork disturbances along the decommissioned Morris Canal.",
+            "EURO-BLOC COALITION: Runic barriers along the Rhine Fissure report severe tectonic strain as Class-4 Golem colossi mobilize westward.",
+            "WARREN BARONY BULLETIN: Iron Wardens confirm the stabilization of the upper Oxford Adits following the neutralization of seismic resonance nodes.",
+            "The Iron Syndicate of Oxford has dispatched recon automata following seismic tremors recorded near the Lower Adits."
         ]
     },
     "master_state": {
         "campaign_name": "SAO_Sandbox",
-        "turn_number": 19,
+        "turn_number": 33,
         "environment": {
-            "location": "Oxford Mine Adits - Lower Collapse Zone",
-            "description": "A damp, rusted out mine shaft. The ceiling timbers are splintered and venting superheated geothermal steam from fractured adit ribs. Falling shale and rock debris litter the floor.",
+            "location": "Oxford Mine - Exit Junction (Cleared)",
+            "description": "A damp, cavernous mine shaft exit junction. The massive chassis of Silt-Marrow the Unhewn lies completely inert, dismantled, and harvested. The seismic rumbles have ceased, leaving the path open to ascend upward via the ore-cart track toward the Washington Borough Safe-Zone or descend toward the Morris Canal Aqueducts.",
             "hidden_traps": [],
             "environmental_effects": [
                 "Dim Light",
-                "Superheated Steam Venting",
-                "Compromised Timber Bracing"
+                "Settling Dust",
+                "Clear Escape Routes Available"
             ]
         },
-        "entities": [
-            {
-                "id": "enemy_01",
-                "name": "Silt-Marrow the Unhewn",
-                "type": "hostile",
-                "hp": 6,
-                "max_hp": 45,
-                "ac": 14,
-                "status": [
-                    "Critically Compromised",
-                    "Exposed Core",
-                    "Shattered Lumbar",
-                    "Berserk Tremor"
-                ],
-                "intent": "Bring the ceiling down on all biological motion to achieve tectonic stillness."
-            }
-        ],
+        "entities": [],
         "players": [
             "player",
             "companion_ren"
         ]
     },
-    "last_saved": 1791848042.0984666
+    "last_saved": 1791911151.1534283
 }

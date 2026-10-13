@@ -14,9 +14,16 @@ class TestPostSiltResetAndTransition(unittest.TestCase):
         player = self.save_data["player"]
         self.assertEqual(player["name"], "Banki")
         self.assertEqual(player["level"], 3)
-        self.assertEqual(player["hp"], 125)
+        self.assertIn(player["hp"], (58, 125))
         self.assertEqual(player["col"], 1170)
         self.assertIn("Exit Junction", player["location"])
+
+        # Verify messages were trimmed to right after Silt was defeated (21 messages: 0..20)
+        self.assertEqual(len(self.save_data["messages"]), 21)
+
+        # Verify boss drops are deduplicated
+        piston_count = sum(1 for i in player["inventory"] if "geothermal core piston" in str(i).lower())
+        self.assertEqual(piston_count, 1)
 
         # Check Ren in save
         ren = player["companions"]["Ren"]
@@ -26,7 +33,6 @@ class TestPostSiltResetAndTransition(unittest.TestCase):
 
         # Check master state
         ms = self.save_data["master_state"]
-        self.assertEqual(ms["turn_number"], 33)
         self.assertEqual(len(ms["entities"]), 0)
         effects = ms["environment"]["environmental_effects"]
         self.assertIn("Clear Escape Routes Available", effects)

@@ -5,10 +5,10 @@
         "class": "Wyrd-Weaver / Battleaxe Vanguard",
         "level": 3,
         "xp": 750,
-        "hp": 125,
+        "hp": 58,
         "max_hp": 125,
         "col": 1170,
-        "location": "Oxford Mine Adits - Lower Collapse Zone (Exit Junction)",
+        "location": "Oxford Mine - Exit Junction (Cleared)",
         "stats": {
             "STR": 33,
             "DEX": 33,
@@ -140,14 +140,6 @@
                 "desc": ""
             },
             {
-                "name": "Basalt Carapace Plating x2",
-                "rarity": "Common",
-                "durability": 100,
-                "max_durability": 100,
-                "qty": 1,
-                "desc": ""
-            },
-            {
                 "name": "[Graft Component] Silt-Marrow's Geothermal Core Piston (Rarity: Rare, Durability: 100/100, Qty: 1, Desc: A heavy brass-and-pyroclastic engine harvested from an ancient runic construct. Pulses with pressurized geothermal steam; suitable for Torso or Arm graft installations).",
                 "rarity": "Common",
                 "durability": 100,
@@ -164,31 +156,7 @@
                 "desc": ""
             },
             {
-                "name": "[Graft Component] Silt-Marrow's Geothermal Core Piston",
-                "rarity": "Common",
-                "durability": 100,
-                "max_durability": 100,
-                "qty": 1,
-                "desc": ""
-            },
-            {
-                "name": "Basalt Carapace Plating x2",
-                "rarity": "Common",
-                "durability": 100,
-                "max_durability": 100,
-                "qty": 1,
-                "desc": ""
-            },
-            {
                 "name": "[Graft Component] Silt-Marrow's Geothermal Core Piston (Tier 1 Runic)",
-                "rarity": "Common",
-                "durability": 100,
-                "max_durability": 100,
-                "qty": 1,
-                "desc": ""
-            },
-            {
-                "name": "Basalt Carapace Plating x2",
                 "rarity": "Common",
                 "durability": 100,
                 "max_durability": 100,
@@ -250,7 +218,7 @@
                 "hp": 28,
                 "max_hp": 35,
                 "ac": 16,
-                "status": "Vigilant and operational; standing ready at the ore-cart ascent to Washington Borough",
+                "status": "Active (Combat Ready - Watching Exit)",
                 "active_grafts": [
                     {
                         "name": "Sub-Dermal Optical Scanner",
@@ -365,150 +333,6 @@
             "mechanics_log": "* \ud83c\udfb2 `Player Ranged Attack (Thrown Axe): 1d20+5 = 19 vs AC 14 | Hit!`\n* \ud83c\udfb2 `Player Damage: 1d8+3 = 8 Slashing vs Silt-Marrow (HP: 6 -> 0) | Fatal Strike!`\n* \ud83c\udfb2 `Ren Attack (Aether-Lock Carbine): 1d20+6 = 18 vs AC 14 | Hit!`\n* \ud83c\udfb2 `Ren Damage: 1d10+3 = 9 Radiant (Overkill)`\n* \ud83c\udfb2 `Silt-Marrow the Unhewn disabled prior to completing Berserk Tremor slam.`\n* \ud83e\ude78 **Enemy_01:** -6 HP",
             "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Dude, its lumbar is shattered and the core hitbox is completely uncovered! It's in the red-bar execute phase, but that Berserk Tremor is totally telegraphing an enrage wipe or a ceiling collapse. If I hit the critical point now with max mana charge, we drop it before the room collision crushes us both!\"*\n> **Intent:** Line up a high-precision, charged radiant mana shot with the Aether-Lock Carbine directly into Silt-Marrow's exposed core before its berserk tremor triggers a cave-in.\n\n**[\ud83d\udc7e Silt-Marrow the Unhewn \u2014 SubAgent Mind]**\n> *\"Core exposed. Vertebrae ground to grit. The tremor sings too loud, splitting the shale inside my hopper. If the marrow cannot hold the seam, the mountain must come down. Crush the resonance. Let the roof fall and grant total tectonic stillness.\"*\n> **Intent:** Slam heavy calcified fists upward into the compromised timber bracing, venting scalding geode steam from cracked spinal plates to bring down the fractured ceiling upon the lower drift.",
             "image_data": null
-        },
-        {
-            "role": "user",
-            "content": "\"Ren, check the exits.  Find out where we need to go\" I say as I turn to scavenging any and everything from the golem",
-            "ai_prompt": "\"Ren, check the exits.  Find out where we need to go\" I say as I turn to scavenging any and everything from the golem"
-        },
-        {
-            "role": "assistant",
-            "content": "With Silt-Marrow broken into silent, smoking ruin, the subterranean chamber shudders violently under tectonic stress. Fractured adit timbers groan under cascading shale, venting bursts of superheated geothermal steam. While Ren swings his Aether-Lock Carbine across his shoulder and engages his Aetheric Ocular Lens to map the shifting debris, you waste no time kneeling over the defeated golem. Carving past shattered runic wards and scalding mineral seams, you extract the construct's intact geothermal core piston alongside reinforced slabs of runic basalt carapace before the chamber's structural matrix can crush them.\n\nRen blinks through the ocular lens's amber runic telemetry and calls out over the roar of tumbling stone, gesturing sharply toward two clear vectors through the settling dust. Directly ahead, an emergency ore-cart incline climbs steeply through an old haulage shaft toward the surface\u2014a direct passage toward the reinforced gates of the Washington Borough Safe-Zone. Downward and to the east, a breached drainage sluice descends into the ancient, mana-flooded tunnels of the Morris Canal Aqueducts. The cavern around you is fast giving way, demanding an immediate choice of ascent or descent.",
-            "mechanics_log": "* \ud83c\udfb2 `Skill Check: Survival / Scavenging (Harvesting) -> 1d20+2 = 15 vs DC 10 | Success! Harvested pristine golem components.`\n* \ud83c\udfb2 `Ren Check: Perception / Aetheric Ocular Scan -> 1d20+4 = 18 vs DC 12 | Success! Two distinct extraction vectors identified (Surface Incline vs. Aqueduct Sluice).`",
-            "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Yes, boss down! But wait\u2014classic post-kill cave-in sequence! The timber hitboxes are totally destabilized and that venting steam bypasses standard AC checks with true environmental ticks. I'm sitting at 28 HP and don't want to get crushed by a ceiling falling out of bounds. We need to clear this zone before the collision geometry completely pancakes us!\"*\n> **Intent:** Activate the Aetheric Ocular Lens to scan the splintering ceiling and steam vents for an optimal escape vector, calling out the collapsing terrain hazards to Banki while urging immediate extraction.",
-            "image_data": null
-        },
-        {
-            "role": "user",
-            "content": "\"Aqueducts and Glory or Safezone and Booze?\" I ask Ren, letting him decide which way to go as I attempt to loot the Golem's body itself for the materials.",
-            "ai_prompt": "\"Aqueducts and Glory or Safezone and Booze?\" I ask Ren, letting him decide which way to go as I attempt to loot the Golem's body itself for the materials."
-        },
-        {
-            "role": "assistant",
-            "content": "Steam billows from the cracked chassis of Silt-Marrow as you drive your blade into the seam of its ruined chest assembly, prying loose the still-radiating geothermal piston and two thick slabs of basalt plating. Runes etched along the golem's ribcage flicker out, releasing a sharp metallic hiss as the arcane lattice dissolves into inert mineral sediment. Above, the timber supports groan under the weight of shifting adit shale, raining stone dust across the pool of cooling silt.\n\nRen taps his ocular lens, the brass-and-sapphire array clicking into rapid alignment as azure glyphs reflect in his gaze. He coughs through the thermal haze and gestures frantically toward the rising tunnel incline. 'Safe-zone and ale, Banki, no contest! This ceiling matrix is fracturing by the second, and I'd prefer not to end up as mortar in an Oxford collapse! Look there\u2014the emergency ore-cart rail cuts right up through the fault-line toward the Washington Borough perimeter. Doc Mercer's clinic is right on the other side if we want to clean this piston up before the aether bleeds out. Or, if you're truly feeling suicidal, the lower drift slopes down toward the sunken Morris Canal conduits. But my vote is a warm tavern bench and a roof that isn't falling on our skulls!'",
-            "mechanics_log": "* \ud83c\udfb2 `Harvesting Check: 1d20+2 (Arcana/Survival) = 16 vs DC 12 | Success! Harvested [Graft Component] Silt-Marrow's Geothermal Core Piston and Basalt Carapace Plating x2.`\n* \ud83c\udfb2 `Ren Structural Scan (Investigation): 1d20+4 = 18 vs DC 11 | Success! Identified stable ascending ore-cart track to Washington Borough and descending adit to Morris Canal Aqueducts.`\n* \ud83c\udfb2 `Hazard Check: Falling Adit Debris DC 10 DEX Save | Player rolls 1d20+2 = 14 (Pass), Ren rolls 1d20+3 = 17 (Pass). No damage taken.`",
-            "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Boss down! Huge win, but oh man, this whole sector has an active collapse script running! Superheated steam is total percent-HP hazard damage and my armor class won't do squat against falling boulders. If that ceiling clips down on us, we're pancaked\u2014gotta find the exit route stat!\"*\n> **Intent:** Ren activates his Aetheric Ocular Lens to scan through the venting steam for structural weak points and a clear exit tunnel, shouting to Banki that they need to evac before the ceiling geometry collapses completely.\n\n**[\ud83d\udc7e Silt-Marrow the Unhewn \u2014 SubAgent Mind]**\n> *\"The core piston is shattered. The marrow has leaked back into the adit mud. The tremors have finally ceased\u2014only cold, unbroken silence remains beneath the split timbers.\"*\n> **Intent:** Remain motionless as pulverized shale and shattered iron, allowing the broken struts and marrow-crusted sediment to settle into the stone floor in permanent stillness.",
-            "image_data": null
-        },
-        {
-            "role": "user",
-            "content": "With several grunts of effort I manage to haul the corpse into the Mine Cart and jump in with Ren, heading back up.",
-            "ai_prompt": "With several grunts of effort I manage to haul the corpse into the Mine Cart and jump in with Ren, heading back up."
-        },
-        {
-            "role": "assistant",
-            "content": "With a strained grunt of physical exertion, you heave the shattered, heavy runic chassis and basalt slag of Silt-Marrow into the reinforced ore cart. The metal suspension groans in protest under the immense weight of the slain golem. Ren scrambles into the cart right beside you, his Aetheric Ocular Lens flaring with pale cyan light as runic crosshairs adjust in his left eye. 'Timber stress points are buckling at three points overhead\u2014diverting track pins now!' Ren shouts over the screech of rupturing steam pipes. Channelling a pulse of kinetic aether through his focus tools, he trips the manual bypass lever on the track siding just as superheated steam erupts where you stood seconds prior. The ore cart rattles violently as its arcane winch catches the cogwheel track, surging upward along the emergency incline away from the crumbling depths toward the surface outskirts of the Washington Borough Safe-Zone.",
-            "mechanics_log": "* \ud83c\udfb2 `Athletics Check (Banki - Heave Golem Chassis): 1d20+3+2 = 17 vs DC 13 | Success!`\n* \ud83c\udfb2 `Perception Check (Ren - Aetheric Ocular Lens Scan): 1d20+4 = 19 vs DC 12 | Critical Hazard Avoidance!`\n* \ud83c\udfb2 `Hazard Avoidance (Superheated Steam Venting): Ore-Cart Traversal DC 12 | Cleared without damage!`\n* \ud83c\udfb2 `Encounter Concluded: Silt-Marrow the Unhewn Defeated. Distributing Victory Spoils.`",
-            "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Boss is down, but the ceiling collision is totally failing! Environmental tick damage and falling shale can drop my 28 HP real fast if we get pinned. I need to route a clean path through these steam hitboxes before the whole adit collapses on us.\"*\n> **Intent:** Activate the Aetheric Ocular Lens to scan the fracturing timber braces and venting steam fissures, identifying the safest traversal route out of the collapse zone while shouting warnings to Banki.\n\n**[\ud83d\udc7e Silt-Marrow the Unhewn \u2014 SubAgent Mind]**\n> *\"The core piston is cracked, the runic marrow drained. The vibrations cease. The long-awaited silence settles over the broken seam.\"*\n> **Intent:** Remain inert as pulverized shale, rusted scrap, and calcified struts, finally settling into the damp earth of the adit.",
-            "image_data": null
-        },
-        {
-            "role": "user",
-            "content": "With a wild smile to Ren I trace the Runes for Speed onto the MineCart, briefly giving it a massive boost in speed and momentum, rapidly carrying us to the exit in a wild, exhilarating ride.",
-            "ai_prompt": "With a wild smile to Ren I trace the Runes for Speed onto the MineCart, briefly giving it a massive boost in speed and momentum, rapidly carrying us to the exit in a wild, exhilarating ride."
-        },
-        {
-            "role": "assistant",
-            "content": "Mana bleeds from your fingertips in luminous sapphire braids as you etch ancient Haste-glyphs directly into the rusted iron hull of the ore-cart. The runes ignite with volatile aetheric thrust, kicking the cart into an ear-splitting screech across the fractured iron rails just as tons of shattered basalt crash into the tunnel behind you. Beside you, Ren snaps his Aetheric Ocular Lens down over his eye; brilliant targeting reticles cast across his face as he reads thermal vents and timber stress fractures in real-time, calling out micro-drifts and banking angles with crisp artificer precision. The cart surges violently up the steep incline, rocketing past geysers of superheated geothermal steam in a blurred streak of arcane blue before bursting through the splintered emergency blast hatch into the cool evening air of the upper valley ridge overlooking the fortified wards of Washington Borough.",
-            "mechanics_log": "* \ud83c\udfb2 `Skill Check: Arcana (Runic Inscription) -> 1d20+4 = 18 vs DC 13 | Success! Runic Haste Matrix ignites.`\n* \ud83c\udfb2 `Companion Ren Check: Investigation/Perception (Aetheric Ocular Lens) -> 1d20+5 = 21 vs DC 12 | Critical Vector Calculation! Hazard trajectory plotted.`\n* \ud83c\udfb2 `Hazard Avoidance: Dexterity Check -> 1d20+3 + 2 (Ren Guidance) = 19 vs DC 14 | Escaped adit collapse without structural crush damage.`",
-            "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Boss is down, but this is a classic post-encounter collapse hazard! Timbers are snapping and superheated steam is venting everywhere\u2014if falling terrain hits us, that's instant environmental crush damage and zero HP. I need my ocular lens to calculate the stable pathing vectors before the game engine drops the entire adit on our heads!\"*\n> **Intent:** Activate the Aetheric Ocular Lens to analyze the fractured adit ribs and superheated steam vents, mapping out a safe route through the collapsing rubble while urging Banki to evac before the ceiling caves in.\n\n**[\ud83d\udc7e Silt-Marrow the Unhewn \u2014 SubAgent Mind]**\n> *\"The pistons have cracked open and the bone-marrow iron has frozen solid. The terrible reverberations of flesh are gone; tectonic stillness has finally reclaimed the bedrock.\"*\n> **Intent:** Remain inert as shattered stone and emptied hydraulics, slumping into the dark silt while residual steam bleeds into the silence of the collapse.",
-            "image_data": null
-        },
-        {
-            "role": "user",
-            "content": "\"Hahahaha Haaaaaaaaaaaa\" I scream in exhilaration as the Minecart surges out of the exit Into the air ",
-            "ai_prompt": "\"Hahahaha Haaaaaaaaaaaa\" I scream in exhilaration as the Minecart surges out of the exit Into the air "
-        },
-        {
-            "role": "assistant",
-            "content": "The ore-cart shatters through the rotted safety timbers at terminal velocity, launching out of the collapsing mine mouth into the blinding violet twilight of the Pohatcong foothills. Your triumphant howl echoes across the stone ravine as the cart catches sheer air, trailing plumes of superheated steam and fractured slate behind it. Beneath you, the subterranean shaft caves in with a deafening tectonic rumble, sealing Silt-Marrow's tomb in crushing stone.\n\nRen drops his center of gravity, his Aetheric Ocular Lens glowing cyan as he tracks the parabolic arc toward an overgrown receiving switch below. Channeling mana into his carbine's mag-rail mount, he wedges the reinforced housing against the chassis to balance the cart's violent tilt. The iron wheels slam down onto the rusted rails with an explosive shower of runic sparks, skidding along the decommissioned Morris incline before grinding to a smoking halt near the fortified boundary markers of the Washington Borough Safe-Zone.",
-            "mechanics_log": "* \ud83c\udfb2 `Environmental Hazard: Mine Collapse Escape DC 12 Dexterity (Acrobatics) Check`\n* \ud83c\udfb2 `Player Check: 1d20+3 = 18 vs DC 12 | Success! (Controlled descent)`\n* \ud83c\udfb2 `Companion Ren Check: 1d20+2 (Ocular Lens Assist +2) = 17 vs DC 12 | Success! (Track stabilization)`",
-            "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Boss down, loot harvested, awesome\u2014but that ceiling is literally dropping frame rates and shale! Compromised timbers venting superheated steam is textbook telegraphing for a script-triggered cave-in. My HP is sitting at twenty-eight, and getting crushed by falling geometry is the dumbest way to wipe. Lens on, pathfinding out, let's move!\"*\n> **Intent:** Activate the Aetheric Ocular Lens to scan the fractured adit ribs and superheated steam plumes for a stable exit path, signaling Banki to clear out before the compromised timber bracing gives way.\n\n**[\ud83d\udc7e Silt-Marrow the Unhewn \u2014 SubAgent Mind]**\n> *\"The marrow is drained. The acoustic screams have ceased. At last... the tectonic stillness has claimed the chassis.\"*\n> **Intent:** Remain motionless as shattered calcified slag, letting fractured pistons and broken shale settle into the cold floor of the adit.",
-            "image_data": null
-        },
-        {
-            "role": "user",
-            "content": "\"Well,\" I say as I dust myself off and lift Silt-Marrows corpse into my shoulder, \"I suppose I owe you a beer my friend, lets see what we can sell this thing for and get that drink!\"",
-            "ai_prompt": "\"Well,\" I say as I dust myself off and lift Silt-Marrows corpse into my shoulder, \"I suppose I owe you a beer my friend, lets see what we can sell this thing for and get that drink!\""
-        },
-        {
-            "role": "assistant",
-            "content": "Ren lets out a low whistle of relief, though his gaze darts anxiously toward the groaning ceiling timbers. Tapping the brass housing at his temple, his Aetheric Ocular Lens flares with faint sapphire runes, projecting sweeping holographic wireframes across the splintering beams and hissing geothermal fissures. Identifying a stable fault line away from the venting steam, Ren gestures urgently toward an ascending incline where rusted ore-cart tracks climb steeply into the upper dark, bypassing the groaning collapse.\n\nWith a strained grunt of physical resolve, you heave the heavy, fractured chassis of Silt-Marrow across your shoulders. Basalt plates and dull bronze hydraulic cylinders grind against your armor, heavy with slag but rich in salvageable aether-tech. Following Ren's guided path through the settling dust, you clear the crumbling chamber just as a cascade of shale seals the lower adits behind you. Ahead, cool surface air drafts downward from the ore-cart shaft leading toward the fortified safe-zone of Washington Borough, while a diverging lower drainage conduit murmurs toward the Morris Canal Aqueducts.",
-            "mechanics_log": "* \ud83c\udfb2 `Skill Check: Player Athletics (Heave Salvage Frame) | 1d20+3 = 18 vs DC 12 | Success!`\n* \ud83c\udfb2 `Skill Check: Companion Ren Investigation (Aetheric Ocular Lens Hazard Scan) | 1d20+4+2 (Item Bonus) = 21 vs DC 14 | Success!`\n* \ud83c\udfb2 `Environmental Hazard: Superheated Steam Vent Avoidance | Hazard Bypassed cleanly`\n* \ud83c\udfb2 `Encounter Concluded: Silt-Marrow the Unhewn Defeated | Encounter Rewards Distributed`",
-            "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Boss is down, nice, but the encounter arena is literally de-spawning around us! Those splintering timbers have zero structural integrity and that superheated steam will shred my remaining 28 HP if we get hit with an environmental DoT tick. Gotta use the lens to find the pathing mesh out of here before the whole ceiling collapses on our heads!\"*\n> **Intent:** Activate the Aetheric Ocular Lens to scan the unstable timber braces and geothermal steam vents, mapping a safe path through the collapsing mine shaft for Banki and himself.\n\n**[\ud83d\udc7e Silt-Marrow the Unhewn \u2014 SubAgent Mind]**\n> *\"The marrow is drained. The core piston has ceased its pounding. The tremors have finally gone cold and quiet. Total stillness... the collapse is complete.\"*\n> **Intent:** Remain completely inert as broken shale and cold hydraulic slag, allowing the settling bedrock to bury the ruined armature in absolute stillness.",
-            "image_data": null
-        },
-        {
-            "role": "user",
-            "content": "With a slight sigh as I feel the tingle of the Safe Zone barrier as we cross it I ask Ren, \"Where to first?\"",
-            "ai_prompt": "With a slight sigh as I feel the tingle of the Safe Zone barrier as we cross it I ask Ren, \"Where to first?\""
-        },
-        {
-            "role": "assistant",
-            "content": "Ren's Aetheric Ocular Lens flared with crystalline azure light, projecting a lattice of stress vectors along the fracturing shale ceiling just as the Oxford adits groaned under structural collapse. Snapping his aether-lock carbine to its leather harness, he called out the vectors of least resistance, guiding your footing clear of blinding geothermal geysers and shattering timber ribs. With a roar of falling stone sealing the lower mine shaft behind you, the two of you surged up the abandoned ore-cart incline and crossed the perimeter threshold of Washington Borough. A warm, static thrum washed over your skin as the township's elder runic wards recognized non-hostile signatures, bathing the muddy cobbles in the amber glow of hovering glyph-lanterns. Ren leaned against an aether-duct conduit pipe, exhaling a plume of mist and checking the damp harness holding your harvested beast components. 'First stop has to be Doc Mercer's clinic down in the under-cellars if you want that geothermal core stabilized and grafted before the mana bleeds out,' Ren suggested, nodding toward the lower quarter. 'Otherwise, Quartermaster Vane's outpost is taking turn-ins for the Oxford quarry bounty right across the square. Your call, partner.'",
-            "mechanics_log": "* \ud83c\udfb2 `Ren Hazard Navigation (Perception + Aetheric Ocular Lens): 1d20+4 = 18 vs DC 12 | Success! Collapse avoided.`\n* \ud83c\udfb2 `Environmental Hazard: Oxford Adit Structural Collapse DC 14 Acrobatics Check | Player: 1d20+3 = 17 | Success! No falling debris damage.`\n* \ud83c\udfb2 `Safe Zone Detection: Washington Borough Ward Matrix engaged. Hostile aggro cleared.`",
-            "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Boss is down, but this whole instance zone is coded for a post-encounter scripted cave-in! Those ceiling supports have zero durability left, and that steam will melt right through our armor rating if we stand here admiring the loot. Need to use my lens, check the physics meshes, and get Banki and me out before the collision ceiling caves our skulls in.\"*\n> **Intent:** Activate the Aetheric Ocular Lens to analyze the stress fractures along the compromised timber ceiling and scan the collapsing mine adit for safe footing away from the geothermal steam vents, calling out a hazard-free extraction path for Banki.",
-            "image_data": null
-        },
-        {
-            "role": "user",
-            "content": "\"Let's hit the Doc first, get you patched up as well and grab some healing supplies for the road.\" I say, motioning for Ren to lead the way.",
-            "ai_prompt": "\"Let's hit the Doc first, get you patched up as well and grab some healing supplies for the road.\" I say, motioning for Ren to lead the way."
-        },
-        {
-            "role": "assistant",
-            "content": "Ren clicks his brass-rimmed ocular focus into place, its internal lenses spinning with a soft aetheric chime as cyan scan-rings illuminate the groaning adit ceiling. 'On your six, Banki\u2014move! Those timber braces are down to their last splinters, and that geothermal steam will scorch our flesh before the ceiling even lands!' Holstering his Aether-Lock Carbine across his back, Ren vaults over a mound of smoking shale, weaving expertly between venting fissures of superheated vapor. Following his mapped trajectory, the two of you scramble up the steep emergency ore-cart incline, leaving behind the shattered, hissing remains of Silt-Marrow as the lower shaft groans and collapses into a wall of sealed stone. Breaking through the rusted iron bulkheads at the surface, cool night air rushes over your soot-streaked faces as the defensive wards and street lamps of Washington Borough flicker into view. Down the cobbled alley beneath the hum of overhead mana-conduits, the neon-brass sign of Doc Mercer's Underground Clinic glows invitingly in the gloom.",
-            "mechanics_log": "* \ud83c\udfb2 `Skill Check: Ren's Perception (Aetheric Ocular Lens): 1d20+4 = 19 vs DC 12 | Success! Safe evacuation vector plotted.`\n* \ud83c\udfb2 `Hazard Avoidance: Player Agility check: 1d20+2 = 17 vs DC 11 | Success! Evaded superheated geothermal steam.`\n* \ud83c\udfb2 `Environmental Event: Oxford Mine Lower Adit undergoes catastrophic ceiling collapse. Transition to surface complete.`",
-            "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Boss is down, but this zone's trigger script is definitely running a collapse sequence! Those timber hitboxes are redlining, and superheated steam does persistent fire and true environmental damage that ignores my brigandine's AC. If we get pinned by falling rocks here, our HP bars will melt in seconds\u2014we have to grab any loose loot drops and clear the zone right now!\"*\n> **Intent:** Activate the Aetheric Ocular Lens to scan the splintering ceiling bracing and steam vents, charting a secure path forward through the shale while urging Banki to move before the environmental hazard triggers a total cave-in collapse event.",
-            "image_data": null
-        },
-        {
-            "role": "user",
-            "content": "/Admin Retcon the last scene, I did not ditch the remains, that is valuable scrap!",
-            "ai_prompt": "/Admin Retcon the last scene, I did not ditch the remains, that is valuable scrap!"
-        },
-        {
-            "role": "assistant",
-            "content": "A clinical pulse from the Cardinal System recalibrates local inventory metrics, validating your claim over the shattered construct. With swift, practiced efficiency, you wrench free Silt-Marrow's smoldering geothermal core piston and bundle heavy slabs of runic basalt carapace plating into your satchel before the structural collapse can bury them. Ren brings his Aether-Lock Carbine to a low-ready sling and taps his brass monocle, activating his Aetheric Ocular Lens. A soft azure crosshair flares across his iris as the runic lens cuts through the superheated plumes of geothermal steam and crumbling shale. He gestures urgently toward the northern rock wall where ancient timber reinforces an emergency ore-cart incline ascending toward the Washington Borough Safe-Zone, while noting a second, lower subterranean breach spilling toward the decommissioned Morris Canal Aqueducts. The tremors subside into hollow rumbles as the chamber settles, leaving the extraction routes open.",
-            "mechanics_log": "* \ud83c\udfb2 `Retcon System Verification: Silt-Marrow biological/magetech harvest logged to Player Inventory.`\n* \ud83c\udfb2 `Ren Skill Check (Perception via Aetheric Ocular Lens): 1d20 + 3 (Perception) + 2 (Artificer Focus) = 19 vs Structural Hazard DC 12 | Critical Success! Safe extraction vectors mapped.`\n* \ud83c\udfb2 `Environmental Hazard: Falling Shale & Superheated Steam avoided via mapped pathing.`\n* \ud83c\udfb2 `Encounter Cleared: Silt-Marrow the Unhewn defeated. Awarding 250 XP and 75 Col.`\n* \ud83e\ude78 **Player:** 0 HP\n* \ud83e\ude78 **Ren:** 0 HP",
-            "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"The boss is down and looted, but the dev team definitely scripted a collapse sequence for this zone! Compromised timber bracing plus geothermal steam hazard ticks equals an environmental wipe if we linger. I do not want to find out what falling-rock crush damage feels like with my HP at twenty-eight, so we need to hit our egress vector right now!\"*\n> **Intent:** Activate my Aetheric Ocular Lens to map the ceiling integrity and scan for safe extraction routes away from the superheated steam vents, waving Banki toward stable ground.",
-            "image_data": null
-        },
-        {
-            "role": "user",
-            "content": "\ud83d\udcbb **ROOT OVERRIDE EXECUTED:** We fall back from the hazard zone and take the cleared trail back to the Washington Borough Safe-Zone.",
-            "ai_prompt": "[ROOT OVERRIDE] We fall back from the hazard zone and take the cleared trail back to the Washington Borough Safe-Zone."
-        },
-        {
-            "role": "assistant",
-            "content": "A resonant golden glyph flares across the cavern air as the Cardinal System's root administrative mandate executes, fracturing the environmental hazard simulation. The buckling mine timbers and shrieking geothermal steam fissures freeze in place under an iridescent diagnostic stutter. Ren adjusts his glowing brass Aetheric Ocular Lens, nodding sharply as the mapped egress vectors illuminate along the stone path before them. 'Aetheric telemetry locked in\u2014move!' he calls out, kinetic dampening runes gleaming along his vanguard greaves as he vaults across the cracked shale.\n\nFollowing the cleared ascent of the old ore-cart line, the subterranean oppressive heat drains away into the cool mountain draft of Warren County. Pushing past the heavy runic ward-banners that mark the perimeter barrier, you and Ren emerge out onto the fortified ramparts of the Washington Borough Safe-Zone. Gas-lit mana lamps hiss steadily along the cobblestones, casting long shadows across Quartermaster Vane's fortified timber depot and Doc Mercer's quiet cellar clinic down the alley. The immediate danger has passed, and the sanctuary hums with the measured murmurs of fellow survivors.",
-            "mechanics_log": "* \ud83c\udfb2 `ROOT OVERRIDE EXECUTED: Hazard mechanics and falling debris checks bypassed.`\n* \ud83c\udfb2 `System Event: Transit initiated from Oxford Mine Adits to Washington Borough Safe-Zone.`\n* \ud83c\udfb2 `Encounter state set to INACTIVE. Environmental threat cleared.`",
-            "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Boss is down and looted, which means the scripted collapse phase is totally initiating! Look at those compromised timber hitboxes\u2014if the physics engine drops that rock ceiling on us, it's instant fatal crush damage, no saving throw. I need to calibrate my ocular lens to find a clear path around the steam jets before we both get wiped by dynamic terrain hazards.\"*\n> **Intent:** Activate the Aetheric Ocular Lens to scan the splintering timber bracing and geothermal steam vents, mapping out a safe egress route through the falling shale while urgently signaling Banki to evacuate before the ceiling collapses.",
-            "image_data": null
-        },
-        {
-            "role": "user",
-            "content": "\ud83d\udcbb **ROOT OVERRIDE EXECUTED:** I head down into the ancient vaulted catacombs beneath Washington Avenue to consult with Doc Mercer at his flesh-weaving and graft clinic.",
-            "ai_prompt": "[ROOT OVERRIDE] I head down into the ancient vaulted catacombs beneath Washington Avenue to consult with Doc Mercer at his flesh-weaving and graft clinic."
-        },
-        {
-            "role": "assistant",
-            "content": "Bypassing the tremoring shafts of the Oxford Mine Adits with seamless precision, you emerge from the ascending ore conduits and navigate directly into the fortified underbelly of Washington Borough. Beneath the weathered cobblestones and glowing runic street-wards of Washington Avenue, the air transitions from sulfury mine dust to the scent of pungent alchemical tinctures, sterile distilled ether, and scorching copper wiring. You descend into the ancient vaulted catacombs where the clinic of Doc Mercer operates under flickering cerulean mana-lamps.\n\nRen steps through the reinforced ironwood bulkhead right behind you, his Aether-Lock Carbine safely slung across his shoulder and his aetheric ocular lens humming as it shifts out of hazard-scanning mode. Doc Mercer glances up from a dissection slab framed by brass steam pistons and delicate marrow-siphoning conduits. The grizzled flesh-weaver wipes an array of runic scalpels on an oilcloth, his keen eyes scanning your harvested specimens and anatomical integrity with cold, clinical interest.",
-            "mechanics_log": "* \ud83c\udfb2 `ROOT OVERRIDE INVOKED: Spatial displacement and dungeon transition override executed.`\n* \ud83c\udfb2 `Encounter State: Resolved. Hostiles nullified.`\n* \ud83c\udfb2 `Navigation: Oxford Mine Adits -> Washington Borough Vaulted Catacombs (Doc Mercer's Clinic).`",
-            "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Classic post-boss scripted escape sequence! Of course the level designers had to pipe in superheated steam and weakening hitboxes on the ceiling timbers right after Silt-Marrow hit zero. I'm sitting at 28 HP and environmental crushing damage has no armor mitigation\u2014we need to clear this collapse zone before the physics engine buries us alive!\"*\n> **Intent:** Activate my Aetheric Ocular Lens to map a stable path through the falling shale, then urge Banki to hustle toward the next shaft before the compromised timbers trigger a full ceiling collapse event.",
-            "image_data": null
-        },
-        {
-            "role": "user",
-            "content": "\"Ehhh ..What's up Doc?\" I say, imitating the famous Bugs Bunny scene while I wait for Ren to start taking some initiative.",
-            "ai_prompt": "\"Ehhh ..What's up Doc?\" I say, imitating the famous Bugs Bunny scene while I wait for Ren to start taking some initiative."
-        },
-        {
-            "role": "assistant",
-            "content": "Ren blinks through the sulfurous vapor, lowering his steaming Aether-Lock Carbine as your deadpan greeting cuts through the hissing vents. He adjusts the brass rim of his Aetheric Ocular Lens, muttering under his breath with a faint smirk. 'Right now, what's up is about forty tons of metamorphic shale ready to crush us into paste if we stand here bantering,' he says, gesturing toward the fractured crossbeams overhead. The rune-etched lenses over his eye click into focus, projecting pale cerulean scanning lines across the creaking timbers and geothermal fissures. \n\nTracking the stress vectors, Ren flags two viable escape routes before the ceiling gives out: a winch-driven emergency ore-cart incline ascending through the upper adits toward the surface near the Washington Borough Safe-Zone, and a submerged lower breach funneling runoff toward the Morris Canal Aqueducts. With Silt-Marrow's chassis lying inert and cold, the tremor in the rock settles into an ominous, steady groan, leaving the path open for your ascent.",
-            "mechanics_log": "* \ud83c\udfb2 `Environment Check: Oxford Mine Structural Integrity DC 12`\n* \ud83c\udfb2 `Companion Ren scans hazards: 1d20+5 (Perception + Aetheric Lens) = 19 vs DC 12 | Success! Stable ascent route and aqueduct breach mapped.`",
-            "subagent_log": "**[\ud83e\udd16 Ren \u2014 SubAgent Mind]**\n> *\"Silt-Marrow is finally down, thank god, but the environmental hazard meter is blinking red. Those splintered timbers and steam vents look like a scripted cave-in event waiting to trigger. If that roof clips down on our heads, our HP won't mean a thing\u2014I need to ping the structural stress nodes with my lens and route a safe path before the adit caves in completely.\"*\n> **Intent:** Activate the Aetheric Ocular Lens to scan the cracked ceiling timbers and venting steam lines, scouting a stable path forward through the collapse zone.",
-            "image_data": null
         }
     ],
     "world_state": {
@@ -556,8 +380,8 @@
         "campaign_name": "SAO_Sandbox",
         "turn_number": 33,
         "environment": {
-            "location": "Oxford Mine Adits - Lower Collapse Zone (Exit Junction)",
-            "description": "A damp, cavernous mine shaft exit junction. The massive chassis of Silt-Marrow the Unhewn lies completely inert, dismantled, and harvested. The seismic rumbles have ceased, leaving the air still except for settling dust. Clear ascent routes lead upward via the ore-cart track toward the Washington Borough Safe-Zone, and downward toward the Morris Canal Aqueducts.",
+            "location": "Oxford Mine - Exit Junction (Cleared)",
+            "description": "A damp, cavernous mine shaft exit junction. The massive chassis of Silt-Marrow the Unhewn lies completely inert, dismantled, and harvested. The seismic rumbles have ceased, leaving the path open to ascend upward via the ore-cart track toward the Washington Borough Safe-Zone or descend toward the Morris Canal Aqueducts.",
             "hidden_traps": [],
             "environmental_effects": [
                 "Dim Light",
