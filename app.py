@@ -526,12 +526,14 @@ def render_character_calibration_wizard():
             sign = f"+{m_val}" if m_val > 0 else (str(m_val) if m_val < 0 else "0")
             m_cols[idx].metric(label=s, value=sign)
             
-        st.markdown("##### 🧬 Racial Abilities & Traits:")
+        st.markdown("##### 🧬 Racial Abilities & Lineage Powers:")
         for ab in race_obj["racial_abilities"]:
-            if "Flaw" in ab:
-                st.warning(f"⚠️ {ab}")
-            else:
-                st.success(f"✨ {ab}")
+            ab_det = mechanics.get_spell_or_power_details(ab) if hasattr(mechanics, "get_spell_or_power_details") else {"name": ab.split(":")[0], "category": "Lineage Power", "action_type": "Innate", "cost": "Innate", "range": "Self", "description": race_obj["desc"], "mechanics": ab}
+            ab_icon = "⚠️" if "Flaw" in ab else "✨"
+            with st.expander(f"{ab_icon} {ab_det['name']} — [{ab_det['category']}]", expanded=False):
+                st.caption(f"⏱️ **Action:** {ab_det['action_type']} | 💧 **Cost:** {ab_det['cost']} | 📏 **Range:** {ab_det['range']}")
+                st.markdown(f"**📖 Description:**\n{ab_det['description']}")
+                st.markdown(f"**🎲 Game Mechanics:**\n{ab_det['mechanics']}")
 
     # --- TAB 4: CLASS DOCTRINE ---
     with tab4:
@@ -563,9 +565,13 @@ def render_character_calibration_wizard():
 
         st.caption(f"**Favored Skill Affinities (+25% Mastery XP):** {', '.join(class_obj.get('favored_skills', []))}")
         
-        st.markdown("##### 🎖️ Fixed Iconic Duo (Level 1 Baseline Feats):")
+        st.markdown("##### 🎖️ Fixed Iconic Duo (Level 1 Baseline Powers & Feats):")
         for cf in class_obj["starting_feats"]:
-            st.success(f"🔹 **{cf}**")
+            cf_det = mechanics.get_spell_or_power_details(cf) if hasattr(mechanics, "get_spell_or_power_details") else {"name": cf, "category": "Class Power", "action_type": "Active", "cost": "Resource", "range": "Combat", "description": "", "mechanics": cf}
+            with st.expander(f"🔹 {cf_det['name']} — [{cf_det['category']}]", expanded=False):
+                st.caption(f"⏱️ **Action:** {cf_det['action_type']} | 💧 **Cost:** {cf_det['cost']} | 📏 **Range:** {cf_det['range']}")
+                st.markdown(f"**📖 Description:**\n{cf_det['description']}")
+                st.markdown(f"**🎲 Game Mechanics:**\n{cf_det['mechanics']}")
             
         def_w = cg.CLASS_WEAPONS.get(selected_class_key, cg.CLASS_WEAPONS["pathless"])
         st.caption(f"Default Combat Loadout: **{def_w['main_hand']}** (Main) & **{def_w['off_hand']}** (Off) - *{def_w['desc']}*")
@@ -1265,28 +1271,73 @@ def render_game_hud():
             else:
                 st.write(f"- **{s_label}:** *Empty*")
         
-    with st.expander("✨ Skills, Spells & Feats", expanded=False):
-        if player['racial_abilities']:
-            st.write("**Racial Traits:**")
-            for r in player['racial_abilities']: st.write(f"- {r}")
-            st.divider()
-            
+    with st.expander("📈 Skills & Mastery (1–1000)", expanded=False):
+        st.caption("Continuous 1–1000 proficiency tracking. Crossing thresholds (50, 100, 250, 500, 750, 1000) unlocks new Sword Skills and Passive Feats.")
         for s_name, s_data in player.get('skills', {}).items():
             if isinstance(s_data, dict):
                 mastery = s_data.get('mastery', 1)
                 desc = s_data.get('description', '')
+                unlocked_ms = s_data.get('milestones_unlocked', [])
             else:
                 mastery = 1
                 desc = str(s_data)
+                unlocked_ms = []
                 
             tier_name, next_th = get_mastery_tier_info(mastery)
             st.write(f"**{s_name}** `[{tier_name}]` ({mastery}/1000)")
             pct = min(1.0, mastery / float(next_th)) if next_th > 0 else 1.0
             st.progress(pct, text=f"{mastery}/{next_th} to next milestone")
-            if desc: st.caption(desc)
-            
-        for s in player.get('spells', []) + player.get('feats', []):
-            st.write(f"- {s}")
+            if desc:
+                st.caption(desc)
+            if unlocked_ms:
+                st.caption(f"🏅 *Milestones Unlocked:* {', '.join(str(m) for m in unlocked_ms)}")
+
+    all_spells_powers = mechanics.get_all_player_spells_and_powers(player) if hasattr(mechanics, "get_all_player_spells_and_powers") else []
+    with st.expander(f"🔮 Spells & Powers ({len(all_spells_powers)})", expanded=False):
+        st.caption("Click any Spell, Runic Hex, Class Power, or Lineage Ability below to expand its full Lore Description and Game Mechanics.")
+        if hasattr(mechanics, "get_combat_resource_display"):
+            res_disp = mechanics.get_combat_resource_display(player)
+            st.progress(min(1.0, max(0.0, float(res_disp.get("percentage", 0.0)))), text=f"⚡ {res_disp['name']}: {res_disp['display']}")
+        if hasattr(mechanics, "get_slotted_abilities") and hasattr(mechanics, "get_max_ability_slots"):
+            slotted_now = mechanics.get_slotted_abilities(player)
+            max_ab_slots = mechanics.get_max_ability_slots(player)
+            st.caption(f"🧠 **Active Matrix Memory:** `{len(slotted_now)} / {max_ab_slots}` Slots Loaded")
+
+        if not all_spells_powers:
+            st.info("No spells or special powers unlocked yet. Advance Skill Mastery to 100+, decipher Spell Slates, or fuse abilities!")
+        else:
+            for sp_idx, sp in enumerate(all_spells_powers):
+                slot_badge = " 🟢 [Slotted]" if sp.get("is_slotted") else ""
+                expander_label = f"{sp.get('icon', '🔮')} {sp['name']} — [{sp.get('source_group', 'Spell / Power')}]{slot_badge}"
+                with st.expander(expander_label, expanded=False):
+                    st.markdown(f"**Classification:** `{sp.get('category', 'Spell / Power')}`")
+                    st.caption(f"⏱️ **Action:** {sp.get('action_type', 'Standard Action')} | 💧 **Cost:** {sp.get('cost', 'Standard')} | 📏 **Range:** {sp.get('range', 'Combat')}")
+                    st.markdown("**📖 Description:**")
+                    st.write(sp.get("description", ""))
+                    st.markdown("**🎲 Game Mechanics:**")
+                    st.info(sp.get("mechanics", ""))
+
+                    sp_col1, sp_col2 = st.columns(2)
+                    with sp_col1:
+                        if sp.get("is_slotted"):
+                            if st.button("🔓 Unslot from Matrix", key=f"btn_unslot_sp_{sp_idx}", use_container_width=True):
+                                u_res = mechanics.unslot_ability(player, sp["name"])
+                                save_game(player, st.session_state.messages)
+                                st.toast(u_res.get("message", "Unslotted!"), icon="🧠")
+                                st.rerun()
+                        else:
+                            if st.button("🧠 Slot into Matrix", key=f"btn_slot_sp_{sp_idx}", use_container_width=True):
+                                s_res = mechanics.slot_ability(player, sp["name"])
+                                if s_res.get("success"):
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(s_res.get("message", "Slotted!"), icon="🧠")
+                                    st.rerun()
+                                else:
+                                    st.warning(s_res.get("message", "Matrix memory full."))
+                    with sp_col2:
+                        if st.button(f"⚡ Cast / Invoke", key=f"btn_cast_sp_{sp_idx}", use_container_width=True):
+                            st.session_state.pending_dev_command = f"I invoke [{sp['name']}] ({sp.get('category', 'Spell / Power')})! Resolve its game mechanics and narrative impact."
+                            st.rerun()
 
     with st.expander("🔮 Ability Fusion Chamber", expanded=False):
         st.caption("Combine 2 abilities to forge a new synergistic technique (Rule 10).")

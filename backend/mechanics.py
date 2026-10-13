@@ -9339,5 +9339,537 @@ def build_scene_visual_manifest(player_state: dict = None, active_companions: li
     return "\n".join(lines)
 
 
+# =====================================================================
+# PHASE M11: CANONICAL SPELLS, POWERS & FEATS COMPENDIUM
+# =====================================================================
+
+CANONICAL_SPELLS_AND_POWERS = {
+    "major force missile": {
+        "name": "Major Force Missile",
+        "category": "Arcane Evocation Spell (Tier 2)",
+        "action_type": "Standard Action",
+        "cost": "10 Aetheric Flux / Stamina",
+        "range": "120 ft",
+        "description": (
+            "Channels raw condensed kinetic aether through somatic Elder Futhark hand-signs (Algiz-Thurisaz), "
+            "condensing ambient mana into three blazing cyan force-projectiles that streak through the air with a "
+            "sharp ozone crack and unerringly lock onto the target's vital signature."
+        ),
+        "mechanics": (
+            "• Action: Standard Action (Requires free off-hand for Somatic Casting or Runic Focus)\n"
+            "• Resource Cost: 10 Aetheric Flux / Stamina\n"
+            "• Range & Targeting: 120 ft; launches 3 bolts that can strike a single target or split across up to 3 targets in line of sight.\n"
+            "• Accuracy: Auto-hits visible targets (ignores standard partial cover and Evasion; blocked only by Total Cover or Shield wards).\n"
+            "• Damage: 3d4 + 3 + INT mod Force damage (1d4 + 1 per bolt). Deals 100% unreduced damage to incorporeal spirits and heavy constructs, and inflicts 5 pts of Boss Break Gauge stagger."
+        )
+    },
+    "earth tremor hex": {
+        "name": "Earth Tremor Hex",
+        "category": "Geokinetic / Runic Hex Spell (Tier 2)",
+        "action_type": "Standard Action",
+        "cost": "15 Aetheric Flux / Stamina",
+        "range": "20-ft Radius (Self) or 30-ft Frontal Cone",
+        "description": (
+            "Decoded from the scorched basalt spell-slate of Silt-Marrow the Unhewn. The caster traces the "
+            "subterranean fracture rune (Hagalaz-Uruz) and slams a boot or weapon haft into the floor, sending a "
+            "violent seismic shockwave and erupting basalt shards tearing through the ground while binding enemies' feet in heavy gravity."
+        ),
+        "mechanics": (
+            "• Action: Standard Action\n"
+            "• Resource Cost: 15 Aetheric Flux / Stamina\n"
+            "• Area of Effect: 20-ft radius centered on caster OR 30-ft frontal cone.\n"
+            "• Saving Throw: DEX Save (DC = 10 + half Level + INT or WIS mod).\n"
+            "• Damage: 2d8 + INT/WIS mod Bludgeoning & Seismic damage (half damage on successful save).\n"
+            "• Hex Effect: Targets that fail their save are knocked [Prone] and afflicted with [Seismic Instability] (-2 AC, -10 ft movement speed, and cannot take Reactions for 2 rounds). Cracks the floor into Difficult Terrain for enemies."
+        )
+    },
+    "runic inscription (elder futhark)": {
+        "name": "Runic Inscription (Elder Futhark)",
+        "category": "Wyrd-Weaver Mystic Feat & Active Power",
+        "action_type": "Passive + Bonus Action (Active Etching)",
+        "cost": "10 Aetheric Flux / Resonance (Active Etching)",
+        "range": "Touch (Equipped Weapon, Armor, or Surface)",
+        "description": (
+            "Ancient Nordic Wyrd-Weaver mastery over the twenty-four primordial runes of the Elder Futhark. "
+            "By tracing incandescent cyan glyphs in the air or carving them directly onto black-iron blades, "
+            "leather cuirasses, and dungeon archways, you bind raw cosmic laws directly into physical matter."
+        ),
+        "mechanics": (
+            "• Passive — Somatic Battle-Casting: You can cast somatic arcane and runic spells with one hand while wielding a weapon in your main hand, and gain +2 on all Arcana checks to decipher construct cores, spell slates, and leyline wards.\n"
+            "• Active — Runic Etching (Bonus Action, lasts 10 minutes): Inscribe one glowing Elder Futhark rune onto a weapon or armor piece:\n"
+            "  1. Thurisaz (Giant's Thorn): Weapon strikes deal +1d6 bonus Force/Lightning damage and bypass 2 points of enemy Armor/DR.\n"
+            "  2. Algiz (Elk's Aegis): Inscribed armor grants +2 AC and 25% Resistance to Force and Necrotic damage.\n"
+            "  3. Sowilo (Sun's Radiance): Weapon blazes with 30-ft daylight, dealing +1d6 Radiant damage and dispelling darkness."
+        )
+    },
+    # --- 16 STARTING CLASS POWERS ---
+    "shield wall stance": {
+        "name": "Shield Wall Stance",
+        "category": "Warrior Class Stance",
+        "action_type": "Bonus Action (Toggle Stance)",
+        "cost": "0 Poise (Generates +10 Poise when struck)",
+        "range": "Self & Adjacent Allies (5 ft)",
+        "description": "Plant your boots into an unyielding frontline bulwark, locking your shield or heavy weapon guard to deflect incoming barrages and protect companions behind you.",
+        "mechanics": "• Action: Bonus Action to enter or exit stance.\n• Defensive Bonus: Grants +3 AC and Advantage on CON and STR saving throws against knockdown, push, or stagger.\n• Trade-off & Synergy: Movement speed is halved while active. Adjacent allies behind you gain Half Cover (+2 AC), and every attack you block generates +10 Poise."
+    },
+    "taunting war-cry": {
+        "name": "Taunting War-Cry",
+        "category": "Warrior Active Power",
+        "action_type": "Bonus Action",
+        "cost": "20 Poise",
+        "range": "30-ft Radius",
+        "description": "Unleash a thunderous, chest-rattling battlefield roar infused with kinetic threat resonance that compels nearby monsters and hostiles to abandon fragile allies and focus their fury on you.",
+        "mechanics": "• Action: Bonus Action | Cost: 20 Poise\n• Saving Throw: Hostiles within 30 ft must pass a WIS Save (DC = 10 + half Level + STR or CON mod).\n• Effect: On a failed save, targets are [Taunted] for 2 rounds (forced to target you and suffer Disadvantage on attacks against any other party member)."
+    },
+    "arcane ward": {
+        "name": "Arcane Ward",
+        "category": "Mage Defensive Spell",
+        "action_type": "Bonus Action or Reaction",
+        "cost": "15 Aetheric Flux",
+        "range": "Self (or Ally within 30 ft)",
+        "description": "Weave an interlocking geometric lattice of shimmering azure mana-hexagons around the body that absorbs kinetic impacts and elemental blasts before shattering cleanly.",
+        "mechanics": "• Action: Bonus Action or Reaction when targeted by an attack | Cost: 15 Aetheric Flux\n• Barrier HP: Conjures a temporary Aetheric Ward with HP equal to 25 + (5 × Character Level).\n• Effect: Absorbs all incoming damage until depleted. While the Ward holds, the caster has Advantage on Concentration checks and cannot be afflicted by Bleed."
+    },
+    "aetheric dart": {
+        "name": "Aetheric Dart",
+        "category": "Mage Offensive Spell",
+        "action_type": "Standard Action",
+        "cost": "5 Aetheric Flux",
+        "range": "90 ft",
+        "description": "Snap a condensed needle of high-velocity crystalline mana from your fingertips or resonator wand that pierces through air and armor seams.",
+        "mechanics": "• Action: Standard Action | Cost: 5 Aetheric Flux\n• Attack Roll: Ranged Spell Attack (1d20 + INT mod + Mastery bonus vs Target AC).\n• Damage: Deals 1d8 + INT mod Force damage. On a Critical Hit (19–20), restores 5 Flux and pins the target's aura (-2 Evasion for 1 round)."
+    },
+    "sanctified ward": {
+        "name": "Sanctified Ward",
+        "category": "Cleric Aura Stance",
+        "action_type": "Bonus Action (Aura Toggle)",
+        "cost": "10 Devotion to activate",
+        "range": "15-ft Radius Aura",
+        "description": "Project a warm, golden halo of consecrated Spire-light across the ground that bolsters allies' resolve and turns aside lethal blows.",
+        "mechanics": "• Action: Bonus Action | Area: 15-ft radius centered on you.\n• Aura Effect: You and all allies within 15 ft gain +1 AC and +2 to all Saving Throws.\n• Undead/Corrupt Ward: Aberrant and undead creatures entering the aura suffer -1 to hit."
+    },
+    "purifying grace": {
+        "name": "Purifying Grace",
+        "category": "Cleric Healing Prayer",
+        "action_type": "Standard Action",
+        "cost": "25 Devotion",
+        "range": "30 ft",
+        "description": "Channel luminous golden restoration into a wounded comrade, knitting torn muscle fibers and burning away biological venom or necrotic rot.",
+        "mechanics": "• Action: Standard Action | Cost: 25 Devotion | Range: 30 ft\n• Healing: Restores 2d8 + WIS mod + Level HP to target ally.\n• Cleanse: Immediately removes one [Bleed], [Poisoned], [Burn], or [Weakened] condition."
+    },
+    "shadow footwork": {
+        "name": "Shadow Footwork",
+        "category": "Thief Mobility Stance",
+        "action_type": "Bonus Action (Stance)",
+        "cost": "0 Momentum",
+        "range": "Self",
+        "description": "Drop into a low, whisper-quiet infiltrator's cadence, gliding across rubble, tripwires, and slick blood without a sound.",
+        "mechanics": "• Action: Bonus Action to enter stance.\n• Evasion & Mobility: Grants +2 to Dodge/AC against opportunity attacks, ignores Difficult Terrain movement penalties, and grants +3 to Stealth checks."
+    },
+    "serrated backstab": {
+        "name": "Serrated Backstab",
+        "category": "Thief Active Technique",
+        "action_type": "Standard Action",
+        "cost": "1 Momentum Die",
+        "range": "Melee Reach",
+        "description": "Exploit a target's blind spot or a companion's distraction to drive a serrated blade deep between armor plates and twist.",
+        "mechanics": "• Action: Standard Action | Cost: 1 Momentum Die\n• Condition: Must be in Stealth or flanking the target with an active ally.\n• Damage: Weapon damage + DEX mod + 2d6 Precision Slashing damage, and inflicts [Deep Bleed] (1d4 bleed damage at the start of the target's next 2 turns)."
+    },
+    "hunter's mark": {
+        "name": "Hunter's Mark",
+        "category": "Ranger Tracking Power",
+        "action_type": "Bonus Action",
+        "cost": "1 Focus Charge",
+        "range": "90 ft",
+        "description": "Lock your predatory ocular focus onto a single quarry, highlighting its heartbeat, arterial weakpoints, and movement trail.",
+        "mechanics": "• Action: Bonus Action | Cost: 1 Focus Charge | Duration: Entire encounter.\n• Effect: Your weapon attacks against the marked quarry deal +1d6 bonus Piercing damage and ignore Half/Three-Quarters Cover. You cannot lose track of the target through smoke or darkness."
+    },
+    "deadeye aim": {
+        "name": "Deadeye Aim",
+        "category": "Ranger Marksman Passive & Stance",
+        "action_type": "Passive / Steady Stance",
+        "cost": "Passive (0 Focus)",
+        "range": "Weapon Range",
+        "description": "Control your breathing and heartbeat until the world slows to a razor-sharp tunnel of ballistic certainty.",
+        "mechanics": "• Passive: Ranged weapon attacks ignore partial cover penalties.\n• Steady Aim: If you did not move more than 5 ft this turn, you gain +2 to hit on ranged attacks and expand your Critical Hit range to 19–20."
+    },
+    "deploy sentry turret": {
+        "name": "Deploy Sentry Turret",
+        "category": "Engineer Artifice Power",
+        "action_type": "Standard Action",
+        "cost": "Builds +20 Heat",
+        "range": "15 ft Placement (60 ft Turret Firing Range)",
+        "description": "Slam a collapsible brass-and-steel clockwork tripod turret onto the field that unfolds with a pneumatic hiss and locks its twin aether-repeaters onto hostiles.",
+        "mechanics": "• Action: Standard Action | Heat Generated: +20 Heat\n• Turret Stats: HP = 20 + (5 × Level), AC 15. Lasts for the encounter or until destroyed.\n• Autonomous Fire: At the end of each of your turns, the turret automatically fires at the nearest hostile within 60 ft for 1d6 + INT mod Piercing/Lightning damage."
+    },
+    "vent overclock": {
+        "name": "Vent Overclock",
+        "category": "Engineer Thermal Blast",
+        "action_type": "Standard Action or Bonus Action",
+        "cost": "Vents 100% of current Heat",
+        "range": "15-ft Frontal Cone",
+        "description": "Pop the emergency exhaust valves on your rig and weapon coils, unleashing a searing directional blast of superheated pressurized steam.",
+        "mechanics": "• Action: Standard Action | Cost: Consumes all accumulated Heat (resets Heat to 0).\n• Damage: Deals Fire/Steam damage in a 15-ft cone equal to 50% of vented Heat (minimum 2d6 Fire damage; DEX Save DC 14 for half).\n• Secondary Effect: Obscures the cone in dense white steam for 1 round, granting Concealment (+2 AC) to allies."
+    },
+    "kinetic repulsion barrier": {
+        "name": "Kinetic Repulsion Barrier",
+        "category": "Psion Telekinetic Stance",
+        "action_type": "Bonus Action",
+        "cost": "+10% Psi-Strain per turn",
+        "range": "Self",
+        "description": "Surround yourself with a shimmering, high-density telekinetic pressure shell that bends incoming arrows, bolts, and shrapnel away from your body.",
+        "mechanics": "• Action: Bonus Action | Cost: Builds +10% Psi-Strain per active turn.\n• Defense: Grants +3 AC against all ranged attacks and reduces incoming bludgeoning/slashing damage by 3.\n• Repulsion: Melee attackers striking you must pass a DC 13 STR save or be pushed back 5 ft."
+    },
+    "mind spike": {
+        "name": "Mind Spike",
+        "category": "Psion Psychic Power",
+        "action_type": "Standard Action",
+        "cost": "+15% Psi-Strain",
+        "range": "60 ft",
+        "description": "Drive an invisible, needle-sharp lance of pure phrenic dissonance directly into an enemy's cerebral cortex or cognitive matrix.",
+        "mechanics": "• Action: Standard Action | Cost: Builds +15% Psi-Strain | Range: 60 ft\n• Saving Throw: INT or WIS Save (DC = 10 + half Level + INT mod), bypassing physical Armor Class completely.\n• Damage & Effect: Deals 1d10 + INT mod Psychic/Force damage and inflicts [Rattled] (-2 on the target's next attack roll or save)."
+    },
+    "adaptive weapon mastery": {
+        "name": "Adaptive Weapon Mastery",
+        "category": "Pathless Anomaly Feat",
+        "action_type": "Passive",
+        "cost": "Passive (No Cost)",
+        "range": "Self",
+        "description": "Your neural link to the Cardinal System bypasses rigid class weapon locks, allowing effortless mastery of any blade, axe, hammer, bow, or magetech firearm.",
+        "mechanics": "• Passive: Equip and dual-wield any weapon combination without off-hand attack penalties.\n• Mastery Synergy: Weapon skill mastery gains are increased by +15%, and you add +1 to hit when switching weapon types mid-encounter."
+    },
+    "unshackled potential": {
+        "name": "Unshackled Potential",
+        "category": "Pathless Anomaly Power",
+        "action_type": "Passive + Free Action (1/Encounter)",
+        "cost": "20 Anomaly Resonance (Active Surge)",
+        "range": "Self",
+        "description": "As an unregistered anomaly outside the Architects' templates, you can weave martial strikes, somatic spells, and survivor ingenuity into a single unbroken flow.",
+        "mechanics": "• Passive: Can learn and slot spells, sword skills, and feats from any of the 7 anchor classes without restriction.\n• Active — Anomaly Surge (Free Action, 20 Resonance): Add +1d6 bonus damage or +3 to any single attack roll, spell cast, or saving throw."
+    },
+    "iron grip": {
+        "name": "Iron Grip",
+        "category": "Vanguard Combat Feat",
+        "action_type": "Passive",
+        "cost": "Passive",
+        "range": "Self",
+        "description": "Conditioned forearm tendons and unyielding grip strength allow you to wield massive war-axes and trench hammers without recoil.",
+        "mechanics": "• Passive: Immune to being disarmed. Grants +2 on STR checks to grapple, shove, or wrench weapons from enemies, and +1 damage on heavy melee swings."
+    },
+    "berserk fury": {
+        "name": "Berserk Fury",
+        "category": "Nordic Berserker Power",
+        "action_type": "Bonus Action",
+        "cost": "25 Poise / Stamina (1/Encounter)",
+        "range": "Self",
+        "description": "Ignite your blood-rage and ancestral Nordic fury, shrugging off pain as crimson-and-cyan battle-aura flares around your shoulders.",
+        "mechanics": "• Action: Bonus Action | Duration: 3 rounds\n• Effect: Gain +3 bonus damage on all melee axe/hammer attacks, Resistance (25% reduction) to physical bludgeoning/slashing/piercing damage, and immunity to Fear."
+    },
+    "cleave": {
+        "name": "Cleave",
+        "category": "Axe Sword Skill",
+        "action_type": "Standard Action / Trigger",
+        "cost": "10 Stamina / Poise",
+        "range": "Melee Reach (5 ft)",
+        "description": "Carry the brutal momentum of a heavy axe swing straight through one enemy and into an adjacent foe.",
+        "mechanics": "• Trigger / Action: When your melee axe strike reduces an enemy to 0 HP or scores a Critical Hit, or by spending 10 Poise/Stamina on a Standard Action swing, immediately make a secondary cleave attack against an adjacent enemy within 5 ft for 1d8 + STR slashing damage."
+    },
+    "berserk cleave": {
+        "name": "Berserk Cleave",
+        "category": "Nordic Berserker Sword Skill",
+        "action_type": "Standard Action",
+        "cost": "20 Poise / Stamina",
+        "range": "Melee Reach (180° Frontal Arc)",
+        "description": "Unleash a ferocious wide-arcing axe sweep that carves through every hostile standing in your frontal engagement zone.",
+        "mechanics": "• Action: Standard Action | Cost: 20 Poise / Stamina\n• Effect: Make a melee attack against up to 3 adjacent enemies in a frontal arc, dealing full weapon damage + STR mod + 1d6 slashing damage and inflicting [Bleed] on targets that fail a DC 13 CON save."
+    }
+}
+
+
+def get_spell_or_power_details(entry, player_state: dict = None) -> dict:
+    """
+    Resolves full metadata (`name`, `category`, `action_type`, `cost`, `range`, `description`, `mechanics`)
+    for any Spell, Power, Sword Skill, Class Feat, Racial Ability, Vocation Perk, or Fused Technique.
+    Guarantees every spell or power can be clicked and expanded in the UI to show both its
+    narrative description and exact game mechanics.
+    """
+    if isinstance(entry, dict):
+        raw_name = str(entry.get("name", entry.get("title", "Unknown Power"))).strip()
+        existing_desc = str(entry.get("description", entry.get("desc", ""))).strip()
+        existing_mech = str(entry.get("mechanics", entry.get("effect", ""))).strip()
+        existing_cat = str(entry.get("category", entry.get("type", "Spell / Power"))).strip()
+        existing_act = str(entry.get("action_type", "Standard Action / Passive")).strip()
+        existing_cost = str(entry.get("cost", "Standard")).strip()
+        existing_rng = str(entry.get("range", "Self / Combat Reach")).strip()
+        if existing_desc and existing_mech:
+            return {
+                "name": raw_name,
+                "category": existing_cat,
+                "action_type": existing_act,
+                "cost": existing_cost,
+                "range": existing_rng,
+                "description": existing_desc,
+                "mechanics": existing_mech
+            }
+    else:
+        raw_str = str(entry or "").strip()
+        # Strip surrounding brackets like "[Aether-Burst Convergence]"
+        if raw_str.startswith("[") and raw_str.endswith("]"):
+            raw_str = raw_str[1:-1].strip()
+        raw_name = raw_str
+        existing_desc = ""
+        existing_mech = ""
+        existing_cat = ""
+
+    if not raw_name:
+        return {
+            "name": "Unknown Power",
+            "category": "Power",
+            "action_type": "Passive",
+            "cost": "None",
+            "range": "Self",
+            "description": "An uncatalogued anomaly power.",
+            "mechanics": "Consult the GM for situational resolution."
+        }
+
+    # Check if raw_name has inline "Name: Description" or "Name (Type): Mechanics"
+    inline_type = ""
+    inline_body = ""
+    clean_lookup_name = raw_name
+    if ":" in raw_name:
+        head_part, body_part = raw_name.split(":", 1)
+        inline_body = body_part.strip()
+        if "(" in head_part and ")" in head_part:
+            base_n, paren_part = head_part.split("(", 1)
+            clean_lookup_name = base_n.strip()
+            inline_type = paren_part.rstrip(")").strip()
+        else:
+            clean_lookup_name = head_part.strip()
+
+    norm_full = raw_name.lower().strip()
+    norm_clean = clean_lookup_name.lower().strip()
+
+    # 1. Exact or normalized match in CANONICAL_SPELLS_AND_POWERS
+    for cand in (norm_full, norm_clean):
+        if cand in CANONICAL_SPELLS_AND_POWERS:
+            return copy.deepcopy(CANONICAL_SPELLS_AND_POWERS[cand])
+
+    # 2. Substring match in CANONICAL_SPELLS_AND_POWERS
+    for k, sp_data in CANONICAL_SPELLS_AND_POWERS.items():
+        if k in norm_full or norm_clean == k:
+            return copy.deepcopy(sp_data)
+
+    # 3. Search CANONICAL_MILESTONES (all 1-1000 Skill Milestone Sword Skills & Feats)
+    for skill_k, tiers_dict in CANONICAL_MILESTONES.items():
+        for thresh, m_data in tiers_dict.items():
+            m_name = m_data["name"]
+            if m_name.lower() == norm_clean or m_name.lower() in norm_full:
+                is_active = "active" in m_data.get("type", "").lower() or m_data.get("target_slot") == "spells"
+                return {
+                    "name": m_name,
+                    "category": f"{skill_k} {m_data.get('tier', '')} {m_data.get('type', 'Milestone Power')} (Mastery {thresh})".strip(),
+                    "action_type": "Standard Action (Sword Skill / Technique)" if is_active else "Passive Mastery Perk",
+                    "cost": "15 Stamina / Combat Resource" if is_active else "Passive (Always Active)",
+                    "range": "Combat Reach / Area",
+                    "description": m_data.get("description", f"{skill_k} milestone technique unlocked at {thresh} Mastery."),
+                    "mechanics": f"• Unlock Source: {skill_k} Mastery {thresh} ({m_data.get('tier', 'Milestone')})\n• Game Mechanics: {m_data.get('effect', '')}"
+                }
+
+    # 4. Search CLASS_FEATS_TREE (all 8 classes x Levels 1, 3, 6, 10)
+    for cls_k, cls_data in CLASS_FEATS_TREE.items():
+        res_name = cls_data.get("resource", {}).get("name", "Combat Resource")
+        # Check Level 1 strings
+        for l1_str in cls_data.get("level_1", []):
+            l1_base = l1_str.split("(")[0].split(":")[0].strip()
+            if l1_base.lower() == norm_clean or l1_base.lower() in norm_full:
+                mech_part = l1_str.split(":", 1)[1].strip() if ":" in l1_str else l1_str
+                act_part = l1_str.split("(")[1].split(")")[0].strip() if "(" in l1_str and ")" in l1_str else "Active / Passive"
+                return {
+                    "name": l1_base,
+                    "category": f"{cls_data.get('title', cls_k.title())} Level 1 Power",
+                    "action_type": act_part,
+                    "cost": f"Uses {res_name}",
+                    "range": "Combat Range",
+                    "description": f"Core doctrine ability of the {cls_data.get('title', cls_k.title())}, channeling {res_name} in combat.",
+                    "mechanics": f"• Class Doctrine: {cls_data.get('title', cls_k.title())}\n• Action Type: {act_part}\n• Game Mechanics: {mech_part}"
+                }
+        # Check Level 3, 6, 10 dicts
+        for lvl_key in ("level_3", "level_6", "level_10"):
+            lvl_num = lvl_key.split("_")[1]
+            for f_dict in cls_data.get(lvl_key, []):
+                f_name = f_dict.get("name", "")
+                if f_name.lower() == norm_clean or f_name.lower() in norm_full:
+                    f_type = f_dict.get("type", "Active")
+                    return {
+                        "name": f_name,
+                        "category": f"{cls_data.get('title', cls_k.title())} Level {lvl_num} {f_type} Power",
+                        "action_type": f"{f_type} Action" if f_type != "Passive" else "Passive",
+                        "cost": f"Uses {res_name}" if f_type != "Passive" else "Passive (Always Active)",
+                        "range": "Combat Range",
+                        "description": f"Advanced Tier {lvl_num} {cls_data.get('title', cls_k.title())} technique ({f_name}).",
+                        "mechanics": f"• Class Tier: Level {lvl_num} {cls_data.get('title', cls_k.title())} ({f_type})\n• Game Mechanics: {f_dict.get('desc', '')}"
+                    }
+
+    # 5. Check player_state['fused_abilities'] if available
+    if isinstance(player_state, dict):
+        for fa in player_state.get("fused_abilities", []):
+            if isinstance(fa, dict):
+                fa_name = fa.get("name", "")
+                if fa_name.lower() == norm_clean or fa_name.lower() in norm_full:
+                    comps = " + ".join(fa.get("components", []))
+                    return {
+                        "name": fa_name,
+                        "category": "Fused Convergence Technique (Rule 10)",
+                        "action_type": "Standard Action",
+                        "cost": "20 Combat Resource / Stamina",
+                        "range": "Hybrid Combat Range",
+                        "description": fa.get("description", f"Synergistic fusion of {comps} forged in the Cardinal Ability Fusion Chamber."),
+                        "mechanics": (
+                            f"• Fusion Components: {comps}\n"
+                            f"• Power Rating: Tier {fa.get('power_rating', 3)} Fused Technique\n"
+                            f"• Game Mechanics: Combines the primary effects of [{comps}] into a single Standard Action strike/cast with a +2 Synergy bonus to hit/DC and +1d8 bonus resonance damage."
+                        )
+                    }
+
+    # 6. Search RACIAL_LINEAGES & EARTH_VOCATIONS in character_generator
+    try:
+        import backend.character_generator as cg
+        for r_key, r_data in getattr(cg, "RACIAL_LINEAGES", {}).items():
+            for rab in r_data.get("racial_abilities", []):
+                rab_head = rab.split(":", 1)[0].strip()
+                rab_body = rab.split(":", 1)[1].strip() if ":" in rab else rab
+                if rab_head.lower() == norm_clean or rab_head.lower() in norm_full:
+                    is_flaw = "flaw" in rab_head.lower()
+                    return {
+                        "name": rab_head,
+                        "category": f"{r_data['name']} Lineage {'Flaw' if is_flaw else 'Power'}",
+                        "action_type": "Passive / Innate Trait" if is_flaw or "passive" in rab_body.lower() else "Innate Lineage Power",
+                        "cost": "Innate / 1 per Rest (if active)",
+                        "range": "Self / Lineage Range",
+                        "description": f"Genetic/Aetheric lineage trait of the {r_data['name']} ({r_data.get('genre', 'Crucible')}): {r_data.get('desc', '')}",
+                        "mechanics": f"• Lineage Source: {r_data['name']}\n• Game Mechanics: {rab_body}"
+                    }
+        for v_key, v_data in getattr(cg, "EARTH_VOCATIONS", {}).items():
+            perk_str = v_data.get("innate_perk", "")
+            if perk_str:
+                p_head = perk_str.split("(")[0].split(":")[0].strip()
+                p_body = perk_str.split(":", 1)[1].strip() if ":" in perk_str else perk_str
+                if p_head.lower() == norm_clean or p_head.lower() in norm_full:
+                    return {
+                        "name": p_head,
+                        "category": f"Pre-Integration Vocation Perk ({v_data['title']})",
+                        "action_type": "Passive",
+                        "cost": "Passive (Always Active)",
+                        "range": "Self",
+                        "description": f"Retained Earth expertise from serving as a {v_data['title']}: {v_data.get('description', '')}",
+                        "mechanics": f"• Vocation Origin: {v_data['title']}\n• Game Mechanics: {p_body}"
+                    }
+    except Exception:
+        pass
+
+    # 7. Check if this is an item/trophy feat (like "Dire-Wolf Fur Mantle")
+    if norm_clean in CANONICAL_ITEM_CATALOG:
+        cat_item = CANONICAL_ITEM_CATALOG[norm_clean]
+        return {
+            "name": cat_item["name"],
+            "category": "Relic / Mantle Passive Power",
+            "action_type": "Passive (While Equipped)",
+            "cost": "Passive",
+            "range": "Self",
+            "description": cat_item.get("visual_appearance", cat_item.get("desc", "")),
+            "mechanics": f"• Equipment Perk: {cat_item.get('desc', '')}"
+        }
+
+    # 8. Intelligent Fallback Parser / Synthesizer for custom or emergent Spells & Powers
+    if inline_body:
+        act_str = inline_type if inline_type else ("Passive" if "passive" in inline_body.lower() else "Standard Action / Active")
+        return {
+            "name": clean_lookup_name,
+            "category": existing_cat or ("Passive Feat" if "passive" in act_str.lower() else "Active Spell / Power"),
+            "action_type": act_str,
+            "cost": "Passive (No Cost)" if "passive" in act_str.lower() else "10–20 Combat Resource / Stamina",
+            "range": "Self / Combat Range",
+            "description": existing_desc or f"Awakened ability [{clean_lookup_name}] manifested within the Fractured Overlay.",
+            "mechanics": f"• Action Type: {act_str}\n• Game Mechanics: {inline_body}"
+        }
+
+    # Keyword-driven synthesis if only a bare name was provided
+    low = norm_clean
+    if any(w in low for w in ["missile", "bolt", "dart", "blast", "lance", "hex", "spell", "fire", "frost", "lightning", "arcane", "aether", "rune", "runic"]):
+        return {
+            "name": clean_lookup_name,
+            "category": "Arcane / Runic Spell",
+            "action_type": "Standard Action",
+            "cost": "10–15 Aetheric Flux / Mana",
+            "range": "60–120 ft",
+            "description": existing_desc or f"An arcane or runic spell ({clean_lookup_name}) woven from ambient leyline energy and somatic gestures.",
+            "mechanics": existing_mech or (
+                f"• Action: Standard Action | Cost: 10–15 Aetheric Flux\n"
+                f"• Resolution: Ranged Spell Attack (1d20 + INT/WIS mod + Arcana Mastery bonus) or Saving Throw (DC = 10 + half Level + INT/WIS mod).\n"
+                f"• Effect: Inflicts 2d8 + INT/WIS mod elemental/force damage or applies its thematic runic status condition."
+            )
+        }
+    else:
+        return {
+            "name": clean_lookup_name,
+            "category": existing_cat or "Combat Power & Feat",
+            "action_type": "Active Maneuver / Passive Perk",
+            "cost": "10–15 Stamina / Combat Resource (if active)",
+            "range": "Melee / Tactical Range",
+            "description": existing_desc or f"Specialized combat power or character feat ({clean_lookup_name}) honed through survival in the Crucible.",
+            "mechanics": existing_mech or (
+                f"• Activation: Grants a +2 tactical bonus on relevant combat checks or unleashes a specialized strike dealing weapon damage + 1d6 bonus damage."
+            )
+        }
+
+
+def get_all_player_spells_and_powers(player_state: dict) -> list[dict]:
+    """
+    Collects, deduplicates, and enriches all Spells, Active Techniques, Feats/Powers,
+    Racial Lineage Abilities, and Fused Techniques on `player_state`.
+    Returns a list of enriched dicts ready to render as individual clickable & expandable
+    entries in the `🔮 Spells & Powers` HUD menu.
+    """
+    if not isinstance(player_state, dict):
+        return []
+
+    results = []
+    seen_names = set()
+    slotted_list = [s.lower() for s in get_slotted_abilities(player_state)]
+
+    def _add_entry(raw_item, source_group: str, icon: str):
+        details = get_spell_or_power_details(raw_item, player_state=player_state)
+        norm_n = details["name"].strip().lower()
+        if not norm_n or norm_n in seen_names:
+            return
+        seen_names.add(norm_n)
+        details["source_group"] = source_group
+        details["icon"] = icon
+        details["is_slotted"] = any(norm_n == s or norm_n in s or s in norm_n for s in slotted_list)
+        results.append(details)
+
+    # 1. Spells & Active Sword Skills
+    for sp in player_state.get("spells", []):
+        if sp:
+            _add_entry(sp, "Spell / Active Technique", "🔮")
+
+    # 2. Feats & Class Powers
+    for ft in player_state.get("feats", []):
+        if ft:
+            _add_entry(ft, "Power / Feat", "⚡")
+
+    # 3. Racial Lineage Powers
+    for ra in player_state.get("racial_abilities", []):
+        if ra:
+            _add_entry(ra, "Lineage Power", "🧬")
+
+    # 4. Fused Abilities (if any not already in feats/spells)
+    for fa in player_state.get("fused_abilities", []):
+        if fa:
+            _add_entry(fa, "Fused Convergence", "✨")
+
+    return results
+
+
 
 

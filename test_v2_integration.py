@@ -165,5 +165,41 @@ class TestV2Integration(unittest.TestCase):
         self.assertIn("Golem Hydraulic Arm", vis_rig_hammer)
         self.assertNotIn("Reinforced Leather", vis_rig_hammer)
 
+    def test_spells_and_powers_compendium_and_mechanics(self):
+        """Verifies every spell, feat, racial ability, and milestone power resolves full description and game mechanics."""
+        import backend.mechanics as mechanics
+        import backend.character_generator as cg
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+
+        with open(os.path.join(base_dir, "save_game.json"), "r", encoding="utf-8") as f:
+            player = json.load(f)["player"]
+
+        all_sp = mechanics.get_all_player_spells_and_powers(player)
+        self.assertGreaterEqual(len(all_sp), 3)
+        names = [x["name"] for x in all_sp]
+        self.assertIn("Major Force Missile", names)
+        self.assertIn("Earth Tremor Hex", names)
+        self.assertIn("Runic Inscription (Elder Futhark)", names)
+
+        for sp in all_sp:
+            self.assertTrue(len(sp.get("description", "")) > 25, f"Missing description on {sp}")
+            self.assertTrue(len(sp.get("mechanics", "")) > 25, f"Missing mechanics on {sp}")
+            self.assertTrue(bool(sp.get("action_type")), f"Missing action_type on {sp}")
+            self.assertTrue(bool(sp.get("cost")), f"Missing cost on {sp}")
+
+        # Verify all starting class powers and racial abilities resolve cleanly
+        for c_key, c_data in cg.CLASS_PATHS.items():
+            for feat_name in c_data.get("starting_feats", []):
+                det = mechanics.get_spell_or_power_details(feat_name)
+                self.assertTrue(len(det["description"]) > 15, f"Missing description for class feat {feat_name}")
+                self.assertTrue(len(det["mechanics"]) > 15, f"Missing mechanics for class feat {feat_name}")
+
+        for r_key, r_data in cg.RACIAL_LINEAGES.items():
+            for rab in r_data.get("racial_abilities", []):
+                det = mechanics.get_spell_or_power_details(rab)
+                self.assertTrue(len(det["description"]) > 15, f"Missing description for racial ability {rab}")
+                self.assertTrue(len(det["mechanics"]) > 15, f"Missing mechanics for racial ability {rab}")
+
 if __name__ == "__main__":
     unittest.main()
+
