@@ -664,6 +664,11 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     cursor_info = mechanics.get_cursor_status(player_state) if hasattr(mechanics, "get_cursor_status") else {"label": "🟢 Lawful (Green Cursor)", "current_infamy": 0, "merchant_surcharge": 0.0, "safe_zone_clearance": True}
     faction_standings = mechanics.get_all_faction_standings(player_state) if hasattr(mechanics, "get_all_faction_standings") else []
 
+    # Phase 8: Chrono-Atmospheric & Weather Data
+    if hasattr(mechanics, "ensure_chrono_system"):
+        mechanics.ensure_chrono_system(player_state)
+    chrono_info = mechanics.get_game_time(player_state) if hasattr(mechanics, "get_game_time") else {"time_str": "Day 1, 09:30", "period_info": {"label": "☀️ Midday"}, "weather_info": {"label": "☀️ Clear Skies", "effect": "Normal"}}
+
     # Locate active entities and secrets for the Encounter Director
     entities_in_room = []
     secrets_in_room = []
@@ -721,6 +726,8 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     Active Raiding Party (Banki + up to 3): {json.dumps([{ 'name': c['name'], 'class': c['class'], 'stance': c.get('stance', 'default'), 'hp': f"{c.get('hp', 30)}/{c.get('max_hp', 30)}", 'affinity': f"{c.get('affinity', 0)}/100 [{c.get('affinity_tier', 'Acquaintance')}]" } for c in active_party])}
     Cursor Criminality (SAO System): {cursor_info['label']} (Infamy: {cursor_info['current_infamy']} | Surcharge: +{int(cursor_info['merchant_surcharge']*100)}% | Safe-Zone Clearance: {cursor_info['safe_zone_clearance']})
     Regional Factions & Standings: {json.dumps([{ 'faction': f['name'], 'score': f['score'], 'standing': f['badge'], 'active_perks': f['perks_active'] } for f in faction_standings])}
+    Chrono-Atmosphere: {chrono_info['time_str']} [{chrono_info['period_info']['label']}] | Weather: {chrono_info['weather_info']['label']} ({chrono_info['weather_info']['effect']})
+    Active Survival Buffs: {json.dumps(player_state.get('active_buffs', []))}
     Labyrinth Dungeon Room: {d_room.get('name', 'N/A')} ({d_room.get('badge', '')}) | Cleared: {d_room.get('cleared', False)}
     Active Sector Boss: {boss_info_str}
     Location: {current_location}
@@ -793,12 +800,18 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
           * The Vanguard Coalition (frontline raid guild), The Iron Syndicate (merchant crafting cartel), The Blood Shroud (outlaw syndicate).
           * Output faction standing changes via 'faction_rep_updates': [{{"faction": "vanguard_coalition", "rep_change": 10, "reason": "Assisted vanguard scouts"}}].
     
+    19. CHRONO-ATMOSPHERIC ENGINE & WILDERNESS SURVIVAL:
+        - The world operates on a dynamic 24-Hour Day/Night Cycle (Dawn: 06:00-08:00, Midday: 08:00-18:00, Dusk: 18:00-21:00, Midnight: 21:00-04:00, Witching Hour: 04:00-06:00).
+        - At Dusk/Night, evoke deep darkness, long shadows, and the glowing mechanical or predatory eyes of nocturnal stalkers. Nocturnal predators gain +2 Stealth and Ambush bonuses.
+        - Aether-Weather phenomena directly impact encounters: Runic Mist (-4 Ranged ATK, +3 Stealth, disables fast travel), Leyline Overload Storm (+25% Spell DMG, berserk constructs), Crimson Ash (-50% healing, signals roaming Apex Boss), Glitch Freeze (sub-zero hazard, Banki's dire-wolf fur mantle protects him).
+        - You can output time advances via 'time_advance_minutes' (e.g. 15 for standard turn, 60 for travel), weather shifts via 'set_weather' (e.g. "runic_mist"), campfire meals via 'cook_recipe' (e.g. "wolf_heart_stew"), or wilderness camping via 'pitch_camp' (e.g. {{"watch": "Ren"}}).
+    
     Format your response EXACTLY as a JSON object with FIVE keys:
     - "narrative": The markdown formatted story/dialogue. 
     - "combat_logs": A list of strings showing the exact dice math and damage for the turn. Leave empty if no combat or skill check occurred.
     - "global_news_add": A list of strings showing macro world events (e.g. continental faction movements). MUST BE POPULATED IF THE PLAYER SKIPS TIME OR SLEEPS.
     - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged warrior with a short beard and undercut hair, wearing heavy black-iron runic armor and a massive dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. Ren (NPC) is ALWAYS a lean, bookish young man with messy dark hair, wire-rimmed glasses, wearing a weathered leyline duster over scholar's garb, wielding an ornate brass-and-crystal MageTech caster firearm (magic-powered, not gunpowder) and carrying a glowing runic slate grimoire.
-    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates", "graft_installs", "ability_slots", "companion_updates", "boss_damage", "boss_is_heavy", "boss_telegraph_counter", "dungeon_move", "dungeon_trap_disarm", "dungeon_puzzle_solve", "infamy_change", "faction_rep_updates", "affinity_updates", "recruit_companion", "dual_tech_execute". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
+    - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates", "graft_installs", "ability_slots", "companion_updates", "boss_damage", "boss_is_heavy", "boss_telegraph_counter", "dungeon_move", "dungeon_trap_disarm", "dungeon_puzzle_solve", "infamy_change", "faction_rep_updates", "affinity_updates", "recruit_companion", "dual_tech_execute", "time_advance_minutes", "set_weather", "cook_recipe", "pitch_camp". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
       Additionally, use the following complex schemas for skills, inventory, factions, and quests:
       - "inventory_add": List of dicts, e.g. [{{"name": "Rusted Iron Sword", "rarity": "Common", "durability": 45, "max_durability": 50, "qty": 1, "desc": "A chipped blade scavenged from the ruins."}}]
       - "inventory_remove": List of strings (item names to delete).
@@ -816,6 +829,10 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
       - "affinity_updates": List of dicts, e.g. [{{"companion": "Ren", "affinity_change": 5, "reason": "Shared tactical victory"}}]
       - "recruit_companion": String companion name to recruit into roster, e.g. "Elora" or "Torvald".
       - "dual_tech_execute": String Dual-Tech combo ID or partner name, e.g. "Runic Axe Storm" or "Ren".
+      - "time_advance_minutes": Integer minutes to advance the game clock, e.g. 15 or 60.
+      - "set_weather": String weather key, e.g. "runic_mist", "leyline_storm", "crimson_ash", "glitch_freeze", "clear_skies".
+      - "cook_recipe": String recipe ID to prepare at campfire, e.g. "wolf_heart_stew".
+      - "pitch_camp": Dict specifying camp watch, e.g. {{"watch": "Ren"}}.
     
     MAP MECHANICS (CRITICAL): The world operates on a 100x100 grid mapped to a real satellite image. Washington NJ is at (50, 50). If the player "fast travels" or takes a caravan to a new Node, output the exact new destination coordinates in `coord_x` and `coord_y` (e.g., Oxford is 40,20). If the player explores the wilderness on foot locally, you MUST shift their coordinates slightly (e.g. from 50,50 to 50,49) to simulate micro-exploration and clear the Fog of War. ALWAYS output their current or new coordinates on every single turn.
     """
@@ -1020,6 +1037,44 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
                 dt_res = mechanics.execute_dual_tech(player_state, str(dt_exec))
                 if dt_res.get("log"):
                     result.setdefault("combat_logs", []).append(dt_res["log"])
+
+            # Phase 8: Chrono-Atmospheric Time Advance
+            time_adv = state_updates.get("time_advance_minutes")
+            if time_adv is not None:
+                try:
+                    ta_int = int(str(time_adv).replace(",", "").replace(" ", ""))
+                    if ta_int > 0 and hasattr(mechanics, "advance_game_time"):
+                        t_res = mechanics.advance_game_time(player_state, minutes=ta_int)
+                        if t_res.get("log"):
+                            result.setdefault("combat_logs", []).append(t_res["log"])
+                except (ValueError, TypeError):
+                    pass
+
+            # Phase 8: Weather Phenomenon Shift
+            w_shift = state_updates.get("set_weather")
+            if w_shift and hasattr(mechanics, "set_weather"):
+                w_res = mechanics.set_weather(player_state, str(w_shift))
+                if w_res.get("log"):
+                    result.setdefault("combat_logs", []).append(w_res["log"])
+
+            # Phase 8: Campfire Cooking
+            c_cook = state_updates.get("cook_recipe")
+            if c_cook and hasattr(mechanics, "cook_campfire_meal"):
+                c_res = mechanics.cook_campfire_meal(player_state, str(c_cook))
+                if c_res.get("log"):
+                    result.setdefault("combat_logs", []).append(c_res["log"])
+
+            # Phase 8: Wilderness Camping & Watch
+            p_camp = state_updates.get("pitch_camp")
+            if p_camp is not None and hasattr(mechanics, "pitch_wilderness_camp"):
+                w_comp = "Ren"
+                if isinstance(p_camp, dict):
+                    w_comp = p_camp.get("watch", "Ren")
+                elif isinstance(p_camp, str) and p_camp.strip():
+                    w_comp = p_camp.strip()
+                camp_res = mechanics.pitch_wilderness_camp(player_state, watch_companion=w_comp)
+                if camp_res.get("log"):
+                    result.setdefault("combat_logs", []).append(camp_res["log"])
 
         return result
     except Exception as e:

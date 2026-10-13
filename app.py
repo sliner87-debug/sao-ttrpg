@@ -831,6 +831,14 @@ with st.sidebar:
     
         st.write(f"**Level:** {player['level']} | **AC:** {armor_class} 🛡️ | **Col:** {player['col']} 🪙")
 
+        # Chrono-Atmospheric Status Pill (Phase 8)
+        if hasattr(mechanics, "ensure_chrono_system"):
+            mechanics.ensure_chrono_system(player)
+            chrono_hud = mechanics.get_game_time(player)
+            w_hud = chrono_hud["weather_info"]
+            p_hud = chrono_hud["period_info"]
+            st.caption(f"⏱️ **{chrono_hud['time_str']}** ({p_hud['label']}) | 🌤️ **{w_hud['label']}**")
+
         free_pts = player.get("free_attribute_points", 0)
         if free_pts > 0:
             st.info(f"✨ **{free_pts} Free Attribute Points Available!** (Allocate in Character Build below)")
@@ -1453,6 +1461,148 @@ with st.sidebar:
                     else:
                         st.caption(f"🔒 *{msg}*")
                     st.markdown("---")
+
+        # ⛺ Wilderness Survival & Chrono-Atmospheric Engine (Phase 8)
+        if hasattr(mechanics, "ensure_chrono_system"):
+            chrono_data = mechanics.ensure_chrono_system(player)
+            time_info = mechanics.get_game_time(player)
+            cur_weather = mechanics.get_current_weather(player)
+            frost_check = mechanics.check_frostbite_protection(player)
+
+            with st.expander("⛺ Wilderness Survival & Chrono-Atmosphere", expanded=False):
+                # 1. Dynamic Clock & Atmosphere Overview
+                p_info = time_info["period_info"]
+                st.markdown(f"### ⏱️ {time_info['time_str']}")
+                st.caption(f"**Period:** {p_info['label']} | **Lighting & Field Effects:** {p_info['desc']}")
+                
+                # Weather Card
+                st.markdown(f"#### {cur_weather.get('icon', '🌤️')} {cur_weather['label']}")
+                st.caption(f"*{cur_weather['desc']}*")
+                st.info(f"**Atmospheric Modifier:** {cur_weather['effect']}")
+                if cur_weather.get("key") == "glitch_freeze" or "glitch freeze" in cur_weather["label"].lower():
+                    if frost_check["protected"]:
+                        st.success(f"🛡️ **Cold Insulation Active:** {frost_check['message']}")
+                    else:
+                        st.error(f"❄️ **FROSTBITE HAZARD:** {frost_check['message']}")
+
+                # Active Survival Buffs
+                active_buffs = chrono_data.get("active_buffs", [])
+                if active_buffs:
+                    st.markdown("##### 🍖 Active Culinary & Survival Buffs:")
+                    for b in active_buffs:
+                        if isinstance(b, dict):
+                            st.success(f"✨ **{b.get('name')}**: {b.get('desc')} *({b.get('duration', 1)} duration remaining)*")
+                        else:
+                            st.success(f"✨ **{b}**")
+                    st.divider()
+
+                # Quick Time Actions
+                tc1, tc2, tc3 = st.columns(3)
+                with tc1:
+                    if st.button("⏳ Wait 1h", key="btn_wait_1_hour", use_container_width=True):
+                        w_res = mechanics.advance_game_time(player, minutes=60)
+                        save_game(player, st.session_state.messages)
+                        st.toast(f"Waited 1 Hour. Time is now {w_res['time_str']}.", icon="⏳")
+                        st.rerun()
+                with tc2:
+                    if st.button("🌅 Rest to Dawn", key="btn_rest_until_dawn", use_container_width=True):
+                        cur_hour = chrono_data.get("hour", 6)
+                        cur_min = chrono_data.get("minute", 0)
+                        mins_to_dawn = ((6 - cur_hour) % 24) * 60 - cur_min
+                        if mins_to_dawn <= 0:
+                            mins_to_dawn += 24 * 60
+                        w_res = mechanics.advance_game_time(player, minutes=mins_to_dawn)
+                        save_game(player, st.session_state.messages)
+                        st.toast(f"Rested until Dawn. Time is now {w_res['time_str']}.", icon="🌅")
+                        st.rerun()
+                with tc3:
+                    if st.button("🎲 Attune Sky", key="btn_roll_weather", use_container_width=True):
+                        rw_res = mechanics.roll_random_weather(player)
+                        save_game(player, st.session_state.messages)
+                        st.toast(f"Atmospheric shift: {rw_res['weather_info']['label']}!", icon="🌪️")
+                        st.rerun()
+
+                st.divider()
+
+                # Tabs for Kitchen & Camp Pitching
+                tab_kitchen, tab_camp = st.tabs(["🍳 Campfire Kitchen", "🏕️ Pitch Camp"])
+
+                # Tab 1: Campfire Kitchen
+                with tab_kitchen:
+                    st.markdown("##### 🍲 Campfire Culinary Crafting")
+                    st.caption("Prepare hot meals over the camp coals to restore HP and gain combat buffs.")
+                    inv = player.get("inventory", [])
+                    inv_map = {}
+                    for item in inv:
+                        if isinstance(item, dict):
+                            iname = item.get("name", "").strip().lower()
+                            inv_map[iname] = inv_map.get(iname, 0) + item.get("qty", 1)
+                        elif isinstance(item, str):
+                            iname = item.strip().lower()
+                            inv_map[iname] = inv_map.get(iname, 0) + 1
+
+                    for r_key, r_data in mechanics.CAMPFIRE_RECIPES.items():
+                        st.markdown(f"**{r_data['name']}**")
+                        st.caption(f"*{r_data.get('desc', '')}*")
+                        buff_info = r_data["buff"]
+                        st.markdown(f"✨ **Buff:** `{buff_info['name']}` ({buff_info['desc']})")
+
+                        all_have = True
+                        ing_labels = []
+                        for ing_name, req_qty in r_data["ingredients"].items():
+                            ing_lower = ing_name.lower()
+                            have_qty = sum(qty for k, qty in inv_map.items() if ing_lower in k or k in ing_lower)
+                            if have_qty >= req_qty:
+                                ing_labels.append(f"✅ {ing_name} ({have_qty}/{req_qty})")
+                            else:
+                                ing_labels.append(f"❌ {ing_name} ({have_qty}/{req_qty})")
+                                all_have = False
+                        st.caption("Ingredients: " + " | ".join(ing_labels))
+
+                        if all_have:
+                            if st.button(f"Cook {r_data['name']}", key=f"btn_cook_{r_key}", use_container_width=True):
+                                c_res = mechanics.cook_campfire_meal(player, r_key)
+                                save_game(player, st.session_state.messages)
+                                if c_res["success"]:
+                                    st.toast(c_res["message"], icon="🍲")
+                                    st.success(c_res["log"])
+                                else:
+                                    st.error(c_res["message"])
+                                st.rerun()
+                        else:
+                            st.caption("🔒 *Missing required forage / hunt ingredients.*")
+                        st.markdown("---")
+
+                # Tab 2: Pitch Camp
+                with tab_camp:
+                    st.markdown("##### ⛺ 8-Hour Wilderness Rest & Perimeter Watch")
+                    st.caption("Set up camp to restore +50 HP (+100% in safe zones) and advance time by 8 hours. Assign a companion to perimeter watch to prevent midnight ambushes and gain tactical perks.")
+
+                    active_comps = list(mechanics.get_active_party(player)) if hasattr(mechanics, "get_active_party") else []
+                    comp_choices = [c["name"] for c in active_comps]
+                    if "Solo / No Watch" not in comp_choices:
+                        comp_choices.append("Solo / No Watch")
+
+                    watch_choice = st.selectbox("Assign Watch Guard", comp_choices, key="sb_watch_companion")
+                    
+                    if "Ren" in watch_choice:
+                        st.info("🔭 **Ren (Leyline Telemetry):** Scans aether rifts to detect ambushes early. Party gains **+2 Initiative** in next encounter.")
+                    elif "Torvald" in watch_choice:
+                        st.info("🛡️ **Torvald (Bulwark Barricade):** Erects heavy shield barricades. Foes start next combat **Staggered**.")
+                    elif "Kibs" in watch_choice:
+                        st.info("🪤 **Kibs (Perimeter Snare Web):** Conceals razor-wire and noise-makers. Ambushers take **2d8 damage** on contact.")
+                    elif "Elora" in watch_choice:
+                        st.info("✨ **Elora (Warded Perimeter):** Inscribes starlight perimeter glyphs. Banki gains **+2 AC** for next combat.")
+                    else:
+                        st.warning("⚠️ **Solo / Unprotected Rest:** Sleep with one eye open. No watch perk awarded.")
+
+                    if st.button("⛺ Pitch Camp & Rest (8 Hours)", key="btn_pitch_camp_action", use_container_width=True):
+                        selected_guard = None if watch_choice == "Solo / No Watch" else watch_choice
+                        camp_res = mechanics.pitch_wilderness_camp(player, watch_companion=selected_guard)
+                        save_game(player, st.session_state.messages)
+                        st.toast(camp_res["message"], icon="⛺")
+                        st.success(camp_res["log"])
+                        st.rerun()
 
         # 🏰 Labyrinth Dungeon: The Pohatcong Depths
         if hasattr(mechanics, "POHATCONG_LABYRINTH"):
@@ -2723,6 +2873,43 @@ if prompt := (dev_prompt or chat_prompt):
                     dt_res = mechanics.execute_dual_tech(st.session_state.player, str(dt_target))
                     if dt_res.get("success"):
                         st.toast(f"⚡ DUAL-TECH: {dt_res['combo']} executed!", icon="⚡")
+
+                # Phase 8: Campfire Cooking
+                c_cook = state_updates.get("cook_recipe")
+                if c_cook and hasattr(mechanics, "cook_campfire_meal"):
+                    c_res = mechanics.cook_campfire_meal(st.session_state.player, str(c_cook))
+                    if c_res.get("success"):
+                        st.toast(f"🍲 Cooked {c_res['recipe']}! ({c_res['buff']['name']})", icon="🍲")
+
+                # Phase 8: Wilderness Camping
+                p_camp = state_updates.get("pitch_camp")
+                if p_camp is not None and hasattr(mechanics, "pitch_wilderness_camp"):
+                    w_guard = "Ren"
+                    if isinstance(p_camp, dict):
+                        w_guard = p_camp.get("watch", "Ren")
+                    elif isinstance(p_camp, str) and p_camp.strip():
+                        w_guard = p_camp.strip()
+                    camp_res = mechanics.pitch_wilderness_camp(st.session_state.player, watch_companion=w_guard)
+                    if camp_res.get("success"):
+                        st.toast(f"⛺ Camp pitched! Rested 8 hours ({camp_res['watch_companion']} watch).", icon="⛺")
+
+                # Phase 8: Weather Shifts
+                w_shift = state_updates.get("set_weather")
+                if w_shift and hasattr(mechanics, "set_weather"):
+                    w_res = mechanics.set_weather(st.session_state.player, str(w_shift))
+                    if w_res.get("success"):
+                        st.toast(f"🌤️ Weather shifted: {w_res['weather_info']['label']}", icon="🌤️")
+
+                # Phase 8: Chrono Game Time Advance
+                # If pitch_camp was executed, it already advanced 480 mins. Otherwise advance by specified minutes or default 15 mins.
+                if not p_camp and hasattr(mechanics, "advance_game_time"):
+                    t_adv = state_updates.get("time_advance_minutes", 15)
+                    try:
+                        t_adv_int = int(str(t_adv).replace(",", "").replace(" ", ""))
+                    except (ValueError, TypeError):
+                        t_adv_int = 15
+                    if t_adv_int > 0:
+                        mechanics.advance_game_time(st.session_state.player, minutes=t_adv_int)
 
             # 1.5 Handle Combat Crunch Logs
             combat_logs = turn_data.get("combat_logs", [])

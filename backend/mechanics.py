@@ -5195,3 +5195,575 @@ def get_all_faction_standings(player_state):
     """
     ensure_faction_system(player_state)
     return [get_faction_standing(player_state, f_id) for f_id in REGIONAL_FACTIONS]
+
+
+# =====================================================================
+# PHASE 8: CHRONO-ATMOSPHERIC ENGINE & WILDERNESS SURVIVAL ECOLOGY
+# =====================================================================
+
+CHRONO_PERIODS = {
+    "dawn": {
+        "key": "dawn",
+        "label": "🌅 Dawn",
+        "hours": (6, 8),
+        "desc": "Morning light pierces the fractured data-haze. Visibility normal; creatures stirring.",
+        "perception_mod": 0,
+        "stealth_mod": 0
+    },
+    "day": {
+        "key": "day",
+        "label": "☀️ Midday",
+        "hours": (8, 18),
+        "desc": "Bright aetheric sun overhead. Optimal visibility; active regional trade routes.",
+        "perception_mod": 0,
+        "stealth_mod": 0
+    },
+    "dusk": {
+        "key": "dusk",
+        "label": "🌆 Dusk",
+        "hours": (18, 21),
+        "desc": "Sun sinks beneath Pohatcong Mountain. Lengthening shadows impose -2 to Perception checks.",
+        "perception_mod": -2,
+        "stealth_mod": 1
+    },
+    "night": {
+        "key": "night",
+        "label": "🌙 Midnight",
+        "hours": (21, 4),
+        "desc": "Pitch black wilderness. Torches or aether-lanterns required. Apex stalkers gain +2 Stealth.",
+        "perception_mod": -4,
+        "stealth_mod": 2
+    },
+    "witching_hour": {
+        "key": "witching_hour",
+        "label": "🌌 Witching Hour",
+        "hours": (4, 6),
+        "desc": "The thin hour before sunrise. Dimensional seam friction; anomalous glitched entities stir.",
+        "perception_mod": -2,
+        "stealth_mod": 1
+    }
+}
+
+AETHER_WEATHER = {
+    "clear_skies": {
+        "id": "clear_skies",
+        "name": "Clear Aether-Skies",
+        "label": "☀️ Clear Aether-Skies",
+        "icon": "☀️",
+        "desc": "Temperate atmospheric conditions across Warren County. Normal movement and combat parameters.",
+        "effect": "Standard baseline. Fast-travel and exploration operate at normal speed.",
+        "ranged_atk_mod": 0,
+        "stealth_mod": 0,
+        "spell_dmg_pct": 0,
+        "travel_allowed": True
+    },
+    "runic_mist": {
+        "id": "runic_mist",
+        "name": "Runic Mist",
+        "label": "🌫️ Runic Mist",
+        "icon": "🌫️",
+        "desc": "Dense, glowing mana-vapor blankets the valley floor, distorting distances and acoustic telemetry.",
+        "effect": "-4 to Ranged Attack rolls, +3 to Stealth checks. Fast travel disabled through thick fog.",
+        "ranged_atk_mod": -4,
+        "stealth_mod": 3,
+        "spell_dmg_pct": 0,
+        "travel_allowed": False
+    },
+    "leyline_storm": {
+        "id": "leyline_storm",
+        "name": "Leyline Overload Storm",
+        "label": "⚡ Leyline Overload Storm",
+        "icon": "⚡",
+        "desc": "Violent arcane discharge cascades between mountain ridge towers. Atmospheric static crackles.",
+        "effect": "+25% Spell and Arcane damage. Cyber-constructs and golems are enraged (+2 ATK).",
+        "ranged_atk_mod": -2,
+        "stealth_mod": -2,
+        "spell_dmg_pct": 25,
+        "travel_allowed": True
+    },
+    "crimson_ash": {
+        "id": "crimson_ash",
+        "name": "Crimson Ash Fall",
+        "label": "🌋 Crimson Ash Fall",
+        "icon": "🌋",
+        "desc": "Blood-red fallout drifts from high-altitude rift fissures, signaling a roaming Apex World-Boss.",
+        "effect": "Healing efficiency halved (-50% HP recovery). Wandering boss aggression quadrupled.",
+        "ranged_atk_mod": -1,
+        "stealth_mod": 1,
+        "healing_mult": 0.5,
+        "travel_allowed": True
+    },
+    "glitch_freeze": {
+        "id": "glitch_freeze",
+        "name": "Glitch-Freeze Blizzard",
+        "label": "❄️ Glitch-Freeze Blizzard",
+        "icon": "❄️",
+        "desc": "Crystalline polygon snow and sub-zero aetheric cold. Movement halved; cold exposure hazard.",
+        "effect": "Movement halved. Extreme cold damage unless insulated (Banki's Dire-Wolf Mantle protects him!).",
+        "ranged_atk_mod": -2,
+        "stealth_mod": -1,
+        "speed_mult": 0.5,
+        "cold_exposure": True,
+        "travel_allowed": False
+    }
+}
+
+CAMPFIRE_RECIPES = {
+    "wolf_heart_stew": {
+        "id": "wolf_heart_stew",
+        "name": "Wolf-Heart Marrow Stew",
+        "desc": "Thick, steaming marrow broth infused with wild roots that supercharges physical vigor.",
+        "ingredients": {"Wolf Marrow": 1, "Wild Roots": 1},
+        "buff": {
+            "name": "[Wolf-Heart Vigor]",
+            "desc": "+15 Maximum HP and +2 STR for 5 turns.",
+            "hp_bonus": 15,
+            "str_bonus": 2,
+            "duration": 5
+        }
+    },
+    "roasted_boar_ribs": {
+        "id": "roasted_boar_ribs",
+        "name": "Roasted Boar Ribs",
+        "desc": "Crispy charred ribs seasoned with salted rock-moss, packing dense caloric fortification.",
+        "ingredients": {"Raw Boar Flank": 1, "Salted Moss": 1},
+        "buff": {
+            "name": "[Boar's Resilience]",
+            "desc": "+20 Temporary HP and +2 Physical Damage for 5 turns.",
+            "temp_hp": 20,
+            "phys_dmg_bonus": 2,
+            "duration": 5
+        }
+    },
+    "spiced_herb_broth": {
+        "id": "spiced_herb_broth",
+        "name": "Spiced Aether-Herb Broth",
+        "desc": "Fragrant herbal infusion that clears mental strain and accelerates combat momentum.",
+        "ingredients": {"Aether-Herb": 1, "Bottled Water": 1},
+        "buff": {
+            "name": "[Aetheric Focus]",
+            "desc": "+20% Resource generation and cleanses fatigue.",
+            "resource_regen_pct": 20,
+            "cleanses_fatigue": True,
+            "duration": 5
+        }
+    },
+    "dire_scavenger_skewer": {
+        "id": "dire_scavenger_skewer",
+        "name": "Dire Scavenger Skewer",
+        "desc": "Quick field skewer seasoned with runic lichen, heightening predatory reflex.",
+        "ingredients": {"Scrap Meat": 1, "Runic Lichen": 1},
+        "buff": {
+            "name": "[Scavenger's Grit]",
+            "desc": "+10 HP recovery and +10% Critical strike chance for 5 turns.",
+            "hp_recovery": 10,
+            "crit_chance_pct": 10,
+            "duration": 5
+        }
+    }
+}
+
+
+def ensure_chrono_system(player_state):
+    """
+    Initializes chrono (day/night time of day), dynamic weather, and survival state in player_state.
+    """
+    chrono = player_state.setdefault("chrono", {})
+    if not isinstance(chrono, dict):
+        chrono = {}
+        player_state["chrono"] = chrono
+
+    chrono.setdefault("day", 1)
+    chrono.setdefault("hour", 9)
+    chrono.setdefault("minute", 30)
+    chrono.setdefault("weather", "clear_skies")
+    chrono.setdefault("active_buffs", [])
+
+    # Keep top-level active_buffs synchronized as a separate list of buff names
+    if "active_buffs" not in player_state or not isinstance(player_state["active_buffs"], list) or player_state["active_buffs"] is chrono["active_buffs"]:
+        player_state["active_buffs"] = [b.get("name", str(b)) if isinstance(b, dict) else str(b) for b in chrono["active_buffs"]]
+
+    return chrono
+
+
+def get_time_period(hour):
+    """
+    Returns time period definition based on 24-hour integer (0-23).
+    """
+    h = int(hour) % 24
+    if 6 <= h < 8:
+        return CHRONO_PERIODS["dawn"]
+    elif 8 <= h < 18:
+        return CHRONO_PERIODS["day"]
+    elif 18 <= h < 21:
+        return CHRONO_PERIODS["dusk"]
+    elif 4 <= h < 6:
+        return CHRONO_PERIODS["witching_hour"]
+    else:
+        return CHRONO_PERIODS["night"]
+
+
+def get_game_time(player_state):
+    """
+    Returns structured chrono object with current time, period info, and formatted string.
+    """
+    chrono = ensure_chrono_system(player_state)
+    h = chrono.get("hour", 9)
+    m = chrono.get("minute", 30)
+    d = chrono.get("day", 1)
+    period = get_time_period(h)
+
+    return {
+        "day": d,
+        "hour": h,
+        "minute": m,
+        "time_str": f"Day {d}, {h:02d}:{m:02d}",
+        "period": period["key"],
+        "period_info": period,
+        "weather": chrono.get("weather", "clear_skies"),
+        "weather_info": AETHER_WEATHER.get(chrono.get("weather", "clear_skies"), AETHER_WEATHER["clear_skies"])
+    }
+
+
+def advance_game_time(player_state, minutes=15):
+    """
+    Advances game time by minutes.
+    Handles rolling hour (0-23) and day increment upon crossing midnight.
+    Ticks down active culinary and survival buff durations.
+    """
+    chrono = ensure_chrono_system(player_state)
+    mins = max(1, int(minutes))
+
+    cur_m = chrono.get("minute", 0) + mins
+    add_hours = cur_m // 60
+    new_m = cur_m % 60
+
+    cur_h = chrono.get("hour", 9) + add_hours
+    add_days = cur_h // 24
+    new_h = cur_h % 24
+
+    new_d = chrono.get("day", 1) + add_days
+
+    chrono["minute"] = new_m
+    chrono["hour"] = new_h
+    chrono["day"] = new_d
+
+    old_period = get_time_period((cur_h - add_hours) % 24)["key"]
+    new_period_info = get_time_period(new_h)
+    new_period = new_period_info["key"]
+
+    period_transition = old_period != new_period
+    day_rollover = add_days > 0
+
+    # Tick active buffs
+    buffs = chrono.get("active_buffs", [])
+    remaining_buffs = []
+    expired_buffs = []
+    for b in buffs:
+        if isinstance(b, dict):
+            b["duration"] = b.get("duration", 1) - 1
+            if b["duration"] > 0:
+                remaining_buffs.append(b)
+            else:
+                expired_buffs.append(b.get("name", "Buff"))
+        else:
+            remaining_buffs.append(b)
+
+    chrono["active_buffs"] = remaining_buffs
+    player_state["active_buffs"] = [b.get("name", str(b)) if isinstance(b, dict) else str(b) for b in remaining_buffs]
+
+    log = f"[CHRONO ADVANCE: +{mins} mins -> Day {new_d}, {new_h:02d}:{new_m:02d} [{new_period_info['label']}]]"
+    if period_transition:
+        log += f"\n🌅 [ATMOSPHERIC SHIFT: The ambient sky transitions into {new_period_info['label']}. {new_period_info['desc']}]"
+    if day_rollover:
+        log += f"\n📅 [NEW DAY: Dawn breaks on Day {new_d}! Safe-zone facilities restocked.]"
+    for exp in expired_buffs:
+        log += f"\n⌛ [BUFF EXPIRED: {exp} effect has worn off.]"
+
+    return {
+        "success": True,
+        "minutes_advanced": mins,
+        "day": new_d,
+        "hour": new_h,
+        "minute": new_m,
+        "time_str": f"Day {new_d}, {new_h:02d}:{new_m:02d}",
+        "period": new_period,
+        "period_info": new_period_info,
+        "period_transition": period_transition,
+        "day_rollover": day_rollover,
+        "expired_buffs": expired_buffs,
+        "log": log
+    }
+
+
+def get_current_weather(player_state):
+    """
+    Returns active weather definition dictionary.
+    """
+    chrono = ensure_chrono_system(player_state)
+    w_key = chrono.get("weather", "clear_skies")
+    return AETHER_WEATHER.get(w_key, AETHER_WEATHER["clear_skies"])
+
+
+def set_weather(player_state, weather_key):
+    """
+    Switches weather condition to target weather_key.
+    """
+    chrono = ensure_chrono_system(player_state)
+    norm = weather_key.lower().replace(" ", "_")
+    target_key = None
+    for k in AETHER_WEATHER:
+        if k == norm or norm in k or k in norm:
+            target_key = k
+            break
+
+    if not target_key:
+        return {"success": False, "message": f"Weather phenomenon '{weather_key}' not recognized."}
+
+    chrono["weather"] = target_key
+    w_def = AETHER_WEATHER[target_key]
+    log = f"[AETHER WEATHER: Atmosphere shifted to {w_def['label']} — {w_def['desc']} ({w_def['effect']})]"
+
+    return {
+        "success": True,
+        "weather_key": target_key,
+        "weather_info": w_def,
+        "log": log,
+        "message": f"Weather changed to {w_def['label']}."
+    }
+
+
+def roll_random_weather(player_state):
+    """
+    Randomly selects weather condition weighted towards common conditions.
+    """
+    import random
+    choices = [
+        ("clear_skies", 45),
+        ("runic_mist", 25),
+        ("leyline_storm", 15),
+        ("crimson_ash", 10),
+        ("glitch_freeze", 5)
+    ]
+    total = sum(w for _, w in choices)
+    r = random.randint(1, total)
+    upto = 0
+    selected = "clear_skies"
+    for key, weight in choices:
+        if upto + weight >= r:
+            selected = key
+            break
+        upto += weight
+
+    return set_weather(player_state, selected)
+
+
+def check_frostbite_protection(player_state):
+    """
+    Evaluates whether Banki is insulated against extreme cold / glitch-freeze blizzards.
+    Banki's Dire-Wolf Fur Mantle, heavy pelt armors, or warm garments grant insulation.
+    """
+    equipped = player_state.get("equipped", {})
+    inventory = player_state.get("inventory", [])
+
+    # Check equipped slots
+    for slot, item in equipped.items():
+        s_low = str(item).lower()
+        if any(w in s_low for w in ["mantle", "fur", "pelt", "dire-wolf", "direwolf", "insulated", "thermal", "winter"]):
+            return {
+                "protected": True,
+                "source": item,
+                "message": f"Insulated against sub-zero temperatures by {item}."
+            }
+
+    # Banki's canonical dire-wolf mantle baseline
+    feats = player_state.get("feats", [])
+    if any("mantle" in str(f).lower() or "dire-wolf" in str(f).lower() or "berserk" in str(f).lower() for f in feats):
+        return {
+            "protected": True,
+            "source": "Dire-Wolf Fur Mantle (Racial/Class Heritage)",
+            "message": "Protected by heavy dire-wolf fur mantle."
+        }
+
+    return {
+        "protected": False,
+        "source": None,
+        "message": "Unprotected from sub-zero glitch freeze! Suffering cold exposure."
+    }
+
+
+def cook_campfire_meal(player_state, recipe_id):
+    """
+    Prepares a culinary recipe at the wilderness campfire.
+    Checks ingredient availability, deducts them from inventory,
+    applies the culinary buff, and restores HP.
+    """
+    chrono = ensure_chrono_system(player_state)
+    norm = recipe_id.lower().replace(" ", "_")
+    recipe = None
+    for r_k, r_data in CAMPFIRE_RECIPES.items():
+        if r_k == norm or norm in r_k or norm in r_data["name"].lower():
+            recipe = r_data
+            break
+
+    if not recipe:
+        return {"success": False, "message": f"Campfire recipe '{recipe_id}' not found."}
+
+    inv = player_state.setdefault("inventory", [])
+    
+    # Check if ingredients exist in inventory
+    # For streamlined play, if ingredients are missing, can optionally buy them or verify qty
+    missing = []
+    inv_map = {}
+    for item in inv:
+        if isinstance(item, dict):
+            iname = item.get("name", "").strip().lower()
+            inv_map[iname] = inv_map.get(iname, 0) + item.get("qty", 1)
+        elif isinstance(item, str):
+            iname = item.strip().lower()
+            inv_map[iname] = inv_map.get(iname, 0) + 1
+
+    for ing_name, req_qty in recipe["ingredients"].items():
+        ing_lower = ing_name.lower()
+        # Look for partial match
+        available_qty = sum(qty for k, qty in inv_map.items() if ing_lower in k or k in ing_lower)
+        if available_qty < req_qty:
+            missing.append(f"{ing_name} (Need {req_qty})")
+
+    if missing:
+        return {
+            "success": False,
+            "message": f"Missing required ingredients for {recipe['name']}: {', '.join(missing)}."
+        }
+
+    # Deduct ingredients
+    for ing_name, req_qty in recipe["ingredients"].items():
+        ing_lower = ing_name.lower()
+        remaining_to_deduct = req_qty
+        for item in inv[:]:
+            if remaining_to_deduct <= 0:
+                break
+            if isinstance(item, dict):
+                if ing_lower in item.get("name", "").lower() or item.get("name", "").lower() in ing_lower:
+                    cur_q = item.get("qty", 1)
+                    if cur_q <= remaining_to_deduct:
+                        remaining_to_deduct -= cur_q
+                        inv.remove(item)
+                    else:
+                        item["qty"] = cur_q - remaining_to_deduct
+                        remaining_to_deduct = 0
+            elif isinstance(item, str):
+                if ing_lower in item.lower() or item.lower() in ing_lower:
+                    inv.remove(item)
+                    remaining_to_deduct -= 1
+
+    # Apply culinary buff
+    buff_data = dict(recipe["buff"])
+    chrono.setdefault("active_buffs", []).append(buff_data)
+    player_state["active_buffs"] = [b.get("name", str(b)) if isinstance(b, dict) else str(b) for b in chrono["active_buffs"]]
+
+    # Health recovery
+    hp_recovery = buff_data.get("hp_bonus", 15)
+    old_hp = player_state.get("hp", 100)
+    max_hp = player_state.get("max_hp", 100)
+    new_hp = min(max_hp, old_hp + hp_recovery)
+    player_state["hp"] = new_hp
+
+    log = (
+        f"[CAMPFIRE CULINARY: Cooked '{recipe['name']}'! "
+        f"Gained {buff_data['name']} ({buff_data['desc']}) | Restored +{new_hp - old_hp} HP (Now {new_hp}/{max_hp})]"
+    )
+
+    return {
+        "success": True,
+        "recipe": recipe["name"],
+        "buff": buff_data,
+        "hp_restored": new_hp - old_hp,
+        "log": log,
+        "message": f"Successfully cooked {recipe['name']}! Gained {buff_data['name']}."
+    }
+
+
+def pitch_wilderness_camp(player_state, watch_companion="Ren"):
+    """
+    Pitches camp in the wilderness or a safe haven for an 8-hour rest.
+    - Advances game time by 480 minutes (8 hours).
+    - Restores 50 HP (or full HP if in safe zone).
+    - Resolves watch assignment based on companion.
+    """
+    chrono = ensure_chrono_system(player_state)
+    ensure_party_system(player_state)
+
+    # Advance time 8 hours (480 minutes)
+    time_res = advance_game_time(player_state, minutes=480)
+
+    # Healing
+    loc_str = str(player_state.get("location", "")).lower()
+    in_safe_zone = any(w in loc_str for w in ["borough", "safe", "haven", "taphouse", "outpost", "camp", "sanctuary"])
+    old_hp = player_state.get("hp", 100)
+    max_hp = player_state.get("max_hp", 100)
+
+    if in_safe_zone:
+        player_state["hp"] = max_hp
+        heal_amt = max_hp - old_hp
+    else:
+        heal_amt = min(max_hp - old_hp, 50)
+        player_state["hp"] = old_hp + heal_amt
+
+    # Watch resolution
+    watch_key = watch_companion.strip().title() if watch_companion else "None"
+    comps = player_state.get("companions", {})
+    comp_obj = comps.get(watch_key)
+    if not comp_obj:
+        for k, v in comps.items():
+            if watch_key.lower() in k.lower() or watch_key.lower() in v.get("name", "").lower():
+                comp_obj = v
+                watch_key = k
+                break
+
+    ambush_prevented = False
+    watch_log = ""
+    watch_perk = ""
+
+    if watch_key == "Ren":
+        ambush_prevented = True
+        watch_perk = "[Vigilant Leyline Telemetry: Party gains +2 Initiative in next encounter]"
+        watch_log = "Ren monitored spatial rifts on his runic scribe slate throughout the night, spotting a pack of glitch-stalkers 200 meters out and steering them clear."
+    elif watch_key == "Torvald":
+        ambush_prevented = True
+        watch_perk = "[Bulwark Barricade: Foes start next combat Staggered]"
+        watch_log = "Torvald reinforced the camp perimeter with heavy logs and his tower shield, deflecting an early nocturnal charge without waking the camp."
+    elif watch_key == "Kibs":
+        ambush_prevented = True
+        watch_perk = "[Perimeter Snare Web: Ambushers take 2d8 damage on contact]"
+        watch_log = "Kibs strung barbed tripwires and noise-canisters through the underbrush, catching a wandering razor-hound in a snare."
+    elif watch_key == "Elora":
+        ambush_prevented = True
+        watch_perk = "[Warded Perimeter: Banki gains +2 AC for next combat]"
+        watch_log = "Elora etched shimmering starlight wards in a ring around the campfire, alarming the party of approaching mana-beasts."
+    else:
+        # Solo or no companion watch
+        if in_safe_zone:
+            watch_log = "Safe-zone barrier matrices provided uninterrupted peaceful slumber."
+        else:
+            watch_log = "Unprotected rest in the wilderness. You sleep with one eye open, waking frequently to distant construct howls."
+
+    camp_log = (
+        f"[WILDERNESS CAMP: Rested for 8 Hours -> {time_res['time_str']} [{time_res['period_info']['label']}] | "
+        f"Restored +{heal_amt} HP (Now {player_state['hp']}/{max_hp})]\n"
+        f"🛡️ [WATCH REPORT ({watch_key}): {watch_log} {watch_perk}]"
+    )
+
+    return {
+        "success": True,
+        "healed_hp": heal_amt,
+        "new_hp": player_state["hp"],
+        "max_hp": max_hp,
+        "watch_companion": watch_key,
+        "watch_log": watch_log,
+        "watch_perk": watch_perk,
+        "time_info": time_res,
+        "log": camp_log,
+        "message": f"Rested for 8 hours. Time is now {time_res['time_str']}."
+    }
+
