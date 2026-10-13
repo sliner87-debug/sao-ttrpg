@@ -90,11 +90,11 @@
         "companions": {
             "Ren": {
                 "name": "Ren",
-                "archetype": "MageTech Vanguard",
+                "archetype": "MageTech Vanguard (Trapped 17yo Game Designer)",
                 "hp": 28,
                 "max_hp": 35,
                 "ac": 16,
-                "status": "Scalded by steam, aiming his Aether-Lock Carbine to shield Banki",
+                "status": "Scalded by steam, aiming his Aether-Lock Carbine while calling out boss telegraphs to Banki",
                 "active_grafts": [
                     {
                         "name": "Aetheric Ocular Lens",
