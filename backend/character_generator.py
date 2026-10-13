@@ -627,14 +627,15 @@ RACIAL_LINEAGES = {
         ]
     },
     "neuromancer_cyborg": {
-        "name": "Neuromancer Cyborg",
-        "genre": "Cyberpunk / Sci-Fi",
-        "desc": "Pre-collapse cybernetic implants (neural co-processor, optical HUD, subdermal titanium lattice) re-energized by aetheric currents.",
-        "stat_mods": {"INT": 3, "DEX": 2, "CON": 1, "WIS": -1, "STR": 0, "CHA": -1},
+        "name": "MageTech Cyborg (Crucible Conscript)",
+        "genre": "MageTech / Biomechanical",
+        "desc": "Survivors whose catastrophic trauma or pre-collapse medical implants were seized during Initialization and forcibly welded to high-torque pneumatic servos, runic copper conduits, and an aether-ocular reticle by the Cardinal System's auto-forges. Rebuilt as frontline biomechanical conscripts of the Crucible.",
+        "stat_mods": {"STR": 2, "CON": 2, "INT": 1, "DEX": 1, "WIS": -1, "CHA": -1},
         "racial_abilities": [
-            "Ocular Telemetry HUD: Real-time scan of enemy weak points, displaying exact HP percentages and ballistic ranges.",
-            "Subdermal Titanium Mesh: Natural +1 AC and immunity to shrapnel bleeding.",
-            "Flaw - EMP Vulnerability: Lightning and electromagnetic attacks deal +20% bonus damage."
+            "Cardinal Telemetry Ocular: Retinal HUD crosshair scans enemy armor seams and weakpoints, granting +1 to hit against analyzed targets and displaying exact enemy HP percentages.",
+            "Pneumatic Endoskeleton: Heavy titanium-composite bone reinforcement grants +1 Natural Armor Class, adds +25 lbs carrying capacity before encumbrance penalties, and grants +2 on Strength checks to break barriers or resist grappling.",
+            "Innate Graft-Tolerance: Biomechanical conditioning increases baseline Golem-Graft Strain threshold by +15, allowing the character to install advanced cybernetic and monster grafts without neuro-vascular rejection.",
+            "Flaw - Arc & EMP Conductivity: Lightning damage, electric arc spells, and electromagnetic pulse hazards deal +20% bonus damage and cause motor-servo jitter (-1 DEX penalty for 1 round following electrical damage)."
         ]
     },
     "mantid_insectoid": {
@@ -726,14 +727,15 @@ RACIAL_LINEAGES = {
         ]
     },
     "synthetic_android": {
-        "name": "Synthetic Android (Automaton)",
-        "genre": "Sci-Fi",
-        "desc": "A humanoid chassis crafted from silicon circuits, fiber-muscles, and synthetic skin, imbued with an emerging soul by the Overlay.",
-        "stat_mods": {"INT": 3, "DEX": 2, "CON": 2, "STR": 0, "WIS": -1, "CHA": -2},
+        "name": "Synthetic Android (Printed Soul-Vessel)",
+        "genre": "Pathfinder / Bio-Synthetic",
+        "desc": "Derived from Pathfinder's Numerian synthetic humanoids and the Cardinal System's automated bio-foundries. Fabricated in deep subterranean print-vats from living carbon polymers, nanite circulatory fluid, and cold-forged porcelain/composite dermal plating. Created as disposable automated conscripts for the death-game, the planetary mana rupture unexpectedly seeded emergent souls and mortal consciousness into their logic cores.",
+        "stat_mods": {"INT": 3, "DEX": 2, "CON": 1, "STR": 0, "WIS": 0, "CHA": -2},
         "racial_abilities": [
-            "Cold Logic: Immune to fear, charm, and emotional panic status effects.",
-            "Integrated Diagnostics: Always knows exact structural integrity, coordinates, and ambient temperature.",
-            "Flaw - Recharging Stasis: Requires 4 hours of motionless charging or battery drainage per 24 hours."
+            "Synthetic Biology (Dual Nature): Counts as both Humanoid and Construct. Fully immune to biological diseases, atmospheric spores, and magical sleep effects. Biological healing and nanite repair items both function at full efficiency.",
+            "Nanite Surge: Once per combat encounter or short rest, can trigger an internal nanite circulatory burst as a free action, adding a +4 bonus to any single attack roll, saving throw, or skill check, or immediately self-stabilizing at 1 HP upon falling unconscious.",
+            "Logic-Core Discipline: Emotional suppression grants complete immunity to fear, intimidation, and charm/confusion spells. Grants +2 on tactical deduction, cryptography, and complex system query checks.",
+            "Flaw - Empathy Void & Core Flush: Suffers a -2 penalty on Charisma (Persuasion, Animal Handling, and Empathy) checks with organic survivors. Requires a 4-hour stationary diagnostic stasis during long rests to cycle internal coolant and vent memory buffers."
         ]
     }
 }
@@ -904,140 +906,174 @@ PERSONAL_RELICS = {
     "smartphone": {
         "name": "Earth Smartphone (99% Battery, No Signal)",
         "rarity": "Unique",
+        "category": "Psychological Anchor & Illuminator",
         "durability": 99,
         "max_durability": 100,
         "qty": 1,
-        "desc": "Cracked screen showing photos of family, unread text messages from Mom ('Where are you? Dinner is cold'), and an encrypted corporate employee app."
+        "desc": "A personal flagship smartphone with a spiderweb fracture across the Gorilla Glass screen. Held in an otterbox case, it displays 99% battery, zero cellular bars, and the offline calendar locked onto the final afternoon before the Rift collapse. Its memory stores unread text messages from family ('Where are you? Dinner is cold'), offline music playlists, photos of pets, and an encrypted corporate employee app.",
+        "mechanics": "Psychological Anchor: Gazing at family photos during a short rest cures 1 level of cognitive stress / psychological despair and provides advantage on the next saving throw against cosmic madness or horror. Emergency Lumens: Emits a 20ft cone of LED light without open flame. Encrypted Cache: Once per day, querying offline notes grants +2 on an INT check regarding pre-collapse Earth history or engineering. Battery drains 1% per 10 active uses (99 charges total; cannot recharge until MageTech dynamo power is discovered)."
     },
     "multitool": {
         "name": "Mechanic's Heavy Multi-Tool",
         "rarity": "Uncommon",
+        "category": "Field Crafting & Rigging",
         "durability": 100,
         "max_durability": 100,
         "qty": 1,
-        "desc": "Hardened carbon-steel pliers, wire-cutters, and hex-bits. Grants a passive +2 bonus to field repairs and snare rigging."
+        "desc": "Hardened carbon-steel pliers, wire-strippers, carbide wire-cutters, serrated wood/bone saw, can opener, and magnetic bit driver with hardened hex heads in a ballistic nylon belt sheath.",
+        "mechanics": "Field Maintenance: Permanent +2 bonus on all Field Smithing and mechanical repair checks. Reduces Col repair costs at field anvils by 25%. Improvised Rigging: Deploy or disarm mechanical wire traps and snares without requiring specialized thieves' tools (+5 to disarm trap checks). Pry & Lever: Advantage on STR checks to pry open jammed vehicle doors, locked junction boxes, and rusted scrap grates."
     },
     "first_aid_pouch": {
         "name": "Trauma First-Aid Pouch",
         "rarity": "Uncommon",
+        "category": "Emergency Medical Triage",
         "durability": 3,
         "max_durability": 3,
         "qty": 1,
-        "desc": "Sterile gauze pads, clotting powder, and antiseptic spray. Can be used 3 times to immediately cure severe Bleeding."
+        "desc": "A zippered olive-drab ripstop nylon medical pouch stamped with a faded red cross. Contains sterile trauma dressings, celox hemostatic clotting powder, a compact windlass tourniquet, antiseptic burn wash, and nitrile gloves.",
+        "mechanics": "Rapid Hemostasis (3 Charges): Bonus action or reaction in combat to immediately cure [Bleeding] or [Hemorrhage] on self or adjacent ally, and restore 1d8+2 HP. Antiseptic Wash: Applying wash to infected wounds grants immediate advantage on target's next saving throw against gangrene, sepsis, or monster biological venom. Depletes 1 durability charge per field triage use."
     },
     "city_map": {
         "name": "Laminated Regional Topo-Map",
         "rarity": "Uncommon",
+        "category": "Tactical Navigation & Cartography",
         "durability": 100,
         "max_durability": 100,
         "qty": 1,
-        "desc": "Real-world topographical map of Warren County NJ. Grants +5 starting Cartography mastery and reveals nearby water sources."
+        "desc": "Waterproof, double-sided USGS topographical quadrangle map of Warren County, New Jersey (covering Washington Borough, Pohatcong Mountain, Oxford, and Delaware Water Gap) marked with elevation contour lines, river basins, power substations, and grease pencil circles.",
+        "mechanics": "Terrain Mastery: Grants +5 starting mastery to Cartography and reveals hidden topographical waypoints, freshwater springs, and high-ground vantage points on the Sector 1 Map overlay. Overland Efficiency: Party overland travel speed across Sector 1 is increased by 15%; immune to becoming naturally lost in non-magical terrain. Tactical Chokepoints: Studying map before combat grants +2 to party initiative."
     },
     "pocket_watch": {
         "name": "Heirloom Pocket-Watch",
         "rarity": "Rare",
+        "category": "Spatial & Temporal Detection",
         "durability": 100,
         "max_durability": 100,
         "qty": 1,
-        "desc": "Mechanical brass pocket watch passed down through generations. Ticks rhythmically and chimes when temporal glitch-rifts open nearby."
+        "desc": "Heavy, hand-wound Swiss mechanical pocket-watch in an antiqued solid brass hunter case with Albert chain. Its ruby-jeweled movement ticks with rhythmic precision, immune to electromagnetic pulses or atmospheric aether static.",
+        "mechanics": "Glitch-Rift Resonance: The escapement wheel vibrates and chimes loudly within 100ft of an unstable Aetheric Rift, spatial anomaly, or phased entity, preventing surprise attacks. Chrono-Pacing: Displays exact astronomical time and minutes to dawn/dusk, ensuring party is never caught unprepared by night-cycle difficulty escalations. Temporal Focus (1/Long Rest): Gain +2 on all Reaction saving throws for 10 minutes."
     },
 
     # 12 Brand New Thematic Relics
     "noise_cancelling_headphones": {
         "name": "Noise-Cancelling Headphones",
         "rarity": "Uncommon",
+        "category": "Auditory & Sensory Defense",
         "durability": 80,
         "max_durability": 100,
         "qty": 1,
-        "desc": "Over-ear cushioned headset with acoustic active dampening. Grants immunity to auditory sensory overload and banshee sonic shrieks."
+        "desc": "Over-ear cushioned headset with memory foam protein leather ear pads and active hybrid acoustic noise-cancellation circuitry. Scuffed along the headband from rapid evacuation.",
+        "mechanics": "Acoustic Dampening: Complete immunity to auditory sensory overload, disorienting supersonic bangs, and monster sonic shrieks (Banshee wails, Harpy calls, Bat-fiend pulses). Psychological Bubble: Wearing while resting blocks out distressing environmental noises (howling wind, dark dungeon growls), ensuring uninterrupted rest. Trade-off: Suffers -2 penalty on passive Perception checks reliant strictly on ambient sound."
     },
     "tritium_compass": {
         "name": "Military Tritium Lensatic Compass",
         "rarity": "Uncommon",
+        "category": "Leyline & Night Navigation",
         "durability": 100,
         "max_durability": 100,
         "qty": 1,
-        "desc": "Rugged olive-drab lensatic compass with self-luminous dials. Needles spin erratically near spatial anomalies, warning of nearby rifts."
+        "desc": "Rugged olive-drab aluminum casing lensatic compass with sighting wire and self-luminous radioactive gaseous tritium vials (green glow) that require no sunlight exposure or battery power to glow in total darkness.",
+        "mechanics": "Leyline Divergence Gauge: Magnetic needle responds to both Earth's magnetic poles and ambient mana gradients; wobbles and points toward nearest leyline convergence or magical node. Night Navigation: Green tritium vials permit silent, zero-light compass navigation in pitch-black caves without torches. Dead-Reckoning: Advantage on Survival checks to navigate through blinding blizzards, fogs, and toxic ash clouds."
     },
     "zippo_lighter": {
         "name": "Engraved Brass Zippo Lighter",
         "rarity": "Uncommon",
+        "category": "Pyrotechnic & Gas Detection",
         "durability": 100,
         "max_durability": 100,
         "qty": 1,
-        "desc": "Windproof brass lighter with an engraved personal crest. Lights campfires instantly even in rain and can ignite flammable gas pockets."
+        "desc": "Windproof brushed brass lighter with a satisfying snap-lid click and engraved motto ('Keep Moving Forward'). Smelling faintly of naphtha fuel, its cotton wick and flint spark wheel are battle-tested and reliable.",
+        "mechanics": "Instant Ignition: Lights campfires, torches, and stoves instantly in any weather conditions, bypassing wind, rain, and damp wood penalties. Vapor Detection: Holding flame low detects invisible natural gas, methane pockets, and swamp fumes before detonation (flame flares bright blue to warn party). Combat Spark: Free action in combat to ignite oil flasks, molotov cocktails, or alchemical haze pellets."
     },
     "dogeared_novel": {
         "name": "Dog-Eared Sci-Fi Paperback",
         "rarity": "Uncommon",
+        "category": "Psychological Refresh & Ingenuity",
         "durability": 50,
         "max_durability": 50,
         "qty": 1,
-        "desc": "A worn paperback with yellowed pages and dog-eared corners. Reading during short rests relieves psychological strain and restores +10 focus/mana."
+        "desc": "A battered mass-market paperback novel (classic speculative fiction) with creased yellow pulp pages, split spine glue, and penciled margins. Smells of vanilla paper lignin and old-world bookstore nostalgia.",
+        "mechanics": "Cognitive Refresh: Reading one chapter during a short rest (30 min) clears mental fatigue, granting +10 Focus/Mana and a +1 bonus to INT and WIS saving throws for 2 hours. Imaginative Blueprinting: Exposure to speculative tropes grants +1 bonus to Magi-Tech Hacking and unconventional puzzle solving. Emergency Tinder: In sub-zero emergencies, pages can be torn out to kindle 5 separate emergency fires (+2 to frostbite survival checks)."
     },
     "chalk_carabiners": {
         "name": "Climber's Carabiners & Chalk Bag",
         "rarity": "Uncommon",
+        "category": "Athletics & Weapon Grip",
         "durability": 100,
         "max_durability": 100,
         "qty": 1,
-        "desc": "Locking aluminum carabiners and dry magnesium chalk. Grants advantage on climbing rolls and prevents weapons from slipping from slick hands."
+        "desc": "Two heavy-duty, screw-gate asymmetrical D-shaped aluminum climbing carabiners paired with a fleece-lined ripstop waist pouch filled with compressed magnesium carbonate chalk powder.",
+        "mechanics": "Grip Assurance: Chalking hands ensures a secure hold, preventing held weapons from being disarmed or dropped due to monster slime, slick blood, or torrential rain. Climbing Anchor: Advantage on Athletics checks to ascend sheer rock faces, elevator shafts, and collapsed highway overpasses. Silent Rappel Rigging: Reduces time required to set up a safe rope descent by 50%."
     },
     "polaroid_camera": {
         "name": "Vintage Polaroid Camera (3 Films Left)",
         "rarity": "Rare",
+        "category": "Paranormal Detection & Flash Stun",
         "durability": 3,
         "max_durability": 3,
         "qty": 1,
-        "desc": "Instant analog film camera. Developing a photo of a suspicious clearing captures invisible entities, phased stalkers, or hidden glyphs."
+        "desc": "An analog instant camera from the late 1980s with textured gray housing, rainbow stripe logo, and built-in optical flash bar. Loaded with an authentic vintage film cartridge with exactly 3 remaining chemical exposures.",
+        "mechanics": "Specter-Capture Exposure (3 Charges): Snapping a photo and developing the chemical print (60 sec) captures invisible entities, phased stalkers, hidden illusion doors, or arcane sigils invisible to the naked human eye. Flash Stun (Reaction): Pyrotechnic flash can be discharged in combat to inflict [Blinded] on an adjacent attacker for 1 turn (costs 1 film charge). Photos become permanent inventory proof of paranormal encounters."
     },
     "tactical_flashlight": {
         "name": "2000-Lumen Tactical Strobe Flashlight",
         "rarity": "Uncommon",
+        "category": "Illumination & Combat Disorientation",
         "durability": 75,
         "max_durability": 100,
         "qty": 1,
-        "desc": "Aircraft-grade aluminum flashlight. Can be clicked into a disorienting 2000-lumen strobe to blind light-sensitive shadow beasts."
+        "desc": "Matte black aircraft-grade anodized aluminum tactical flashlight featuring an ultra-bright Cree XHP LED emitter, strike bezel ring with glass-breaker crenellations, and IP68 waterproof tail-switch.",
+        "mechanics": "Target Dazzle / Strobe: 15Hz strobe forces a DC 14 CON save on light-sensitive subterranean beasts or humanoids within 30ft; on failure, target suffers [Dazzled] (-2 to attack rolls for 2 rounds). Deep High-Beam: Illuminates 150ft beam of daylight-equivalent white light, penetrating supernatural gloom. Strike Bezel: Functions as an improvised light bludgeoning weapon in melee dealing 1d4+STR damage (10% stun chance on crit). 75/100 battery remaining."
     },
     "guitar_tuning_fork": {
         "name": "Harmonic Steel Tuning Fork (440Hz)",
         "rarity": "Uncommon",
+        "category": "Acoustic Disruption & Sonar",
         "durability": 100,
         "max_durability": 100,
         "qty": 1,
-        "desc": "Nickel-plated fork resonating at pitch A. Striking it against magical barriers disrupts minor energy wards and exposes illusory passages."
+        "desc": "Precision-machined, nickel-plated surgical steel acoustic tuning fork calibrated to Concert Pitch A (440 Hz). Produces a pure, crystalline sine wave that hums through bone and air when struck.",
+        "mechanics": "Resonant Disruptor: Striking fork and holding near active magical ward, barrier, or rune trap creates destructive acoustic interference, reducing DC to dispel/disarm by 3. False-Wall Sonar: Placing vibrating stem against dungeon walls detects hollow chambers and hidden doors via frequency shifts. Aetheric Calibration: Grants +5% bonus experience gain to all sound-based or sonic magic skills."
     },
     "thermos_coffee": {
         "name": "Vacuum-Insulated Coffee Thermos",
         "rarity": "Uncommon",
+        "category": "Thermal Sustenance & Cold Ward",
         "durability": 3,
         "max_durability": 3,
         "qty": 1,
-        "desc": "Double-wall thermos still containing piping hot dark roast. Taking a sip clears one level of physical exhaustion and grants +2 initiative for 1 hour."
+        "desc": "Heavy double-walled 18/8 kitchen-grade stainless steel thermos bottle with powder-coated hunter green finish. Miraculously, its airtight silicone seal preserved piping-hot dark roast drip coffee from the morning of Integration.",
+        "mechanics": "Thermal Stamina Draught (3 Sips Left): Taking a hot sip in the field instantly restores 15 Stamina/Mana, clears 1 level of physical exhaustion, and provides a +2 bonus to Initiative rolls for 1 hour. Hypothermia Ward: Consuming a sip during freezing weather or Glitch Freeze grants complete immunity to Frostbite damage for 4 hours. Indestructible Flask: Empty container can be refilled with boiling liquids or broths without degrading."
     },
     "santoku_knife": {
         "name": "Black Ceramic Chef's Santoku Knife",
         "rarity": "Uncommon",
+        "category": "Non-Metallic Stealth & Butchery",
         "durability": 60,
         "max_durability": 60,
         "qty": 1,
-        "desc": "Non-metallic razor zirconia ceramic blade. Bypasses magnetic detectors and armor magnetism; retains edge without sharpening."
+        "desc": "7-inch Japanese-style culinary knife made from ultra-hard zirconium oxide ceramic with an ebony composite handle. Mirror-smooth and impervious to rust, acids, or biological rot, with a razor edge.",
+        "mechanics": "Non-Metallic Stealth Weapon: Undetectable by metal detectors, magnetic traps, and ferro-kinetic magic. Equippable as off-hand blade dealing 1d6 piercing/slashing damage. Pristine Edge: Does not lose durability cutting flesh or herbs; grants +2 on all Field Butchery and skinning checks to harvest pristine beast hides. Brittle Seam: Striking solid steel plate armor or stone causes 5 points of durability damage."
     },
     "usb_family_drive": {
         "name": "Keychain USB (Home Videos & Photos)",
         "rarity": "Rare",
+        "category": "Psychological Bastion & Defiance",
         "durability": 100,
         "max_durability": 100,
         "qty": 1,
-        "desc": "Waterproof thumb drive loaded with family birthdays, childhood videos, and laughter. Grants advantage against psychic horror, despair, and despair effects."
+        "desc": "Waterproof, shockproof aluminum thumb drive on a split-ring key loop labeled 'Family Archive 2010-2024'. Stores 64GB of home videos, Thanksgiving dinners, wedding vows, road trips, and baby laughs.",
+        "mechanics": "Sentimental Bastion: Advantage on all saving throws against mind control, psychic horror, despair, and sanity erosion. Unbreakable Hope (1/Encounter Reaction): When player HP is reduced to 0 by a lethal attack, grasping the drive allows a DC 12 WIS check; on success, player clings to life with 1 HP instead. Terminal Compatibility: Can be plugged into pre-collapse Earth computers to unlock personal lore logs."
     },
     "laser_rangefinder": {
         "name": "Hunting Laser Rangefinder",
         "rarity": "Uncommon",
+        "category": "Ballistic Telemetry & Ranging",
         "durability": 85,
         "max_durability": 100,
         "qty": 1,
-        "desc": "Digital optical telemetry sight. Grants +2 bonus to ranged weapon attack rolls targeting enemies beyond 50 feet."
+        "desc": "Rubber-armored digital monocular laser rangefinder used by precision marksmen. Features an LCD reticle displaying line-of-sight distance in yards, true horizontal angle compensation, and scan mode.",
+        "mechanics": "Ballistic Ranging: Spending a minor action to range an enemy before firing eliminates distance penalties for bows, crossbows, and firearms up to 200 yards, and grants +2 on the next ranged attack roll. True Elevation: Automatically calculates horizontal distance when aiming up or down steep cliffs or towers. Operates on CR2 lithium cell with 85/100 battery remaining (1 charge per 10 range scans)."
     }
 }
 
@@ -1049,10 +1085,12 @@ def create_custom_relic(name, desc, ability_text="Sentimental Anchor"):
     return {
         "name": safe_name,
         "rarity": "Custom Relic",
+        "category": "Custom Keepsake",
         "durability": 100,
         "max_durability": 100,
         "qty": 1,
         "desc": f"{safe_desc} (Effect: {safe_ability})",
+        "mechanics": safe_ability,
         "custom_ability": safe_ability
     }
 
@@ -1446,6 +1484,8 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
             feats_list.append(f"Keepsake Resonator: {custom_relic_data['custom_ability']}")
     else:
         relic = PERSONAL_RELICS.get(relic_key, PERSONAL_RELICS["smartphone"])
+        if "mechanics" in relic:
+            feats_list.append(f"Relic Attunement ({relic['name']}): {relic['mechanics']}")
     
     starter_inventory = [
         relic,
