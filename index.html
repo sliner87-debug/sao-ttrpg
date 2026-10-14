@@ -15,51 +15,62 @@
     
     #map { height: 100%; width: 100%; z-index: 1; }
     
-    /* Sci-Fi HUD Header */
+    /* Floating Header Open Pill */
+    #btn-open-header {
+      position: absolute; top: 15px; left: 60px; z-index: 1001;
+      background: rgba(12, 16, 24, 0.95); border: 1px solid #00d2ff;
+      color: #00d2ff; font-weight: 700; font-size: 12px; border-radius: 30px;
+      padding: 7px 14px; cursor: pointer; box-shadow: 0 4px 20px rgba(0,210,255,0.3);
+      display: none; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    #btn-open-header:hover { background: #00d2ff; color: #0a0e14; transform: scale(1.03); }
+
+    /* Top-Left Info Window */
     #hud-header {
-      position: absolute; top: 15px; left: 60px; z-index: 1000;
-      background: rgba(12, 16, 24, 0.94); border: 1px solid #00d2ff;
-      border-radius: 8px; padding: 8px 14px; box-shadow: 0 4px 25px rgba(0, 210, 255, 0.25);
-      backdrop-filter: blur(8px); max-width: 520px; transition: all 0.25s ease;
+      position: absolute; top: 15px; left: 60px; z-index: 1001;
+      background: rgba(12, 16, 24, 0.96); border: 1px solid #00d2ff;
+      border-radius: 8px; padding: 12px 14px; box-shadow: 0 4px 25px rgba(0, 210, 255, 0.25);
+      backdrop-filter: blur(8px); max-width: 480px; transition: all 0.25s ease;
+    }
+    #hud-header.collapsed {
+      display: none !important;
     }
     .header-top-row {
       display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      border-bottom: 1px solid #233044; padding-bottom: 6px; margin-bottom: 6px;
     }
     #hud-header h1 {
-      font-size: 14px; font-weight: 700; color: #00d2ff; letter-spacing: 0.8px;
-      margin: 0; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-size: 13.5px; font-weight: 700; color: #00d2ff; letter-spacing: 0.8px;
+      margin: 0; display: flex; align-items: center; gap: 6px;
     }
-    .header-toggle-btn {
-      background: #141b24; border: 1px solid #233044; color: #00d2ff;
-      border-radius: 4px; padding: 1px 7px; font-size: 12px; font-weight: 700;
-      cursor: pointer; line-height: 1.4;
+    .hud-close-btn {
+      background: #1e293b; border: 1px solid #475569; color: #cbd5e1;
+      border-radius: 4px; padding: 2px 7px; font-size: 11px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s;
     }
-    .header-toggle-btn:hover { background: #00d2ff; color: #0a0e14; }
-    #hud-header-content {
-      margin-top: 6px;
-    }
+    .hud-close-btn:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
     #hud-header p { font-size: 11px; color: #a4b3c6; line-height: 1.35; }
     
-    /* Floating Open Button for Controls */
+    /* Floating Open Button for Controls (Top Right) */
     #btn-open-panel {
       position: absolute; top: 15px; right: 15px; z-index: 1001;
       background: rgba(12, 16, 24, 0.95); border: 1px solid #00d2ff;
       color: #00d2ff; font-weight: 700; font-size: 12px; border-radius: 30px;
-      padding: 8px 14px; cursor: pointer; box-shadow: 0 4px 20px rgba(0,210,255,0.3);
+      padding: 7px 14px; cursor: pointer; box-shadow: 0 4px 20px rgba(0,210,255,0.3);
       display: none; align-items: center; gap: 6px; transition: all 0.2s;
     }
     #btn-open-panel:hover { background: #00d2ff; color: #0a0e14; transform: scale(1.03); }
     
-    /* Control Panel Box (Top Right) */
+    /* Control Panel Window (Top Right) */
     #hud-panel {
       position: absolute; top: 15px; right: 15px; z-index: 1002;
       background: rgba(12, 16, 24, 0.96); border: 1px solid #303e54;
-      border-radius: 8px; padding: 12px; width: 340px; max-height: 90vh;
+      border-radius: 8px; padding: 12px; width: 330px; max-height: 90vh;
       overflow-y: auto; box-shadow: 0 6px 30px rgba(0,0,0,0.7); backdrop-filter: blur(8px);
       transition: transform 0.25s ease, opacity 0.25s ease;
     }
     #hud-panel.collapsed {
-      transform: translateX(120%);
+      transform: translateX(125%);
       pointer-events: none;
       opacity: 0;
     }
@@ -71,12 +82,6 @@
     .panel-header-bar h2 {
       font-size: 13px; font-weight: 700; color: #00d2ff; letter-spacing: 0.5px;
     }
-    .btn-close-panel {
-      background: #1e293b; border: 1px solid #475569; color: #cbd5e1;
-      border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 700;
-      cursor: pointer; transition: all 0.15s;
-    }
-    .btn-close-panel:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
 
     /* Accordion Sections */
     .accordion-section {
@@ -85,7 +90,7 @@
     .accordion-header {
       background: #141b24; padding: 7px 10px; cursor: pointer;
       display: flex; align-items: center; justify-content: space-between;
-      font-size: 12px; font-weight: 700; color: #00d2ff; letter-spacing: 0.3px;
+      font-size: 11.5px; font-weight: 700; color: #00d2ff; letter-spacing: 0.3px;
       user-select: none; transition: background 0.15s;
     }
     .accordion-header:hover { background: #1c2635; }
@@ -149,13 +154,14 @@
     .archive-title { font-weight: 700; color: #38bdf8; }
     .archive-scale { color: #f59e0b; font-weight: 600; }
 
-    /* Resolution Disclaimer Banner */
+    /* Resolution Disclaimer Banner Window */
     #resolution-banner {
-      position: absolute; bottom: 20px; left: 60px; z-index: 1000;
+      position: absolute; bottom: 20px; left: 15px; z-index: 1000;
       background: rgba(16, 22, 32, 0.96); border: 1px solid #ffaa00;
       border-radius: 6px; padding: 8px 12px; font-size: 11px; color: #e0e6ed;
-      max-width: 480px; line-height: 1.35; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      max-width: 460px; line-height: 1.35; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
       display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+      transition: all 0.2s ease;
     }
     .banner-close-btn {
       background: transparent; border: none; color: #ffaa00; font-size: 13px;
@@ -163,13 +169,25 @@
     }
     .banner-close-btn:hover { color: #fff; }
     #btn-reopen-banner {
-      position: absolute; bottom: 20px; left: 60px; z-index: 999;
+      position: absolute; bottom: 20px; left: 15px; z-index: 999;
       background: rgba(16, 22, 32, 0.9); border: 1px solid #ffaa00;
-      color: #ffaa00; border-radius: 50%; width: 28px; height: 28px;
+      color: #ffaa00; border-radius: 50%; width: 32px; height: 32px;
       display: none; align-items: center; justify-content: center;
-      cursor: pointer; font-size: 13px; font-weight: 700; box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      cursor: pointer; font-size: 14px; font-weight: 700; box-shadow: 0 2px 10px rgba(0,0,0,0.5);
     }
     #btn-reopen-banner:hover { background: #ffaa00; color: #0a0e14; }
+
+    /* Master Zen / Clean Map Mode Toggle Button */
+    #btn-zen-mode {
+      position: absolute; bottom: 20px; right: 15px; z-index: 1001;
+      background: rgba(12, 16, 24, 0.95); border: 1px solid #00d2ff;
+      color: #00d2ff; border-radius: 30px; padding: 7px 14px;
+      font-size: 12px; font-weight: 700; cursor: pointer;
+      display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+      transition: all 0.2s ease;
+    }
+    #btn-zen-mode:hover { background: #00d2ff; color: #0a0e14; transform: scale(1.03); }
+    #btn-zen-mode.active { background: #00d2ff; color: #0a0e14; }
 
     /* Custom Map Markers */
     .custom-icon {
@@ -182,48 +200,86 @@
     .icon-surface { background: radial-gradient(circle, #2ec4b6, #0f4c5c); }
     .icon-elevated { background: radial-gradient(circle, #e056fd, #6807f9); }
     
-    /* Leaflet Popup Styling */
+    /* Collapsible Leaflet Popup Window Styling */
     .leaflet-popup-content-wrapper {
       background: rgba(14, 18, 26, 0.97) !important; color: #e1e7f0 !important;
       border: 1px solid #00d2ff !important; border-radius: 8px !important;
       box-shadow: 0 8px 30px rgba(0, 210, 255, 0.3) !important;
+      padding: 0 !important; overflow: hidden;
+    }
+    .leaflet-popup-content {
+      margin: 0 !important; line-height: 1.4 !important;
     }
     .leaflet-popup-tip { background: #0e121a !important; border: 1px solid #00d2ff; }
-    .popup-title { font-size: 14px; font-weight: 700; color: #00d2ff; margin-bottom: 6px; border-bottom: 1px solid #233044; padding-bottom: 4px; }
-    .popup-meta { font-size: 11.5px; margin-bottom: 3px; color: #94a3b8; }
+    
+    .popup-wrapper {
+      padding: 10px 12px; max-width: 320px;
+    }
+    .popup-header-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      border-bottom: 1px solid #233044; padding-bottom: 6px; margin-bottom: 6px;
+    }
+    .popup-title {
+      font-size: 13px; font-weight: 700; color: #00d2ff;
+      margin: 0; line-height: 1.25; flex: 1;
+    }
+    .popup-toggle-btn {
+      background: #1e293b; border: 1px solid #475569; color: #00d2ff;
+      border-radius: 4px; padding: 1px 6px; font-size: 11px; font-weight: 700;
+      cursor: pointer; line-height: 1.2;
+    }
+    .popup-toggle-btn:hover { background: #00d2ff; color: #0a0e14; }
+    .popup-collapsible-body {
+      transition: all 0.2s ease;
+    }
+    .popup-meta { font-size: 11px; margin-bottom: 3px; color: #94a3b8; }
     .popup-meta strong { color: #cbd5e1; }
-    .popup-desc { font-size: 11.5px; line-height: 1.35; color: #e2e8f0; margin: 6px 0; }
+    .popup-desc { font-size: 11px; line-height: 1.35; color: #e2e8f0; margin: 6px 0; }
     .streetview-btn {
       display: inline-block; background: #00d2ff; color: #0a0e14 !important;
-      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
-      padding: 5px 10px; border-radius: 4px; text-decoration: none; margin-top: 6px;
+      font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 5px 10px; border-radius: 4px; text-decoration: none; margin-top: 4px;
       transition: background 0.2s;
     }
     .streetview-btn:hover { background: #38bdf8; }
 
+    /* Offset Leaflet Zoom Controls so they never overlap the header pill */
+    .leaflet-top.leaflet-left {
+      top: 60px !important; left: 15px !important;
+    }
+
     /* Responsive Mobile Media Queries */
     @media (max-width: 768px) {
+      #btn-open-header {
+        left: 10px; top: 10px; padding: 6px 10px; font-size: 11px;
+      }
       #hud-header {
-        left: 10px; top: 10px; max-width: calc(100vw - 110px); padding: 6px 10px;
+        left: 10px; top: 10px; width: calc(100vw - 20px); max-width: none; padding: 10px;
       }
       #hud-header h1 { font-size: 12px; }
-      #hud-header p { font-size: 10px; }
+      #hud-header p { font-size: 10.5px; }
       
       #btn-open-panel {
         top: 10px; right: 10px; padding: 6px 10px; font-size: 11px;
       }
       #hud-panel {
-        top: 10px; right: 10px; width: calc(100vw - 20px); max-height: 85vh;
+        top: 10px; right: 10px; width: calc(100vw - 20px); max-height: 80vh;
         padding: 10px;
       }
       #resolution-banner {
-        left: 10px; right: 10px; bottom: 10px; max-width: none; font-size: 10px;
+        left: 10px; right: 10px; bottom: 55px; max-width: none; font-size: 10px;
       }
       #btn-reopen-banner {
-        left: 10px; bottom: 10px;
+        left: 10px; bottom: 15px;
+      }
+      #btn-zen-mode {
+        right: 10px; bottom: 15px; padding: 6px 10px; font-size: 11px;
       }
       .leaflet-top.leaflet-left {
-        top: 55px !important;
+        top: 55px !important; left: 10px !important;
+      }
+      .popup-wrapper {
+        max-width: 270px;
       }
     }
 </style>
@@ -231,11 +287,17 @@
 <body>
 
   
-  <!-- Top-Left Collapsible HUD Header -->
+  
+  <!-- Floating Button to Open Header Info when Collapsed -->
+  <button id="btn-open-header" onclick="toggleHeader()" title="Show Sector 1 Info">
+    <span>🛰️</span><span>Sector 1 Info</span>
+  </button>
+
+  <!-- Top-Left Collapsible Info Window -->
   <div id="hud-header">
     <div class="header-top-row">
       <h1><span>🛰️</span> SECTOR 1 RADIAL MAP</h1>
-      <button id="btn-toggle-header" class="header-toggle-btn" onclick="toggleHeader()" title="Collapse / Expand Info">−</button>
+      <button class="hud-close-btn" onclick="toggleHeader()" title="Collapse Window">✕ Minimize</button>
     </div>
     <div id="hud-header-content">
       <p>Origin: <strong>Washington Borough, NJ (07882)</strong> • 40.7584° N, 74.9793° W • Base Elev: 460 ft ASL<br>
@@ -243,16 +305,16 @@
     </div>
   </div>
 
-  <!-- Floating Button to Open Control Panel when Collapsed -->
+  <!-- Floating Button to Open Controls when Collapsed -->
   <button id="btn-open-panel" onclick="toggleControlPanel()" title="Open Controls & Layers">
     <span>🎛️</span><span>Controls & Layers</span>
   </button>
 
-  <!-- Top-Right Collapsible HUD Control Panel -->
+  <!-- Top-Right Collapsible Controls Window -->
   <div id="hud-panel">
     <div class="panel-header-bar">
       <h2>🎛️ CONTROLS & LAYERS</h2>
-      <button class="btn-close-panel" onclick="toggleControlPanel()" title="Hide Controls Panel">✕ Close</button>
+      <button class="hud-close-btn" onclick="toggleControlPanel()" title="Collapse Window">✕ Minimize</button>
     </div>
     
     <!-- Accordion 1: Ultra-Res Basemaps -->
@@ -378,7 +440,7 @@
 
   </div>
 
-  <!-- Bottom Resolution Notice Banner (Collapsible / Dismissible) -->
+  <!-- Bottom Resolution Notice Banner Window (Collapsible / Dismissible) -->
   <div id="resolution-banner">
     <div>
       <strong>🔍 15cm Ultra-Res Aerial Ortho (Level 20):</strong> 
@@ -387,6 +449,11 @@
     <button class="banner-close-btn" onclick="toggleBanner()" title="Dismiss Banner">✕</button>
   </div>
   <button id="btn-reopen-banner" onclick="toggleBanner()" title="Show Resolution Notice">ℹ️</button>
+
+  <!-- Master Zen Mode / Clean Map Toggle Button -->
+  <button id="btn-zen-mode" onclick="toggleZenMode()" title="Toggle Clean Map / Zen View">
+    <span>👁️</span><span id="zen-text">Clean Map</span>
+  </button>
 
   <div id="map"></div>
 
@@ -929,15 +996,22 @@
         });
         
         const popupContent = `
-          <div class="popup-title">${item.name}</div>
-          <div class="popup-meta"><strong>Category:</strong> ${categoryLabel} • <strong>Type:</strong> ${item.type}</div>
-          ${item.depth ? `<div class="popup-meta"><strong>Depth / Overburden:</strong> ${item.depth}</div>` : ''}
-          ${item.height ? `<div class="popup-meta"><strong>Height / Vertical Relief:</strong> ${item.height}</div>` : ''}
-          ${item.elev ? `<div class="popup-meta"><strong>Elevation:</strong> ${item.elev}</div>` : ''}
-          ${item.length ? `<div class="popup-meta"><strong>Dimensions / Length:</strong> ${item.length}</div>` : ''}
-          <div class="popup-meta"><strong>Status:</strong> ${item.status}</div>
-          <div class="popup-desc">${item.desc}</div>
-          <a class="streetview-btn" href="${item.streetview}" target="_blank">🌐 Open Ground-Level Street View</a>
+          <div class="popup-wrapper">
+            <div class="popup-header-row">
+              <div class="popup-title">${item.name}</div>
+              <button class="popup-toggle-btn" onclick="togglePopupBody(this)" title="Collapse / Expand Details">−</button>
+            </div>
+            <div class="popup-collapsible-body">
+              <div class="popup-meta"><strong>Category:</strong> ${categoryLabel} • <strong>Type:</strong> ${item.type}</div>
+              ${item.depth ? `<div class="popup-meta"><strong>Depth / Overburden:</strong> ${item.depth}</div>` : ''}
+              ${item.height ? `<div class="popup-meta"><strong>Height / Relief:</strong> ${item.height}</div>` : ''}
+              ${item.elev ? `<div class="popup-meta"><strong>Elevation:</strong> ${item.elev}</div>` : ''}
+              ${item.length ? `<div class="popup-meta"><strong>Length:</strong> ${item.length}</div>` : ''}
+              <div class="popup-meta"><strong>Status:</strong> ${item.status}</div>
+              <div class="popup-desc">${item.desc}</div>
+              <a class="streetview-btn" href="${item.streetview}" target="_blank">🌐 Open Ground-Level Street View</a>
+            </div>
+          </div>
         `;
         
         L.marker([item.lat, item.lon], { icon: icon })
@@ -975,16 +1049,17 @@
       });
     }
 
-    // UI Collapse & Expand Functions
+    
+    // UI Collapse & Expand Functions for All Windows
     function toggleHeader() {
-      const content = document.getElementById('hud-header-content');
-      const btn = document.getElementById('btn-toggle-header');
-      if (content.style.display === 'none') {
-        content.style.display = 'block';
-        btn.innerHTML = '−';
+      const header = document.getElementById('hud-header');
+      const btn = document.getElementById('btn-open-header');
+      if (header.classList.contains('collapsed')) {
+        header.classList.remove('collapsed');
+        btn.style.display = 'none';
       } else {
-        content.style.display = 'none';
-        btn.innerHTML = '+';
+        header.classList.add('collapsed');
+        btn.style.display = 'flex';
       }
     }
 
@@ -1023,22 +1098,102 @@
       }
     }
 
-    // Responsive default states
+    function togglePopupBody(btn) {
+      const wrapper = btn.closest('.popup-wrapper');
+      const body = wrapper.querySelector('.popup-collapsible-body');
+      if (body.style.display === 'none') {
+        body.style.display = 'block';
+        btn.innerHTML = '−';
+      } else {
+        body.style.display = 'none';
+        btn.innerHTML = '+';
+      }
+    }
+
+    // Master Zen Mode: Collapses/Restores ALL windows in one tap
+    let zenModeActive = false;
+    let savedState = {};
+
+    function toggleZenMode() {
+      const zenBtn = document.getElementById('btn-zen-mode');
+      const zenText = document.getElementById('zen-text');
+      
+      const header = document.getElementById('hud-header');
+      const btnHeader = document.getElementById('btn-open-header');
+      const panel = document.getElementById('hud-panel');
+      const btnPanel = document.getElementById('btn-open-panel');
+      const banner = document.getElementById('resolution-banner');
+      const btnBanner = document.getElementById('btn-reopen-banner');
+
+      if (!zenModeActive) {
+        // Save current visibility state
+        savedState = {
+          headerCollapsed: header.classList.contains('collapsed'),
+          panelCollapsed: panel.classList.contains('collapsed'),
+          bannerVisible: banner.style.display !== 'none'
+        };
+
+        // Collapse ALL windows and pills
+        header.classList.add('collapsed');
+        btnHeader.style.display = 'none';
+        panel.classList.add('collapsed');
+        btnPanel.style.display = 'none';
+        banner.style.display = 'none';
+        btnBanner.style.display = 'none';
+
+        // Close any active map popups
+        map.closePopup();
+
+        zenModeActive = true;
+        zenBtn.classList.add('active');
+        zenText.innerHTML = 'Show Windows';
+      } else {
+        // Restore windows
+        if (!savedState.headerCollapsed) {
+          header.classList.remove('collapsed');
+          btnHeader.style.display = 'none';
+        } else {
+          btnHeader.style.display = 'flex';
+        }
+
+        if (!savedState.panelCollapsed) {
+          panel.classList.remove('collapsed');
+          btnPanel.style.display = 'none';
+        } else {
+          btnPanel.style.display = 'flex';
+        }
+
+        if (savedState.bannerVisible) {
+          banner.style.display = 'flex';
+          btnBanner.style.display = 'none';
+        } else {
+          btnBanner.style.display = 'flex';
+        }
+
+        zenModeActive = false;
+        zenBtn.classList.remove('active');
+        zenText.innerHTML = 'Clean Map';
+      }
+    }
+
+    // Responsive default states on page load
     window.addEventListener('DOMContentLoaded', () => {
       if (window.innerWidth <= 768) {
-        // Mobile: start collapsed for full map visibility
-        document.getElementById('hud-header-content').style.display = 'none';
-        document.getElementById('btn-toggle-header').innerHTML = '+';
+        // Mobile: collapse ALL windows by default for 100% full map view
+        document.getElementById('hud-header').classList.add('collapsed');
+        document.getElementById('btn-open-header').style.display = 'flex';
         document.getElementById('hud-panel').classList.add('collapsed');
         document.getElementById('btn-open-panel').style.display = 'flex';
         document.getElementById('resolution-banner').style.display = 'none';
         document.getElementById('btn-reopen-banner').style.display = 'flex';
       } else {
-        // Desktop: show open panel, hide open button
+        // Desktop: start with header and panel open, open buttons hidden
+        document.getElementById('btn-open-header').style.display = 'none';
         document.getElementById('btn-open-panel').style.display = 'none';
         document.getElementById('btn-reopen-banner').style.display = 'none';
       }
     });
+
   </script>
 </body>
 </html>
