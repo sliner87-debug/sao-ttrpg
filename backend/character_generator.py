@@ -1307,6 +1307,240 @@ RACIAL_LINEAGES = {
     }
 }
 
+# =====================================================================================
+# --- BIOMANTIC HYBRID LINEAGES: TROLL x THRI-KREEN (3 VARIANTS) ---
+# Variant 1 (Troll-Dominant Frontliner) and Variant 2 (Thri-Kreen-Dominant Guerrilla)
+# are fixed lineages. Variant 3 (Spliced Apex Chimera) is a modular builder: the player
+# picks Troll- or Thri-Kreen-dominant expression for 5 anatomical slots, plus 1 Bloodline
+# Defense, 1 Bloodline Offense and 1 Survival Instinct.
+# =====================================================================================
+HYBRID_GENRE = "Biomantic Hybrid (Troll x Thri-Kreen)"
+CHIMERA_RACE_KEY = "troll_kreen_chimera"
+
+RACIAL_LINEAGES["troll_kreen_juggernaut"] = {
+    "name": "Kreen-Troll Carapace Juggernaut (Troll-Dominant Hybrid)",
+    "genre": HYBRID_GENRE,
+    "desc": "A nine-foot frontline brute bred from Troll and Thri-Kreen stock. Moss-green regenerating muscle is plated in heavy amber-and-jade chitin; massive upper troll arms end in rending talons while braced lower mantis arms carry shield and steel. Built for the front line and heavy combat.",
+    "stat_mods": {"STR": 4, "DEX": 1, "CON": 4, "INT": -2, "WIS": 0, "CHA": -3},
+    "racial_abilities": [
+        "Titan-Grip Secondary Arms: Two massive upper Troll arms and two braced lower Mantis arms. Wield a Two-Handed Heavy Weapon in the upper arms while simultaneously holding a Shield or a one-handed Secondary Weapon in the lower arms.",
+        "Chitin-Armored Cellular Regeneration: Passively regenerates 5 HP at the start of each of your combat turns (unless you took Fire or Acid damage since your last turn) and gains a flat +2 Natural AC bonus from thoracic chitin plates that stacks with worn armor.",
+        "Quad-Talon Siege Rend: Unarmed claw and mandible strikes deal 1d8 + STR slashing damage. Hitting the same target twice on one turn tears for +2d6 Rending damage and forces a DC 13 STR save or the target is knocked Prone.",
+        "Flaw - Voracious Exothermic Metabolism: Takes 50% extra damage from Fire and Acid attacks, suffers -2 on Stealth checks from scraping chitin, and must consume double daily food rations."
+    ]
+}
+
+RACIAL_LINEAGES["thri_troll_stalker"] = {
+    "name": "Thri-Troll Moss-Scythe Stalker (Thri-Kreen-Dominant Hybrid)",
+    "genre": HYBRID_GENRE,
+    "desc": "A sleek digitigrade mantis-hunter carrying troll blood. Segmented sandy-emerald chitin is overgrown with living bog-moss and knit together by pulsing regenerative tendons. Built for scouting, ambushes and guerrilla warfare.",
+    "stat_mods": {"STR": 1, "DEX": 4, "CON": 1, "INT": -1, "WIS": 2, "CHA": -2},
+    "racial_abilities": [
+        "Four-Armed Guerrilla Skirmisher: Dual-wield light, finesse or ranged weapons in the primary arms while the lower arms simultaneously hold a shield, reload a crossbow, or ready throwing weapons.",
+        "Symbiotic Moss-Knit Carapace: Adaptive camouflage grants AC 15 + DEX mod (max 3) and Advantage on all Stealth checks. Regenerates 3 HP per combat turn, or 5 HP per turn while hidden or camouflaged (halted for a turn after taking Fire or Acid damage).",
+        "Predatory Locust Leap & Bleed-Rend: Standing leap of 30 feet horizontally or 15 feet vertically without provoking Opportunity Attacks. Landing two attacks on one target in a turn inflicts +2d6 Rending bleed damage and reduces its speed by 10 feet.",
+        "Sleepless Compound Scent-Tracker: Immune to magical sleep and rests through 4 hours of alert meditation. Has 60-foot Darkvision and automatically tracks bleeding targets within 100 feet.",
+        "Flaw - Brittle Thermal Chitin: Takes 50% extra damage from Fire and Acid, and wearing heavy metal plate armor disables both Symbiotic Moss-Knit Carapace and Predatory Locust Leap."
+    ]
+}
+
+# Variant 3 fixed attribute penalties applied to every Spliced Apex Chimera
+CHIMERA_BASE_STAT_MODS = {"STR": 0, "DEX": 0, "CON": 0, "INT": -1, "WIS": 0, "CHA": -2}
+
+# Part A: 5 Physical Trait Slots (Troll-Dominant vs. Thri-Kreen-Dominant)
+CHIMERA_PHYSICAL_SLOTS = {
+    "frame": {
+        "label": "1. Frame & Musculature",
+        "troll": {
+            "name": "Hulking Marrow-Frame",
+            "stat_mods": {"STR": 3, "CON": 2},
+            "ability": "Hulking Marrow-Frame: Dense troll musculature (STR +3, CON +2) grants +50 lbs carrying capacity and Advantage on saves against being shoved or knocked Prone."
+        },
+        "kreen": {
+            "name": "Lithe Mantis Exoskeleton",
+            "stat_mods": {"DEX": 3, "WIS": 1, "CON": 1},
+            "ability": "Lithe Mantis Exoskeleton: Lightweight insectoid frame (DEX +3, WIS +1, CON +1) increases base movement speed by +10 feet."
+        }
+    },
+    "arms": {
+        "label": "2. Four-Arm Anatomy",
+        "troll": {
+            "name": "Upper Crusher-Claws",
+            "ability": "Upper Crusher-Claws: Unarmed talon strikes deal 1d8 + STR slashing damage. Wield a Two-Handed Heavy Weapon in the upper arms while holding a one-handed item or Shield in the lower arms."
+        },
+        "kreen": {
+            "name": "Quad-Scythe Finesse Limbs",
+            "ability": "Quad-Scythe Finesse Limbs: Mantis-blade strikes deal 1d8 + DEX slashing damage. Dual-wield finesse or ranged weapons while simultaneously holding a Shield and reloading or using items."
+        }
+    },
+    "hide": {
+        "label": "3. Hide & Carapace",
+        "troll": {
+            "name": "Fibrous Rubbery Hide",
+            "max_hp_bonus": 10,
+            "ability": "Fibrous Rubbery Hide: Thick regenerative troll hide grants a flat +2 bonus to Armor Class (stacks with any armor) and +10 Maximum HP."
+        },
+        "kreen": {
+            "name": "Chameleon Chitin Carapace",
+            "ability": "Chameleon Chitin Carapace: Color-shifting chitin grants a base unarmored AC of 15 + DEX mod (max 3) and Advantage on Stealth checks in natural or rocky terrain."
+        }
+    },
+    "senses": {
+        "label": "4. Cranial & Sensory Array",
+        "troll": {
+            "name": "Predator Tusk-Maw & Scent Glands",
+            "ability": "Predator Tusk-Maw & Scent Glands: Tusked bite attack deals 1d8 + STR piercing damage. Keen Scent automatically tracks wounded targets within 100 feet."
+        },
+        "kreen": {
+            "name": "Compound Eyes & Hive Antennae",
+            "ability": "Compound Eyes & Hive Antennae: 60-foot Darkvision, 60-foot silent Hive-Telepathy, and you cannot be Surprised while conscious."
+        }
+    },
+    "legs": {
+        "label": "5. Lower Limbs & Rest Cycle",
+        "troll": {
+            "name": "Pillar Stomp Legs",
+            "ability": "Pillar Stomp Legs: Bonus-action ground stomp forces adjacent foes to pass a DC 13 STR save or lose their Reactions until your next turn. Hyper-digestive stomach is immune to ingested poison and rot."
+        },
+        "kreen": {
+            "name": "Digitigrade Locust Legs & Trance",
+            "ability": "Digitigrade Locust Legs & Trance: 30-foot standing leap. Sleepless Metabolism makes you immune to magical sleep and completes a full rest in 4 hours of alert meditation."
+        }
+    }
+}
+
+# Part B: 3 Bloodline Categories (player picks exactly 1 option from each)
+CHIMERA_BLOODLINE_OPTIONS = {
+    "defense": {
+        "label": "Bloodline Defense",
+        "options": {
+            "hyper_regeneration": {
+                "name": "Hyper-Cellular Regeneration (Troll Bloodline)",
+                "ability": "Hyper-Cellular Regeneration: Regenerate 5 HP at the start of each of your combat turns. Taking Fire or Acid damage halts this regeneration for 1 turn."
+            },
+            "shell_molt": {
+                "name": "Reactive Chitin Shell-Molt (Thri-Kreen Bloodline)",
+                "ability": "Reactive Chitin Shell-Molt: Passively regenerate 2 HP per combat turn. Once per rest, when hit by an attack or elemental area effect, use your Reaction to molt your outer carapace: halve the damage, shed all movement and restrain debuffs, and surge 20 feet away without provoking Opportunity Attacks."
+            },
+            "bio_carapace_ward": {
+                "name": "Hardened Bio-Carapace Ward (Hybrid Synthesis)",
+                "ability": "Hardened Bio-Carapace Ward: Passively regenerate 3 HP per combat turn and gain 2 flat Damage Reduction (DR) against physical slashing, piercing and bludgeoning attacks."
+            }
+        }
+    },
+    "offense": {
+        "label": "Bloodline Offense",
+        "options": {
+            "savage_quad_rend": {
+                "name": "Savage Quad-Rend (Troll Bloodline)",
+                "ability": "Savage Quad-Rend: Whenever you hit the same target with at least two melee attacks on your turn, tear into it for +2d6 bonus Rending slashing damage."
+            },
+            "guerrilla_ambush": {
+                "name": "Guerrilla Ambush Barrage (Thri-Kreen Bloodline)",
+                "ability": "Guerrilla Ambush Barrage: Deal +2d6 bonus ambush damage against targets that have not yet acted in combat or when attacking from Stealth, and you can Disengage or Hide as a Bonus Action."
+            },
+            "caustic_bile_spit": {
+                "name": "Caustic Bile-Spit Mandibles (Mutant Synthesis)",
+                "ability": "Caustic Bile-Spit Mandibles: Launch a 30-foot spray of troll digestive acid through your mandibles, dealing 2d8 Acid damage and reducing the target's AC by 2 for 3 turns (once per short rest)."
+            }
+        }
+    },
+    "instinct": {
+        "label": "Survival Instinct",
+        "options": {
+            "undying_reknit": {
+                "name": "Undying Tissue Re-Knit",
+                "ability": "Undying Tissue Re-Knit: When reduced to 0 HP by damage other than Fire or Acid, drop to 1 HP instead and immediately regenerate 10 HP (once per Long Rest)."
+            },
+            "phantom_reflex": {
+                "name": "Chameleon Phantom Reflex",
+                "ability": "Chameleon Phantom Reflex: When targeted by a ranged attack or spell, use your Reaction to blend into the background, imposing Disadvantage on the attack roll and moving 10 feet into cover."
+            }
+        }
+    }
+}
+
+DEFAULT_CHIMERA_CHOICES = {
+    "frame": "troll",
+    "arms": "troll",
+    "hide": "troll",
+    "senses": "kreen",
+    "legs": "kreen",
+    "defense": "hyper_regeneration",
+    "offense": "savage_quad_rend",
+    "instinct": "undying_reknit",
+}
+
+
+def normalize_chimera_choices(choices=None):
+    """Returns a complete, valid chimera choice dict, filling gaps/invalid entries with defaults."""
+    resolved = dict(DEFAULT_CHIMERA_CHOICES)
+    if isinstance(choices, dict):
+        for slot in CHIMERA_PHYSICAL_SLOTS:
+            if choices.get(slot) in ("troll", "kreen"):
+                resolved[slot] = choices[slot]
+        for cat, cat_data in CHIMERA_BLOODLINE_OPTIONS.items():
+            if choices.get(cat) in cat_data["options"]:
+                resolved[cat] = choices[cat]
+    return resolved
+
+
+def build_chimera_lineage(choices=None):
+    """Builds the effective Variant 3 (Spliced Apex Chimera) lineage dict from player choices."""
+    ch = normalize_chimera_choices(choices)
+    stat_mods = dict(CHIMERA_BASE_STAT_MODS)
+    abilities = []
+    max_hp_bonus = 0
+    troll_count = 0
+    for slot, slot_data in CHIMERA_PHYSICAL_SLOTS.items():
+        expr = slot_data[ch[slot]]
+        if ch[slot] == "troll":
+            troll_count += 1
+        for s, v in expr.get("stat_mods", {}).items():
+            stat_mods[s] = stat_mods.get(s, 0) + v
+        max_hp_bonus += int(expr.get("max_hp_bonus", 0))
+        abilities.append(expr["ability"])
+    for cat, cat_data in CHIMERA_BLOODLINE_OPTIONS.items():
+        abilities.append(cat_data["options"][ch[cat]]["ability"])
+
+    kreen_count = len(CHIMERA_PHYSICAL_SLOTS) - troll_count
+    return {
+        "name": f"Spliced Apex Chimera (Troll x Thri-Kreen | {troll_count} Troll / {kreen_count} Kreen)",
+        "genre": HYBRID_GENRE,
+        "desc": "A gene-spliced Troll x Thri-Kreen chimera whose anatomy was shaped slot by slot. Regenerating troll flesh and insectoid chitin are braided together by aether-sutures, with the balance of bloodlines chosen by the survivor at integration.",
+        "stat_mods": stat_mods,
+        "racial_abilities": abilities,
+        "max_hp_bonus": max_hp_bonus,
+        "variant_config": {"variant": "Spliced Apex Chimera", "choices": ch},
+    }
+
+
+CHIMERA_DISPLAY_NAME = "Spliced Apex Chimera (Troll x Thri-Kreen Hybrid - Custom Gene-Splice)"
+RACIAL_LINEAGES[CHIMERA_RACE_KEY] = dict(build_chimera_lineage(DEFAULT_CHIMERA_CHOICES), name=CHIMERA_DISPLAY_NAME)
+
+# Every racial ability string a chimera can possess (for UI power-detail lookup)
+CHIMERA_ABILITY_CATALOG = (
+    [expr["ability"] for slot in CHIMERA_PHYSICAL_SLOTS.values() for expr in (slot["troll"], slot["kreen"])]
+    + [opt["ability"] for cat in CHIMERA_BLOODLINE_OPTIONS.values() for opt in cat["options"].values()]
+)
+
+# Concept art for the hybrid variants (relative to the project root)
+HYBRID_CONCEPT_ART = {
+    "troll_kreen_juggernaut": ["assets/races/troll_kreen_juggernaut.jpg"],
+    "thri_troll_stalker": ["assets/races/thri_troll_stalker.jpg"],
+    CHIMERA_RACE_KEY: ["assets/races/chimera_arcane_spliced.jpg", "assets/races/chimera_fen_ravager.jpg"],
+}
+
+
+def resolve_racial_lineage(race_key, chimera_choices=None):
+    """
+    Returns the effective lineage dict for a race key. For the Spliced Apex Chimera this is
+    rebuilt from the player's slot/bloodline choices; all other races return their registry entry.
+    """
+    if race_key == CHIMERA_RACE_KEY:
+        return build_chimera_lineage(chimera_choices)
+    return RACIAL_LINEAGES.get(race_key, RACIAL_LINEAGES["pure_human"])
+
 # --- CLASS PATHS & THEMED WEAPONS ---
 CLASS_PATHS = {
     "warrior": {
@@ -1968,14 +2202,16 @@ def list_all_character_folders(base_dir):
 # --- CHARACTER SHEET GENERATOR ---
 def generate_starting_character(name, point_alloc, background_key, race_key, class_key, relic_key, 
                                 custom_background_text=None, starting_weapons=None,
-                                custom_relic_data=None, custom_collaborated_data=None):
+                                custom_relic_data=None, custom_collaborated_data=None,
+                                chimera_choices=None):
     """
     Constructs a complete, valid player character dictionary ready for save_game.json.
     Supports class-themed starter weapons with optional manual override,
     custom collaborative background skills, and custom personal relics.
+    `chimera_choices` configures the modular Spliced Apex Chimera lineage.
     """
     # 1. Base Stats (10 base + allocated points + racial mods)
-    race = RACIAL_LINEAGES.get(race_key, RACIAL_LINEAGES["pure_human"])
+    race = resolve_racial_lineage(race_key, chimera_choices)
     r_mods = race["stat_mods"]
     
     final_stats = {
@@ -1991,7 +2227,7 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
     chosen_class = CLASS_PATHS.get(class_key, CLASS_PATHS["pathless"])
     con_mod = (final_stats["CON"] - 10) // 2
     base_hp_val = chosen_class.get("base_hp", 100)
-    max_hp = base_hp_val + (con_mod * 10)
+    max_hp = base_hp_val + (con_mod * 10) + int(race.get("max_hp_bonus", 0))
     
     # 3. Skills & Perks from Background (Preset, Custom Collaboration, or Heuristic)
     skills_dict = {}
@@ -2153,6 +2389,7 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
         "spells": [],
         "feats": feats_list,
         "racial_abilities": race["racial_abilities"],
+        "racial_variant_config": race.get("variant_config"),
         "inventory": starter_inventory,
         "equipped": equipped,
         "gear_durability": gear_durability,

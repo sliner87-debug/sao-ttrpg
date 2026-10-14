@@ -11492,6 +11492,31 @@ def get_spell_or_power_details(entry, player_state: dict = None) -> dict:
     norm_full = raw_name.lower().strip()
     norm_clean = clean_lookup_name.lower().strip()
 
+    # 0. Exact full-string match against a lineage's racial ability (incl. hybrid chimera options).
+    #    Runs first so substring keys in CANONICAL_SPELLS_AND_POWERS can't hijack lineage traits.
+    if inline_body:
+        try:
+            import backend.character_generator as _cg
+            _sources = [(r_d, rab) for r_d in getattr(_cg, "RACIAL_LINEAGES", {}).values() for rab in r_d.get("racial_abilities", [])]
+            _chim = _cg.RACIAL_LINEAGES.get(getattr(_cg, "CHIMERA_RACE_KEY", ""), {})
+            _sources += [(_chim, rab) for rab in getattr(_cg, "CHIMERA_ABILITY_CATALOG", [])]
+            for r_d, rab in _sources:
+                if rab.strip().lower() == norm_full:
+                    rab_head, rab_body = [p.strip() for p in rab.split(":", 1)]
+                    is_flaw = "flaw" in rab_head.lower()
+                    r_name = r_d.get("name", "Lineage")
+                    return {
+                        "name": rab_head,
+                        "category": f"{r_name} Lineage {'Flaw' if is_flaw else 'Power'}",
+                        "action_type": "Passive / Innate Trait" if is_flaw or "passive" in rab_body.lower() else "Innate Lineage Power",
+                        "cost": "Innate / 1 per Rest (if active)",
+                        "range": "Self / Lineage Range",
+                        "description": f"Genetic/Aetheric lineage trait of the {r_name} ({r_d.get('genre', 'Crucible')}): {r_d.get('desc', '')}",
+                        "mechanics": f"• Lineage Source: {r_name}\n• Game Mechanics: {rab_body}"
+                    }
+        except Exception:
+            pass
+
     # 1. Exact or normalized match in CANONICAL_SPELLS_AND_POWERS
     for cand in (norm_full, norm_clean):
         if cand in CANONICAL_SPELLS_AND_POWERS:

@@ -133,11 +133,21 @@ def save_game(player_state, messages):
     return save_file
 
 # --- CHARACTER GENERATOR & CALIBRATION INTERFACE ---
+def get_cg_chimera_choices():
+    """Reads the Spliced Apex Chimera slot/bloodline widget state (falls back to defaults)."""
+    return cg.normalize_chimera_choices({k: st.session_state.get(f"chim_{k}") for k in cg.DEFAULT_CHIMERA_CHOICES})
+
+
+def get_cg_race_obj():
+    """Effective lineage for the wizard's current race selection (chimera-aware)."""
+    return cg.resolve_racial_lineage(st.session_state.get("cg_race_key", "pure_human"), get_cg_chimera_choices())
+
+
 def render_sidebar_calibration_preview():
     char_name = st.session_state.get("cg_name", "Survivor")
     st.subheader(f"Avatar: {char_name}")
     
-    prev_race = cg.RACIAL_LINEAGES.get(st.session_state.get("cg_race_key", "pure_human"), cg.RACIAL_LINEAGES["pure_human"])
+    prev_race = get_cg_race_obj()
     prev_class = cg.CLASS_PATHS.get(st.session_state.get("cg_class_key", "pathless"), cg.CLASS_PATHS["pathless"])
     
     relic_k = st.session_state.get("cg_relic_key", "smartphone")
@@ -364,7 +374,7 @@ def render_character_calibration_wizard():
         st.markdown("#### 🎛️ Point-Buy Attribute Steppers")
         st.caption("Baseline: 10 in all attributes. Allocate points to increase your starting score:")
         
-        race_info = cg.RACIAL_LINEAGES.get(st.session_state.cg_race_key, cg.RACIAL_LINEAGES["pure_human"])
+        race_info = get_cg_race_obj()
         race_mods = race_info["stat_mods"]
         
         stat_c1, stat_c2 = st.columns(2)
@@ -523,7 +533,47 @@ def render_character_calibration_wizard():
         )
         selected_race_key = race_keys[race_display_labels.index(sel_race_label)]
         st.session_state.cg_race_key = selected_race_key
-        race_obj = cg.RACIAL_LINEAGES[selected_race_key]
+
+        # Hybrid concept art
+        app_root = os.path.dirname(os.path.abspath(__file__))
+        art_paths = [os.path.join(app_root, p) for p in cg.HYBRID_CONCEPT_ART.get(selected_race_key, [])]
+        art_paths = [p for p in art_paths if os.path.exists(p)]
+        if art_paths:
+            art_cols = st.columns(len(art_paths))
+            for a_col, a_path in zip(art_cols, art_paths):
+                a_col.image(a_path)
+
+        # Variant 3: Spliced Apex Chimera modular builder
+        if selected_race_key == cg.CHIMERA_RACE_KEY:
+            st.markdown("#### 🧪 Gene-Splice Builder")
+            st.caption("Part A — choose Troll-Dominant or Thri-Kreen-Dominant expression for each of the 5 anatomical slots.")
+            for slot_k, slot_d in cg.CHIMERA_PHYSICAL_SLOTS.items():
+                st.radio(
+                    slot_d["label"],
+                    options=["troll", "kreen"],
+                    format_func=lambda v, sd=slot_d: f"{'🟢 Troll' if v == 'troll' else '🟡 Thri-Kreen'}: {sd[v]['name']}",
+                    index=["troll", "kreen"].index(cg.DEFAULT_CHIMERA_CHOICES[slot_k]),
+                    horizontal=True,
+                    key=f"chim_{slot_k}"
+                )
+                cur_v = st.session_state.get(f"chim_{slot_k}", cg.DEFAULT_CHIMERA_CHOICES[slot_k])
+                st.caption(slot_d[cur_v]["ability"].split(":", 1)[1].strip())
+            st.caption("Part B — choose one option from each Bloodline category.")
+            for cat_k, cat_d in cg.CHIMERA_BLOODLINE_OPTIONS.items():
+                opt_keys = list(cat_d["options"].keys())
+                st.selectbox(
+                    cat_d["label"],
+                    options=opt_keys,
+                    format_func=lambda v, cd=cat_d: cd["options"][v]["name"],
+                    index=opt_keys.index(cg.DEFAULT_CHIMERA_CHOICES[cat_k]),
+                    key=f"chim_{cat_k}"
+                )
+                cur_o = st.session_state.get(f"chim_{cat_k}", cg.DEFAULT_CHIMERA_CHOICES[cat_k])
+                st.caption(cat_d["options"][cur_o]["ability"].split(":", 1)[1].strip())
+
+        race_obj = get_cg_race_obj()
+        if race_obj.get("max_hp_bonus"):
+            st.success(f"🩸 Lineage Max HP Bonus: +{race_obj['max_hp_bonus']} HP")
         
         st.info(f"**Lineage Lore:** {race_obj['desc']}")
         
@@ -681,14 +731,14 @@ def render_character_calibration_wizard():
         st.divider()
         
         # Live Calibration Confirmation Summary
-        r_info = cg.RACIAL_LINEAGES.get(st.session_state.cg_race_key, cg.RACIAL_LINEAGES["pure_human"])
+        r_info = get_cg_race_obj()
         c_info = cg.CLASS_PATHS.get(st.session_state.cg_class_key, cg.CLASS_PATHS["pathless"])
         
         final_scores = {
             s: 10 + st.session_state.cg_points.get(s, 0) + r_info["stat_mods"].get(s, 0)
             for s in ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
         }
-        calc_hp = c_info.get("base_hp", 100) + ((final_scores["CON"] - 10) // 2) * 10
+        calc_hp = c_info.get("base_hp", 100) + ((final_scores["CON"] - 10) // 2) * 10 + int(r_info.get("max_hp_bonus", 0))
         
         st.markdown("### 📋 Final Calibration Review")
         rev_c1, rev_c2, rev_c3 = st.columns(3)
@@ -718,7 +768,8 @@ def render_character_calibration_wizard():
                     custom_background_text=st.session_state.cg_custom_bg_text if st.session_state.cg_bg_key == "custom" else None,
                     starting_weapons={"main_hand": st.session_state.cg_main_hand, "off_hand": st.session_state.cg_off_hand},
                     custom_relic_data=st.session_state.get("cg_custom_relic_data"),
-                    custom_collaborated_data=st.session_state.get("cg_custom_collaborated")
+                    custom_collaborated_data=st.session_state.get("cg_custom_collaborated"),
+                    chimera_choices=get_cg_chimera_choices()
                 )
                 
                 opening_announcement = cg.build_system_initialization_welcome_message(new_avatar)
