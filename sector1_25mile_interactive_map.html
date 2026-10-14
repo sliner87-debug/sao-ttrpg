@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sector 1: 25-Mile Multi-Layer Geospatial & Ruins Map (Washington, NJ 07882)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html { height: 100%; width: 100%; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; background: #0c0f14; color: #e1e7f0; overflow: hidden; }
+    
+    #map { height: 100%; width: 100%; z-index: 1; }
+    
+    /* Sci-Fi HUD Header */
+    #hud-header {
+      position: absolute; top: 15px; left: 60px; z-index: 1000;
+      background: rgba(12, 16, 24, 0.92); border: 1px solid #00d2ff;
+      border-radius: 8px; padding: 12px 18px; box-shadow: 0 4px 25px rgba(0, 210, 255, 0.25);
+      backdrop-filter: blur(8px); max-width: 550px;
+    }
+    #hud-header h1 { font-size: 18px; font-weight: 700; color: #00d2ff; letter-spacing: 0.8px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+    #hud-header p { font-size: 12px; color: #a4b3c6; line-height: 1.4; }
+    
+    /* Control Panel Box (Top Right) */
+    #hud-panel {
+      position: absolute; top: 15px; right: 15px; z-index: 1000;
+      background: rgba(12, 16, 24, 0.94); border: 1px solid #303e54;
+      border-radius: 8px; padding: 14px; width: 340px; max-height: 90vh;
+      overflow-y: auto; box-shadow: 0 6px 30px rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+    }
+    .panel-section-title {
+      font-size: 13px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: #00d2ff; margin-bottom: 10px; border-bottom: 1px solid #233044; padding-bottom: 4px;
+    }
+    
+    .layer-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; margin-bottom: 6px; border-radius: 6px;
+      background: #141b24; border: 1px solid #233044; cursor: pointer; transition: all 0.2s;
+    }
+    .layer-toggle:hover { background: #1c2635; border-color: #00d2ff; }
+    .layer-toggle label { cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex: 1; }
+    .badge-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+    .dot-underground { background: #ff3344; box-shadow: 0 0 8px #ff3344; }
+    .dot-underwater { background: #00b4d8; box-shadow: 0 0 8px #00b4d8; }
+    .dot-surface { background: #2ec4b6; box-shadow: 0 0 8px #2ec4b6; }
+    .dot-elevated { background: #b5179e; box-shadow: 0 0 8px #b5179e; }
+    
+    /* Quick Jump Selector */
+    .jump-btn {
+      background: #16202c; border: 1px solid #28374d; color: #d0dbe8;
+      font-size: 12px; padding: 6px 10px; border-radius: 4px; cursor: pointer;
+      text-align: left; margin-bottom: 4px; width: 100%; transition: all 0.15s;
+    }
+    .jump-btn:hover { background: #00d2ff; color: #0a0e14; font-weight: 700; border-color: #00d2ff; }
+    
+    /* Resolution Disclaimer Banner */
+    #resolution-banner {
+      position: absolute; bottom: 25px; left: 60px; z-index: 1000;
+      background: rgba(16, 22, 32, 0.95); border: 1px solid #ffaa00;
+      border-radius: 6px; padding: 10px 16px; font-size: 12px; color: #e0e6ed;
+      max-width: 600px; line-height: 1.4; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    #resolution-banner strong { color: #ffaa00; }
+    
+    /* Custom Map Markers */
+    .custom-icon {
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; color: #fff; font-weight: 800; font-size: 11px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.8); border: 2px solid #fff;
+    }
+    .icon-underground { background: radial-gradient(circle, #ff4d4d, #b30000); }
+    .icon-underwater { background: radial-gradient(circle, #00d2ff, #0077b6); }
+    .icon-surface { background: radial-gradient(circle, #2ec4b6, #0f4c5c); }
+    .icon-elevated { background: radial-gradient(circle, #e056fd, #6807f9); }
+    
+    /* Leaflet Popup Styling */
+    .leaflet-popup-content-wrapper {
+      background: rgba(14, 18, 26, 0.97) !important; color: #e1e7f0 !important;
+      border: 1px solid #00d2ff !important; border-radius: 8px !important;
+      box-shadow: 0 8px 30px rgba(0, 210, 255, 0.3) !important;
+    }
+    .leaflet-popup-tip { background: #0e121a !important; border: 1px solid #00d2ff; }
+    .popup-title { font-size: 15px; font-weight: 700; color: #00d2ff; margin-bottom: 6px; border-bottom: 1px solid #233044; padding-bottom: 4px; }
+    .popup-meta { font-size: 12px; margin-bottom: 4px; color: #94a3b8; }
+    .popup-meta strong { color: #cbd5e1; }
+    .popup-desc { font-size: 12px; line-height: 1.4; color: #e2e8f0; margin: 8px 0; }
+    .streetview-btn {
+      display: inline-block; background: #00d2ff; color: #0a0e14 !important;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 6px 12px; border-radius: 4px; text-decoration: none; margin-top: 6px;
+      transition: background 0.2s;
+    }
+    .streetview-btn:hover { background: #38bdf8; }
+
+    /* Basemap Selection Box */
+    .basemap-option {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 10px; margin-bottom: 4px; border-radius: 4px;
+      background: #141b24; border: 1px solid #233044; cursor: pointer;
+      font-size: 12px; font-weight: 600; color: #cbd5e1; transition: all 0.2s;
+    }
+    .basemap-option:hover { background: #1c2635; border-color: #00d2ff; }
+    .basemap-option input { cursor: pointer; accent-color: #00d2ff; }
+    
+    /* Archival Records Panel */
+    .archive-box {
+      margin-top: 14px; background: #101622; border: 1px solid #ffaa00;
+      border-radius: 6px; padding: 10px; font-size: 11px; line-height: 1.4;
+    }
+    .archive-box h3 {
+      font-size: 12px; font-weight: 700; color: #ffaa00; text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+    }
+    .archive-item {
+      margin-bottom: 8px; border-bottom: 1px solid #233044; padding-bottom: 6px;
+    }
+    .archive-item:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+    .archive-title { font-weight: 700; color: #38bdf8; }
+    .archive-scale { color: #f59e0b; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+  <div id="hud-header">
+    <h1><span>🛰️</span> SECTOR 1 MULTI-LAYER RADIAL MAP (0–25 MILES)</h1>
+    <p>Origin: <strong>Washington Borough, NJ (07882)</strong> • 40.7584° N, 74.9793° W • Base Elev: 460 ft ASL<br>
+    Coverage: 1,963.5 sq mi circular core encompassing Warren, Hunterdon, Morris, Sussex (NJ) & Northampton (PA).</p>
+  </div>
+
+  <div id="hud-panel">
+    <div class="panel-section-title">Ultra-Res Basemaps</div>
+    <label class="basemap-option">
+      <input type="radio" name="basemap" value="njOrtho" checked>
+      <span>🌟 NJ 15cm Ultra-Res Ortho (Level 20 - 5.8" GSD)</span>
+    </label>
+    <label class="basemap-option">
+      <input type="radio" name="basemap" value="esriSat">
+      <span>🛰️ Esri Global Satellite (30cm GSD)</span>
+    </label>
+    <label class="basemap-option">
+      <input type="radio" name="basemap" value="usgsHillshade">
+      <span>🏔️ USGS 3DEP Bare-Earth LiDAR Hillshade</span>
+    </label>
+    <label class="basemap-option">
+      <input type="radio" name="basemap" value="usgsTopo">
+      <span>🗺️ USGS National Map Topographic</span>
+    </label>
+    <label class="basemap-option">
+      <input type="radio" name="basemap" value="osm">
+      <span>🧭 OpenStreetMap Carto Grid</span>
+    </label>
+
+    <div class="panel-section-title" style="margin-top: 14px;">Vertical Datum Layers</div>
+    
+    <div class="layer-toggle">
+      <label><input type="checkbox" id="toggle-underground" checked> <span class="badge-dot dot-underground"></span> Underground Layer</label>
+      <span style="font-size: 11px; color:#ff6b6b;">Tunnels / Bunkers / Mines</span>
+    </div>
+    
+    <div class="layer-toggle">
+      <label><input type="checkbox" id="toggle-underwater" checked> <span class="badge-dot dot-underwater"></span> Underwater Layer</label>
+      <span style="font-size: 11px; color:#4cc9f0;">Bathymetry / Drowned Ruins</span>
+    </div>
+    
+    <div class="layer-toggle">
+      <label><input type="checkbox" id="toggle-surface" checked> <span class="badge-dot dot-surface"></span> Surface Layer</label>
+      <span style="font-size: 11px; color:#2ec4b6;">Rail / Roads / Safe-Zones</span>
+    </div>
+    
+    <div class="layer-toggle">
+      <label><input type="checkbox" id="toggle-elevated" checked> <span class="badge-dot dot-elevated"></span> Elevated Layer</label>
+      <span style="font-size: 11px; color:#f72585;">Viaducts / Towers / Peaks</span>
+    </div>
+    
+    <div class="panel-section-title" style="margin-top: 14px;">Radial Range Rings</div>
+    <div class="layer-toggle">
+      <label><input type="checkbox" id="toggle-rings" checked> ⭕ 5, 10, 15, 20, 25-Mile Rings</label>
+    </div>
+
+    <div class="panel-section-title" style="margin-top: 14px;">Tactical Jump Bookmarks</div>
+    <button class="jump-btn" onclick="jumpTo(40.7584, -74.9793, 15)">📍 Sector 1 Safe-Zone Hub (Washington Borough)</button>
+    <button class="jump-btn" onclick="jumpTo(40.8026, -74.9940, 16)">🚇 Oxford Tunnel & Sunken Rail Cut</button>
+    <button class="jump-btn" onclick="jumpTo(40.7384, -74.9409, 16)">🏛️ Changewater Trestle River Monoliths</button>
+    <button class="jump-btn" onclick="jumpTo(40.7750, -75.0833, 14)">🌊 Merrill Creek Reservoir (-225ft Abyss)</button>
+    <button class="jump-btn" onclick="jumpTo(40.6130, -74.8350, 14)">🏘️ Round Valley & Drowned McPherson</button>
+    <button class="jump-btn" onclick="jumpTo(40.9419, -75.0603, 16)">🌉 Paulinskill Concrete Viaduct (115ft)</button>
+    <button class="jump-btn" onclick="jumpTo(40.8920, -74.6850, 16)">🛡️ Netcong / Roxbury AT&T Nuclear Bunker</button>
+    <button class="jump-btn" onclick="jumpTo(41.0822, -74.6053, 15)">💎 Sterling Hill Zinc Mine (-2,675ft)</button>
+    <button class="jump-btn" onclick="jumpTo(40.6140, -75.3670, 15)">🏭 Bethlehem Steel 240ft Blast Furnaces</button>
+    <button class="jump-btn" onclick="jumpTo(40.7584, -74.9793, 10)">🔄 Reset to 25-Mile Overview</button>
+    <div class="archive-box">
+      <h3>🏛️ Legal & Historic Engineering Archives</h3>
+      <div class="archive-item">
+        <div class="archive-title">ICC Railroad Valuation Maps (NARA RG 134)</div>
+        <div class="archive-scale">Scale: 1" = 100' (1:1,200) • Legal Surveys</div>
+        <p>Complete right-of-way, track centerline, rail weight (80-130 lb), switches, culverts, bridge spans, and easement deeds for Warren RR, DL&W Old Road, and Morris & Essex.</p>
+      </div>
+      <div class="archive-item">
+        <div class="archive-title">NJ State Archives Railroad Inventories</div>
+        <div class="archive-scale">1918–1924 State Comptroller Records</div>
+        <p>Field books, tax schedules, depot architectural prints, and maintenance notes for Warren, Sussex, and Hunterdon railroad corridors.</p>
+      </div>
+      <div class="archive-item">
+        <div class="archive-title">1930s Historic Aerial Survey (NJGIN / AWS)</div>
+        <div class="archive-scale">Scale: 1:12,000 • S3: s3://njogis-imagery</div>
+        <p>1931-1932 statewide flights showing active Warren RR mainline, operating Oxford mines, and intact Morris Canal locks before redevelopment.</p>
+      </div>
+      <div class="archive-item">
+        <div class="archive-title">Sanborn Fire Insurance Maps (LoC / Princeton)</div>
+        <div class="archive-scale">Scale: 1" = 50' • Structural Footprints</div>
+        <p>Detailed building footprints, wall thickness, boiler rooms, private sidings, and water mains in Washington Borough and Oxford.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="resolution-banner">
+    <strong>🔍 15cm Ultra-High Resolution Aerial Ortho Enabled (Level 20):</strong> 
+    You are viewing imagery at <strong>5.8 inches (14.9 cm) per pixel</strong>—twice the spatial sharpness of commercial 30cm orbital satellites! 
+    Every railroad tie, track switch, building roofline, manhole, and curb cut is clearly visible. 
+    For true millimeter optical resolution to read vehicle license plates, utility stencils, and street signage, 
+    <strong>click any marker to open full 360° Ground-Level Google Street View</strong>.
+  </div>
+
+  <div id="map"></div>
+
+  <script>
+    const POIS = {
+  "underground": [
+    {
+      "id": "ug_1",
+      "name": "Van Nest Gap Tunnel (Oxford Tunnel)",
+      "lat": 40.8026,
+      "lon": -74.994,
+      "type": "Railroad Mountain Tunnel",
+      "depth": "350 ft mountain overburden (~540 ft ASL)",
+      "length": "3,002 ft (915 m)",
+      "status": "Abandoned (1970/1984), partially flooded (2\u20135ft), interior collapses",
+      "desc": "Bored 1854-1862 through solid Precambrian gneiss by Warren RR. In-game: The Van Nest Vault / Crucible Threshold.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.8026,-74.9940"
+    },
+    {
+      "id": "ug_2",
+      "name": "Musconetcong Tunnel (Pattenburg Tunnel)",
+      "lat": 40.6611,
+      "lon": -75.0358,
+      "type": "Twin Railroad Mountain Tunnels",
+      "depth": "400+ ft Jugtown Mountain overburden",
+      "length": "4,893 ft (0.93 mi) \u2014 Longest in NJ",
+      "status": "Twin bores: 1928 active NS double-stack freight; 1875 historic bore dark & sealed",
+      "desc": "First major US tunnel to use industrial dynamite (Henry S. Drinker). Classified in Civil Defense as natural nuclear shelter.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.6611,-75.0358"
+    },
+    {
+      "id": "ug_3",
+      "name": "Manunka Chunk Twin Tunnels",
+      "lat": 40.8586,
+      "lon": -75.0756,
+      "type": "Twin Side-by-Side Bores",
+      "depth": "180 ft ridge overburden",
+      "length": "938 ft (286 m)",
+      "status": "Abandoned (1970), soft shale collapses, water-logged",
+      "desc": "Built 1856 (single track) and 1869 (second bore 15ft north). Iconic twin arch portals in deep rock cut.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.8586,-75.0756"
+    },
+    {
+      "id": "ug_4",
+      "name": "Roseville Tunnel & Canyon Cut",
+      "lat": 40.9672,
+      "lon": -74.7183,
+      "type": "Double-Track Concrete-Lined Tunnel",
+      "depth": "110 ft gneiss rock canyon cut",
+      "length": "1,024 ft (312 m)",
+      "status": "Restored / Rehabilitated by NJ Transit for passenger rail",
+      "desc": "Built 1911 for Lackawanna Cut-Off through Roseville Mountain. Flanked by massive rock cuts.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.9672,-74.7183"
+    },
+    {
+      "id": "ug_5",
+      "name": "AT&T Long Lines Nuclear Bunker (Netcong / Roxbury Vault)",
+      "lat": 40.892,
+      "lon": -74.685,
+      "type": "Cold War Nuclear-Hardened Switching Center",
+      "depth": "2-story subterranean bunker (~45,000 sq ft) inside granite hilltop",
+      "length": "Multi-acre underground footprint",
+      "status": "Private high-security data/records vault",
+      "desc": "36-inch concrete walls lined in continuous welded steel (EMP Faraday cage), hydraulic blast doors (100 PSI), spring-mounted floating floors, deep artesian wells.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.8920,-74.6850"
+    },
+    {
+      "id": "ug_6",
+      "name": "AT&T Chester Hardened Underground Facility",
+      "lat": 40.785,
+      "lon": -74.695,
+      "type": "Hardened Cable Vault & Relay Complex",
+      "depth": "Subterranean cable vaults & generator bunkers",
+      "length": "Hardened telecommunications trunk junction",
+      "status": "Operational telecommunications facility",
+      "desc": "Part of hardened Cold War network connecting Netcong, Bell Labs Murray Hill, and transatlantic cables.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.7850,-74.6950"
+    },
+    {
+      "id": "ug_7",
+      "name": "Oxford Iron Mines (Washington Mine)",
+      "lat": 40.795,
+      "lon": -74.988,
+      "type": "Deep Underground Magnetite Iron Mine",
+      "depth": "2,200 to 2,700 ft deep (2,000+ ft below sea level!)",
+      "length": "15+ working levels, multi-mile labyrinth",
+      "status": "Abandoned (1966), completely flooded",
+      "desc": "Mined 1741-1966. Mammoth submerged stopes and pump rooms directly adjacent to Washington Borough.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.7950,-74.9880"
+    },
+    {
+      "id": "ug_8",
+      "name": "Mount Hope Mine (New Leonard Shaft)",
+      "lat": 40.9322,
+      "lon": -74.5419,
+      "type": "Deepest Iron Mine Shaft in Eastern US",
+      "depth": "2,694 ft (~2,700 ft) vertical shaft (1,900 ft below sea level)",
+      "length": "Dozens of miles of drifts across 250 years of mining",
+      "status": "Inactive/Flooded; headframe standing, aggregate quarry above",
+      "desc": "Sunk 1943-1944. Proposed for 2,000 MW underground pumped-hydro storage using -2,500 ft caverns as lower pool.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.9322,-74.5419"
+    },
+    {
+      "id": "ug_9",
+      "name": "Sterling Hill Zinc Mine & Rainbow Tunnel",
+      "lat": 41.0822,
+      "lon": -74.6053,
+      "type": "Underground Zinc Mine & Mineral Anomaly",
+      "depth": "2,675 ft depth (25 working levels)",
+      "length": "35+ miles of tunnels",
+      "status": "Upper levels public museum; lower 1,875 ft flooded abyss",
+      "desc": "World capital of fluorescent minerals (willemite/calcite glowing blazing green and crimson under UV light).",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=41.0822,-74.6053"
+    },
+    {
+      "id": "ug_10",
+      "name": "Hibernia Mine Underground Railroad Tunnel",
+      "lat": 40.965,
+      "lon": -74.505,
+      "type": "1.5-Mile Subterranean Train Tunnel",
+      "depth": "1,600+ ft below surface",
+      "length": "7,900 ft (1.5 mi) horizontal drainage/train adit",
+      "status": "Gated bat sanctuary (NJ's largest bat hibernaculum: 30,000 bats)",
+      "desc": "Steam/electric trains ran inside mountain beneath massive overhead stopes. Historic mining marvel.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.9650,-74.5050"
+    },
+    {
+      "id": "ug_11",
+      "name": "Lost River Caverns",
+      "lat": 40.5836,
+      "lon": -75.3264,
+      "type": "Natural Limestone Solution Caverns",
+      "depth": "Subterranean river & siphon",
+      "length": "5 large crystal chambers",
+      "status": "Active show cave & untraced underwater river",
+      "desc": "Features the Lost River: a subterranean river emerging from an unmapped siphon and disappearing into a flooded sump.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.5836,-75.3264"
+    },
+    {
+      "id": "ug_12",
+      "name": "Fairy Hole & Jenny Jump Caves",
+      "lat": 40.915,
+      "lon": -74.928,
+      "type": "Natural Solution Caves in Franklin Marble",
+      "depth": "Hillside cavern chambers overlooking Ghost Lake",
+      "length": "Multiple chambers & sinkhole fissures",
+      "status": "State Forest preserve",
+      "desc": "Prehistoric archaeological shelter yielding bone tools and pleistocene fossils. Eerie fog springs from entrance.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.9150,-74.9280"
+    },
+    {
+      "id": "ug_13",
+      "name": "Picatinny Arsenal Hardened Underground Igloos",
+      "lat": 40.955,
+      "lon": -74.565,
+      "type": "Military Munitions Bunkers & Ballistic Tubes",
+      "depth": "Mounded earth & reinforced concrete",
+      "length": "600+ individual igloo bunkers across 6,500 acres",
+      "status": "Active restricted military base (CCDC Armaments Center)",
+      "desc": "Built after 1926 explosion to isolate warheads, explosives, and testing firing tubes.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.9550,-74.5650"
+    }
+  ],
+  "underwater": [
+    {
+      "id": "uw_1",
+      "name": "Merrill Creek Reservoir & 3.2-Mile Hydro-Tunnel",
+      "lat": 40.775,
+      "lon": -75.0833,
+      "type": "Mountain Reservoir & Submerged Intake Tower",
+      "depth": "225 ft (68.6 m) \u2014 Deepest body of water in New Jersey",
+      "length": "650 surface acres, 16 billion gallons",
+      "status": "Operational power plant cooling reserve",
+      "desc": "Contains submerged 200ft concrete intake tower connected to a 3.2-mile, 96-inch rock tunnel bored through Scott's Mtn to Delaware River pumphouse (540ft head drop!).",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.7750,-75.0833"
+    },
+    {
+      "id": "uw_2",
+      "name": "Round Valley Reservoir & Submerged Village of McPherson",
+      "lat": 40.613,
+      "lon": -74.835,
+      "type": "Volcanic Basin Reservoir & Drowned 19th-Century Town",
+      "depth": "180 ft (54.9 m) \u2014 55 billion gallons (Largest volume in NJ)",
+      "length": "2,350 acres (3.67 sq mi)",
+      "status": "Operational water reserve (NJ Water Supply Authority)",
+      "desc": "Drowned town of McPherson (1960): intact stone foundations, barns, roads, bridges, and cellar holes resting 40-180 ft beneath surface.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.6130,-74.8350"
+    },
+    {
+      "id": "uw_3",
+      "name": "Spruce Run Reservoir & Submerged 1760 Union Forge",
+      "lat": 40.672,
+      "lon": -74.938,
+      "type": "Reservoir & Submerged Colonial Ironworks",
+      "depth": "73 ft maximum depth",
+      "length": "1,290 acres, 11 billion gallons",
+      "status": "State recreation area & water supply",
+      "desc": "Submerged remains of 1760 Union Forge, mill foundations, and old Van Syckel's stone road network.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.6720,-74.9380"
+    },
+    {
+      "id": "uw_4",
+      "name": "Lake Hopatcong Submerged Dam & Steamboat Wrecks",
+      "lat": 40.94,
+      "lon": -74.64,
+      "type": "Enlarged Glacial Lake / Canal Feeder",
+      "depth": "58 ft depth",
+      "length": "2,500 acres (Largest natural/dammed lake in NJ)",
+      "status": "Active recreation & Morris Canal headwaters",
+      "desc": "Water raised 18ft in 1828 drowning historic 1750 Brookland Forge dam and early 20th-century excursion steamboat hulls.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.9400,-74.6400"
+    },
+    {
+      "id": "uw_5",
+      "name": "Morris Canal Underground Scotch Turbines (Plane 6 & 7 West)",
+      "lat": 40.76,
+      "lon": -74.955,
+      "type": "Subterranean Hydraulic Turbine Chambers",
+      "depth": "25-35 ft subterranean wheel pits",
+      "length": "Arched stone tailrace tunnels under highways",
+      "status": "Historic engineering ruins",
+      "desc": "Buried stone vaults housing giant cast-iron Scotch reaction turbines that pulled 80-ton canal boats up hillsides on tracks.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.7600,-74.9550"
+    },
+    {
+      "id": "uw_6",
+      "name": "Pennsylvania Slate Belt Submerged Quarry Pits",
+      "lat": 40.8668,
+      "lon": -75.2055,
+      "type": "Vertical Open-Pit Drowned Quarries",
+      "depth": "300 to 450 ft sheer vertical depth",
+      "length": "Dozens of deep rectangular pit lakes",
+      "status": "Flooded abyss / private quarries",
+      "desc": "Albion Vein and Parsons quarries: vertical slate chasms filled with deep, cobalt-blue groundwater and abandoned steam cranes.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.8668,-75.2055"
+    }
+  ],
+  "surface": [
+    {
+      "id": "surf_1",
+      "name": "Sector 1 Safe-Zone Hub (Washington Borough)",
+      "lat": 40.7584,
+      "lon": -74.9793,
+      "type": "Primary Operational Hub / Origin",
+      "elev": "460 ft ASL",
+      "status": "Safe-Zone Sanctuary (Warded Enclave)",
+      "desc": "Intersection of NJ-31 & NJ-57. Historic DL&W freight depot, Borough Hall, and crossroads of rail grid.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.7584,-74.9793"
+    },
+    {
+      "id": "surf_2",
+      "name": "Norfolk Southern Washington Secondary Line",
+      "lat": 40.7555,
+      "lon": -74.9805,
+      "type": "Active Freight Railroad (0% Electrified)",
+      "elev": "460 ft ASL",
+      "status": "Active Low-Speed Freight (Dover & Rockaway River RR / NS)",
+      "desc": "Runs Hackettstown -> Washington -> Phillipsburg. No live catenary or third rail. Diesel freight only.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.7555,-74.9805"
+    },
+    {
+      "id": "surf_3",
+      "name": "Norfolk Southern Lehigh Line Mainline",
+      "lat": 40.6565,
+      "lon": -75.0807,
+      "type": "Active High-Speed Freight Mainline (0% Electrified)",
+      "elev": "330 ft ASL",
+      "status": "DANGER: Extremely active heavy freight (30-40 trains/day at 50mph)",
+      "desc": "Transcontinental double-stack container artery. Diesel-electric locomotives. Do not walk on tracks.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.6565,-75.0807"
+    },
+    {
+      "id": "surf_4",
+      "name": "The Abandoned Warren Railroad (DL&W 'Old Road')",
+      "lat": 40.7384,
+      "lon": -74.9409,
+      "type": "Historic 1856 Railbed (Abandoned)",
+      "elev": "420\u2013540 ft ASL",
+      "status": "Abandoned (1959-1984), partially rail-trail, partially reclaimed",
+      "desc": "Hampton through Changewater, Washington, Oxford, to Manunka Chunk. Home to the greatest stone ruins in NJ.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.7384,-74.9409"
+    },
+    {
+      "id": "surf_5",
+      "name": "The Lackawanna Cut-Off Embankment & Pequest Fill",
+      "lat": 40.945,
+      "lon": -74.88,
+      "type": "Monumental Rail Embankment (Largest on Earth in 1908)",
+      "elev": "650 ft ASL (110 ft above valley floor)",
+      "status": "State-owned, inactive railbed / restoration",
+      "desc": "3.1 miles long, 110 ft tall, 6.6 million cubic yards of rock fill crossing Pequest valley without grade crossings.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.9450,-74.8800"
+    },
+    {
+      "id": "surf_6",
+      "name": "Belvidere-Delaware River Railway & Phillipsburg Roundhouse",
+      "lat": 40.6937,
+      "lon": -75.1902,
+      "type": "Heritage Tourist Rail & Historic Rail Junction",
+      "elev": "305 ft ASL",
+      "status": "Active heritage tourist steam/diesel excursions",
+      "desc": "Hugs Delaware River palisades. Working rail turntable and vintage steam equipment at Phillipsburg.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.6937,-75.1902"
+    },
+    {
+      "id": "surf_7",
+      "name": "Columbia Trail (Former CNJ High Bridge Branch)",
+      "lat": 40.7028,
+      "lon": -74.8694,
+      "type": "Rail-Trail & Deep Pine River Gorge",
+      "elev": "350-500 ft ASL",
+      "status": "Public Multi-Use Rail Trail",
+      "desc": "Crosses Ken Lockwood Gorge high above the South Branch Raritan River with soaring steel trestles and granite cliffs.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.7028,-74.8694"
+    }
+  ],
+  "elevated": [
+    {
+      "id": "el_1",
+      "name": "Paulinskill Viaduct (Hainesburg Viaduct)",
+      "lat": 40.9419,
+      "lon": -75.0603,
+      "type": "Colossal Open-Spandrel Concrete Rail Viaduct",
+      "height": "115 ft (35 m) above valley floor",
+      "length": "1,100 ft (335 m) \u2014 7 massive arches",
+      "status": "State-owned monument; trail underneath legal; deck closed",
+      "desc": "Largest reinforced concrete structure in the world when built (1910). Features hollow internal inspection chambers and ladder shafts inside arches.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.9419,-75.0603"
+    },
+    {
+      "id": "el_2",
+      "name": "Delaware River Viaduct (Slateford Viaduct)",
+      "lat": 40.9538,
+      "lon": -75.1278,
+      "type": "9-Arch Reinforced Concrete River Viaduct",
+      "height": "65 ft (20 m) above Delaware River & I-80",
+      "length": "1,452 ft (443 m)",
+      "status": "Inactive rail structure spanning NJ to PA",
+      "desc": "Carried Lackawanna Cut-Off across Delaware River. Monumental concrete arches skewed at 25-degree angle.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.9538,-75.1278"
+    },
+    {
+      "id": "el_3",
+      "name": "Changewater Trestle High Abutment Precipice",
+      "lat": 40.7386,
+      "lon": -74.9412,
+      "type": "Dismantled Bridge Abutment & 60ft River Monoliths",
+      "height": "70 ft vertical drop above river valley",
+      "length": "Two 60ft cut-stone piers in Musconetcong River",
+      "status": "Historic ruins (1856-1959); hiking access",
+      "desc": "Warren Railroad double-track grade ends in mid-air over the river. Stone piers stand like monoliths in forest rapids.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.7386,-74.9412"
+    },
+    {
+      "id": "el_4",
+      "name": "Bethlehem Steel Blast Furnaces A, B, C, D & E",
+      "lat": 40.614,
+      "lon": -75.367,
+      "type": "Industrial Age Blast Furnace Megastructures",
+      "height": "240 ft (73.2 m) tall above ground",
+      "length": "1,150 ft continuous wall of 5 blast furnaces",
+      "status": "Preserved landmark (SteelStacks Arts & Cultural Campus)",
+      "desc": "Paired with twenty 120ft Cowper stoves and the 1,500ft No. 2 Machine Shop. Largest intact row of historic blast furnaces on Earth.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.6140,-75.3670"
+    },
+    {
+      "id": "el_5",
+      "name": "Yards Creek Pumped-Storage Upper Reservoir & Penstocks",
+      "lat": 41.0086,
+      "lon": -75.0258,
+      "type": "Mountain Crest Reservoir & Sheer Penstocks",
+      "height": "1,555 ft ASL (737 ft vertical head drop)",
+      "length": "2.1-mile rockfill ring dike, 1,800ft sheer steel penstock",
+      "status": "Active 453 MW hydroelectric facility",
+      "desc": "Water pumped from lower basin (+818ft) up to mountain crest (+1,555ft) and released down 18ft penstocks into underground turbines.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=41.0086,-75.0258"
+    },
+    {
+      "id": "el_6",
+      "name": "United Astronomy Clubs (UACNJ) Jenny Jump Observatories",
+      "lat": 40.9117,
+      "lon": -74.9258,
+      "type": "High-Elevation Astronomical Observatory Domes",
+      "height": "1,100 ft (335 m) ASL ridge crest",
+      "length": "6 individual dome/roll-off observatories",
+      "status": "Active dark-sky optical research facility",
+      "desc": "Perched atop Jenny Jump Mountain overlooking the Great Meadows glacial basin. Houses 16-inch Ritchey-Chretien telescope.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.9117,-74.9258"
+    },
+    {
+      "id": "el_7",
+      "name": "Picatinny Arsenal 200-Foot Precision Test Tower",
+      "lat": 40.928,
+      "lon": -74.568,
+      "type": "Precision Sensor & Drop-Test Tower",
+      "height": "200 ft vertical steel tower",
+      "length": "Landmark facility overlooking Route 15",
+      "status": "Active military test structure",
+      "desc": "Used for testing smart artillery guidance packages, proximity fuzes, and sensor telemetry.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.9280,-74.5680"
+    },
+    {
+      "id": "el_8",
+      "name": "Point Mountain Overlook Summit",
+      "lat": 40.749,
+      "lon": -74.925,
+      "type": "Mountain Ridge Crest & Geological Monadnock",
+      "height": "880 ft ASL (~450 ft vertical rise above Musconetcong River)",
+      "length": "Highlands Trail ridge route",
+      "status": "County nature preserve / public hiking",
+      "desc": "Offers a breathtaking 180-degree panoramic overlook of the entire Musconetcong river valley and distant ridges.",
+      "streetview": "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=40.7490,-74.9250"
+    }
+  ]
+};
+    
+    // Map Initialization
+    const origin = [40.7584, -74.9793];
+    const map = L.map('map', {
+      center: origin,
+      zoom: 11,
+      minZoom: 9,
+      maxZoom: 21
+    });
+    
+    // Base Tile Layers
+    // 1. NJ State 2020 Natural Color Orthophotography (Level 20 = 14.9 cm / 5.8 inches GSD)
+    const njOrtho2020 = L.tileLayer('https://maps.nj.gov/arcgis/rest/services/Basemap/Orthos_Natural_2020_NJ_WM/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Imagery &copy; NJOGIS / State of New Jersey (15cm / 6-inch Ultra-Res Flight)',
+      maxNativeZoom: 20,
+      maxZoom: 21
+    }).addTo(map);
+    
+    // 2. Esri High-Resolution Orbital Satellite (30cm)
+    const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
+      maxNativeZoom: 19,
+      maxZoom: 21
+    });
+    
+    // 3. USGS 3DEP Bare-Earth LiDAR Shaded Relief
+    const usgsHillshade = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Elevation &copy; USGS National Geospatial Program (3DEP LiDAR)',
+      maxNativeZoom: 16,
+      maxZoom: 21
+    });
+
+    // 4. USGS National Map Topographic
+    const usgsTopo = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Map &copy; USGS The National Map',
+      maxNativeZoom: 16,
+      maxZoom: 21
+    });
+
+    // 5. OpenStreetMap Cartographic
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxNativeZoom: 19,
+      maxZoom: 21
+    });
+
+    // Overlay Reference Labels
+    const refLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+      maxNativeZoom: 19,
+      maxZoom: 21,
+      opacity: 0.8
+    }).addTo(map);
+
+    // Basemap Switcher Logic
+    const baseLayers = {
+      'njOrtho': njOrtho2020,
+      'esriSat': esriSatellite,
+      'usgsHillshade': usgsHillshade,
+      'usgsTopo': usgsTopo,
+      'osm': osm
+    };
+
+    let activeBase = njOrtho2020;
+    document.querySelectorAll('input[name="basemap"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const selected = baseLayers[e.target.value];
+        if (selected && selected !== activeBase) {
+          map.removeLayer(activeBase);
+          map.addLayer(selected);
+          // keep labels on top
+          if (map.hasLayer(refLabels)) {
+            refLabels.bringToFront();
+          }
+          activeBase = selected;
+        }
+      });
+    });
+
+    // Layer Groups
+    const groupUnderground = L.layerGroup().addTo(map);
+    const groupUnderwater = L.layerGroup().addTo(map);
+    const groupSurface = L.layerGroup().addTo(map);
+    const groupElevated = L.layerGroup().addTo(map);
+    const groupRings = L.layerGroup().addTo(map);
+    
+    // Create Radial Distance Rings (0, 5, 10, 15, 20, 25 Miles)
+    const milesToMeters = 1609.34;
+    const ringRadii = [5, 10, 15, 20, 25];
+    ringRadii.forEach(m => {
+      const circle = L.circle(origin, {
+        radius: m * milesToMeters,
+        color: m === 25 ? '#00d2ff' : '#4a5d78',
+        weight: m === 25 ? 2.5 : 1.2,
+        dashArray: m === 25 ? null : '5, 8',
+        fill: false
+      }).addTo(groupRings);
+      
+      // Ring Label
+      L.marker([origin[0] + (m * 0.01449), origin[1]], {
+        icon: L.divIcon({
+          className: 'ring-label',
+          html: `<span style="background:rgba(10,14,20,0.85); border:1px solid #00d2ff; color:#00d2ff; font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px;">${m} MILE RING</span>`
+        })
+      }).addTo(groupRings);
+    });
+    
+    // Add 25-Mile Outer Boundary Mask
+    L.circle(origin, {
+      radius: 25 * milesToMeters,
+      color: '#00d2ff',
+      weight: 3,
+      fillColor: '#00d2ff',
+      fillOpacity: 0.03
+    }).addTo(groupRings);
+
+    // Marker Builder Function
+    function addLayerMarkers(items, group, className, categoryLabel) {
+      items.forEach((item, index) => {
+        const icon = L.divIcon({
+          className: `custom-icon ${className}`,
+          iconSize: [26, 26],
+          iconAnchor: [13, 13],
+          popupAnchor: [0, -13],
+          html: `<span>${index + 1}</span>`
+        });
+        
+        const popupContent = `
+          <div class="popup-title">${item.name}</div>
+          <div class="popup-meta"><strong>Category:</strong> ${categoryLabel} • <strong>Type:</strong> ${item.type}</div>
+          ${item.depth ? `<div class="popup-meta"><strong>Depth / Overburden:</strong> ${item.depth}</div>` : ''}
+          ${item.height ? `<div class="popup-meta"><strong>Height / Vertical Relief:</strong> ${item.height}</div>` : ''}
+          ${item.elev ? `<div class="popup-meta"><strong>Elevation:</strong> ${item.elev}</div>` : ''}
+          ${item.length ? `<div class="popup-meta"><strong>Dimensions / Length:</strong> ${item.length}</div>` : ''}
+          <div class="popup-meta"><strong>Status:</strong> ${item.status}</div>
+          <div class="popup-desc">${item.desc}</div>
+          <a class="streetview-btn" href="${item.streetview}" target="_blank">🌐 Open Ground-Level Street View</a>
+        `;
+        
+        L.marker([item.lat, item.lon], { icon: icon })
+          .bindPopup(popupContent)
+          .addTo(group);
+      });
+    }
+
+    addLayerMarkers(POIS.underground, groupUnderground, 'icon-underground', 'Underground Layer');
+    addLayerMarkers(POIS.underwater, groupUnderwater, 'icon-underwater', 'Underwater Layer');
+    addLayerMarkers(POIS.surface, groupSurface, 'icon-surface', 'Surface Layer');
+    addLayerMarkers(POIS.elevated, groupElevated, 'icon-elevated', 'Elevated Layer');
+
+    // Layer Toggles
+    document.getElementById('toggle-underground').addEventListener('change', e => {
+      e.target.checked ? map.addLayer(groupUnderground) : map.removeLayer(groupUnderground);
+    });
+    document.getElementById('toggle-underwater').addEventListener('change', e => {
+      e.target.checked ? map.addLayer(groupUnderwater) : map.removeLayer(groupUnderwater);
+    });
+    document.getElementById('toggle-surface').addEventListener('change', e => {
+      e.target.checked ? map.addLayer(groupSurface) : map.removeLayer(groupSurface);
+    });
+    document.getElementById('toggle-elevated').addEventListener('change', e => {
+      e.target.checked ? map.addLayer(groupElevated) : map.removeLayer(groupElevated);
+    });
+    document.getElementById('toggle-rings').addEventListener('change', e => {
+      e.target.checked ? map.addLayer(groupRings) : map.removeLayer(groupRings);
+    });
+
+    // Jump Function
+    function jumpTo(lat, lon, zoom) {
+      map.flyTo([lat, lon], zoom, {
+        duration: 1.2
+      });
+    }
+  </script>
+</body>
+</html>
