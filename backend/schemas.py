@@ -61,6 +61,11 @@ class PlayerStateUpdates(BaseModel):
     boss_break_gauge_damage: Optional[int] = Field(default=0, description="Damage dealt to boss Break Gauge")
     boss_staggered: Optional[bool] = Field(default=False, description="True if boss has been staggered this turn")
     homestead_action: Optional[str] = Field(default=None, description="Homestead action summary if safe-zone resting or facility used")
+    raid_floor_advance: Optional[int] = Field(default=0, description="Number of floors advanced in the active 1-50 Floor Raid")
+    anti_crystal_triggered: Optional[bool] = Field(default=False, description="True if a Crimson Anti-Crystal Trap Room was triggered or disabled")
+    last_attack_claimed: Optional[bool] = Field(default=False, description="True if the player claimed the Last Attack (LA) bonus on a Raid Boss")
+    unique_skill_awakened: Optional[str] = Field(default=None, description="ID or name of a 1-of-1 Unique Skill awakened this turn")
+
 
 
 class EntityHpChange(BaseModel):

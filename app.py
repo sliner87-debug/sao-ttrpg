@@ -3230,10 +3230,10 @@ def render_tutorial_crucible_banner():
                     try:
                         import map_engine
                         ms = map_engine.load_map_state()
-                        ms["player_x"] = 0
-                        ms["player_y"] = 0
-                        if [0, 0] not in ms.get("explored_tiles", []):
-                            ms.setdefault("explored_tiles", []).append([0, 0])
+                        ms["player_x"] = 50
+                        ms["player_y"] = 50
+                        if [50, 50] not in ms.get("explored_tiles", []):
+                            ms.setdefault("explored_tiles", []).append([50, 50])
                         map_engine.save_map_state(ms)
                     except Exception:
                         pass
@@ -3283,10 +3283,10 @@ def render_tutorial_crucible_banner():
                 try:
                     import map_engine
                     ms = map_engine.load_map_state()
-                    ms["player_x"] = 0
-                    ms["player_y"] = 0
-                    if [0, 0] not in ms.get("explored_tiles", []):
-                        ms.setdefault("explored_tiles", []).append([0, 0])
+                    ms["player_x"] = 50
+                    ms["player_y"] = 50
+                    if [50, 50] not in ms.get("explored_tiles", []):
+                        ms.setdefault("explored_tiles", []).append([50, 50])
                     map_engine.save_map_state(ms)
                 except Exception:
                     pass
@@ -3550,10 +3550,10 @@ if prompt := (dev_prompt or chat_prompt):
                 if tutorial_res.get("teleported"):
                     try:
                         ms = map_engine.load_map_state()
-                        ms["player_x"] = 0
-                        ms["player_y"] = 0
-                        if [0, 0] not in ms.get("explored_tiles", []):
-                            ms.setdefault("explored_tiles", []).append([0, 0])
+                        ms["player_x"] = 50
+                        ms["player_y"] = 50
+                        if [50, 50] not in ms.get("explored_tiles", []):
+                            ms.setdefault("explored_tiles", []).append([50, 50])
                         map_engine.save_map_state(ms)
                     except Exception:
                         pass

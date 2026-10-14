@@ -1,10 +1,36 @@
+import os
+import shutil
 import unittest
 import backend.character_generator as cg
 import backend.mechanics as mechanics
 import backend.persona_engine as persona_engine
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 class TestGenderAndTutorialCrucible(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._backup_files = {}
+        for rel_p in ("Entities/companion_ren.json", "Party/companion_ren.json"):
+            abs_p = os.path.join(BASE_DIR, rel_p)
+            if os.path.exists(abs_p):
+                with open(abs_p, "r", encoding="utf-8") as f:
+                    cls._backup_files[abs_p] = f.read()
+
+    @classmethod
+    def tearDownClass(cls):
+        for abs_p, content in getattr(cls, "_backup_files", {}).items():
+            try:
+                with open(abs_p, "w", encoding="utf-8") as f:
+                    f.write(content)
+            except Exception:
+                pass
+        for temp_char in ("Asuna", "Kirito", "Valeria", "Garrick", "TestHero"):
+            temp_dir = os.path.join(BASE_DIR, "saves", temp_char)
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir, ignore_errors=True)
+
     def test_gender_selection_and_pronouns(self):
         self.assertEqual(mechanics.normalize_gender("Male"), "Male")
         self.assertEqual(mechanics.normalize_gender("female"), "Female")

@@ -2383,3 +2383,79 @@ def get_sector_vertical_layers(quadrant_or_zone_id: str) -> Dict[str, Any]:
         return VERTICAL_LAYERS_BY_SECTOR.get(q, VERTICAL_LAYERS_BY_SECTOR["Inner Core (0-25 mi)"])
     return VERTICAL_LAYERS_BY_SECTOR["Inner Core (0-25 mi)"]
 
+
+PLANETARY_RAID_ATLAS_ZONES: Dict[str, Dict[str, Any]] = {
+    "pohatcong_spire": {
+        "id": "pohatcong_spire",
+        "name": "The Gilded Spire of Pohatcong (10-Floor Raid)",
+        "real_world_name": "Pohatcong Mountain Ridge, NJ, USA",
+        "continent": "North America",
+        "total_floors": 10,
+        "mid_boss_floor": 5,
+        "level_range": (1, 10),
+        "distance_miles": 6,
+        "bearing": "SW",
+    },
+    "delaware_abyss": {
+        "id": "delaware_abyss",
+        "name": "The Abyssal Trench of the Delaware Gap (16-Floor Raid)",
+        "real_world_name": "Delaware Water Gap, PA/NJ, USA",
+        "continent": "North America",
+        "total_floors": 16,
+        "mid_boss_floor": 8,
+        "level_range": (8, 18),
+        "distance_miles": 18,
+        "bearing": "NW",
+    },
+    "black_forest_citadel": {
+        "id": "black_forest_citadel",
+        "name": "The Schwarzwald Root-Citadel (24-Floor Raid)",
+        "real_world_name": "Black Forest (Schwarzwald), Baden-Württemberg, Germany",
+        "continent": "Europe",
+        "total_floors": 24,
+        "mid_boss_floor": 12,
+        "level_range": (15, 28),
+        "distance_miles": 3940,
+        "bearing": "E",
+    },
+    "tokyo_override": {
+        "id": "tokyo_override",
+        "name": "Shinjuku Neon-Spire Override (30-Floor Raid)",
+        "real_world_name": "Shinjuku Metropolitan Towers, Tokyo, Japan",
+        "continent": "Asia",
+        "total_floors": 30,
+        "mid_boss_floor": 15,
+        "level_range": (25, 38),
+        "distance_miles": 6750,
+        "bearing": "NW",
+    },
+    "vatican_catacombs": {
+        "id": "vatican_catacombs",
+        "name": "The Inverted Basilica of St. Peter (36-Floor Raid)",
+        "real_world_name": "Vatican Necropolis & Tiber Rift, Rome, Italy",
+        "continent": "Europe",
+        "total_floors": 36,
+        "mid_boss_floor": 18,
+        "level_range": (32, 44),
+        "distance_miles": 4280,
+        "bearing": "E",
+    },
+    "grand_canyon_monolith": {
+        "id": "grand_canyon_monolith",
+        "name": "The Colorado Singularity Monolith (50-Floor Raid)",
+        "real_world_name": "Grand Canyon Vishnu Schist Gorge, Arizona, USA",
+        "continent": "North America",
+        "total_floors": 50,
+        "mid_boss_floor": 25,
+        "level_range": (40, 50),
+        "distance_miles": 2120,
+        "bearing": "W",
+    },
+}
+
+
+def get_planetary_raid_locations() -> List[Dict[str, Any]]:
+    """Returns all 6 Global Patchwork Earth 1–50 Floor Raid Locations."""
+    return list(PLANETARY_RAID_ATLAS_ZONES.values())
+
+

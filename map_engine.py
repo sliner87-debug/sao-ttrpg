@@ -223,5 +223,88 @@ def generate_overlay(player_skills=None):
     map_img.save(CURRENT_MAP_FILE)
     return CURRENT_MAP_FILE
 
+
+GLOBAL_MAP_FILE = os.path.join(BASE_DIR, "current_global_map.jpg")
+
+GLOBAL_RAID_MAP_NODES = {
+    "grand_canyon_monolith": {"px": 145, "py": 310, "label": "Grand Canyon (50F)", "floors": 50},
+    "pohatcong_spire": {"px": 245, "py": 285, "label": "Pohatcong Spire (10F)", "floors": 10},
+    "delaware_abyss": {"px": 230, "py": 255, "label": "Delaware Gap (16F)", "floors": 16},
+    "black_forest_citadel": {"px": 415, "py": 245, "label": "Black Forest (24F)", "floors": 24},
+    "vatican_catacombs": {"px": 430, "py": 300, "label": "Rome Catacombs (36F)", "floors": 36},
+    "tokyo_override": {"px": 665, "py": 305, "label": "Tokyo Override (30F)", "floors": 30},
+}
+
+GLOBAL_LEYLINE_LINKS = [
+    ("pohatcong_spire", "delaware_abyss"),
+    ("delaware_abyss", "black_forest_citadel"),
+    ("black_forest_citadel", "tokyo_override"),
+    ("tokyo_override", "vatican_catacombs"),
+    ("vatican_catacombs", "grand_canyon_monolith"),
+]
+
+
+def generate_global_atlas_overlay(player_state=None):
+    """
+    Renders the Global Patchwork Earth Atlas (768x440 tactical projection) showing all 6
+    Planetary 1–50 Floor Raid Anchors, Leyline Gate connections, Stabilizer status, and active Raid marker.
+    """
+    width, height = 768, 440
+    img = Image.new("RGB", (width, height), (12, 18, 32))
+    draw = ImageDraw.Draw(img)
+
+    # Draw subtle planetary lat/lon gridlines
+    for gx in range(0, width, 64):
+        draw.line([(gx, 0), (gx, height)], fill=(25, 38, 62), width=1)
+    for gy in range(0, height, 55):
+        draw.line([(0, gy), (width, gy)], fill=(25, 38, 62), width=1)
+
+    # Stylized continental silhouettes (North America, Europe, East Asia)
+    draw.polygon([(70, 180), (290, 170), (275, 355), (120, 360)], fill=(22, 42, 58), outline=(45, 90, 120))
+    draw.polygon([(365, 175), (505, 175), (495, 335), (375, 330)], fill=(22, 42, 58), outline=(45, 90, 120))
+    draw.polygon([(545, 185), (715, 195), (695, 365), (560, 350)], fill=(22, 42, 58), outline=(45, 90, 120))
+
+    raids_data = (player_state or {}).get("planetary_raids", {}) if isinstance(player_state, dict) else {}
+    active_raid = raids_data.get("active_raid_id", "pohatcong_spire")
+    raid_nodes = raids_data.get("raid_nodes", {})
+
+    # Draw Leyline Gate Corridors
+    for r1, r2 in GLOBAL_LEYLINE_LINKS:
+        n1, n2 = GLOBAL_RAID_MAP_NODES[r1], GLOBAL_RAID_MAP_NODES[r2]
+        unsealed = raid_nodes.get(r2, {}).get("gate_unsealed", False)
+        line_col = (0, 220, 255) if unsealed else (95, 70, 95)
+        draw.line([(n1["px"], n1["py"]), (n2["px"], n2["py"])], fill=line_col, width=3 if unsealed else 1)
+
+    # Draw Raid Nodes
+    for r_id, coord in GLOBAL_RAID_MAP_NODES.items():
+        px, py = coord["px"], coord["py"]
+        live = raid_nodes.get(r_id, {})
+        is_stabilized = live.get("is_stabilized", False)
+        is_unsealed = live.get("gate_unsealed", r_id == "pohatcong_spire")
+        cur_f = live.get("current_floor", 1)
+        tot_f = coord["floors"]
+
+        if is_stabilized:
+            node_col = (40, 225, 130)  # Green Stabilized
+        elif is_unsealed:
+            node_col = (255, 165, 40)  # Orange Active/Unsealed
+        else:
+            node_col = (140, 60, 75)   # Sealed Crimson
+
+        draw.ellipse([px - 9, py - 9, px + 9, py + 9], fill=node_col, outline="white", width=2)
+        if r_id == active_raid:
+            draw.ellipse([px - 15, py - 15, px + 15, py + 15], outline=(0, 255, 255), width=2)
+        draw.text((px - 45, py + 12), f"{coord['label']} [F{cur_f}/{tot_f}]", fill="white")
+
+    # Header & Legend
+    draw.rectangle([10, 10, 425, 58], fill=(8, 12, 22), outline=(0, 200, 255))
+    draw.text((18, 16), "PLANETARY PATCHWORK OVERLAY // GLOBAL RAID ATLAS", fill=(0, 230, 255))
+    draw.text((18, 34), "Green: Stabilized (0% Bleed) | Orange: Gate Open | Red: Overland Only", fill=(200, 215, 230))
+
+    img.save(GLOBAL_MAP_FILE)
+    return GLOBAL_MAP_FILE
+
+
 if __name__ == "__main__":
     generate_overlay()
+
