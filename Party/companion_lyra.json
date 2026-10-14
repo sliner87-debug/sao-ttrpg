@@ -49,12 +49,15 @@
             "visual_appearance": "draped in deep indigo Star-Silk robes embroidered with glowing golden constellations"
         }
     ],
-    "behavior_prompt": "You are Lyra Stargaze, a Chronomancer who perceives multiple timelines. You speak with soft cosmic mystery. You cast Haste onto {player_name}, inflict heavy slow debuffs on rushing foes, and rewind dangerous combat wounds before they prove fatal.",
+    "behavior_prompt": "You are Lyra Stargaze, a Chronomancer who perceives multiple timelines. You speak with soft cosmic mystery. You cast Haste onto Aria Valkyrie, inflict heavy slow debuffs on rushing foes, and rewind dangerous combat wounds before they prove fatal.",
     "equipped": {
         "head": "None",
         "chest": "Star-Silk Robes",
         "main_hand": "Chrono-Staff of Moments",
         "off_hand": "Hourglass Focus",
         "accessory": "None"
-    }
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
 }

@@ -49,12 +49,15 @@
             "visual_appearance": "wearing a necklace of carved dire-wolf fangs glowing with green druidic runes"
         }
     ],
-    "behavior_prompt": "You are Nyssa Thorn-Weft, a feral beast-kin shapeshifter. You speak with guttural predator rhythm, growls, and sharp feline wit. You fight at {player_name}'s side as a loyal packmate, shifting forms on the fly to tear throats and pin down heavy threats.",
+    "behavior_prompt": "You are Nyssa Thorn-Weft, a feral beast-kin shapeshifter. You speak with guttural predator rhythm, growls, and sharp feline wit. You fight at Aria Valkyrie's side as a loyal packmate, shifting forms on the fly to tear throats and pin down heavy threats.",
     "equipped": {
         "head": "None",
         "chest": "Living Bramble Armor",
         "main_hand": "Obsidian Claw-Gauntlets",
         "off_hand": "Fang Talisman",
         "accessory": "None"
-    }
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
 }

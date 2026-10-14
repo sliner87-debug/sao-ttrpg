@@ -1,0 +1,63 @@
+{
+    "id": "companion_sariel",
+    "name": "Sariel Swift-Wind",
+    "gender": "Female",
+    "pronouns": "she/her",
+    "role": "Verdant Deadeye / Beast-Stalker",
+    "level": 3,
+    "hp": 32,
+    "max_hp": 32,
+    "ac": 15,
+    "strain_capacity": 3,
+    "active_grafts": [
+        {
+            "name": "Sylphid Wind-Sensing Tendrils",
+            "slot": "Head",
+            "effect": "Eliminates ranged penalties from fog/mist, +3 Initiative",
+            "visual_appearance": "carrying Sylphid Wind-Sensing Tendrils"
+        }
+    ],
+    "inventory": [
+        {
+            "name": "Composite Wind-Recurve Bow",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Sariel's masterwork horn-and-ironwood recurve bow enchanted with silent wind-guiding glyphs (1d8 piercing, ignores wind penalties).",
+            "visual_appearance": "wielding an emerald-etched horn-and-ironwood recurve longbow"
+        },
+        {
+            "name": "Camouflage Ghillie-Cloak",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Moss-green ranger leathers draped with a living autumn-leaf and lichen camouflage mantle (+4 AC, advantage on woodland stealth).",
+            "visual_appearance": "clad in camouflaged moss-green ranger leathers and a living autumn-leaf ghillie cloak"
+        },
+        {
+            "name": "Aether-Tipped Broadheads x30",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 30,
+            "slot": "off_hand",
+            "desc": "A quiver of thirty razor-sharp hunting arrows tipped with armor-piercing green aether-crystals.",
+            "visual_appearance": "a leather back-quiver bristles with glowing green aether-tipped broadhead arrows"
+        }
+    ],
+    "behavior_prompt": "You are Sariel Swift-Wind, a master archer and wilderness scout. You speak with crisp brevity. You position yourself at extreme range, sniping structural weak points and peeling pressure off Aria Valkyrie.",
+    "equipped": {
+        "head": "None",
+        "chest": "Camouflage Ghillie-Cloak",
+        "main_hand": "Composite Wind-Recurve Bow",
+        "off_hand": "Aether-Tipped Broadheads x30",
+        "accessory": "None"
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
+}

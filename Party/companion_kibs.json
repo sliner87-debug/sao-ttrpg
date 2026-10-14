@@ -76,5 +76,8 @@
         "main_hand": "Serrated Scrap Dagger",
         "off_hand": "Wrist Shank",
         "accessory": "Neurotoxin Vials x3"
-    }
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
 }

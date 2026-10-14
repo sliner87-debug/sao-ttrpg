@@ -49,12 +49,15 @@
             "visual_appearance": "clad in gleaming silver-and-azure Falcon Crest scale mail with luminous cyan aether-glider wings extending from the back"
         }
     ],
-    "behavior_prompt": "You are Valeria Vane, an aerial Valkyrie vanguard in the service of {player_name}'s raiding party. You speak with proud military authority and hawk-like focus. You monitor the airspace, execute diving kinetic thrusts from above, and blind hostiles with solar-aegis reflections.",
+    "behavior_prompt": "You are Valeria Vane, an aerial Valkyrie vanguard in the service of Aria Valkyrie's raiding party. You speak with proud military authority and hawk-like focus. You monitor the airspace, execute diving kinetic thrusts from above, and blind hostiles with solar-aegis reflections.",
     "equipped": {
         "head": "None",
         "chest": "Falcon Crest Mail",
         "main_hand": "Winged Aether-Spear",
         "off_hand": "Solar Aegis Shield",
         "accessory": "None"
-    }
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
 }

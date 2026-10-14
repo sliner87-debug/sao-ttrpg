@@ -7,11 +7,20 @@ class ActorActionSchema(BaseModel):
     target: Optional[str] = Field(None, description="The ID of the target, if any")
     internal_thought: str = Field(description="Brief internal thought explaining their reasoning based on their personality and fears")
 
+class ActiveDebuffSchema(BaseModel):
+    debuff_id: str = Field(description="Unique ID for the debuff (e.g. 'hydraulic_armor_shred', 'corrosive_slag_dr_zero')")
+    name: str = Field(description="Display name of the debuff")
+    ac_penalty: int = Field(default=0, description="Negative adjustment to Armor Class (e.g. -4 for -4 AC)")
+    dr_override: Optional[int] = Field(default=None, description="If set (e.g. 0), overrides the target's Damage Reduction (DR) to this value")
+    turns_remaining: int = Field(default=3, description="Number of combat turns remaining (-1 for permanent)")
+    source: Optional[str] = Field(default="", description="Source ability or Dual-Tech that applied the debuff")
+
 class VisibleEntity(BaseModel):
     id: str
     name: str
     type: str = Field(description="'hostile', 'friendly', or 'neutral'")
     status: List[str] = Field(description="Visible status conditions like 'Bloodied', 'Prone', 'Intact'")
+    active_debuffs: Optional[List[ActiveDebuffSchema]] = Field(default=[], description="Active mechanical debuffs (e.g. -4 AC, 0 DR) currently affecting this entity")
 
 class VisibleEnvironment(BaseModel):
     location: str
@@ -62,11 +71,17 @@ class EntityStatusUpdate(BaseModel):
     entity_id: str = Field(description="Target entity ID")
     statuses: List[str] = Field(description="Current list of status conditions")
 
+class EntityDebuffUpdate(BaseModel):
+    entity_id: str = Field(description="Target entity ID receiving the mechanical debuff")
+    debuff: ActiveDebuffSchema = Field(description="The structured mechanical debuff applied to the entity")
+
 class TurnResolutionSchema(BaseModel):
     narrative_recap: str = Field(description="Exciting narrative paragraph describing how the turn played out without raw math formulas")
+    tactical_state_footer: Optional[str] = Field(default="", description="Clinical Cardinal System Tactical State Footer summarizing Current Node, Salvageable/Interactive Objects, Party Condition, and awaiting player input")
     combat_logs: List[str] = Field(default=[], description="List of all mechanical dice rolls, saving throws, AC checks, and damage calculations (e.g. 'Attack: 1d20+5 = 17 vs AC 14 | Hit!', 'Damage: 1d10+3 = 9 Slashing')")
     hp_changes: List[EntityHpChange] = Field(description="List of HP changes for entities")
     status_updates: List[EntityStatusUpdate] = Field(description="List of updated statuses for entities")
+    debuff_updates: Optional[List[EntityDebuffUpdate]] = Field(default=[], description="Mechanical debuffs applied to entities this turn (e.g. -4 AC from Foundry Hydraulic Overdrive, 0 DR from Corrosive Slag-Shatter)")
     encounter_active: bool = Field(description="True if the fight continues, False if it is over")
     environment_update: Optional[VisibleEnvironment] = Field(default=None, description="Updated room location, description, and environmental effects if the party moved or the environment changed")
     cleared_entities: Optional[List[str]] = Field(default=[], description="List of entity IDs that are permanently dead, destroyed, or departed from the room")

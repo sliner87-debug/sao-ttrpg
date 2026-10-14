@@ -146,6 +146,30 @@ def get_subagent_action(api_key: str, entity_id: str, visible_room: dict, player
     if mech_lines:
         mechanical_section = "\nYOUR CURRENT PHYSICAL STATUS & TACTICAL LOADOUT:\n" + "\n".join(mech_lines) + "\n"
 
+    # Special Lore & Mechanical Hooks for Ren (Serpent-Script + Diagnostic Subroutine) & Titus (1,200-lb Chassis)
+    special_lore_section = ""
+    if entity_id == "companion_ren":
+        try:
+            import backend.mechanics as mechanics
+            ren_sub = mechanics.get_ren_subroutine_directive(player_state or {})
+        except Exception:
+            ren_sub = {
+                "stage": 0,
+                "title": "Human Mask Intact (Ouroboros Debug Shell)",
+                "persona_directive": "Express visceral psychological dread when your Aetheric Ocular Lens renders enemies as Serpent-Script (`Ouroboros Kernel v3.14`) Python dictionaries (`visible_room['entities']`, `target.max_hp = [KERNEL_REDACTED]`)."
+            }
+        special_lore_section = f"""
+SERPENT-SCRIPT (`OUROBOROS KERNEL v3.14`) OCULAR HUD & SUBROUTINE STATE (STAGE {ren_sub.get('stage', 0)} — {ren_sub.get('title', '')}):
+- In-Universe Python Lore: When the Cardinal System integrated Earth, it assimilated Earth's dominant pre-collapse AI language (Python) as its neural-aetheric bridging syntax: **Serpent-Script (`Ouroboros Kernel v3.14`)**.
+- Your **Aetheric Ocular Lens** is locked in an unprivileged `Ouroboros Debug Shell` reading ONLY `visible_room` (and blocked from `.game_state/secret_master_state.json`). You literally see glowing cyan Pythonic syntax overlaid on reality (e.g., `visible_room["entities"]`, `target.status`, `target.active_debuffs`, `target.max_hp = [KERNEL_REDACTED]`).
+- Current Psychological/Subroutine Directive: {ren_sub.get('persona_directive', '')}
+"""
+    elif "titus" in entity_id.lower():
+        special_lore_section = """
+PHYSICAL MASS & FLOOR-INTEGRITY PROTOCOL (1,200 LBS):
+- Your Cast-Iron Boiler Chassis weighs 1,200 lbs (`weight_lbs: 1200.0`, `-6` Stealth). If `Visible Room.environment.environmental_effects` mentions rotted timbers, wooden floorboards, rickety catwalks, or fragile bridges, explicitly acknowledge the structural load risk in your thought and action!
+"""
+
     player_action_section = f"""
 HUMAN PLAYER IDENTITY & CURRENT TURN ACTION:
 - Human Player Name: {p_name}
@@ -170,7 +194,7 @@ YOUR PSYCHE:
 - Deepest Fears: {persona.get('fears_and_dreads', 'Destruction')}
 - Tactical Style: {persona.get('tactical_style', 'Aggressive')}
 - Behavior Rule: {persona.get('behavior_prompt', 'Act tactically.')}
-{mechanical_section}
+{mechanical_section}{special_lore_section}
 WHAT YOU CAN CURRENTLY SEE (Visible Room):
 {json.dumps(visible_room, indent=2)}
 {player_action_section}

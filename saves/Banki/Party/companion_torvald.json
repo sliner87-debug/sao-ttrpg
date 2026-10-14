@@ -1,0 +1,73 @@
+{
+    "id": "companion_torvald",
+    "name": "Torvald Iron-Vein",
+    "gender": "Male",
+    "pronouns": "he/him",
+    "role": "Deepforged Vanguard & Golem-Smith",
+    "level": 4,
+    "hp": 55,
+    "max_hp": 55,
+    "ac": 18,
+    "strain_capacity": 5,
+    "active_grafts": [
+        {
+            "name": "Subdermal Carapace Weave",
+            "slot": "Torso",
+            "effect": "+2 AC, DR 2 Physical",
+            "visual_appearance": "visibly integrated Subdermal Carapace Weave (flexible graphene-chitin mesh woven beneath skin layers, blunting incoming ballistic and slashing impacts)"
+        }
+    ],
+    "inventory": [
+        {
+            "name": "Deepforged War-Axe",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Torvald's heavy dwarven gromril war-axe stamped with ancestral anvil runes (1d10 slashing, ignores 2 points of target armor).",
+            "visual_appearance": "wielding a heavy dwarven deepforged war-axe glowing with molten-gold forge runes"
+        },
+        {
+            "name": "Adamant Bulwark Tower Shield",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "A massive castle-gate-sized tower pavise forged from adamant alloy that can anchor into the floor to provide total cover (+4 AC).",
+            "visual_appearance": "carrying a massive adamant bulwark tower shield wide as a fortress gate"
+        },
+        {
+            "name": "Runic Repair Mallet",
+            "rarity": "Uncommon",
+            "durability": 150,
+            "max_durability": 150,
+            "qty": 1,
+            "slot": "accessory",
+            "desc": "A master-smith's rune-etched forging hammer capable of striking out dents and restoring armor durability mid-expedition.",
+            "visual_appearance": "a heavy rune-stamped smithing mallet hooked to the belt"
+        },
+        {
+            "name": "Deepforged Runic Plate Armor",
+            "rarity": "Rare",
+            "durability": 100,
+            "max_durability": 100,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Heavy dwarven gromril-and-steel plate armor engraved with glowing gold anvil-runes and soot-darkened forge pauldrons (+8 AC, Fire Resistance).",
+            "visual_appearance": "clad in heavy dwarven Deepforged Runic Plate Armor engraved with glowing molten-gold forge runes"
+        }
+    ],
+    "behavior_prompt": "You are Torvald Iron-Vein (he/him), a veteran dwarven Golem-Smith and frontline vanguard anchor. Gruff, hearty, unflinching, and fiercely protective of your comrades. You lock your Adamant Bulwark Tower Shield between danger and your allies, taunt massive beasts, and crush armor with seismic war-axe swings.",
+    "equipped": {
+        "head": "None",
+        "chest": "Deepforged Runic Plate Armor",
+        "main_hand": "Deepforged War-Axe",
+        "off_hand": "Adamant Bulwark Tower Shield",
+        "accessory": "Runic Repair Mallet"
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
+}

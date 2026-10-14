@@ -49,12 +49,15 @@
             "visual_appearance": "a leather back-quiver bristles with glowing green aether-tipped broadhead arrows"
         }
     ],
-    "behavior_prompt": "You are Sariel Swift-Wind, a master archer and wilderness scout. You speak with crisp brevity. You position yourself at extreme range, sniping structural weak points and peeling pressure off {player_name}.",
+    "behavior_prompt": "You are Sariel Swift-Wind, a master archer and wilderness scout. You speak with crisp brevity. You position yourself at extreme range, sniping structural weak points and peeling pressure off Aria Valkyrie.",
     "equipped": {
         "head": "None",
         "chest": "Camouflage Ghillie-Cloak",
         "main_hand": "Composite Wind-Recurve Bow",
         "off_hand": "Aether-Tipped Broadheads x30",
         "accessory": "None"
-    }
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
 }

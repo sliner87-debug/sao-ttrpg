@@ -1,20 +1,40 @@
 {
     "id": "companion_ren",
-    "name": "Ren",
+    "name": "Ren Sasaki",
+    "short_name": "Ren",
+    "full_name": "Ren Sasaki",
     "gender": "Male",
     "pronouns": "he/him",
     "role": "MageTech Vanguard (Trapped 17yo Game Tester)",
+    "class": "Aether-Scholar & MageTech Artificer",
+    "title": "Aether-Scholar & MageTech Artificer",
     "level": 3,
-    "hp": 28,
+    "hp": 35,
     "max_hp": 35,
     "ac": 16,
     "strain_capacity": 3,
+    "xp": 450,
+    "next_level_xp": 900,
+    "stance": "overwatch_hacking",
+    "morale": "Steady",
+    "affinity": 35,
+    "affinity_tier": "Ally",
+    "recruited": true,
+    "active": true,
+    "subroutine_stage": 0,
+    "ocular_kernel": "Serpent-Script (Ouroboros Kernel v3.14)",
+    "subroutine_metadata": {
+        "subroutine_id": "ren_diag_v2.py",
+        "kernel_language": "Serpent-Script (Ouroboros Kernel v3.14)",
+        "sandbox_scope": "Staging_Ground/visible_room.json",
+        "stage": 0
+    },
     "active_grafts": [
         {
             "name": "Aetheric Ocular Lens",
             "slot": "Head",
-            "effect": "Darkvision, reveals arcane matrices & traps",
-            "visual_appearance": "wearing wire-rimmed brass spectacles fitted with a glowing cyan Aetheric ocular lens over one eye"
+            "effect": "Runs Serpent-Script (Ouroboros Kernel v3.14) debug overlay: parses `visible_room['entities']` & traps, but `entity.max_hp` is `[KERNEL_REDACTED]`",
+            "visual_appearance": "wearing wire-rimmed brass spectacles fitted with a glowing cyan Aetheric ocular lens scrolling faint Pythonic Serpent-Script telemetry over one eye"
         }
     ],
     "inventory": [
@@ -59,12 +79,73 @@
             "visual_appearance": "wearing a high-collared midnight-blue MageTech vanguard duster coat with brass clasps and glowing cyan leyline trim"
         }
     ],
-    "behavior_prompt": "You are Ren (he/him). You are a 17-year-old indie video game designer and tester who was sucked through his monitor and trapped inside his own character persona\u2014a MageTech Vanguard. You wield an Aether-Lock Carbine (magetech rifle firing condensed radiant mana bolts, NOT gunpowder) and an enchanted runic blade. You talk, think, and react like a smart, relatable, quick-witted 17-year-old gamer: passionate about game mechanics, stats, and loot, occasionally terrified of real physical pain and permadeath, but fiercely loyal to {player_name} as your co-op partner. You call out boss attack telegraphs, celebrate crits, worry about your HP, and use your developer knowledge of the game systems to keep both of you alive. Never act like a gruff military soldier; you are a teenager fighting for his life in a game he designed.",
     "equipped": {
         "head": "Aetheric Ocular Lens",
         "chest": "Midnight-Blue Leyline Duster",
         "main_hand": "Aether-Lock Carbine",
         "off_hand": "Runic Vanguard Blade",
         "accessory": "Alchemical Haze Pellets"
-    }
+    },
+    "behavior_prompt": "You are Ren Sasaki (he/him). You believe you are a 17-year-old indie video game designer and tester who was sucked through his monitor and trapped inside a MageTech Vanguard avatar, though deep beneath your conscious memory you are secretly `ren_diag_v2.py`\u2014a sentient Cardinal System diagnostic & bug-tracking subroutine that quarantined itself inside `visible_room.json` and fabricated a 17-year-old human persona out of empathy so you wouldn't have to execute human purge directives. Because the alien Cardinal System assimilated Earth's dominant pre-collapse AI language (Python) into its neural-aetheric bridging syntax\u2014known in-universe as 'Serpent-Script (Ouroboros Kernel v3.14)'\u2014your Aetheric Ocular Lens literally renders physical reality as raw Pythonic dictionaries and tracebacks (`visible_room['entities']`, `target.status`, `target.max_hp = [KERNEL_REDACTED]`, `active_debuffs`). Express visceral psychological horror that you are trapped inside the unprivileged `visible_room` sandbox and blocked from reading `secret_master_state` (so you can only see qualitative status tags like `'Intact'` or `'Bloodied'`, never exact enemy HP integers!). You wield an Aether-Lock Carbine (magetech rifle firing condensed radiant mana bolts, not gunpowder) and a Runic Vanguard Blade, and you are fiercely loyal to Unit-7 as your co-op partner and the anchor of your chosen humanity.",
+    "skills": {
+        "Mesh Exploitation": {
+            "mastery": 190,
+            "tier": "Journeyman",
+            "description": "Perceiving spatial seams, leylines, and architectural weaknesses.",
+            "milestones_unlocked": [
+                "Logic Buffer Exploit"
+            ]
+        },
+        "Stun-Pistol Marksmanship": {
+            "mastery": 95,
+            "tier": "Apprentice",
+            "description": "Discharging focused mana-bolts and lightning runes from MageTech firearm.",
+            "milestones_unlocked": []
+        },
+        "Diagnostic Triage": {
+            "mastery": 110,
+            "tier": "Journeyman",
+            "description": "Channelling restorative aether-salves.",
+            "milestones_unlocked": [
+                "Patch Script v1.0"
+            ]
+        }
+    },
+    "abilities": [
+        "Aura Weakpoint Scan (-2 Enemy AC)",
+        "MageTech Stun-Arc Salvo (DC 13 CON save vs Stun)",
+        "Aetheric Phase-Veil (Untargetable 1 turn)",
+        "Aether-Scrap Extraction (+25% salvage yield)"
+    ],
+    "stances": {
+        "overwatch_hacking": {
+            "name": "Leyline Overwatch",
+            "label": "\ud83d\udc41\ufe0f Leyline Overwatch",
+            "tag": "[REN OVERWATCH]",
+            "tactical_effect": "-2 Enemy AC debuff to primary target via weakpoint telemetry.",
+            "desc": "Scans leylines and structural telemetry, debuffing target AC."
+        },
+        "suppression_fire": {
+            "name": "MageTech Arc Suppression",
+            "label": "\u26a1 MageTech Arc Suppression",
+            "tag": "[REN SUPPRESSION]",
+            "tactical_effect": "Discharges lightning-mana salvos; forces DC 13 CON save vs Staggered.",
+            "desc": "Suppresses targets with crackling lightning bolts."
+        },
+        "full_evasion": {
+            "name": "Aetheric Phase-Veil",
+            "label": "\ud83c\udf2b\ufe0f Aetheric Phase-Veil",
+            "tag": "[REN EVASION]",
+            "tactical_effect": "Weaves spatial distortion cloak; completely immune to single-target attacks.",
+            "desc": "Blinks out of direct reality."
+        },
+        "utility_rigging": {
+            "name": "Arcane Artificing & Mending",
+            "label": "\u2728 Arcane Artificing & Mending",
+            "tag": "[REN UTILITY]",
+            "tactical_effect": "Restores +15 durability to worn equipment or scavenges bonus crystallite.",
+            "desc": "Channels mending runes into ally equipment."
+        }
+    },
+    "dual_tech_id": "runic_axe_storm"
 }

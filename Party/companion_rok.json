@@ -56,5 +56,8 @@
         "main_hand": "Twin Serrated Slag-Cleavers",
         "off_hand": "Spiked Iron Pauldrons",
         "accessory": "None"
-    }
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
 }

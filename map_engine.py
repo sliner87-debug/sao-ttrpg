@@ -36,9 +36,14 @@ HIDDEN_CONNECTIONS = [
     ("Route_31_Chokepoint", "Aether_Well", "Aether-Mapping"),
 ]
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MAP_STATE_FILE = os.path.join(BASE_DIR, "map_state.json")
+BASE_MAP_FILE = os.path.join(BASE_DIR, "base_map.jpg")
+CURRENT_MAP_FILE = os.path.join(BASE_DIR, "current_map.jpg")
+
 def load_map_state():
-    if os.path.exists("map_state.json"):
-        with open("map_state.json", "r") as f:
+    if os.path.exists(MAP_STATE_FILE):
+        with open(MAP_STATE_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     # Default map state
     return {
@@ -49,8 +54,8 @@ def load_map_state():
     }
 
 def save_map_state(state):
-    with open("map_state.json", "w") as f:
-        json.dump(state, f)
+    with open(MAP_STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(state, f, indent=4)
 
 def has_cartography_skill(req_skill, p_skills):
     """Checks if player meets Cartography or exploration skill requirements across V1 list or V2 1-1000 dict."""
@@ -88,11 +93,11 @@ def generate_overlay(player_skills=None):
     if player_skills is None:
         player_skills = []
         
-    if not os.path.exists("base_map.jpg"):
+    if not os.path.exists(BASE_MAP_FILE):
         return None
         
     state = load_map_state()
-    base_img = Image.open("base_map.jpg").convert("RGBA")
+    base_img = Image.open(BASE_MAP_FILE).convert("RGBA")
     
     # 1. Fog of War Layer
     fog = Image.new("RGBA", base_img.size, (0, 0, 0, 200)) # 200 alpha for dark fog
@@ -215,8 +220,8 @@ def generate_overlay(player_skills=None):
         print("Legend drawing failed:", e)
     
     map_img = map_img.convert("RGB")
-    map_img.save("current_map.jpg")
-    return "current_map.jpg"
+    map_img.save(CURRENT_MAP_FILE)
+    return CURRENT_MAP_FILE
 
 if __name__ == "__main__":
     generate_overlay()

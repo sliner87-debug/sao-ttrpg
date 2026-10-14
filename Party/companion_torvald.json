@@ -66,5 +66,8 @@
         "main_hand": "Deepforged War-Axe",
         "off_hand": "Adamant Bulwark Tower Shield",
         "accessory": "Runic Repair Mallet"
-    }
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
 }

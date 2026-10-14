@@ -49,5 +49,8 @@
         "main_hand": "Aetheric Longbow",
         "off_hand": "Twin Crystal Daggers",
         "accessory": "None"
-    }
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
 }

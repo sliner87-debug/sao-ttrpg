@@ -733,6 +733,7 @@ def render_character_calibration_wizard():
                     }
                 ]
                 st.session_state.active_profile = char_name
+                st.session_state['active_profile_select'] = char_name
                 st.session_state.character_creation_mode = False
                 
                 # Sync V2 master state on disk
@@ -811,12 +812,16 @@ def extract_subagent_log(msg: dict) -> tuple:
     return c, s
 
 def get_strain_capacity(player_state: dict) -> int:
+    if hasattr(mechanics, "get_max_unit_strain"):
+        return mechanics.get_max_unit_strain(player_state)
     con = player_state.get("stats", {}).get("CON", 10)
     con_mod = (con - 10) // 2
     level = player_state.get("level", 1)
     return max(1, con_mod + (level // 2))
 
 def get_current_strain(player_state: dict) -> int:
+    if hasattr(mechanics, "get_current_unit_strain"):
+        return mechanics.get_current_unit_strain(player_state)
     grafts = player_state.get("grafts", {})
     strain = 0
     if isinstance(grafts, dict):
@@ -973,6 +978,7 @@ def apply_player_state_updates(state_updates):
                     st.session_state.player.setdefault(target_list, []).append(a)
                     st.toast(f"🔮 Learned {target_list[:-1].capitalize()}: {a}!")
 
+    new_graft_added = False
     grafts_installed = state_updates.get("grafts_installed") or []
     if isinstance(grafts_installed, list):
         if "grafts" not in st.session_state.player:
@@ -981,6 +987,7 @@ def apply_player_state_updates(state_updates):
             if isinstance(g, dict) and "slot" in g:
                 slot = g["slot"].lower().replace(" ", "_")
                 st.session_state.player["grafts"][slot] = g
+                new_graft_added = True
                 st.toast(f"🦾 Installed Graft ({slot.capitalize()}): {g.get('name', 'Graft')}!", icon="💉")
 
     grafts_update = state_updates.get("grafts_update")
@@ -989,8 +996,23 @@ def apply_player_state_updates(state_updates):
             st.session_state.player["grafts"] = {}
         for slot, g_data in grafts_update.items():
             st.session_state.player["grafts"][slot] = g_data
+            new_graft_added = True
             g_name = g_data.get("name", str(g_data)) if isinstance(g_data, dict) else str(g_data)
             st.toast(f"🦾 Installed Graft ({slot.capitalize()}): {g_name}!", icon="💉")
+
+    if new_graft_added and hasattr(mechanics, "sync_graft_containers"):
+        mechanics.sync_graft_containers(st.session_state.player)
+        gs = st.session_state.player.setdefault("graft_system", {})
+        if not gs.get("post_op_sickness", {}).get("active"):
+            gs["post_op_sickness"] = {
+                "active": True,
+                "hours_remaining": 24,
+                "max_hp_penalty_pct": 20,
+                "dash_disabled": True,
+                "active_graft_con_dc": 13,
+            }
+            st.toast("⚠️ [Cellular Re-Knitting] Active (24h Post-Op Recovery Required)!", icon="🩹")
+        mechanics.calculate_player_strain(st.session_state.player)
 
     skill_updates = state_updates.get("skill_updates") or []
     if isinstance(skill_updates, list):
@@ -1311,16 +1333,39 @@ def render_game_hud():
 
         
     with st.expander("🦾 Magitech & Bio-Grafts", expanded=False):
-        cap = get_strain_capacity(player)
-        cur = get_current_strain(player)
-        st.write(f"**Strain Capacity:** `{cur} / {cap}`")
-        if cur > cap:
-            st.error(f"⚠️ **OVER-STRAIN:** Exceeded capacity! Subject to Arcane Dissonance / Necrotic Rejection.")
+        strain_info = mechanics.calculate_player_strain(player) if hasattr(mechanics, "calculate_player_strain") else {}
+        cap = strain_info.get("max_unit_strain", get_strain_capacity(player))
+        cur = strain_info.get("unit_strain", get_current_strain(player))
+        bio_cur = strain_info.get("current_strain", 0)
+        bio_max = strain_info.get("max_strain", 25)
+        status_tier = strain_info.get("status_tier", "Optimal")
+        asf_pct = strain_info.get("asf_percent", 0)
+        spell_dc_pen = strain_info.get("spell_dc_penalty", 0)
+
+        st.write(f"**Unit Strain:** `{cur} / {cap}` | **Bio-Tolerance Pool:** `{bio_cur} / {bio_max}` (`{status_tier}`)")
+        if cur > cap or bio_cur > bio_max:
+            st.error("⚠️ **OVER-STRAIN:** Exceeded physiological capacity! Subject to Metabolic Dissonance / Necrotic Rejection.")
             st.progress(1.0)
         else:
-            st.progress(min(1.0, cur / max(1, cap)))
+            st.progress(min(1.0, max(cur / max(1, cap), bio_cur / max(1, bio_max))))
 
-        st.caption("Strain limit = CON Mod + Floor(Level / 2). One graft per slot.")
+        if asf_pct > 0:
+            st.warning(f"🔮 **Golem Graft Interference:** `{asf_pct}%` Arcane Spell Failure (`-{spell_dc_pen}` Spell Save DC)")
+
+        if strain_info.get("post_op_active"):
+            hrs_rem = strain_info.get("post_op_hours_remaining", 24)
+            st.warning(f"🩹 **[Cellular Re-Knitting] Active ({hrs_rem}h remaining):** `-20% Max HP`, `Dash Disabled`, `DC 13 CON Save` on active graft use.")
+            if st.button("🛏️ Rest 8h in Safe-Zone (Advance Post-Op Recovery)", key="btn_advance_post_op_hud", use_container_width=True):
+                rec_res = mechanics.advance_post_op_recovery(player, hours=8, in_safe_zone=True)
+                save_game(player, st.session_state.messages)
+                st.toast(rec_res.get("message", "Advanced recovery."), icon="🩹")
+                st.rerun()
+
+        if player.get("graft_system", {}).get("blood_debt_active"):
+            debt_amt = player["graft_system"].get("blood_debt_col", 0)
+            st.error(f"🩸 **Ripperdoc Promissory Blood-Debt:** `{debt_amt} Col` owed to Doc Mercer")
+
+        st.caption("Unit Cap = CON Mod + Floor(Level / 2) • Bio-Pool = (CON × 2) + (Level × 3). 1 Graft per slot.")
         
         grafts = player.get("grafts", {})
         slots = [("head", "Head"), ("torso", "Torso"), ("left_arm", "Left Arm"), ("right_arm", "Right Arm"), ("legs", "Legs"), ("spine", "Spine / Internal")]
@@ -1328,12 +1373,39 @@ def render_game_hud():
             g_val = grafts.get(s_key)
             if g_val:
                 g_name = g_val.get("name", str(g_val)) if isinstance(g_val, dict) else str(g_val)
+                g_elem = g_val.get("element", "none") if isinstance(g_val, dict) else "none"
+                elem_badge = f" `[{g_elem.upper()}]`" if g_elem and g_elem != "none" else ""
                 g_det = mechanics.get_item_details(g_val, inventory=player.get("inventory", [])) if hasattr(mechanics, "get_item_details") else {}
-                st.write(f"- **{s_label}:** 🟢 `{g_name}`")
+                st.write(f"- **{s_label}:** 🟢 `{g_name}`{elem_badge}")
                 if g_det.get("desc"):
                     st.caption(f"  ↳ {g_det['desc']}")
             else:
                 st.write(f"- **{s_label}:** *Empty*")
+
+    with st.expander("📻 Pre-Integration Relics & Keepsakes", expanded=False):
+        st.caption("Activate Earth relics for Short-Rest Sanity Stabilization, True-Sight Flash, Gas Detection, or 440Hz Vault Resonance.")
+        inv_list = player.get("inventory", [])
+        relic_keywords = ["smartphone", "polaroid", "zippo", "tuning fork", "cassette", "pocket watch", "compass", "keepsake", "relic"]
+        player_relics = []
+        for it in inv_list:
+            it_name = it.get("name", str(it)) if isinstance(it, dict) else str(it)
+            if any(rk in it_name.lower() for rk in relic_keywords) or (isinstance(it, dict) and it.get("type") == "relic"):
+                player_relics.append(it_name)
+        if not player_relics and player.get("relic"):
+            r_obj = player["relic"]
+            player_relics.append(r_obj.get("name", str(r_obj)) if isinstance(r_obj, dict) else str(r_obj))
+        if player_relics:
+            sel_relic = st.selectbox("Select Relic:", player_relics, key="hud_relic_select")
+            sel_ctx = st.selectbox("Activation Mode:", ["short_rest", "inspect", "puzzle"], key="hud_relic_context")
+            if st.button("✨ Activate Personal Relic", key="btn_activate_relic_hud", use_container_width=True):
+                if hasattr(mechanics, "activate_personal_relic"):
+                    r_out = mechanics.activate_personal_relic(player, sel_relic, context=sel_ctx)
+                    save_game(player, st.session_state.messages)
+                    st.toast(r_out.get("message", "Relic activated!"), icon="📻")
+                    st.session_state.pending_dev_command = f"I use my [{sel_relic}] ({sel_ctx}): {r_out.get('message', '')}"
+                    st.rerun()
+        else:
+            st.caption("*No Pre-Integration Relics detected in inventory.*")
         
     with st.expander("📈 Skills & Mastery (1–1000)", expanded=False):
         st.caption("Continuous 1–1000 proficiency tracking. Crossing thresholds (50, 100, 250, 500, 750, 1000) unlocks new Sword Skills and Passive Feats.")
@@ -2010,42 +2082,7 @@ def render_game_hud():
     player_skills = st.session_state.player.get("skills", [])
     map_path = map_engine.generate_overlay(player_skills=player_skills)
     if map_path and os.path.exists(map_path):
-        import base64
-        import streamlit.components.v1 as components
-        with open(map_path, "rb") as image_file:
-            encoded_string = base64.b64encode(image_file.read()).decode()
-        
-        # Inject native inline mouse-wheel zoom & drag panning using Panzoom.js!
-        html_code = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <script src="https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
-        <style>
-          body {{ margin: 0; padding: 0; overflow: hidden; background-color: transparent; }}
-          #map-container {{ width: 100%; height: 100vh; display: flex; justify-content: center; align-items: center; }}
-          img {{ max-width: 100%; max-height: 100%; object-fit: contain; cursor: grab; border-radius: 8px; }}
-          img:active {{ cursor: grabbing; }}
-        </style>
-        </head>
-        <body>
-          <div id="map-container">
-            <img id="map" src="data:image/jpeg;base64,{encoded_string}" />
-          </div>
-          <script>
-            const elem = document.getElementById('map')
-            const panzoom = Panzoom(elem, {{
-              maxScale: 6,
-              minScale: 1,
-              contain: 'outside',
-              step: 0.3
-            }})
-            elem.parentElement.addEventListener('wheel', panzoom.zoomWithWheel)
-          </script>
-        </body>
-        </html>
-        """
-        components.html(html_code, height=350)
+        st.image(map_path, caption="Sector 1 Tactical Grid (Pohatcong / Oxford / Washington)", use_container_width=True)
         
     st.write(f"**GPS Coordinates:** X: {map_state['player_x']}, Y: {map_state['player_y']}")
     st.write(f"**Status:** {world_state['world_status']}")
@@ -2075,10 +2112,12 @@ def render_game_hud():
             
             c_hub1, c_hub2 = st.columns(2)
             with c_hub1:
-                if st.button("🛏️ Safe-Zone Rest (24h)", use_container_width=True, help="Full HP recovery & triggers living world simulation."):
+                if st.button("🛏️ Safe-Zone Rest (24h)", use_container_width=True, help="Full HP recovery, cures [Cellular Re-Knitting], & triggers living world simulation."):
                     if not active_atlas_zone:
                         st.session_state.player["location"] = "Sector 1 Safe-Zone: Washington Borough, NJ"
-                    st.session_state.pending_dev_command = f"I take a full 24-hour long rest in the {safe_title} sanctuary to recover our wounds and hear the latest regional news."
+                    if hasattr(mechanics, "advance_post_op_recovery"):
+                        mechanics.advance_post_op_recovery(st.session_state.player, hours=24, in_safe_zone=True)
+                    st.session_state.pending_dev_command = f"I take a full 24-hour long rest in the {safe_title} sanctuary to recover our wounds, complete any post-op cellular re-knitting, and hear the latest regional news."
                     save_game(st.session_state.player, st.session_state.messages)
                     st.rerun()
                 if st.button("🏥 Visit Doc Mercer", use_container_width=True, help="Visit the subterranean clinic for graft consultation & surgery."):
@@ -2102,12 +2141,19 @@ def render_game_hud():
             graft_candidates = [i for i in inv_items if any(k in i.lower() for k in ["graft", "core", "carapace", "piston", "optic", "bio", "implant", "plate"])]
             if graft_candidates:
                 st.divider()
-                st.caption("💉 **Doc Mercer's Clinic: Fast Surgical Graft Installation**")
+                st.caption("💉 **Doc Mercer's Clinic: Canonical Tier-1 Surgical Graft Installation (250 Col / Promissory Blood-Debt)**")
                 sel_graft = st.selectbox("Select Component to Graft:", graft_candidates, key="hub_graft_candidate_select")
                 sel_slot = st.selectbox("Target Anatomical Slot:", ["Spine", "Torso", "Left Arm", "Right Arm", "Legs", "Head"], key="hub_graft_slot_select")
-                if st.button(f"🦾 Pay Doc Mercer (35 Col) to Install [{sel_graft}] into [{sel_slot}]", use_container_width=True):
+                cur_col = st.session_state.player.get("col", 0)
+                btn_label = (
+                    f"🦾 Pay Doc Mercer (250 Col) to Install [{sel_graft}] into [{sel_slot}]"
+                    if cur_col >= 250
+                    else f"🩸 Sign Ripperdoc Blood-Debt (250 Col Owed) to Install [{sel_graft}] into [{sel_slot}]"
+                )
+                if st.button(btn_label, use_container_width=True):
                     st.session_state.player["location"] = "Doc Mercer's Underground Clinic (Washington Borough Catacombs)"
-                    st.session_state.pending_dev_command = f"I pay Doc Mercer 35 Col to surgically install [{sel_graft}] into my [{sel_slot.lower().replace(' ', '_')}]. Check my strain limit and begin the operation."
+                    payment_phrase = "pay Doc Mercer the 250 Col Tier-1 surgical fee" if cur_col >= 250 else "sign Doc Mercer's Promissory Blood-Debt Note (250 Col deferred)"
+                    st.session_state.pending_dev_command = f"I {payment_phrase} to surgically install [{sel_graft}] into my [{sel_slot.lower().replace(' ', '_')}]. Verify my strain limit, check elemental compatibility, and begin the operation (applying 24h [Cellular Re-Knitting])."
                     save_game(st.session_state.player, st.session_state.messages)
                     st.rerun()
 
@@ -2535,7 +2581,7 @@ def render_game_hud():
                     try:
                         with open(p_ren_path, "r", encoding="utf-8") as f:
                             ren_sheet = json.load(f)
-                        ren_sheet["hp"] = ren_data.get("hp", ren_sheet.get("hp", 28))
+                        ren_sheet["hp"] = ren_data.get("hp", ren_sheet.get("hp", 35))
                         ren_sheet["max_hp"] = ren_data.get("max_hp", ren_sheet.get("max_hp", 35))
                         with open(p_ren_path, "w", encoding="utf-8") as f:
                             json.dump(ren_sheet, f, indent=4)
@@ -2575,23 +2621,43 @@ with st.sidebar:
     # --- MULTI-CHARACTER PROFILE SLOT SELECTOR ---
     profiles = get_available_profiles()
     curr_name = st.session_state.player.get('name', 'Banki')
-    default_idx = profiles.index(curr_name) if curr_name in profiles else 0
-    
-    st.markdown('##### 👤 Character Slot')
-    sel_profile = st.selectbox(
-        'Active Profile',
-        options=profiles,
-        index=default_idx,
-        key='active_profile_select',
-        label_visibility='collapsed'
-    )
-    if sel_profile != curr_name and not st.session_state.get('character_creation_mode', False):
-        p_data = cg.load_character_from_folder(BASE_DIR, sel_profile)
-        if p_data:
+
+    # Safely synchronize widget key with active character name
+    if 'active_profile_select' not in st.session_state or st.session_state['active_profile_select'] not in profiles:
+        st.session_state['active_profile_select'] = curr_name if curr_name in profiles else (profiles[0] if profiles else 'Banki')
+    elif curr_name in profiles and st.session_state.get('active_profile') == curr_name and st.session_state['active_profile_select'] != curr_name:
+        st.session_state['active_profile_select'] = curr_name
+
+    default_idx = profiles.index(st.session_state['active_profile_select']) if st.session_state['active_profile_select'] in profiles else 0
+
+    def on_profile_dropdown_change():
+        selected_prof = st.session_state.get('active_profile_select')
+        if not selected_prof:
+            return
+        active_char_name = st.session_state.player.get('name', '')
+        if selected_prof == active_char_name or st.session_state.get('character_creation_mode', False):
+            return
+
+        # 1. Save current profile gamestate and party before switching
+        try:
+            save_game(st.session_state.player, st.session_state.messages)
+            mechanics.save_party_to_character_folder(BASE_DIR, active_char_name)
+        except Exception:
+            pass
+
+        p_data = cg.load_character_from_folder(BASE_DIR, selected_prof)
+        if p_data and 'player' in p_data:
             st.session_state.player = p_data['player']
             st.session_state.messages = p_data.get('messages', [])
-            st.session_state.active_profile = sel_profile
+            st.session_state.active_profile = selected_prof
             st.session_state.character_creation_mode = False
+
+            # 2. Restore target character's companions into Party/ and Entities/
+            try:
+                mechanics.restore_companions_for_character(BASE_DIR, selected_prof, st.session_state.player)
+            except Exception:
+                pass
+
             # Sync to secret_master_state.json if present
             m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
             if os.path.exists(m_path):
@@ -2604,7 +2670,16 @@ with st.sidebar:
                 except Exception:
                     pass
             save_game(st.session_state.player, st.session_state.messages)
-            st.rerun()
+
+    st.markdown('##### 👤 Character Slot')
+    sel_profile = st.selectbox(
+        'Active Profile',
+        options=profiles,
+        index=default_idx,
+        key='active_profile_select',
+        on_change=on_profile_dropdown_change,
+        label_visibility='collapsed'
+    )
             
     if not st.session_state.get('character_creation_mode', False):
         if st.button('🧬 New Avatar Calibration', use_container_width=True):
@@ -2654,10 +2729,10 @@ dev_prompt = st.session_state.pop("pending_dev_command", None)
 
 if prompt := (dev_prompt or chat_prompt):
     
-    # Intercept Admin Commands
-    is_admin = prompt.startswith("/admin ") or dev_prompt is not None
+    # Intercept Explicit Admin Commands (normal UI action buttons execute as regular player turns)
+    is_admin = prompt.strip().lower().startswith("/admin ") or "[root override]" in prompt.lower()
     if is_admin:
-        command = prompt.replace("/admin ", "")
+        command = prompt.replace("/admin ", "").replace("[ROOT OVERRIDE]", "").strip()
         ui_text = f"💻 **ROOT OVERRIDE EXECUTED:** {command}"
         ai_prompt = f"[ROOT OVERRIDE] {command}"
     else:
@@ -2697,6 +2772,9 @@ if prompt := (dev_prompt or chat_prompt):
             turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=ai_prompt, player_state=st.session_state.player)
             
             narrative = turn_data.get("narrative_recap", "Error parsing narrative.")
+            tactical_footer = turn_data.get("tactical_state_footer", "")
+            if tactical_footer and tactical_footer not in narrative:
+                narrative = f"{narrative}\n\n---\n`{tactical_footer}`"
             
             # Extract player state updates into the format app.py expects
             state_updates = turn_data.get("player_state_updates", {})

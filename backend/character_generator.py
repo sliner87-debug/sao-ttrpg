@@ -10,7 +10,14 @@ import json
 import os
 import time
 import re
-from backend.mechanics import calculate_encumbrance, calculate_ac, CANONICAL_MILESTONES
+from backend.mechanics import (
+    calculate_encumbrance,
+    calculate_ac,
+    CANONICAL_MILESTONES,
+    reset_companion_roster_for_character,
+    save_party_to_character_folder,
+    restore_companions_for_character
+)
 
 # --- 18 QUICK-LIFESTYLE QUESTIONNAIRE PRESETS (Auto-Distribute 20 Points) ---
 # All presets allocate exactly 20 points across the 6 core stats: STR, DEX, CON, INT, WIS, CHA.
@@ -1594,6 +1601,12 @@ def save_character_to_folder(base_dir, player_state, messages=None, extra_meta=N
             json.dump(full_data, f, indent=4)
     except Exception:
         pass
+
+    # Snapshot companion party sheets to dedicated character folder
+    try:
+        save_party_to_character_folder(base_dir, p_name)
+    except Exception:
+        pass
         
     return save_file
 
@@ -1866,6 +1879,10 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
         "companions": {},
         "is_paused": False
     }
+    
+    # Initialize pristine companion roster and clean disk state for this character
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    reset_companion_roster_for_character(base_dir, name, player_sheet)
     
     return player_sheet
 

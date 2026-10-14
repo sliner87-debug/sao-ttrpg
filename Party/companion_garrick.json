@@ -56,5 +56,8 @@
         "main_hand": "Granite-Studded Cestus",
         "off_hand": "Weighted Linen Wraps",
         "accessory": "None"
-    }
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
 }

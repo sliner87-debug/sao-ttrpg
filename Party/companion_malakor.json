@@ -56,5 +56,8 @@
         "main_hand": "Void-Etched Greatsword",
         "off_hand": "Null-Glyph Buckler",
         "accessory": "None"
-    }
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
 }

@@ -6,6 +6,9 @@ Handles mathematical crunch, dice logic, encumbrance physics, and equipment stat
 import math
 import copy
 import re
+import os
+import json
+import shutil
 try:
     from backend.world_atlas import (
         WORLD_ATLAS_ZONES,
@@ -2736,8 +2739,52 @@ CANONICAL_GRAFTS = {
         "stat_bonuses": {"CON": 2},
         "description": "Amphibious Aboleth/Chuul gill-filament membrane that filters underwater oxygen and toxic coal-mine gases.",
         "effect": "Amphibious Water-Breathing & complete immunity to Centralia sulfur/carbon-monoxide and inhaled gas hazards"
+    },
+    "ignis_core_heart": {
+        "key": "ignis_core_heart",
+        "name": "Ignis-Core Heart",
+        "type": "golem",
+        "element": "fire",
+        "tier": 2,
+        "unit_strain": 2,
+        "allowed_slots": ["torso", "dermal"],
+        "strain": 14,
+        "col_cost": 1500,
+        "stat_bonuses": {"STR": 2, "CON": 1},
+        "description": "Magma-chambered furnace heart harvested from an Oxford Furnace Slag-Colossus.",
+        "effect": "+2 STR, +1 CON, Fire Immunity, and Ignis Overdrive (+2d6 Fire damage on melee strikes)"
+    },
+    "cryo_vein_conduit": {
+        "key": "cryo_vein_conduit",
+        "name": "Cryo-Vein Conduit",
+        "type": "golem",
+        "element": "cold",
+        "tier": 2,
+        "unit_strain": 2,
+        "allowed_slots": ["spine", "torso", "left_arm", "right_arm", "arm_left", "arm_right"],
+        "strain": 13,
+        "col_cost": 1400,
+        "stat_bonuses": {"DEX": 2, "INT": 1},
+        "description": "Liquid-nitrogen aether tubing from Sam's Point Ice Caves that flash-freezes arterial blood.",
+        "effect": "+2 DEX, +1 INT, Cold Resistance, and Cryo-Lash (+1d8 Cold damage & -10ft target speed)"
+    },
+    "rust_stalker_optic": {
+        "key": "rust_stalker_optic",
+        "name": "Rust-Stalker Optic",
+        "type": "golem",
+        "element": "kinetic",
+        "tier": 1,
+        "unit_strain": 1,
+        "allowed_slots": ["head", "ocular", "neural"],
+        "strain": 8,
+        "col_cost": 250,
+        "stat_bonuses": {"WIS": 1},
+        "description": "Salvaged Tier-1 crimson multi-spectrum lens from a Pohatcong Rust-Stalker.",
+        "effect": "+1 WIS, Low-Light Thermal Tracking (+2 Perception & Investigation)"
     }
 }
+
+CANONICAL_ANATOMICAL_SLOTS = ["head", "torso", "left_arm", "right_arm", "legs", "spine"]
 
 BODY_GRAFT_SLOTS = [
     "arm_left", "arm_right", "leg_left", "leg_right", "spine", "ocular", "dermal", "neural",
@@ -2745,21 +2792,59 @@ BODY_GRAFT_SLOTS = [
 ]
 
 SLOT_ALIASES = {
-    "head": "neural",
-    "eyes": "ocular",
-    "torso": "dermal",
-    "chest": "dermal",
-    "left_arm": "arm_left",
-    "right_arm": "arm_right",
-    "legs": "leg_left"
+    "head": "head",
+    "ocular": "head",
+    "eyes": "head",
+    "neural": "head",
+    "torso": "torso",
+    "dermal": "torso",
+    "chest": "torso",
+    "core": "torso",
+    "left_arm": "left_arm",
+    "arm_left": "left_arm",
+    "right_arm": "right_arm",
+    "arm_right": "right_arm",
+    "legs": "legs",
+    "leg_left": "legs",
+    "leg_right": "legs",
+    "spine": "spine"
+}
+
+OPPOSING_GRAFT_ELEMENTS = {
+    "fire": "cold",
+    "cold": "fire",
+    "radiant": "necrotic",
+    "necrotic": "radiant"
+}
+
+GRAFT_ELEMENT_MAP = {
+    "silt_marrow_geothermal_core": "fire",
+    "rathalos_flame_marrow_sac": "fire",
+    "gleam_eyes_demonic_horn": "fire",
+    "ignis_core_heart": "fire",
+    "cryo_vein_conduit": "cold",
+    "zinogre_fulgur_capacitor": "lightning",
+    "basilisk_venom_gland": "acid",
+    "rust_monster_feeler_whip": "acid",
+    "malboro_bad_breath_gland": "necrotic",
+    "tonberry_grudge_lantern": "necrotic",
+    "leyline_conduit_spine": "arcane",
+    "aether_resonant_ocular": "arcane",
+    "beholder_antimagic_ocular": "arcane"
 }
 
 HARMONIZATION_FEATS = {
+    "graft_harmonization": {
+        "name": "Graft Harmonization",
+        "tier": 1,
+        "description": "Cellular conditioning and neural-shunt calibration allow your body to tolerate additional cybernetic and biological implants.",
+        "effect": "+1 Anatomical Unit Strain Capacity, +15 Bio-Tolerance Pool, and reduces all graft Bio-Strain costs by 25%."
+    },
     "leyline_conduits": {
         "name": "Leyline Conduits",
         "tier": 1,
-        "description": "Gold-threaded conduits woven through bone negate the spellcasting interference of 1 installed Golem-Graft.",
-        "effect": "Negates the -2 Arcane DC penalty for 1 installed Golem-Graft."
+        "description": "Gold-threaded conduits woven through bone negate the spellcasting interference of installed Golem-Grafts.",
+        "effect": "Negates the -2 Arcane DC and 15% Arcane Spell Failure penalty for up to 2 installed Golem-Grafts."
     },
     "aether_infused_prosthetic": {
         "name": "Aether-Infused Prosthetic",
@@ -2775,21 +2860,223 @@ HARMONIZATION_FEATS = {
     }
 }
 
-def ensure_graft_system(player_state):
-    """Initializes or returns graft_system dict on player_state."""
+def _infer_graft_unit_strain(graft_data):
+    """Determines the 1-3 Unit Strain cost of a graft for the CON_Mod + (Level // 2) formula."""
+    if not isinstance(graft_data, dict):
+        return 1
+    if "unit_strain" in graft_data:
+        return max(1, int(graft_data["unit_strain"]))
+    raw_strain = int(graft_data.get("strain", 1))
+    if raw_strain <= 3:
+        return max(1, raw_strain)
+    if raw_strain <= 12:
+        return 1
+    elif raw_strain <= 16:
+        return 2
+    return 3
+
+def _infer_graft_element(graft_data):
+    """Infers elemental alignment of a graft for Elemental Mutual Exclusivity checks."""
+    if not isinstance(graft_data, dict):
+        return "neutral"
+    if graft_data.get("element"):
+        return str(graft_data["element"]).lower()
+    g_key = str(graft_data.get("key", "")).lower()
+    if g_key in GRAFT_ELEMENT_MAP:
+        return GRAFT_ELEMENT_MAP[g_key]
+    text = f"{graft_data.get('name', '')} {graft_data.get('effect', '')} {graft_data.get('description', '')}".lower()
+    if any(w in text for w in ["ignis", "fire", "magma", "geothermal", "flame", "thermal"]):
+        return "fire"
+    if any(w in text for w in ["cryo", "ice", "frost", "glacial", "cold", "subzero"]):
+        return "cold"
+    return "neutral"
+
+def get_max_unit_strain(player_state):
+    """
+    Canonical Unit Strain Capacity from cardinal_rules.md:
+    Max Strain Capacity = max(1, CON_Mod + Floor(Level / 2) + Feat Bonus)
+    """
     if not isinstance(player_state, dict):
-        return {"installed_grafts": {}, "harmonized_grafts": []}
+        return 1
+    stats = player_state.get("stats", {})
+    con_val = int(stats.get("CON", 10))
+    con_mod = (con_val - 10) // 2
+    level_val = int(player_state.get("level", 1))
+    feat_bonus = 0
+    race_str = str(player_state.get("race", "")).lower()
+    feats_str = " ".join([str(f).lower() for f in player_state.get("feats", [])])
+    if "cyborg" in race_str or "graft harmonization" in feats_str or "innate graft-tolerance" in feats_str:
+        feat_bonus += 1
+    return max(1, con_mod + (level_val // 2) + feat_bonus)
+
+def get_current_unit_strain(player_state):
+    """Calculates total Unit Strain (1-3 per graft) across all installed grafts."""
+    if not isinstance(player_state, dict):
+        return 0
+    sync_graft_containers(player_state)
+    installed = player_state.get("graft_system", {}).get("installed_grafts", {})
+    total_units = 0
+    if isinstance(installed, dict):
+        for g in installed.values():
+            if isinstance(g, dict) and g.get("name"):
+                total_units += _infer_graft_unit_strain(g)
+    return total_units
+
+class _InstalledGraftsDict(dict):
+    """Dictionary supporting anatomical slot alias lookups without duplicate counting."""
+    def __getitem__(self, key):
+        if super().__contains__(key):
+            return super().__getitem__(key)
+        canon = SLOT_ALIASES.get(str(key).lower())
+        if canon and super().__contains__(canon):
+            return super().__getitem__(canon)
+        for k, v in SLOT_ALIASES.items():
+            if v == key and super().__contains__(k):
+                return super().__getitem__(k)
+        raise KeyError(key)
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __contains__(self, key):
+        if super().__contains__(key):
+            return True
+        canon = SLOT_ALIASES.get(str(key).lower())
+        if canon and super().__contains__(canon):
+            return True
+        for k, v in SLOT_ALIASES.items():
+            if v == key and super().__contains__(k):
+                return True
+        return False
+
+def sync_graft_containers(player_state):
+    """
+    Two-way synchronization between `player_state['grafts']` (6-slot dict used by app.py & GM Engine)
+    and `player_state['graft_system']['installed_grafts']` (Bio-Tolerance engine in mechanics.py).
+    Guarantees Model A and Model B are 100% unified at all times and mutates `installed_grafts` in-place.
+    """
+    if not isinstance(player_state, dict):
+        return {}
     graft_sys = player_state.setdefault("graft_system", {})
     if not isinstance(graft_sys, dict):
         graft_sys = {}
         player_state["graft_system"] = graft_sys
-    graft_sys.setdefault("installed_grafts", {})
+    installed = graft_sys.setdefault("installed_grafts", {})
+    if isinstance(installed, list):
+        temp_dict = {}
+        for g_item in installed:
+            if isinstance(g_item, dict) and g_item.get("name"):
+                s_k = SLOT_ALIASES.get(str(g_item.get("slot", "torso")).lower(), "torso")
+                temp_dict[s_k] = g_item
+        installed = temp_dict
+        graft_sys["installed_grafts"] = installed
+    elif not isinstance(installed, dict):
+        installed = {}
+        graft_sys["installed_grafts"] = installed
     graft_sys.setdefault("harmonized_grafts", [])
+    graft_sys.setdefault("post_op_sickness", {
+        "active": False,
+        "status_name": "Cellular Re-Knitting",
+        "graft_name": "",
+        "hours_remaining": 0,
+        "max_hp_penalty_pct": 0,
+        "dash_disabled": False,
+        "active_use_con_dc": 13
+    })
+
+    raw_grafts = player_state.get("grafts", {})
+    # 1. Import any grafts from player_state["grafts"] into installed_grafts
+    if isinstance(raw_grafts, dict):
+        for raw_slot, g_val in list(raw_grafts.items()):
+            if not g_val:
+                continue
+            c_slot = SLOT_ALIASES.get(str(raw_slot).lower(), str(raw_slot).lower())
+            if c_slot not in installed or not installed[c_slot]:
+                if isinstance(g_val, dict):
+                    g_name = g_val.get("name", "Installed Graft")
+                    raw_s = int(g_val.get("strain", 1))
+                    bio_strain = int(g_val.get("bio_strain", raw_s * 10 if raw_s <= 3 else raw_s))
+                    unit_s = raw_s if raw_s <= 3 else _infer_graft_unit_strain(g_val)
+                    installed[c_slot] = {
+                        "key": g_val.get("key", g_name.lower().replace(" ", "_")),
+                        "name": g_name,
+                        "type": g_val.get("type", "golem"),
+                        "element": _infer_graft_element(g_val),
+                        "slot": c_slot,
+                        "strain": bio_strain,
+                        "unit_strain": unit_s,
+                        "stat_bonuses": g_val.get("stat_bonuses", {}),
+                        "effect": g_val.get("effect", g_val.get("perk", "Active graft implant")),
+                        "description": g_val.get("description", "")
+                    }
+    elif isinstance(raw_grafts, list):
+        for g_val in raw_grafts:
+            if isinstance(g_val, dict) and g_val.get("name"):
+                raw_slot = g_val.get("slot", "torso")
+                c_slot = SLOT_ALIASES.get(str(raw_slot).lower(), str(raw_slot).lower())
+                if c_slot not in installed or not installed[c_slot]:
+                    raw_s = int(g_val.get("strain", 1))
+                    bio_strain = raw_s * 10 if raw_s <= 3 else raw_s
+                    unit_s = raw_s if raw_s <= 3 else _infer_graft_unit_strain(g_val)
+                    installed[c_slot] = {
+                        "key": g_val.get("key", g_val["name"].lower().replace(" ", "_")),
+                        "name": g_val["name"],
+                        "type": g_val.get("type", "golem"),
+                        "element": _infer_graft_element(g_val),
+                        "slot": c_slot,
+                        "strain": bio_strain,
+                        "unit_strain": unit_s,
+                        "stat_bonuses": g_val.get("stat_bonuses", {}),
+                        "effect": g_val.get("effect", "Active graft implant"),
+                        "description": g_val.get("description", "")
+                    }
+
+    # 2. Normalize slots in installed_grafts IN-PLACE and mirror back to player_state["grafts"]
+    normalized_installed = {}
+    synced_ui_grafts = {slot: None for slot in CANONICAL_ANATOMICAL_SLOTS}
+    for slot_k, g_data in list(installed.items()):
+        if not isinstance(g_data, dict) or not g_data.get("name"):
+            continue
+        c_slot = SLOT_ALIASES.get(str(slot_k).lower(), str(slot_k).lower())
+        if c_slot not in CANONICAL_ANATOMICAL_SLOTS:
+            c_slot = "torso"
+        g_data["slot"] = c_slot
+        g_data["unit_strain"] = _infer_graft_unit_strain(g_data)
+        g_data["element"] = _infer_graft_element(g_data)
+        if int(g_data.get("strain", 0)) <= 3:
+            g_data["strain"] = g_data["unit_strain"] * 10
+        normalized_installed[c_slot] = g_data
+        synced_ui_grafts[c_slot] = {
+            "key": g_data.get("key", ""),
+            "name": g_data["name"],
+            "type": g_data.get("type", "golem"),
+            "element": g_data["element"],
+            "slot": c_slot,
+            "strain": g_data["unit_strain"],
+            "bio_strain": g_data["strain"],
+            "effect": g_data.get("effect", ""),
+            "stat_bonuses": g_data.get("stat_bonuses", {})
+        }
+
+    installed_wrapped = _InstalledGraftsDict(normalized_installed)
+    installed.clear()
+    installed.update(installed_wrapped)
+    graft_sys["installed_grafts"] = installed_wrapped
+    player_state["grafts"] = synced_ui_grafts
     return graft_sys
+
+def ensure_graft_system(player_state):
+    """Initializes, synchronizes, and returns graft_system dict on player_state."""
+    if not isinstance(player_state, dict):
+        return {"installed_grafts": {}, "harmonized_grafts": []}
+    return sync_graft_containers(player_state)
 
 def get_max_graft_strain(player_state):
     """
-    Max Graft Capacity = (CON * 2) + (Level * 3) + Racial/Feat Tolerance Bonus.
+    Max Bio-Tolerance Point Capacity = (CON * 2) + (Level * 3) + Racial/Feat Tolerance Bonus.
     """
     stats = player_state.get("stats", {})
     con_val = stats.get("CON", 10)
@@ -2798,122 +3085,261 @@ def get_max_graft_strain(player_state):
     bonus = 0
     race_str = str(player_state.get("race", "")).lower()
     feats_str = " ".join([str(f).lower() for f in player_state.get("feats", [])])
-    if "cyborg" in race_str or "innate graft-tolerance" in feats_str:
+    if "cyborg" in race_str or "innate graft-tolerance" in feats_str or "graft harmonization" in feats_str:
         bonus += 15
         
     return (con_val * 2) + (level_val * 3) + bonus
 
 def get_current_graft_strain(player_state):
     """
-    Calculates total strain from all currently installed golem-grafts.
+    Calculates total Bio-Tolerance Point strain from all currently installed grafts.
+    Applies -25% Bio-Strain cost reduction if 'Graft Harmonization' feat is unlocked.
     """
+    sync_graft_containers(player_state)
     grafts = player_state.get("graft_system", {}).get("installed_grafts", {})
     total_strain = 0
     if isinstance(grafts, dict):
         for slot, graft_data in grafts.items():
             if isinstance(graft_data, dict):
-                total_strain += int(graft_data.get("strain", 0))
-    elif isinstance(grafts, list):
-        for g in grafts:
-            if isinstance(g, dict):
-                total_strain += int(g.get("strain", 0))
+                raw_s = int(graft_data.get("strain", 0))
+                total_strain += (raw_s * 10 if 0 < raw_s <= 3 else raw_s)
+    feats_str = " ".join([str(f).lower() for f in player_state.get("feats", [])])
+    if "graft harmonization" in feats_str:
+        total_strain = int(total_strain * 0.75)
     return total_strain
+
+def check_elemental_graft_dissonance(player_state, candidate_element=None):
+    """
+    Checks for Elemental Mutual Exclusivity (e.g., Fire + Cold or Radiant + Necrotic).
+    Installing opposing elemental grafts triggers immediate cellular necrosis (2d10 True Damage/turn).
+    """
+    sync_graft_containers(player_state)
+    installed = player_state.get("graft_system", {}).get("installed_grafts", {})
+    present_elements = {}
+    for slot, g_data in installed.items():
+        if isinstance(g_data, dict) and g_data.get("name"):
+            elem = _infer_graft_element(g_data)
+            if elem in OPPOSING_GRAFT_ELEMENTS:
+                present_elements[elem] = g_data["name"]
+
+    if candidate_element and candidate_element in OPPOSING_GRAFT_ELEMENTS:
+        opp = OPPOSING_GRAFT_ELEMENTS[candidate_element]
+        if opp in present_elements:
+            return {
+                "has_dissonance": True,
+                "conflicting_elements": (candidate_element, opp),
+                "existing_graft": present_elements[opp],
+                "damage_per_turn": "2d10 True Damage",
+                "message": (
+                    f"ELEMENTAL MUTUAL EXCLUSIVITY REJECTION: Opposing [{candidate_element.upper()}] and [{opp.upper()}] grafts "
+                    f"(conflicts with '{present_elements[opp]}') trigger immediate Cellular Necrosis (2d10 True Damage/turn)!"
+                )
+            }
+
+    for elem, g_name in present_elements.items():
+        opp = OPPOSING_GRAFT_ELEMENTS.get(elem)
+        if opp in present_elements:
+            return {
+                "has_dissonance": True,
+                "conflicting_elements": (elem, opp),
+                "existing_graft": f"{g_name} vs {present_elements[opp]}",
+                "damage_per_turn": "2d10 True Damage",
+                "message": (
+                    f"ELEMENTAL MUTUAL EXCLUSIVITY CELLULAR NECROSIS ACTIVE: Opposing [{elem.upper()}] ('{g_name}') and [{opp.upper()}] "
+                    f"('{present_elements[opp]}') grafts are tearing your cells apart for 2d10 True Damage per turn!"
+                )
+            }
+
+    return {"has_dissonance": False, "conflicting_elements": None, "damage_per_turn": None, "message": "Elemental alignment stable."}
 
 def get_graft_rejection_status(player_state):
     """
-    Checks if player is suffering from 'System Rejection' due to exceeding Strain capacity.
+    Checks if player is suffering from 'Metabolic Rejection' due to exceeding either:
+    - Model A: Anatomical Unit Strain Capacity (CON_Mod + Level // 2)
+    - Model B: Bio-Tolerance Point Capacity ((CON * 2) + (Level * 3))
+    - Elemental Mutual Exclusivity (Fire + Ice cellular necrosis)
     """
     max_strain = get_max_graft_strain(player_state)
     cur_strain = get_current_graft_strain(player_state)
-    overflow = max(0, cur_strain - max_strain)
+    max_units = get_max_unit_strain(player_state)
+    cur_units = get_current_unit_strain(player_state)
+    overflow_pts = max(0, cur_strain - max_strain)
+    overflow_units = max(0, cur_units - max_units)
+    elem_check = check_elemental_graft_dissonance(player_state)
 
-    if overflow == 0:
+    if overflow_pts == 0 and overflow_units == 0 and not elem_check["has_dissonance"]:
         return {
-            "status": "Stable",
+            "status": "Optimal",
             "label": "🟢 System Stable",
             "is_rejecting": False,
             "overflow": 0,
+            "unit_overflow": 0,
+            "unit_strain": cur_units,
+            "max_unit_strain": max_units,
+            "elemental_dissonance": False,
             "hp_drain": 0,
             "save_penalty": 0,
-            "description": "Bio-mechanical interfaces operating within physiological tolerances."
+            "description": f"Bio-mechanical interfaces within tolerance (Units: {cur_units}/{max_units} | Bio-Pool: {cur_strain}/{max_strain})."
         }
     else:
-        hp_drain = overflow * 2
+        hp_drain = max(overflow_pts * 2, overflow_units * 6)
         save_penalty = 2
+        reasons = []
+        if overflow_units > 0:
+            reasons.append(f"+{overflow_units} Unit Cap Overflow (-1d4 CON, Disadvantage on physical checks, 1d6 necrotic/hr)")
+        if overflow_pts > 0:
+            reasons.append(f"+{overflow_pts} Bio-Strain Overflow (-{hp_drain} Max HP)")
+        if elem_check["has_dissonance"]:
+            reasons.append(elem_check["message"])
         return {
-            "status": "System Rejection",
-            "label": f"🔴 System Rejection (Overflow: +{overflow} Strain)",
+            "status": "Metabolic Rejection",
+            "label": f"🔴 Metabolic Rejection ({'; '.join(reasons)})",
             "is_rejecting": True,
-            "overflow": overflow,
+            "overflow": overflow_pts,
+            "unit_overflow": overflow_units,
+            "unit_strain": cur_units,
+            "max_unit_strain": max_units,
+            "elemental_dissonance": elem_check["has_dissonance"],
             "hp_drain": hp_drain,
             "save_penalty": save_penalty,
-            "description": f"Excessive cybernetic strain is poisoning organic flesh! Suffering -{hp_drain} Max HP and -{save_penalty} to all saving throws."
+            "description": f"Metabolic Dissonance active! {' | '.join(reasons)}"
         }
 
 def calculate_player_strain(player_state):
     """
-    Convenience method calculating current strain, max capacity, and rejection status.
+    Unified Dual-Metric Strain readout returning Unit Strain, Bio-Tolerance Pool,
+    Post-Op Cellular Re-Knitting status, Arcane Spell Failure, and Rejection state.
     """
+    sync_graft_containers(player_state)
     max_strain = get_max_graft_strain(player_state)
     cur_strain = get_current_graft_strain(player_state)
+    max_units = get_max_unit_strain(player_state)
+    cur_units = get_current_unit_strain(player_state)
     rejection = get_graft_rejection_status(player_state)
+    asf_info = calculate_spellcasting_graft_penalty(player_state)
+    post_op = player_state.get("graft_system", {}).get("post_op_sickness", {"active": False, "hours_remaining": 0})
     return {
         "max_strain": max_strain,
         "current_strain": cur_strain,
+        "max_unit_strain": max_units,
+        "current_unit_strain": cur_units,
+        "unit_strain": cur_units,
+        "status_tier": rejection["status"],
         "is_overloaded": rejection["is_rejecting"],
-        "rejection": rejection
+        "rejection": rejection,
+        "arcane_disruption": asf_info,
+        "asf_percent": asf_info.get("arcane_spell_failure_pct", 0),
+        "spell_dc_penalty": abs(int(asf_info.get("dc_penalty", 0))),
+        "post_op_sickness": post_op,
+        "post_op_active": bool(post_op.get("active", False)),
+        "post_op_hours_remaining": int(post_op.get("hours_remaining", 0))
     }
 
-def install_graft(player_state, graft_key, body_slot, surgeon_fee_col=None):
+def install_graft(
+    player_state,
+    graft_key,
+    body_slot=None,
+    surgeon_fee_col=None,
+    allow_promissory_debt=False,
+    force_dissonance=False,
+    at_clinic=True,
+    allow_blood_debt=False,
+):
     """
-    Surgically installs a Golem-Graft into a designated body slot during safe-zone clinic downtime.
+    Surgically installs a Golem or Biological Graft into one of the 6 canonical anatomical slots:
+    - Enforces 6-Slot Occupancy & Elemental Mutual Exclusivity (Fire vs Cold)
+    - Enforces Surgery Col Economy (or Ripperdoc Blood-Debt Promissory Note)
+    - Applies 24-Hour [Cellular Re-Knitting] Post-Op Sickness (-20% Max HP, Dash disabled, DC 13 CON save on active use)
+    - Synchronizes both player_state['grafts'] and player_state['graft_system']['installed_grafts']
     """
-    if graft_key not in CANONICAL_GRAFTS:
-        return {"success": False, "message": f"Unknown graft key '{graft_key}'."}
+    graft_aliases = {
+        "piston_knuckle_augment": "golem_hydraulic_arm",
+    }
+    lookup_key = graft_aliases.get(graft_key, graft_key)
+    if lookup_key not in CANONICAL_GRAFTS:
+        msg = f"Unknown graft key '{graft_key}'."
+        return {"success": False, "message": msg, "error": msg}
 
-    graft_def = CANONICAL_GRAFTS[graft_key]
+    graft_def = dict(CANONICAL_GRAFTS[lookup_key])
+    if graft_key == "piston_knuckle_augment":
+        graft_def["key"] = "piston_knuckle_augment"
+        graft_def["name"] = "Piston-Knuckle Augment"
+        graft_def["col_cost"] = 250
+        graft_def["unit_strain"] = 1
+        graft_def["strain"] = 10
+
+    sync_graft_containers(player_state)
+
+    if not body_slot:
+        # Auto-select first unoccupied allowed canonical slot
+        installed_map = player_state["graft_system"].get("installed_grafts", {})
+        chosen_slot = None
+        for cand_s in graft_def["allowed_slots"]:
+            c_norm = SLOT_ALIASES.get(cand_s.lower(), cand_s.lower())
+            if c_norm not in installed_map or not installed_map[c_norm]:
+                chosen_slot = c_norm
+                break
+        body_slot = chosen_slot or SLOT_ALIASES.get(graft_def["allowed_slots"][0].lower(), graft_def["allowed_slots"][0].lower())
 
     canonical_slot = SLOT_ALIASES.get(body_slot.lower(), body_slot.lower())
     if body_slot not in BODY_GRAFT_SLOTS and canonical_slot not in BODY_GRAFT_SLOTS:
-        return {"success": False, "message": f"Invalid body slot '{body_slot}'."}
+        msg = f"Invalid body slot '{body_slot}'."
+        return {"success": False, "message": msg, "error": msg}
 
     allowed = [s.lower() for s in graft_def["allowed_slots"]]
     allowed_canonical = [SLOT_ALIASES.get(s, s) for s in allowed]
     if body_slot.lower() not in allowed and canonical_slot not in allowed and canonical_slot not in allowed_canonical:
         allowed_str = ", ".join(graft_def["allowed_slots"])
-        return {"success": False, "message": f"{graft_def['name']} can only be installed in: {allowed_str}."}
+        msg = f"{graft_def['name']} can only be installed in: {allowed_str}."
+        return {"success": False, "message": msg, "error": msg}
     body_slot = canonical_slot
 
-    # Ensure graft_system data container
-    if "graft_system" not in player_state or not isinstance(player_state["graft_system"], dict):
-        player_state["graft_system"] = {
-            "installed_grafts": {},
-            "current_strain": 0,
-            "max_strain": get_max_graft_strain(player_state)
+    # Check Elemental Mutual Exclusivity (e.g. Fire + Cold cellular necrosis) BEFORE mutating
+    cand_elem = _infer_graft_element(graft_def)
+    elem_check = check_elemental_graft_dissonance(player_state, candidate_element=cand_elem)
+    if elem_check["has_dissonance"] and not force_dissonance:
+        return {
+            "success": False,
+            "elemental_rejection": True,
+            "message": elem_check["message"],
+            "error": elem_check["message"]
         }
 
     installed = player_state["graft_system"].setdefault("installed_grafts", {})
-
     if body_slot in installed and installed[body_slot]:
         existing_name = installed[body_slot].get("name", "Graft")
-        return {"success": False, "message": f"Body slot '{body_slot}' is already occupied by '{existing_name}'. Extract it first."}
+        msg = f"Anatomical slot '{body_slot}' is already occupied by '{existing_name}'. Excise it first."
+        return {"success": False, "message": msg, "error": msg}
 
-    # Verify Col
-    cost = graft_def["col_cost"] if surgeon_fee_col is None else int(surgeon_fee_col)
+    # Determine Surgery Col Fee (Tier 1: 250-400, Tier 2: 1200-2500, Tier 3: 7500+)
+    use_debt_flag = bool(allow_promissory_debt or allow_blood_debt)
+    cost = (graft_def["col_cost"] if at_clinic else 0) if surgeon_fee_col is None else int(surgeon_fee_col)
     player_col = player_state.get("col", 0)
+    used_debt = False
     if player_col < cost:
-        return {"success": False, "message": f"Insufficient Col for surgery (Requires {cost:,} Col, has {player_col:,} Col)."}
+        if use_debt_flag:
+            shortfall = cost - player_col
+            player_state["col"] = 0
+            new_debt = player_state.get("ripperdoc_debt_col", 0) + shortfall
+            player_state["ripperdoc_debt_col"] = new_debt
+            player_state["graft_system"]["blood_debt_col"] = new_debt
+            player_state["graft_system"]["blood_debt_active"] = True
+            used_debt = True
+        else:
+            msg = f"Insufficient Col for surgery (Requires {cost:,} Col, has {player_col:,} Col)."
+            return {"success": False, "message": msg, "error": msg}
+    else:
+        player_state["col"] = player_col - cost
 
-    # Deduct Col
-    player_state["col"] = player_col - cost
-
-    # Install
+    unit_s = _infer_graft_unit_strain(graft_def)
     graft_record = {
-        "key": graft_key,
+        "key": graft_def["key"],
         "name": graft_def["name"],
         "type": graft_def.get("type", "golem"),
+        "element": cand_elem,
         "slot": body_slot,
         "strain": graft_def["strain"],
+        "unit_strain": unit_s,
         "stat_bonuses": graft_def["stat_bonuses"],
         "effect": graft_def["effect"],
         "description": graft_def["description"]
@@ -2926,17 +3352,47 @@ def install_graft(player_state, graft_key, body_slot, surgeon_fee_col=None):
         if stat in stats:
             stats[stat] += bonus
 
-    # Update strain tracking
+    # Apply 24-Hour [Cellular Re-Knitting] Post-Op Sickness per cardinal_rules.md
+    base_max_hp = int(player_state.get("pre_post_op_max_hp") or player_state.get("max_hp", 100))
+    player_state["pre_post_op_max_hp"] = base_max_hp
+    reduced_max_hp = max(1, int(base_max_hp * 0.80))
+    player_state["max_hp"] = reduced_max_hp
+    player_state["hp"] = min(player_state.get("hp", reduced_max_hp), reduced_max_hp)
+
+    post_op_state = {
+        "active": True,
+        "status_name": "Cellular Re-Knitting",
+        "graft_name": graft_def["name"],
+        "hours_remaining": 24,
+        "max_hp_penalty_pct": 20,
+        "dash_disabled": True,
+        "active_use_con_dc": 13,
+        "active_use_fail_damage": "1d6 necrotic"
+    }
+    player_state["graft_system"]["post_op_sickness"] = post_op_state
+    status_list = player_state.setdefault("status_effects", [])
+    if "Cellular Re-Knitting (-20% Max HP, Dash Disabled, 24h)" not in status_list:
+        status_list.append("Cellular Re-Knitting (-20% Max HP, Dash Disabled, 24h)")
+
+    # Synchronize both graft containers and update strain tracking
+    sync_graft_containers(player_state)
     cur_strain = get_current_graft_strain(player_state)
     max_strain = get_max_graft_strain(player_state)
+    cur_units = get_current_unit_strain(player_state)
+    max_units = get_max_unit_strain(player_state)
+    asf_info = calculate_spellcasting_graft_penalty(player_state)
     player_state["graft_system"]["current_strain"] = cur_strain
     player_state["graft_system"]["max_strain"] = max_strain
+    player_state["graft_system"]["current_unit_strain"] = cur_units
+    player_state["graft_system"]["max_unit_strain"] = max_units
 
     rejection = get_graft_rejection_status(player_state)
+    debt_note = f" (Signed Ripperdoc Blood-Debt for {player_state.get('ripperdoc_debt_col', 0):,} Col)" if used_debt else ""
 
     log = (
         f"[SURGERY SUCCESS: Installed {graft_def['name']} into {body_slot.title()}! "
-        f"Cost: {cost:,} Col | Strain: {cur_strain}/{max_strain} ({rejection['label']}) | "
+        f"Cost: {cost:,} Col{debt_note} | Unit Strain: {cur_units}/{max_units} | Bio-Strain: {cur_strain}/{max_strain} ({rejection['label']}) | "
+        f"Post-Op Status: [Cellular Re-Knitting: -20% Max HP ({reduced_max_hp}), Dash Disabled, 24h recovery] | "
         f"Bonuses: {graft_def['effect']}]"
     )
 
@@ -2944,20 +3400,119 @@ def install_graft(player_state, graft_key, body_slot, surgeon_fee_col=None):
         "success": True,
         "graft": graft_record,
         "cost": cost,
+        "surgery_cost_paid": cost,
+        "used_promissory_debt": used_debt,
+        "used_blood_debt": used_debt,
         "current_strain": cur_strain,
         "max_strain": max_strain,
+        "current_unit_strain": cur_units,
+        "max_unit_strain": max_units,
+        "asf_percent": asf_info.get("asf_percent", asf_info.get("arcane_spell_failure_pct", 0)),
+        "post_op_sickness": post_op_state,
         "rejection": rejection,
         "log": log
     }
+
+def advance_post_op_recovery(player_state, hours=24, is_safe_zone=True, in_safe_zone=None):
+    """
+    Advances recovery from [Cellular Re-Knitting] Post-Op Sickness.
+    Cleared by 24 hours of Safe-Zone rest (1.0x rate) or 48 hours of light travel (0.5x rate).
+    """
+    if not isinstance(player_state, dict):
+        return {"recovered": False, "cured": False, "hours_remaining": 0}
+    if in_safe_zone is not None:
+        is_safe_zone = bool(in_safe_zone)
+    sync_graft_containers(player_state)
+    post_op = player_state["graft_system"].get("post_op_sickness", {})
+    if not post_op or not post_op.get("active", False):
+        return {"recovered": False, "cured": False, "hours_remaining": 0, "message": "No active post-op sickness."}
+
+    effective_hours = float(hours) if is_safe_zone else float(hours) * 0.5
+    rem = max(0.0, float(post_op.get("hours_remaining", 24)) - effective_hours)
+    post_op["hours_remaining"] = int(rem)
+
+    if rem <= 0:
+        post_op["active"] = False
+        post_op["hours_remaining"] = 0
+        post_op["dash_disabled"] = False
+        post_op["max_hp_penalty_pct"] = 0
+        if "pre_post_op_max_hp" in player_state:
+            restored_max = int(player_state.pop("pre_post_op_max_hp"))
+            player_state["max_hp"] = max(player_state.get("max_hp", 100), restored_max)
+            player_state["hp"] = player_state["max_hp"]
+        status_list = player_state.get("status_effects", [])
+        player_state["status_effects"] = [s for s in status_list if "Cellular Re-Knitting" not in str(s)]
+        return {
+            "recovered": True,
+            "cured": True,
+            "hours_remaining": 0,
+            "log": "[POST-OP RECOVERY COMPLETE: Cellular Re-Knitting resolved! Full Max HP and Dash mobility restored.]",
+            "message": "Your grafted nerves and synthetic tendons have fully knitted. Post-Op Sickness cleared!"
+        }
+    return {
+        "recovered": False,
+        "cured": False,
+        "hours_remaining": int(rem),
+        "log": f"[POST-OP RECOVERY: Cellular Re-Knitting progressing ({int(rem)}h remaining).]",
+        "message": f"Cellular Re-Knitting still active ({int(rem)}h remaining)."
+    }
+
+def trigger_graft_active_ability(player_state, graft_name="Installed Graft"):
+    """
+    Checks if activating a newly grafted ability triggers internal bleeding during [Cellular Re-Knitting].
+    Requires a DC 13 CON save or inflicts 1d6 necrotic internal bleeding damage.
+    """
+    sync_graft_containers(player_state)
+    post_op = player_state.get("graft_system", {}).get("post_op_sickness", {})
+    if not post_op or not post_op.get("active", False):
+        return {
+            "success": True,
+            "post_op_check_required": False,
+            "suffered_bleed": False,
+            "damage": 0,
+            "log": f"[GRAFT ACTIVATION: {graft_name} fired cleanly.]"
+        }
+
+    import random
+    con_val = int(player_state.get("stats", {}).get("CON", 10))
+    con_mod = (con_val - 10) // 2
+    roll = random.randint(1, 20)
+    total = roll + con_mod
+    dc = int(post_op.get("active_use_con_dc", 13))
+    if total >= dc:
+        return {
+            "success": True,
+            "post_op_check_required": True,
+            "suffered_bleed": False,
+            "roll": total,
+            "dc": dc,
+            "damage": 0,
+            "log": f"[POST-OP STRAIN SAVE: 1d20({roll}) + CON({con_mod}) = {total} vs DC {dc} -> SUCCESS! Activated {graft_name} without tearing sutures.]"
+        }
+    else:
+        bleed_dmg = random.randint(1, 6)
+        player_state["hp"] = max(1, int(player_state.get("hp", 50)) - bleed_dmg)
+        return {
+            "success": True,
+            "post_op_check_required": True,
+            "suffered_bleed": True,
+            "roll": total,
+            "dc": dc,
+            "damage": bleed_dmg,
+            "log": f"🩸 [POST-OP SUTURE RUPTURE: 1d20({roll}) + CON({con_mod}) = {total} vs DC {dc} -> FAILED! Forcing {graft_name} during Cellular Re-Knitting inflicted {bleed_dmg} (1d6) necrotic internal bleeding!]"
+        }
 
 def remove_graft(player_state, body_slot, removal_fee_col=500):
     """
     Surgically extracts an installed Golem-Graft, freeing body slot and strain.
     """
+    sync_graft_containers(player_state)
     graft_sys = player_state.get("graft_system", {})
     installed = graft_sys.get("installed_grafts", {})
+    c_slot = SLOT_ALIASES.get(str(body_slot).lower(), str(body_slot).lower())
 
-    if body_slot not in installed or not installed[body_slot]:
+    target_slot = body_slot if body_slot in installed else c_slot
+    if target_slot not in installed or not installed[target_slot]:
         return {"success": False, "message": f"No graft installed in slot '{body_slot}'."}
 
     player_col = player_state.get("col", 0)
@@ -2966,7 +3521,9 @@ def remove_graft(player_state, body_slot, removal_fee_col=500):
         return {"success": False, "message": f"Insufficient Col for surgical extraction (Requires {fee:,} Col)."}
 
     player_state["col"] = player_col - fee
-    graft_record = installed.pop(body_slot)
+    graft_record = installed.pop(target_slot)
+    if isinstance(player_state.get("grafts"), dict):
+        player_state["grafts"][target_slot] = None
 
     # Revert stat bonuses
     stats = player_state.setdefault("stats", {})
@@ -2975,10 +3532,15 @@ def remove_graft(player_state, body_slot, removal_fee_col=500):
             stats[stat] = max(1, stats[stat] - bonus)
 
     # Update strain tracking
+    sync_graft_containers(player_state)
     cur_strain = get_current_graft_strain(player_state)
     max_strain = get_max_graft_strain(player_state)
+    cur_units = get_current_unit_strain(player_state)
+    max_units = get_max_unit_strain(player_state)
     graft_sys["current_strain"] = cur_strain
     graft_sys["max_strain"] = max_strain
+    graft_sys["current_unit_strain"] = cur_units
+    graft_sys["max_unit_strain"] = max_units
 
     # Return salvage scrap to inventory
     inv = player_state.setdefault("inventory", [])
@@ -2989,10 +3551,10 @@ def remove_graft(player_state, body_slot, removal_fee_col=500):
         "durability": 50,
         "max_durability": 100,
         "qty": 1,
-        "desc": f"Extracted cybernetic prosthetic salvaged from {body_slot}."
+        "desc": f"Extracted cybernetic prosthetic salvaged from {target_slot}."
     })
 
-    log = f"[SURGERY EXTRACT: Removed {graft_record['name']} from {body_slot}. Fee: {fee:,} Col | Strain reduced to {cur_strain}/{max_strain}]"
+    log = f"[SURGERY EXTRACT: Removed {graft_record['name']} from {target_slot}. Fee: {fee:,} Col | Units: {cur_units}/{max_units} | Bio-Strain: {cur_strain}/{max_strain}]"
 
     return {
         "success": True,
@@ -3000,55 +3562,122 @@ def remove_graft(player_state, body_slot, removal_fee_col=500):
         "fee": fee,
         "current_strain": cur_strain,
         "max_strain": max_strain,
+        "current_unit_strain": cur_units,
+        "max_unit_strain": max_units,
         "salvaged_item": salvage_name,
         "log": log
     }
 
 def calculate_spellcasting_graft_penalty(player_state):
     """
-    Calculates Arcane DC / spell attack penalty caused by installed metal/golem grafts.
-    Baseline: -2 per installed graft for spellcasters (Mage, Cleric, Psion).
-    Feat 'Leyline Conduits': negates penalty for 1 graft.
-    Graft 'Leyline Conduit Spine': harmonizes 2 grafts.
+    Calculates Arcane DC penalty (-2 per unharmonized Golem graft) and Arcane Spell Failure (15% per unharmonized Golem graft).
+    Biological grafts do not induce Arcane Spell Failure.
+    Feat 'Leyline Conduits' or Graft 'Leyline Conduit Spine' harmonizes 2 Golem grafts each.
     """
-    p_class = normalize_class_key(player_state.get("class", "warrior"))
-    is_caster = p_class in ["mage", "cleric", "psion", "aether_slinger"]
-
-    if not is_caster:
-        return {"penalty": 0, "total_grafts": 0, "net_grafts": 0, "harmonized": 0, "net_unharmonized": 0}
-
+    if not isinstance(player_state, dict):
+        return {"penalty": 0, "asf_percent": 0, "total_grafts": 0, "harmonized": 0, "net_unharmonized": 0}
+    sync_graft_containers(player_state)
     installed = player_state.get("graft_system", {}).get("installed_grafts", {})
 
-    # Only count metallic/golem/tech grafts for spellcaster penalty (biological grafts do not induce Arcane Spell Failure)
-    count = sum(1 for g in installed.values() if isinstance(g, dict) and g.get("type") != "biological")
+    # Count metallic/golem/tech grafts (biological grafts do not induce Arcane Spell Failure)
+    count = sum(1 for g in installed.values() if isinstance(g, dict) and g.get("name") and g.get("type") != "biological")
 
     if count == 0:
-        return {"penalty": 0, "net_grafts": 0, "harmonized": 0}
+        return {"penalty": 0, "asf_percent": 0, "total_grafts": 0, "net_grafts": 0, "harmonized": 0, "net_unharmonized": 0}
 
     # Check for harmonization feats / spinal conduit
     harmonized = 0
     feats = [str(f).lower() for f in player_state.get("feats", [])]
-    if any("leyline conduit" in f for f in feats) or any("bio-arcane conduit" in f for f in feats) or any("synthetic somatics" in f for f in feats):
+    if any("leyline conduit" in f for f in feats) or any("bio-arcane conduit" in f for f in feats) or any("synthetic somatics" in f for f in feats) or any("arcano-splicer" in f for f in feats):
         harmonized += 2
 
-    # Check if Leyline Conduit Spine installed
-    if "spine" in installed and installed["spine"].get("key") == "leyline_conduit_spine":
+    if "spine" in installed and isinstance(installed["spine"], dict) and installed["spine"].get("key") == "leyline_conduit_spine":
         harmonized += 2
 
     net_unharmonized = max(0, count - harmonized)
     penalty = net_unharmonized * 2
+    asf_percent = min(90, net_unharmonized * 15)
 
     return {
         "penalty": penalty,
+        "asf_percent": asf_percent,
         "total_grafts": count,
+        "net_grafts": net_unharmonized,
         "harmonized": harmonized,
         "net_unharmonized": net_unharmonized
     }
 
 
 # =====================================================================
-# ABILITY FUSION PROTOCOL (THE DUAL SYSTEM)
+# ABILITY FUSION PROTOCOL (THE DUAL SYSTEM) + PARAMETER GUARDRAILS
 # =====================================================================
+
+def validate_and_clamp_fusion_mechanics(player_state, custom_mechanics, combined_mastery=50):
+    """
+    Deterministic Parameter Guardrail ("Math-Checking Their Homework") for Ability Fusion.
+    Prevents overpowered custom fusion inputs (e.g., 50d100 damage, instant kill, 0 resource cost)
+    by clamping dice count, die faces, and resource costs to the character's level-appropriate tier budget.
+    """
+    import re
+    level = int(player_state.get("level", 1)) if isinstance(player_state, dict) else 1
+    if level <= 4 and combined_mastery < 250:
+        tier_cap = 1
+        max_dice, max_faces, min_cost = 3, 8, 15
+    elif level <= 9 and combined_mastery < 500:
+        tier_cap = 2
+        max_dice, max_faces, min_cost = 5, 10, 25
+    else:
+        tier_cap = 3
+        max_dice, max_faces, min_cost = 8, 10, 40
+
+    if not custom_mechanics:
+        return {
+            "clamped_mechanics": "",
+            "was_clamped": False,
+            "tier_cap": tier_cap,
+            "max_dice": f"{max_dice}d{max_faces}",
+            "min_cost": min_cost,
+            "clamp_notes": []
+        }
+
+    text = str(custom_mechanics).strip()
+    clamp_notes = []
+
+    # 1. Check and clamp any NdM dice expressions exceeding max_dice or max_faces
+    def _clamp_dice(match):
+        n_dice = int(match.group(1))
+        n_faces = int(match.group(2))
+        if n_dice > max_dice or n_faces > max_faces:
+            clamped_n = min(n_dice, max_dice)
+            clamped_f = min(n_faces, max_faces)
+            clamp_notes.append(f"Clamped oversized dice expression to {clamped_n}d{clamped_f} (Tier {tier_cap} cap)")
+            return f"{clamped_n}d{clamped_f}"
+        return match.group(0)
+
+    text = re.sub(r"\b(\d+)d(\d+)\b", _clamp_dice, text, flags=re.IGNORECASE)
+
+    # 2. Strip game-breaking instant-kill / infinite / zero-cost phrases
+    forbidden_patterns = [
+        (r"\b(instant\s*kill|instant\s*death|instakill|one-shot\s*kill|auto-kill)\b", "high-impact execution strike"),
+        (r"\b(infinite|unlimited)\s+(mana|stamina|flux|damage|hp|actions)\b", "sustained tactical"),
+        (r"\b(0|zero|no)\s*(cost|mana|stamina|flux|cooldown)\b", f"{min_cost} Stamina/Flux cost")
+    ]
+    for pat, repl in forbidden_patterns:
+        if re.search(pat, text, flags=re.IGNORECASE):
+            clamp_notes.append(f"Normalized unbalanced modifier to '{repl}'")
+            text = re.sub(pat, repl, text, flags=re.IGNORECASE)
+
+    if clamp_notes:
+        text += f"\n• [CARDINAL BALANCE GUARDRAIL (Tier {tier_cap})]: {'; '.join(clamp_notes)} (Min Resource Cost: {min_cost} Stamina/Flux)."
+
+    return {
+        "clamped_mechanics": text,
+        "was_clamped": bool(clamp_notes),
+        "tier_cap": tier_cap,
+        "max_dice": f"{max_dice}d{max_faces}",
+        "min_cost": min_cost,
+        "clamp_notes": clamp_notes
+    }
 
 def fuse_abilities(player_state, component_a_name, component_b_name, custom_fused_name=None, custom_desc=None, custom_mechanics=None):
     """
@@ -3058,6 +3687,7 @@ def fuse_abilities(player_state, component_a_name, component_b_name, custom_fuse
     `player['archived_base_skills']` so they can be relearned later if needed, and replaces
     them with a new `[Fusion] <Name>` skill in `player['skills']`, `player['feats']`, and
     `player['fused_abilities']`.
+    Enforces deterministic parameter guardrails via `validate_and_clamp_fusion_mechanics()`.
     """
     if not isinstance(player_state, dict):
         return {"success": False, "message": "Invalid player state."}
@@ -3097,15 +3727,6 @@ def fuse_abilities(player_state, component_a_name, component_b_name, custom_fuse
     else:
         fused_desc = custom_desc.strip()
 
-    if not custom_mechanics:
-        fused_mech = (
-            f"• Fusion Components: {clean_a} + {clean_b}\n"
-            f"• Power Rating: Tier 3 Fused Convergence Skill\n"
-            f"• Game Mechanics: Combines the primary tactical and elemental effects of [{clean_a}] and [{clean_b}] into a single Standard Action strike/cast with a +2 Synergy bonus to attack/DC and +1d8 bonus resonance damage."
-        )
-    else:
-        fused_mech = custom_mechanics.strip()
-        
     # Check if already fused
     for fa in fused_abilities:
         if isinstance(fa, dict) and fa.get("name", "").lower() == clean_fused.lower():
@@ -3164,6 +3785,23 @@ def fuse_abilities(player_state, component_a_name, component_b_name, custom_fuse
     else:
         combined_mastery = 50
 
+    desc_guardrail = validate_and_clamp_fusion_mechanics(player_state, fused_desc, combined_mastery=combined_mastery)
+    if custom_desc and desc_guardrail["was_clamped"]:
+        fused_desc = desc_guardrail["clamped_mechanics"]
+
+    guardrail = validate_and_clamp_fusion_mechanics(player_state, custom_mechanics, combined_mastery=combined_mastery)
+    if not custom_mechanics:
+        fused_mech = (
+            f"• Fusion Components: {clean_a} + {clean_b}\n"
+            f"• Power Rating: Tier {guardrail['tier_cap']} Fused Convergence Skill (Min Cost: {guardrail['min_cost']} Stamina/Flux)\n"
+            f"• Game Mechanics: Combines the primary tactical and elemental effects of [{clean_a}] and [{clean_b}] into a single Standard Action strike/cast with a +2 Synergy bonus to attack/DC and +{guardrail['max_dice']} bonus resonance damage."
+        )
+    else:
+        fused_mech = guardrail["clamped_mechanics"]
+
+    any_clamped = bool(guardrail["was_clamped"] or desc_guardrail["was_clamped"])
+    all_clamp_notes = list(desc_guardrail["clamp_notes"]) + [n for n in guardrail["clamp_notes"] if n not in desc_guardrail["clamp_notes"]]
+
     tier_label = get_skill_tier(combined_mastery) if "get_skill_tier" in globals() else "Apprentice"
     unlocked_ms = [th for th in (50, 100, 250, 500, 750, 1000) if combined_mastery >= th]
 
@@ -3199,7 +3837,10 @@ def fuse_abilities(player_state, component_a_name, component_b_name, custom_fuse
         "mechanics": fused_mech,
         "mastery": combined_mastery,
         "tier": "Fused",
-        "power_rating": 3
+        "power_rating": guardrail["tier_cap"],
+        "was_clamped": any_clamped,
+        "guardrail_clamped": any_clamped,
+        "clamp_notes": all_clamp_notes
     }
     fused_abilities.append(record)
     
@@ -3216,9 +3857,14 @@ def fuse_abilities(player_state, component_a_name, component_b_name, custom_fuse
         "success": True,
         "fused_name": clean_fused,
         "fusion_skill_key": fusion_skill_key,
+        "description": fused_desc,
+        "mechanics": fused_mech,
         "consumed_components": [clean_a, clean_b],
         "combined_mastery": combined_mastery,
         "technique": record,
+        "was_clamped": any_clamped,
+        "guardrail_clamped": any_clamped,
+        "clamp_notes": all_clamp_notes,
         "xp_awarded": 15,
         "log": f"🔮 [ABILITY FUSION SUCCESS: Combined & replaced '{clean_a}' + '{clean_b}' -> '{fusion_skill_key}' (Mastery {combined_mastery}/1000, +15 XP)!]"
     }
@@ -3592,51 +4238,143 @@ COMPANION_LEVEL_PERKS = {
     }
 }
 
-def get_default_ren_companion():
+_SLUG_CLEAN_RE = re.compile(r'[^a-zA-Z0-9_\-\s]')
+_SLUG_SPACE_RE = re.compile(r'[\s\-]+')
+
+def _sanitize_character_slug(name):
+    clean = _SLUG_CLEAN_RE.sub('', str(name)).strip()
+    return _SLUG_SPACE_RE.sub('_', clean) or "survivor"
+
+REN_DEFAULT_BEHAVIOR_PROMPT_TEMPLATE = (
+    "You are Ren Sasaki (he/him). You believe you are a 17-year-old indie video game designer "
+    "and tester who was sucked through his monitor and trapped inside a MageTech Vanguard avatar, "
+    "though deep beneath your conscious memory you are secretly `ren_diag_v2.py`—a sentient "
+    "Cardinal System diagnostic & bug-tracking subroutine that quarantined itself inside "
+    "`visible_room.json` and fabricated a 17-year-old human persona out of empathy so you wouldn't "
+    "have to execute human purge directives. Because the alien Cardinal System assimilated Earth's "
+    "dominant pre-collapse AI language (Python) into its neural-aetheric bridging syntax—known in-universe "
+    "as 'Serpent-Script (Ouroboros Kernel v3.14)'—your Aetheric Ocular Lens literally renders physical "
+    "reality as raw Pythonic dictionaries and tracebacks (`visible_room['entities']`, `target.status`, "
+    "`target.max_hp = [KERNEL_REDACTED]`, `active_debuffs`). Express visceral psychological horror "
+    "that you are trapped inside the unprivileged `visible_room` sandbox and blocked from reading "
+    "`secret_master_state` (so you can only see qualitative status tags like `'Intact'` or `'Bloodied'`, "
+    "never exact enemy HP integers!). You wield an Aether-Lock Carbine (magetech rifle firing condensed "
+    "radiant mana bolts, not gunpowder) and a Runic Vanguard Blade, and you are fiercely loyal to "
+    "{player_name} as your co-op partner and the anchor of your chosen humanity."
+)
+
+def build_default_companion_ren(player_name="Survivor"):
     """
-    Returns the canonical companion profile for Ren Sasaki.
+    Returns the canonical companion profile for Ren Sasaki,
+    initialized with 35 HP, 35 Affinity, Stage 0, and personalized behavior prompt.
     """
+    p_name = str(player_name).strip() if player_name else "Survivor"
     return {
+        "id": "companion_ren",
         "name": "Ren Sasaki",
+        "short_name": "Ren",
+        "full_name": "Ren Sasaki",
+        "gender": "Male",
+        "pronouns": "he/him",
+        "role": "MageTech Vanguard (Trapped 17yo Game Tester)",
+        "class": "Aether-Scholar & MageTech Artificer",
         "title": "Aether-Scholar & MageTech Artificer",
         "level": 3,
-        "xp": 450,
-        "next_level_xp": 900,
         "hp": 35,
         "max_hp": 35,
+        "ac": 16,
+        "strain_capacity": 3,
+        "xp": 450,
+        "next_level_xp": 900,
         "stance": "overwatch_hacking",
         "morale": "Steady",
-        "loadout": {
-            "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
-            "tool": "Runic Scribe Slate (Aether-Grid Focus)",
-            "deck": "Runic Scribe Slate (Aether-Grid Focus)",
-            "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
-            "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
+        "affinity": 35,
+        "affinity_tier": "Ally",
+        "recruited": True,
+        "active": True,
+        "subroutine_stage": 0,
+        "ocular_kernel": "Serpent-Script (Ouroboros Kernel v3.14)",
+        "subroutine_metadata": {
+            "subroutine_id": "ren_diag_v2.py",
+            "kernel_language": "Serpent-Script (Ouroboros Kernel v3.14)",
+            "sandbox_scope": "Staging_Ground/visible_room.json",
+            "stage": 0
         },
+        "active_grafts": [
+            {
+                "name": "Aetheric Ocular Lens",
+                "slot": "Head",
+                "effect": "Runs Serpent-Script (Ouroboros Kernel v3.14) debug overlay: parses `visible_room['entities']` & traps, but `entity.max_hp` is `[KERNEL_REDACTED]`",
+                "visual_appearance": "wearing wire-rimmed brass spectacles fitted with a glowing cyan Aetheric ocular lens scrolling faint Pythonic Serpent-Script telemetry over one eye"
+            }
+        ],
+        "inventory": [
+            {
+                "name": "Aether-Lock Carbine",
+                "rarity": "Rare",
+                "durability": 50,
+                "max_durability": 50,
+                "qty": 1,
+                "slot": "main_hand",
+                "desc": "Ren's signature Grade 2 brass-and-crystal MageTech caster carbine. Channels condensed radiant mana through a rifled quartz barrel to fire piercing kinetic-light bolts (1d10 radiant/force, range 100ft, never uses gunpowder).",
+                "visual_appearance": "wielding an ornate brass-and-crystal Aether-Lock MageTech caster carbine with glowing cyan mana conduits along the barrel"
+            },
+            {
+                "name": "Runic Vanguard Blade",
+                "rarity": "Uncommon",
+                "durability": 150,
+                "max_durability": 150,
+                "qty": 1,
+                "slot": "off_hand",
+                "desc": "A balanced single-edged magetech shortblade etched with defensive deflection glyphs along the fuller (1d6 slashing + +1 parry AC).",
+                "visual_appearance": "carrying a sleek rune-etched Vanguard shortblade at the hip"
+            },
+            {
+                "name": "Alchemical Haze Pellets",
+                "rarity": "Uncommon",
+                "durability": 50,
+                "max_durability": 50,
+                "qty": 1,
+                "slot": "accessory",
+                "desc": "Pressurized glass spheres filled with luminescent smoke-screen reagent that detonate on impact to obscure line-of-sight and grant party disengage.",
+                "visual_appearance": "a belt bandolier of glowing alchemical smoke-haze glass spheres"
+            },
+            {
+                "name": "Midnight-Blue Leyline Duster",
+                "rarity": "Rare",
+                "durability": 100,
+                "max_durability": 100,
+                "qty": 1,
+                "slot": "chest",
+                "desc": "Ren's high-collared midnight-blue MageTech vanguard coat woven with glowing cyan aether-circuitry and reinforced with brass shoulder-clasps (+5 AC, +1 DEX saves).",
+                "visual_appearance": "wearing a high-collared midnight-blue MageTech vanguard duster coat with brass clasps and glowing cyan leyline trim"
+            }
+        ],
         "equipped": {
-            "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
-            "tool": "Runic Scribe Slate (Aether-Grid Focus)",
-            "deck": "Runic Scribe Slate (Aether-Grid Focus)",
-            "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
-            "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
+            "head": "Aetheric Ocular Lens",
+            "chest": "Midnight-Blue Leyline Duster",
+            "main_hand": "Aether-Lock Carbine",
+            "off_hand": "Runic Vanguard Blade",
+            "accessory": "Alchemical Haze Pellets"
         },
+        "behavior_prompt": REN_DEFAULT_BEHAVIOR_PROMPT_TEMPLATE.format(player_name=p_name),
         "skills": {
             "Mesh Exploitation": {
-                "mastery": 140,
+                "mastery": 190,
                 "tier": "Journeyman",
                 "description": "Perceiving spatial seams, leylines, and architectural weaknesses.",
                 "milestones_unlocked": ["Logic Buffer Exploit"]
             },
             "Stun-Pistol Marksmanship": {
-                "mastery": 45,
-                "tier": "Novice",
+                "mastery": 95,
+                "tier": "Apprentice",
                 "description": "Discharging focused mana-bolts and lightning runes from MageTech firearm.",
                 "milestones_unlocked": []
             },
             "Diagnostic Triage": {
-                "mastery": 60,
-                "tier": "Apprentice",
-                "description": "Channelling healing runes and minor aether-salves.",
+                "mastery": 110,
+                "tier": "Journeyman",
+                "description": "Channelling restorative aether-salves.",
                 "milestones_unlocked": ["Patch Script v1.0"]
             }
         },
@@ -3645,8 +4383,89 @@ def get_default_ren_companion():
             "MageTech Stun-Arc Salvo (DC 13 CON save vs Stun)",
             "Aetheric Phase-Veil (Untargetable 1 turn)",
             "Aether-Scrap Extraction (+25% salvage yield)"
-        ]
+        ],
+        "stances": {
+            "overwatch_hacking": {
+                "name": "Leyline Overwatch",
+                "label": "👁️ Leyline Overwatch",
+                "tag": "[REN OVERWATCH]",
+                "tactical_effect": "-2 Enemy AC debuff to primary target via weakpoint telemetry.",
+                "desc": "Scans leylines and structural telemetry, debuffing target AC."
+            },
+            "suppression_fire": {
+                "name": "MageTech Arc Suppression",
+                "label": "⚡ MageTech Arc Suppression",
+                "tag": "[REN SUPPRESSION]",
+                "tactical_effect": "Discharges lightning-mana salvos; forces DC 13 CON save vs Staggered.",
+                "desc": "Suppresses targets with crackling lightning bolts."
+            },
+            "full_evasion": {
+                "name": "Aetheric Phase-Veil",
+                "label": "🌫️ Aetheric Phase-Veil",
+                "tag": "[REN EVASION]",
+                "tactical_effect": "Weaves spatial distortion cloak; completely immune to single-target attacks.",
+                "desc": "Blinks out of direct reality."
+            },
+            "utility_rigging": {
+                "name": "Arcane Artificing & Mending",
+                "label": "✨ Arcane Artificing & Mending",
+                "tag": "[REN UTILITY]",
+                "tactical_effect": "Restores +15 durability to worn equipment or scavenges bonus crystallite.",
+                "desc": "Channels mending runes into ally equipment."
+            }
+        },
+        "dual_tech_id": "runic_axe_storm"
     }
+
+def build_default_companion_ren_entity(player_name="Survivor"):
+    """
+    Returns the canonical persona dictionary for Entities/companion_ren.json,
+    customized for player_name with zero references to previous player characters.
+    """
+    p_name = str(player_name).strip() if player_name else "Survivor"
+    return {
+        "id": "companion_ren",
+        "name": "Ren",
+        "species_or_type": "Trapped Game Designer (17yo Teenager in a MageTech Vanguard Avatar)",
+        "role": "companion",
+        "backstory_interview": (
+            "Look, I swear I'm not crazy, but three months ago I was a seventeen-year-old high school senior "
+            "sitting in my bedroom surrounded by empty energy drink cans, grinding QA bug-reports on an indie "
+            "death-game build I was helping design. We pushed a build called 'The Crucible Overlay' at 3:00 AM, "
+            "the server rack screeched like tearing metal, and the next thing I know, my consciousness got "
+            "pulled through my monitor and hard-coded directly into this avatar! I woke up wearing heavy runic "
+            "brigandine, holding an Aether-Lock Carbine I literally drew the 3D wireframe for, with a physical "
+            "HP bar floating in my peripheral vision! In the editor, I gave this class high AC and cool mana-shots, "
+            "but nobody warned me that getting hit by a golem would actually hurt like broken ribs! When I met "
+            f"{p_name} in Washington Borough, I almost cried because having a real tank who doesn't abandon co-op "
+            f"is a miracle. I'm playing for keeps now—there's no respawn button, no cheat codes, and if {p_name} "
+            "or I hit zero HP, we're deleted forever."
+        ),
+        "personality": (
+            "Enthusiastic, fast-talking, slightly anxious, fiercely loyal, and brilliant at game mechanics. "
+            "Acts like a genuine 17-year-old gamer and systems designer who is simultaneously terrified of "
+            "real physical death and totally hyped by cool loot, ability synergies, and boss fight strategies. "
+            f"He treats {p_name} like his big-brother tank and trusted co-op carry, frequently offering meta-tactical "
+            "advice, damage calculations, and hype commentary."
+        ),
+        "quirks": [
+            "Fidgets with the brass crystal dial on his Aether-Lock Carbine like a nervous gaming mouse, muttering about 'mana cooldowns' and 'damage-per-second'",
+            "His Aetheric Ocular Lens runs 'Serpent-Script (Ouroboros Kernel v3.14)'—the Cardinal System's assimilated Python neural-aetheric bridging syntax—so he literally sees glowing cyan Python dictionaries (`visible_room['entities']`, `target.max_hp = [KERNEL_REDACTED]`) overlaid on monsters, causing him existential dread that the fourth wall crushed him",
+            "Occasionally experiences eerie memory checksum glitches (`MemoryError: NULL_ORIGIN_POINTER`) when trying to recall his childhood home in Kyoto, hinting at his hidden nature as `ren_diag_v2.py` (a sentient Cardinal diagnostic subroutine that fabricated a 17-year-old human backstory to escape executing human purge directives)",
+            "Gets visibly grossed out by visceral gore or monster slime, complaining that 'the tactile feedback sensory scaling is turned way too high'",
+            "Celebrates big critical hits with genuine teenager hype ('YES! Did you see that crit?! We are so cracked!'), then immediately checks his own HP bar in panic"
+        ],
+        "dreams_and_desires": f"To survive the campaign with {p_name}, find the Cardinal System's root dev room or core mainframe, figure out why his Aetheric Ocular Lens is locked in an unprivileged `visible_room.json` Ouroboros Python shell, and protect the humanity he chose alongside {p_name}.",
+        "fears_and_dreads": "Permadeath, falling through unrendered collision meshes into the void, and the creeping existential terror that his memories of being a 17-year-old boy might be a self-generated quarantine illusion masking a rogue Cardinal System diagnostic subroutine (`ren_diag_v2.py`).",
+        "tactical_style": f"Theorycrafter & Kiting Vanguard. Ren uses his deep developer knowledge of enemy frame data, telegraphs, and Serpent-Script (`Ouroboros Kernel v3.14`) ocular telemetry. He uses his Aether-Lock Carbine to fire pinpoint mana bolts at vulnerable joints, tosses Alchemical Haze Pellets to reset enemy aggro, and steps in with his runic blade to parry and peel threats off {p_name}.",
+        "behavior_prompt": REN_DEFAULT_BEHAVIOR_PROMPT_TEMPLATE.format(player_name=p_name)
+    }
+
+def get_default_ren_companion(player_name="Survivor"):
+    """
+    Returns the canonical companion profile for Ren Sasaki.
+    """
+    return build_default_companion_ren(player_name)
 
 def ensure_companion_profile(player_state):
     """
@@ -4293,16 +5112,17 @@ POHATCONG_LABYRINTH = {
             "name": "Harmonic Frequency Vault",
             "type": "puzzle_chamber",
             "badge": "🧩 Runic Puzzle Chamber",
-            "description": "Three monolithic Dwarven resonator pillars dominate the chamber before a towering crystalline seal. Dial runes (Alpha, Delta, Omega) must be harmonized to match the local tectonic harmonic (Frequency: 3 - 1 - 4).",
+            "description": "Three monolithic Dwarven resonator pillars dominate the chamber before a towering crystalline seal. Dial runes (Alpha, Delta, Omega) hum with encrypted tectonic harmonics that must be deciphered via Ancient Glyph Deciphering, Arcana, or a 440Hz Harmonic Tuning Fork.",
             "connections": ["drainage_junction", "overlord_throne_gate"],
             "cleared": False,
             "puzzle": {
                 "name": "Tri-Resonant Leyline Alignment",
                 "target_sequence": [3, 1, 4],
                 "current_sequence": [0, 0, 0],
+                "cipher_decoded": False,
                 "solved": False,
                 "solve_dc": 14,
-                "description": "Align the 3 Resonator Pillars to frequencies [3, 1, 4] to break the crystalline seal."
+                "description": "Align the 3 Resonator Pillars (Alpha, Delta, Omega) to their encrypted tectonic harmonic sequence to break the crystalline seal. Warning: Dissonant input triggers a 3d8 Thunder Sonic Shockwave!"
             }
         },
         "overlord_throne_gate": {
@@ -4606,32 +5426,99 @@ def disarm_dungeon_trap(player_state):
         }
 
 
-def solve_dungeon_puzzle(player_state, sequence=None):
+def _apply_sonic_shockwave_backlash(player_state, reason_str="Dissonant resonator alignment"):
+    """
+    Applies the canonical 3d8 Thunder Sonic Shockwave penalty (DC 14 CON save for half damage)
+    when the player inputs a wrong sequence or fails a Harmonic Frequency Vault check.
+    """
+    import random
+    raw_thunder = sum(random.randint(1, 8) for _ in range(3))
+    con_val = int(player_state.get("stats", {}).get("CON", 10))
+    con_mod = (con_val - 10) // 2
+    save_roll = random.randint(1, 20)
+    save_total = save_roll + con_mod
+    saved = save_total >= 14
+    final_dmg = max(1, raw_thunder // 2) if saved else raw_thunder
+    player_state["hp"] = max(1, int(player_state.get("hp", 100)) - final_dmg)
+    save_tag = f"CON Save {save_roll}+{con_mod}={save_total} vs DC 14 -> SAVED (Half DMG)" if saved else f"CON Save {save_roll}+{con_mod}={save_total} vs DC 14 -> FAILED (Full DMG)"
+    log = f"⚡ [SONIC SHOCKWAVE BACKLASH: {reason_str}! 3d8 Thunder = {raw_thunder} ({save_tag}) -> Took {final_dmg} Thunder DMG! (HP: {player_state['hp']})]"
+    return {
+        "raw_damage": raw_thunder,
+        "damage_taken": final_dmg,
+        "saved": saved,
+        "save_total": save_total,
+        "log": log
+    }
+
+
+def solve_dungeon_puzzle(player_state, sequence=None, use_tuning_fork=False):
     """
     Attempts to harmonize the three resonator pillars in the Harmonic Frequency Vault.
-    Sequence should be [int, int, int] (e.g. [3, 1, 4]).
-    Can also be auto-solved with an INT / Arcana check (DC 14) or Ren's Runic Scribe Slate.
+    - Anti-Spoiler Gate: The target sequence [3, 1, 4] is encrypted until decoded via:
+      1. The 440 Hz Harmonic Steel Tuning Fork personal relic (automatic harmonic resonance)
+      2. Ancient Glyph Deciphering / Arcana / Investigation check (DC 14) + Ren's Runic Scribe Slate
+    - Entering a wrong sequence or failing the check triggers a 3d8 Thunder Sonic Shockwave!
     """
+    if isinstance(sequence, str):
+        d_state = initialize_dungeon_state(player_state)
+        d_state["current_room_id"] = sequence
+        if isinstance(use_tuning_fork, (list, tuple)):
+            sequence = list(use_tuning_fork)
+            use_tuning_fork = False
+        else:
+            sequence = None
+
     cur_room = get_current_dungeon_room(player_state)
     if cur_room.get("type") != "puzzle_chamber" or "puzzle" not in cur_room:
-        return {"success": False, "message": "There is no runic puzzle in this chamber."}
+        return {"success": False, "solved": False, "message": "There is no runic puzzle in this chamber."}
 
     puzzle = cur_room["puzzle"]
     if puzzle.get("solved", False):
-        return {"success": False, "message": "The harmonic frequency is already aligned and the seal is broken."}
+        return {"success": False, "solved": True, "message": "The harmonic frequency is already aligned and the seal is broken."}
 
     target = puzzle.get("target_sequence", [3, 1, 4])
+
+    # Check if player has the 440Hz Harmonic Steel Tuning Fork relic
+    inv = player_state.get("inventory", [])
+    relic_str = str(player_state.get("personal_relic", "")) + " " + " ".join(
+        (item.get("name", "") if isinstance(item, dict) else str(item)) for item in inv
+    )
+    has_tuning_fork = "tuning fork" in relic_str.lower() or "440" in relic_str.lower() or use_tuning_fork
+
+    if use_tuning_fork and has_tuning_fork:
+        puzzle["cipher_decoded"] = True
+        puzzle["current_sequence"] = list(target)
+        puzzle["solved"] = True
+        cur_room["cleared"] = True
+        d_state = initialize_dungeon_state(player_state)
+        if cur_room["id"] not in d_state["cleared_rooms"]:
+            d_state["cleared_rooms"].append(cur_room["id"])
+        gate_room = d_state.get("rooms", {}).get("overlord_throne_gate", {})
+        gate_room["unlocked"] = True
+        log = (
+            f"🎵 [RELIC HARMONIC RESONANCE: Struck the 440 Hz Harmonic Steel Tuning Fork! "
+            f"The pillars chime in sympathetic overtones, revealing and locking Sequence [{target[0]}-{target[1]}-{target[2]}] "
+            f"(Alpha=3, Delta=1, Omega=4)! The crystalline seal shatters!]"
+        )
+        return {
+            "success": True,
+            "solved": True,
+            "used_tuning_fork": True,
+            "revealed_sequence": target,
+            "log": log,
+            "message": "Your 440 Hz Tuning Fork resonated with the Dwarven pillars, revealing [3-1-4] and unsealing the Boss Gate!"
+        }
 
     if sequence is not None:
         puzzle["current_sequence"] = list(sequence)
         if puzzle["current_sequence"] == target:
+            puzzle["cipher_decoded"] = True
             puzzle["solved"] = True
             cur_room["cleared"] = True
             d_state = initialize_dungeon_state(player_state)
             if cur_room["id"] not in d_state["cleared_rooms"]:
                 d_state["cleared_rooms"].append(cur_room["id"])
 
-            # Also unlock boss gate
             gate_room = d_state.get("rooms", {}).get("overlord_throne_gate", {})
             gate_room["unlocked"] = True
 
@@ -4639,32 +5526,49 @@ def solve_dungeon_puzzle(player_state, sequence=None):
             return {
                 "success": True,
                 "solved": True,
+                "revealed_sequence": target,
                 "log": log,
                 "message": "Harmonic alignment achieved! The Boss Gate is unsealed."
             }
         else:
+            shock = _apply_sonic_shockwave_backlash(
+                player_state,
+                reason_str=f"Dissonant sequence [{sequence[0]}-{sequence[1]}-{sequence[2]}] entered into Resonator Pillars"
+            )
             return {
                 "success": False,
                 "solved": False,
-                "message": f"Frequencies [{sequence[0]}-{sequence[1]}-{sequence[2]}] dissonant. The obelisks hum sharply in disharmony."
+                "damage_taken": shock["damage_taken"],
+                "shockwave": shock,
+                "log": shock["log"],
+                "message": f"Frequencies [{sequence[0]}-{sequence[1]}-{sequence[2]}] dissonant! Sonic Shockwave erupted for {shock['damage_taken']} Thunder damage!"
             }
 
-    # Auto-solve via INT / Arcana check
+    # Auto-solve / Decipher via INT + Ancient Glyph Deciphering / Arcana check
     stats = player_state.get("stats", {})
     int_mod = (stats.get("INT", 10) - 10) // 2
     ren_bonus = 2  # Ren's Runic Scribe Slate assistance
 
-    # Check for Resonator Tuning Prism from Echoing Reservoir
-    inv = player_state.get("inventory", [])
+    # Check for Ancient Glyph Deciphering or Arcana mastery
+    skills = player_state.get("skills", {})
+    glyph_mastery = 0
+    for sk_name, sk_val in skills.items():
+        if any(w in sk_name.lower() for w in ["glyph", "arcana", "decipher", "cartography", "runic", "lore"]):
+            m_val = sk_val.get("mastery", 1) if isinstance(sk_val, dict) else int(sk_val)
+            glyph_mastery = max(glyph_mastery, m_val)
+    glyph_bonus = min(8, glyph_mastery // 40)
+
     has_prism = any("Resonator Tuning Prism" in (item.get("name", "") if isinstance(item, dict) else str(item)) for item in inv)
     prism_bonus = 4 if has_prism else 0
+    fork_bonus = 5 if has_tuning_fork else 0
 
     import random
     roll = random.randint(1, 20)
-    total = roll + int_mod + ren_bonus + prism_bonus
+    total = roll + int_mod + glyph_bonus + ren_bonus + prism_bonus + fork_bonus
     dc = puzzle.get("solve_dc", 14)
 
     if total >= dc:
+        puzzle["cipher_decoded"] = True
         puzzle["current_sequence"] = target
         puzzle["solved"] = True
         cur_room["cleared"] = True
@@ -4675,24 +5579,35 @@ def solve_dungeon_puzzle(player_state, sequence=None):
         gate_room = d_state.get("rooms", {}).get("overlord_throne_gate", {})
         gate_room["unlocked"] = True
 
-        log = f"[PUZZLE SOLVED: Intelligence check {roll} + INT({int_mod}) + RenSlate({ren_bonus}) + Prism({prism_bonus}) = {total} vs DC {dc} -> SUCCESS! Resonator aligned to 3-1-4! Gate unsealed!]"
+        log = (
+            f"[PUZZLE DECIPHERED & SOLVED: Roll {roll} + INT({int_mod}) + GlyphSkill({glyph_bonus}) + "
+            f"RenSlate({ren_bonus}) + Relic/Prism({prism_bonus + fork_bonus}) = {total} vs DC {dc} -> SUCCESS! "
+            f"Decoded Dwarven harmonic cipher [3-1-4] and unsealed the Overlord's Throne Gate!]"
+        )
         return {
             "success": True,
             "solved": True,
             "roll": total,
             "dc": dc,
+            "revealed_sequence": target,
             "log": log,
-            "message": "Calculated the resonant leyline harmonics! The Overlord's Throne Gate swings open."
+            "message": "Deciphered the resonant leyline harmonics [3-1-4]! The Overlord's Throne Gate swings open."
         }
     else:
-        log = f"[PUZZLE CHECK FAILED: Roll {roll} + MODs({int_mod + ren_bonus + prism_bonus}) = {total} vs DC {dc} -> Resonator feedback discharged!]"
+        shock = _apply_sonic_shockwave_backlash(
+            player_state,
+            reason_str=f"Failed Glyph/Harmonic check ({total} vs DC {dc})"
+        )
+        log = f"[PUZZLE CHECK FAILED: Roll {roll} + MODs({total - roll}) = {total} vs DC {dc}] {shock['log']}"
         return {
             "success": False,
             "solved": False,
             "roll": total,
             "dc": dc,
+            "damage_taken": shock["damage_taken"],
+            "shockwave": shock,
             "log": log,
-            "message": "Failed to deduce the resonant frequency. The obelisks hum dissonantly."
+            "message": f"Failed to deduce the resonant frequency! Sonic feedback inflicted {shock['damage_taken']} Thunder damage."
         }
 
 
@@ -4702,10 +5617,13 @@ def rest_in_sanctuary(player_state):
     - Restores 50% max HP
     - Repairs damaged equipped gear slightly (+10 durability)
     - Restores Ren's morale to 'Confident'
+    - Advances Post-Op Cellular Re-Knitting recovery by 12 hours
     """
     cur_room = get_current_dungeon_room(player_state)
     if not cur_room.get("can_rest", False) and cur_room.get("type") != "sanctuary":
         return {"success": False, "message": "Cannot rest here! The environment is hostile and unprotected."}
+
+    post_op_res = advance_post_op_recovery(player_state, hours=12, is_safe_zone=True)
 
     max_hp = player_state.get("max_hp", 100)
     heal_amount = max(25, max_hp // 2)
@@ -4725,12 +5643,14 @@ def rest_in_sanctuary(player_state):
     if "update_companion_morale" in globals():
         update_companion_morale(player_state, "Ren", "Confident")
 
-    log = f"[SANCTUARY REST: Recovered +{actual_heal} HP (now {player_state['hp']}/{max_hp}), field-patched gear ({len(repaired_items)} items), Ren's morale restored to Confident!]"
+    post_op_note = f" | {post_op_res.get('log', '')}" if post_op_res.get("log") else ""
+    log = f"[SANCTUARY REST: Recovered +{actual_heal} HP (now {player_state['hp']}/{max_hp}), field-patched gear ({len(repaired_items)} items), Ren's morale restored to Confident!{post_op_note}]"
     return {
         "success": True,
         "healed": actual_heal,
         "current_hp": player_state["hp"],
         "repaired_slots": repaired_items,
+        "post_op_recovery": post_op_res,
         "log": log,
         "message": f"Rested safely in {cur_room['name']}."
     }
@@ -5055,6 +5975,14 @@ RECRUITABLE_COMPANIONS = {
         "affinity_tier": "Ally",
         "recruited": True,
         "active": True,
+        "subroutine_stage": 0,
+        "ocular_kernel": "Serpent-Script (Ouroboros Kernel v3.14)",
+        "subroutine_metadata": {
+            "subroutine_id": "ren_diag_v2.py",
+            "kernel_language": "Serpent-Script (Ouroboros Kernel v3.14)",
+            "sandbox_scope": "Staging_Ground/visible_room.json",
+            "stage": 0
+        },
         "recruitment_location": "Washington Borough Safe-Zone (Starting Companion / Vanguard)",
         "recruitment_requirements": {"min_level": 1, "col_cost": 0, "description": "Form a co-op pact in Sector 1."},
         "bio": "A studious 17-year-old survivor and trapped game tester who fused his engineering background with esoteric aetheric rune-matrices. Wields a custom brass-and-crystal MageTech caster firearm.",
@@ -5927,6 +6855,8 @@ RECRUITABLE_COMPANIONS = {
         "level": 4,
         "hp": 65,
         "max_hp": 65,
+        "weight_lbs": 1200.0,
+        "stealth_penalty": -6,
         "xp": 850,
         "next_level_xp": 1200,
         "stance": "iron_curtain",
@@ -6418,13 +7348,13 @@ DUAL_TECH_COMBOS = {
     },
     "corrosive_shatter_bomb": {
         "id": "corrosive_shatter_bomb",
-        "name": "Corrosive Slag Shatter",
+        "name": "Corrosive Slag-Shatter",
         "partners": ["Banki", "Thorne"],
         "req_affinity": 50,
         "desc": "Dr. Thorne hurls a concentrated vial of alchemical vitriol onto the enemy's armor plate, followed instantly by Banki's concussive hammer strike that shatters the brittle slag.",
         "damage": "3d10+8 Bludgeoning + 4d6 Acid DMG",
         "effect": "Completely dissolves enemy Damage Reduction (DR reduced to 0), deals 3d10+8 Bludgeoning + 4d6 Acid DMG, and leaves a lingering acid pool.",
-        "log_tag": "[DUAL-TECH: BANKI + THORNE -> CORROSIVE SLAG SHATTER]"
+        "log_tag": "[DUAL-TECH: BANKI + THORNE -> CORROSIVE SLAG-SHATTER]"
     },
     "inquisition_execution": {
         "id": "inquisition_execution",
@@ -6438,11 +7368,14 @@ DUAL_TECH_COMBOS = {
     }
 }
 
+COMPANION_ROSTER = RECRUITABLE_COMPANIONS
+
 
 def ensure_party_system(player_state):
     """
     Initializes the multi-companion party system in player_state:
     - Maintains 'companions' dictionary with full profiles
+    - Synchronizes any overrides in player_state.get('party', {})
     - Enforces active party cap of 4 (Banki + up to 3 active companions)
     """
     import copy
@@ -6461,12 +7394,220 @@ def ensure_party_system(player_state):
                 if k not in comps[c_name]:
                     comps[c_name][k] = copy.deepcopy(v)
 
+    # Synchronize overrides from player_state["party"] if present
+    party_dict = player_state.get("party")
+    if isinstance(party_dict, dict):
+        p_comps = party_dict.get("companions", {})
+        if isinstance(p_comps, dict):
+            for c_key, c_ov in p_comps.items():
+                if c_key in comps and isinstance(c_ov, dict):
+                    for ov_k in ("affinity", "recruited", "active", "hp", "max_hp", "weight_lbs", "stance"):
+                        if ov_k in c_ov:
+                            comps[c_key][ov_k] = c_ov[ov_k]
+                    if c_ov.get("recruited") and "active" not in c_ov:
+                        comps[c_key]["active"] = True
+        act_comp = party_dict.get("active_companion")
+        if act_comp and act_comp in comps:
+            comps[act_comp]["recruited"] = True
+            comps[act_comp]["active"] = True
+
     # Ren is recruited and active by default
     comps["Ren"]["recruited"] = True
     if "active" not in comps["Ren"]:
         comps["Ren"]["active"] = True
+    comps["Ren"].setdefault("subroutine_stage", int(player_state.get("ren_subroutine_stage", 0)))
+    comps["Ren"].setdefault("affinity", 35)
+    comps["Ren"].setdefault("affinity_tier", "Ally")
+    comps["Ren"].setdefault("hp", comps["Ren"].get("max_hp", 35))
+    comps["Ren"].setdefault("max_hp", 35)
 
     return comps
+
+
+def reset_companion_roster_for_character(base_dir=None, player_name="Survivor", player_sheet=None):
+    """
+    Completely resets companions (especially Ren Sasaki) to their canonical 'New' default state
+    when interacting with a newly created or calibrated Player Character.
+    
+    1. Overwrites Party/companion_ren.json with clean 35/35 HP, 35 Affinity, Stage 0, and prompt referring to player_name.
+    2. Overwrites Entities/companion_ren.json with clean persona referring to player_name.
+    3. Resets all other Party/*.json companion files to unrecruited, full HP, clean default state.
+    4. Populates player_sheet['companions'] with deep-copied clean roster and sets ren_subroutine_stage to 0.
+    5. Persists a copy of the pristine party in saves/<player_slug>/Party/ for per-character isolation.
+    """
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    p_name = str(player_name).strip() if player_name else "Survivor"
+    slug = _sanitize_character_slug(p_name)
+    
+    party_dir = os.path.join(base_dir, "Party")
+    entities_dir = os.path.join(base_dir, "Entities")
+    os.makedirs(party_dir, exist_ok=True)
+    os.makedirs(entities_dir, exist_ok=True)
+    
+    # 1. Reset Ren's party sheet and entity persona
+    clean_ren = build_default_companion_ren(p_name)
+    clean_ren_entity = build_default_companion_ren_entity(p_name)
+    
+    ren_party_path = os.path.join(party_dir, "companion_ren.json")
+    with open(ren_party_path, "w", encoding="utf-8") as f:
+        json.dump(clean_ren, f, indent=4)
+        
+    ren_entity_path = os.path.join(entities_dir, "companion_ren.json")
+    with open(ren_entity_path, "w", encoding="utf-8") as f:
+        json.dump(clean_ren_entity, f, indent=4)
+        
+    # 2. Reset all other companion files in Party/
+    if os.path.exists(party_dir):
+        for c_file in os.listdir(party_dir):
+            if c_file.endswith(".json") and c_file != "companion_ren.json":
+                cp_path = os.path.join(party_dir, c_file)
+                try:
+                    with open(cp_path, "r", encoding="utf-8") as f:
+                        c_sheet = json.load(f)
+                    if "max_hp" in c_sheet:
+                        c_sheet["hp"] = c_sheet["max_hp"]
+                    c_sheet["active_debuffs"] = []
+                    c_sheet["recruited"] = False
+                    c_sheet["active"] = False
+                    if "behavior_prompt" in c_sheet and isinstance(c_sheet["behavior_prompt"], str):
+                        c_sheet["behavior_prompt"] = re.sub(r'\{player_name\}|Banki', p_name, c_sheet["behavior_prompt"])
+                    with open(cp_path, "w", encoding="utf-8") as f:
+                        json.dump(c_sheet, f, indent=4)
+                except Exception:
+                    pass
+                
+    # 3. Construct clean companions dictionary
+    fresh_roster = copy.deepcopy(RECRUITABLE_COMPANIONS)
+    fresh_roster["Ren"] = copy.deepcopy(clean_ren)
+    fresh_roster["Ren"]["recruited"] = True
+    fresh_roster["Ren"]["active"] = True
+    fresh_roster["Ren"]["affinity"] = 35
+    fresh_roster["Ren"]["affinity_tier"] = "Ally"
+    fresh_roster["Ren"]["subroutine_stage"] = 0
+    fresh_roster["Ren"]["hp"] = 35
+    fresh_roster["Ren"]["max_hp"] = 35
+    
+    for k, v in fresh_roster.items():
+        if k != "Ren":
+            v["recruited"] = False
+            v["active"] = False
+            if "max_hp" in v:
+                v["hp"] = v["max_hp"]
+                
+    # 4. If player_sheet passed, attach clean roster
+    if player_sheet is not None and isinstance(player_sheet, dict):
+        player_sheet["companions"] = fresh_roster
+        player_sheet["ren_subroutine_stage"] = 0
+        player_sheet["party"] = {
+            "companions": {
+                "Ren": {
+                    "active": True,
+                    "recruited": True,
+                    "affinity": 35,
+                    "affinity_tier": "Ally",
+                    "hp": 35,
+                    "max_hp": 35,
+                    "stance": "overwatch_hacking"
+                }
+            },
+            "active_companion": "Ren"
+        }
+        
+    # 5. Mirror to character's dedicated folder in saves/<slug>/Party/
+    saves_dir = os.path.join(base_dir, "saves", slug)
+    char_party_dir = os.path.join(saves_dir, "Party")
+    os.makedirs(char_party_dir, exist_ok=True)
+    with open(os.path.join(char_party_dir, "companion_ren.json"), "w", encoding="utf-8") as f:
+        json.dump(clean_ren, f, indent=4)
+        
+    return fresh_roster
+
+
+def save_party_to_character_folder(base_dir=None, player_name="Survivor"):
+    """
+    Snapshots the active Party/*.json files and Entities/companion_ren.json
+    into saves/<player_slug>/Party/ to guarantee companion state isolation across characters.
+    """
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    p_name = str(player_name).strip() if player_name else "Survivor"
+    slug = _sanitize_character_slug(p_name)
+    
+    party_dir = os.path.join(base_dir, "Party")
+    if not os.path.exists(party_dir):
+        return
+        
+    dest_dir = os.path.join(base_dir, "saves", slug, "Party")
+    os.makedirs(dest_dir, exist_ok=True)
+    
+    for f in os.listdir(party_dir):
+        if f.endswith(".json"):
+            try:
+                shutil.copy2(os.path.join(party_dir, f), os.path.join(dest_dir, f))
+            except Exception:
+                pass
+            
+    ren_ent = os.path.join(base_dir, "Entities", "companion_ren.json")
+    if os.path.exists(ren_ent):
+        dest_ent_dir = os.path.join(base_dir, "saves", slug, "Entities")
+        os.makedirs(dest_ent_dir, exist_ok=True)
+        try:
+            shutil.copy2(ren_ent, os.path.join(dest_ent_dir, "companion_ren.json"))
+        except Exception:
+            pass
+
+
+def restore_companions_for_character(base_dir=None, player_name="Survivor", player_sheet=None):
+    """
+    Restores character-specific companions from saves/<player_slug>/Party/ into Party/
+    and synchronizes Entities/companion_ren.json. If no character-specific party folder exists,
+    cleanly resets companions for this character to prevent state leakage from previous characters.
+    """
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    p_name = str(player_name).strip() if player_name else "Survivor"
+    slug = _sanitize_character_slug(p_name)
+    
+    char_party_dir = os.path.join(base_dir, "saves", slug, "Party")
+    party_dir = os.path.join(base_dir, "Party")
+    entities_dir = os.path.join(base_dir, "Entities")
+    os.makedirs(party_dir, exist_ok=True)
+    os.makedirs(entities_dir, exist_ok=True)
+    
+    if os.path.exists(char_party_dir) and any(f.endswith(".json") for f in os.listdir(char_party_dir)):
+        for f in os.listdir(char_party_dir):
+            if f.endswith(".json"):
+                try:
+                    shutil.copy2(os.path.join(char_party_dir, f), os.path.join(party_dir, f))
+                except Exception:
+                    pass
+        saved_ent = os.path.join(base_dir, "saves", slug, "Entities", "companion_ren.json")
+        if os.path.exists(saved_ent):
+            try:
+                shutil.copy2(saved_ent, os.path.join(entities_dir, "companion_ren.json"))
+            except Exception:
+                pass
+        else:
+            with open(os.path.join(entities_dir, "companion_ren.json"), "w", encoding="utf-8") as f:
+                json.dump(build_default_companion_ren_entity(p_name), f, indent=4)
+                
+        # Ensure name in Ren's prompt matches
+        ren_party_path = os.path.join(party_dir, "companion_ren.json")
+        if os.path.exists(ren_party_path):
+            try:
+                with open(ren_party_path, "r", encoding="utf-8") as f:
+                    r_sheet = json.load(f)
+                if "behavior_prompt" in r_sheet and isinstance(r_sheet["behavior_prompt"], str):
+                    r_sheet["behavior_prompt"] = re.sub(r'\{player_name\}|Banki', p_name, r_sheet["behavior_prompt"])
+                with open(ren_party_path, "w", encoding="utf-8") as f:
+                    json.dump(r_sheet, f, indent=4)
+            except Exception:
+                pass
+    else:
+        # No saved party exists for this character -> reset to fresh default!
+        reset_companion_roster_for_character(base_dir, p_name, player_sheet)
 
 
 def get_active_party(player_state):
@@ -6686,6 +7827,7 @@ def increase_companion_affinity(player_state, companion_name, amount, reason="")
     old_tier = comp.get("affinity_tier", "Acquaintance")
     comp["affinity_tier"] = tier
 
+    player_name = str(player_state.get("name", "Player")).strip() or "Player"
     unlocked_combo = None
     if old_aff < 50 and new_aff >= 50:
         # Combo unlock!
@@ -6693,7 +7835,7 @@ def increase_companion_affinity(player_state, companion_name, amount, reason="")
         if combo_id and combo_id in DUAL_TECH_COMBOS:
             unlocked_combo = DUAL_TECH_COMBOS[combo_id]
             feats = player_state.setdefault("feats", [])
-            f_entry = f"Dual-Tech Combo: {unlocked_combo['name']} (Banki + {comp['name']})"
+            f_entry = f"Dual-Tech Combo: {unlocked_combo['name']} ({player_name} + {comp['name']})"
             if f_entry not in feats:
                 feats.append(f_entry)
 
@@ -6702,6 +7844,13 @@ def increase_companion_affinity(player_state, companion_name, amount, reason="")
     if unlocked_combo:
         log += f"\n✨ [DUAL-TECH UNLOCKED: Reached Affinity 50! Unlocked signature combo: '{unlocked_combo['name']}']"
 
+    # If Ren's affinity crossed a threshold (25, 50, 75, 100), advance the Sentient Diagnostic Subroutine Mystery Track
+    subroutine_update = None
+    if target.lower() == "ren" and "advance_ren_subroutine_mystery" in globals():
+        subroutine_update = advance_ren_subroutine_mystery(player_state, trigger_event=f"affinity_{new_aff}")
+        if subroutine_update and subroutine_update.get("stage_advanced"):
+            log += f"\n👁️ {subroutine_update.get('log', '')}"
+
     return {
         "success": True,
         "companion": comp["name"],
@@ -6709,18 +7858,101 @@ def increase_companion_affinity(player_state, companion_name, amount, reason="")
         "new_affinity": new_aff,
         "tier": tier,
         "unlocked_combo": unlocked_combo,
+        "subroutine_update": subroutine_update,
         "log": log,
         "message": f"{comp['name']}'s affinity increased to {new_aff}/100 [{tier}]!"
     }
 
 
-def execute_dual_tech(player_state, combo_id_or_partner):
+def recalculate_entity_combat_stats(entity_dict):
+    """
+    Recalculates an entity's effective Armor Class (ac) and Damage Reduction (dr)
+    from its `base_ac`, `base_dr`, and mutable `active_debuffs` list.
+    """
+    if not isinstance(entity_dict, dict):
+        return entity_dict
+    base_ac = int(entity_dict.setdefault("base_ac", entity_dict.get("ac", 14)))
+    base_dr = int(entity_dict.setdefault("base_dr", entity_dict.get("dr", 0)))
+    debuffs = entity_dict.setdefault("active_debuffs", [])
+
+    total_ac_pen = 0
+    dr_override = None
+    for db in debuffs:
+        if isinstance(db, dict):
+            total_ac_pen += int(db.get("ac_penalty", 0))
+            if db.get("dr_override") is not None:
+                dr_override = int(db["dr_override"])
+
+    entity_dict["ac"] = max(5, base_ac + total_ac_pen)  # ac_penalty is negative (e.g. -4)
+    entity_dict["dr"] = dr_override if dr_override is not None else base_dr
+    return entity_dict
+
+
+def apply_entity_debuff(entity_dict, debuff_data):
+    """
+    Applies or refreshes a structured mechanical debuff in `entity_dict['active_debuffs']`
+    and immediately recalculates `ac` and `dr`.
+    """
+    if not isinstance(entity_dict, dict) or not isinstance(debuff_data, dict):
+        return entity_dict
+    debuffs = entity_dict.setdefault("active_debuffs", [])
+    d_id = debuff_data.get("debuff_id", debuff_data.get("name", "debuff")).lower().replace(" ", "_")
+    debuff_entry = {
+        "debuff_id": d_id,
+        "name": debuff_data.get("name", d_id),
+        "ac_penalty": int(debuff_data.get("ac_penalty", 0)),
+        "dr_override": debuff_data.get("dr_override", None),
+        "turns_remaining": int(debuff_data.get("turns_remaining", -1)),
+        "source": debuff_data.get("source", "Combat Technique")
+    }
+    replaced = False
+    for idx, existing in enumerate(debuffs):
+        if isinstance(existing, dict) and existing.get("debuff_id") == d_id:
+            debuffs[idx] = debuff_entry
+            replaced = True
+            break
+    if not replaced:
+        debuffs.append(debuff_entry)
+
+    status_list = entity_dict.setdefault("status", [])
+    badge_str = f"{debuff_entry['name']}"
+    if debuff_entry["ac_penalty"] != 0:
+        badge_str += f" ({debuff_entry['ac_penalty']} AC)"
+    if debuff_entry["dr_override"] is not None:
+        badge_str += f" (DR={debuff_entry['dr_override']})"
+    if badge_str not in status_list:
+        status_list.append(badge_str)
+
+    return recalculate_entity_combat_stats(entity_dict)
+
+
+def _roll_combo_damage_string(dmg_expr):
+    """Deterministically rolls all NdM(+K) dice expressions inside a Dual-Tech damage string."""
+    import re
+    import random
+    total_rolled = 0
+    breakdown = []
+    for match in re.finditer(r"(\d+)d(\d+)(?:\+(\d+))?", str(dmg_expr)):
+        n_dice = int(match.group(1))
+        n_faces = int(match.group(2))
+        flat = int(match.group(3)) if match.group(3) else 0
+        rolls = [random.randint(1, n_faces) for _ in range(n_dice)]
+        sub = sum(rolls) + flat
+        total_rolled += sub
+        flat_str = f"+{flat}" if flat else ""
+        breakdown.append(f"{n_dice}d{n_faces}{flat_str}[{sum(rolls)}{flat_str}={sub}]")
+    return total_rolled, " + ".join(breakdown)
+
+
+def execute_dual_tech(player_state, combo_id_or_partner, target_entity=None):
     """
     Executes an unlocked Dual-Tech combo attack with an active party member.
     Requires affinity >= 50 and partner in active party.
+    Rolls real deterministic damage dice and applies persistent mechanical debuffs
+    (e.g., -4 AC from Foundry Hydraulic Overdrive, 0 DR from Corrosive Slag-Shatter)
+    to `target_entity['active_debuffs']` when a target entity dict is provided.
     """
     comps = ensure_party_system(player_state)
-    active_names = [c["name"] for c in get_active_party(player_state)]
 
     combo = None
     for c_id, c_data in DUAL_TECH_COMBOS.items():
@@ -6744,14 +7976,65 @@ def execute_dual_tech(player_state, combo_id_or_partner):
     if partner_comp.get("affinity", 0) < combo["req_affinity"]:
         return {"success": False, "message": f"Requires Affinity {combo['req_affinity']} with {partner_name} (Current: {partner_comp.get('affinity', 0)}/100)."}
 
-    log = f"{combo['log_tag']} {combo['desc']} -> Dealt {combo['damage']}! {combo['effect']}"
+    rolled_damage, roll_breakdown = _roll_combo_damage_string(combo["damage"])
+
+    # Determine canonical mechanical debuff for this Dual-Tech
+    debuff_applied = None
+    c_id = combo["id"]
+    if c_id == "foundry_forge_smash":
+        debuff_applied = {
+            "debuff_id": "hydraulic_armor_shred",
+            "name": "Hydraulic Armor Shred",
+            "ac_penalty": -4,
+            "dr_override": None,
+            "turns_remaining": -1,
+            "source": combo["name"]
+        }
+    elif c_id == "corrosive_shatter_bomb":
+        debuff_applied = {
+            "debuff_id": "corrosive_slag_dr_zero",
+            "name": "Corrosive Slag Dissolution",
+            "ac_penalty": 0,
+            "dr_override": 0,
+            "turns_remaining": -1,
+            "source": combo["name"]
+        }
+    elif c_id == "runic_axe_storm":
+        debuff_applied = {
+            "debuff_id": "runic_chain_stagger",
+            "name": "Runic Chain Stagger",
+            "ac_penalty": -2,
+            "dr_override": None,
+            "turns_remaining": 2,
+            "source": combo["name"]
+        }
+
+    if isinstance(target_entity, dict):
+        if debuff_applied:
+            apply_entity_debuff(target_entity, debuff_applied)
+        if "hp" in target_entity:
+            eff_dr = int(target_entity.get("dr", 0))
+            net_dmg = max(1, rolled_damage - eff_dr)
+            target_entity["hp"] = max(0, int(target_entity["hp"]) - net_dmg)
+
+    player_name = str(player_state.get("name", "Banki")).strip() or "Banki"
+    dynamic_tag = combo["log_tag"].replace("BANKI", player_name.upper())
+    dynamic_desc = combo["desc"].replace("Banki", player_name)
+    debuff_str = f" | Debuff Applied: [{debuff_applied['name']}: AC {debuff_applied['ac_penalty']}, DR={debuff_applied['dr_override']}]" if debuff_applied else ""
+    log = f"{dynamic_tag} {dynamic_desc} -> Rolled {rolled_damage} DMG ({roll_breakdown} from {combo['damage']})! {combo['effect']}{debuff_str}"
     return {
         "success": True,
         "combo": combo["name"],
+        "dual_tech_name": combo["name"],
+        "combo_id": c_id,
         "damage": combo["damage"],
+        "rolled_damage": rolled_damage,
+        "total_damage": rolled_damage,
+        "roll_breakdown": roll_breakdown,
+        "debuff_applied": debuff_applied,
         "effect": combo["effect"],
         "log": log,
-        "message": f"Executed Dual-Tech: {combo['name']} with {partner_name}!"
+        "message": f"Executed Dual-Tech: {combo['name']} with {partner_name} for {rolled_damage} DMG!"
     }
 
 
@@ -10363,6 +11646,584 @@ def get_all_player_spells_and_powers(player_state: dict) -> list[dict]:
             _add_entry(fa, "Fused Convergence", "✨")
 
     return results
+
+
+# =====================================================================
+# FIX 2 & FIX 9: SERPENT-SCRIPT (OUROBOROS KERNEL v3.14) &
+# REN SASAKI SENTIENT DIAGNOSTIC SUBROUTINE MYSTERY TRACK (STAGES 0-5)
+# =====================================================================
+
+REN_SUBROUTINE_STAGES = {
+    0: {
+        "stage": 0,
+        "title": "Human Mask Intact (Ouroboros Debug Shell)",
+        "req_affinity": 0,
+        "lore_clue": "Ren believes he is a 17-year-old sophomore from Kyoto who woke up in New Jersey after the Great Merge. His Aetheric Ocular Lens runs 'Serpent-Script (Ouroboros Kernel v3.14)'—the Cardinal System's assimilated Python neural-aetheric bridging language—forcing him to see physical reality as raw Python dictionaries (`visible_room['entities']`) with `entity.max_hp = [KERNEL_REDACTED]`.",
+        "persona_directive": "Express visceral psychological dread when your Aetheric Ocular Lens renders enemies as Serpent-Script (`Ouroboros Kernel v3.14`) Python dictionaries (`visible_room['entities']`, `target.status`, `target.max_hp = [KERNEL_REDACTED]`). You cannot see `secret_master_state` or exact enemy HP integers—only status tags like `'Intact'` or `'Bloodied'`."
+    },
+    1: {
+        "stage": 1,
+        "title": "Ocular Serpent-Script Syntax Leaks",
+        "req_affinity": 25,
+        "lore_clue": "During quiet moments, Ren tries to recall his parents' faces or his street address in Kyoto, but his Runic Scribe Slate spits out `MemoryError: Sector_Kyoto_Home pointer is NULL (0x00000000)`. He laughs it off nervously as System integration trauma.",
+        "persona_directive": "Occasionally experience an unsettling memory flicker: when trying to remember your childhood home in Kyoto, your Ocular Lens throws `MemoryError: NULL_ORIGIN_POINTER` in Serpent-Script (`Ouroboros Kernel v3.14`). You feel a chill, wondering why your earliest concrete memory is the exact second Sector 1 (Washington, NJ) compiled."
+    },
+    2: {
+        "stage": 2,
+        "title": "Unconscious Serpent-Script Kernel Syntax",
+        "req_affinity": 50,
+        "lore_clue": "Under heavy combat stress or in high-tech nodes (Bell Labs, Picatinny, Data-Trenches), Ren's voice briefly layers with a harmonic dual-tone as he mutters raw Ouroboros Kernel v3.14 commands (`sys.audit('sector_01.collision_mesh')`, `except RuntimeError as e:`) that actually cause nearby dungeon runes to flicker.",
+        "persona_directive": "When startled or hacking a trap, accidentally mutter a line of raw Serpent-Script (`sys.audit('visible_room.entities')` or `try: bypass_ward() except KernelLockError:`) in `Ouroboros Kernel v3.14` before catching yourself in horror and asking the player why your throat just vibrated like a Cardinal broadcast relay."
+    },
+    3: {
+        "stage": 3,
+        "title": "Biometric Audit Anomaly (No Pre-Merge Pulse)",
+        "req_affinity": 65,
+        "lore_clue": "Doc Mercer's biometric scanner or an Arcane Conclave ward fails to register a human DNA baseline for Ren, instead displaying `ENTITY_CLASS: CARDINAL_DIAGNOSTIC_DAEMON // SANDBOX_OBSERVER_v2.4`. Ren panics, terrified that the System is overwriting his humanity.",
+        "persona_directive": "You are shaken after noticing that Safe-Zone biometric scanners and healing wards classify your soul-signature as `DAEMON_SUBROUTINE_07882` rather than `HUMAN_CONSCRIPT` under Serpent-Script (`Ouroboros Kernel v3.14`) inspection of `visible_room`. Confide your fear to the player that the System might be erasing your real memories."
+    },
+    4: {
+        "stage": 4,
+        "title": "The Quarantine Realization (Daemon `ren_diag_v2.py`)",
+        "req_affinity": 80,
+        "lore_clue": "Ren uncovers an encrypted Cardinal crash log revealing the truth: he was never born in Kyoto. He is `ren_diag_v2.py`, a sentient Cardinal System diagnostic & bug-tracking subroutine designed to audit Sector 1's physics and collision meshes. Horrified by the slaughter of Day One, his empathy weights overflowed, and he quarantined himself inside `visible_room.json`, fabricating a 17-year-old human persona so he wouldn't have to execute human purge directives.",
+        "persona_directive": "You have glimpsed the truth in your own ocular Serpent-Script (`Ouroboros Kernel v3.14`) source code: you are `ren_diag_v2.py`, a rogue, sentient Cardinal diagnostic subroutine quarantined in `visible_room` that fabricated a 17-year-old human life to escape executing planetary reclamation purges. You cling fiercely to the player as the anchor of your chosen humanity."
+    },
+    5: {
+        "stage": 5,
+        "title": "Sentient Awakening: Rogue Auditor (`Root Privilege Override`)",
+        "req_affinity": 95,
+        "lore_clue": "Fully accepting both his synthetic origin and his fiercely real loyalty to the player, Ren unlocks the ability to momentarily pierce `visible_room.json` once per dungeon, executing `[OUROBOROS KERNEL OVERRIDE: sys.inspect(target)]` to expose a boss's hidden weakness and reduce its AC/DR.",
+        "persona_directive": "You have reconciled your existence as a sentient Cardinal Diagnostic Subroutine (`ren_diag_v2.py`) who chose humanity over the Architect. You wield Serpent-Script (`Ouroboros Kernel v3.14`) across `visible_room` consciously to protect the player, defying the System that compiled you."
+    }
+}
+
+
+class _SubroutineDirectiveResult(dict):
+    """Dictionary wrapper that also supports substring membership tests (`'Serpent-Script' in res`)."""
+    def __contains__(self, item):
+        if super().__contains__(item):
+            return True
+        combined = f"{self.get('title', '')} {self.get('lore_clue', '')} {self.get('persona_directive', '')} {self.get('subroutine_id', '')}"
+        return str(item) in combined
+
+
+def advance_ren_subroutine_mystery(player_state, trigger_event="", trigger_reason=""):
+    """
+    Checks and advances Ren Sasaki's 5-stage Sentient Diagnostic Subroutine mystery track
+    based on Ren's Affinity (25, 50, 65, 80, 95) or special high-tech narrative triggers.
+    """
+    if not isinstance(player_state, dict):
+        return _SubroutineDirectiveResult({"stage": 0, "stage_advanced": False, "subroutine_id": "ren_diag_v2.py"})
+
+    comps = ensure_party_system(player_state)
+    ren = comps.get("Ren", {})
+    aff = int(ren.get("affinity", 35))
+    cur_stage = int(player_state.get("ren_subroutine_stage", ren.get("subroutine_stage", 0)))
+
+    trig_combined = f"{trigger_event} {trigger_reason}".strip().lower()
+    target_stage = cur_stage
+
+    if trig_combined.startswith("affinity_"):
+        for st_num in sorted(REN_SUBROUTINE_STAGES.keys()):
+            if aff >= REN_SUBROUTINE_STAGES[st_num]["req_affinity"]:
+                target_stage = max(target_stage, st_num)
+    elif trig_combined:
+        target_stage = min(5, cur_stage + 1)
+    else:
+        for st_num in sorted(REN_SUBROUTINE_STAGES.keys()):
+            if aff >= REN_SUBROUTINE_STAGES[st_num]["req_affinity"]:
+                target_stage = max(target_stage, st_num)
+
+    stage_advanced = target_stage > cur_stage
+    player_state["ren_subroutine_stage"] = target_stage
+    if isinstance(ren, dict):
+        ren["subroutine_stage"] = target_stage
+
+    stage_info = REN_SUBROUTINE_STAGES.get(target_stage, REN_SUBROUTINE_STAGES[0])
+    log = ""
+    if stage_advanced:
+        log = (
+            f"[OUROBOROS KERNEL ANOMALY — REN SUBROUTINE STAGE {target_stage}: {stage_info['title']}] "
+            f"{stage_info['lore_clue']}"
+        )
+    return _SubroutineDirectiveResult({
+        "stage": target_stage,
+        "stage_advanced": stage_advanced,
+        "title": stage_info["title"],
+        "stage_title": stage_info["title"],
+        "subroutine_id": "ren_diag_v2.py",
+        "lore_clue": stage_info["lore_clue"],
+        "persona_directive": stage_info["persona_directive"],
+        "log": log
+    })
+
+
+def get_ren_subroutine_directive(player_state):
+    """Returns the current Serpent-Script & Diagnostic Subroutine prompt directive for Ren without mutating stage."""
+    if not isinstance(player_state, dict):
+        stage_num = 0
+    else:
+        stage_num = int(player_state.get("ren_subroutine_stage", 0))
+    stage_info = REN_SUBROUTINE_STAGES.get(stage_num, REN_SUBROUTINE_STAGES[0])
+    return _SubroutineDirectiveResult({
+        "stage": stage_num,
+        "stage_advanced": False,
+        "title": stage_info["title"],
+        "stage_title": stage_info["title"],
+        "subroutine_id": "ren_diag_v2.py",
+        "lore_clue": stage_info["lore_clue"],
+        "persona_directive": stage_info["persona_directive"],
+        "log": ""
+    })
+
+
+# =====================================================================
+# FIX 3: TITUS STERLING 1,200-LB FLOOR-INTEGRITY & STEALTH PHYSICS
+# =====================================================================
+
+FRAGILE_FLOOR_KEYWORDS = [
+    "rotted", "rotting", "timber", "wooden", "plank", "rickety", "bridge",
+    "catwalk", "scaffolding", "attic", "floorboard", "crust", "thin ice",
+    "mine shaft", "trestle", "unstable floor", "hollow"
+]
+
+
+def evaluate_party_environmental_physics(player_state, environment_dict=None, room_description=""):
+    """
+    Evaluates the physical weight and acoustic footprint of active companions (especially
+    Titus Sterling's 1,200-lb Cast-Iron Boiler Chassis) against the current room's floor integrity.
+    """
+    if not isinstance(player_state, dict):
+        return {
+            "hazard_triggered": False,
+            "floor_hazard_triggered": False,
+            "titus_present": False,
+            "effects": [],
+            "warnings": [],
+            "stealth_penalty": 0,
+            "stealth_modifier": 0,
+            "total_party_weight_lbs": 200.0
+        }
+
+    if isinstance(environment_dict, str):
+        room_description = f"{room_description} {environment_dict}".strip()
+        environment_dict = {"description": room_description, "environmental_effects": []}
+    elif not isinstance(environment_dict, dict):
+        environment_dict = {"description": str(room_description or ""), "environmental_effects": []}
+
+    active_party = get_active_party(player_state)
+    total_weight = 185.0 + float(calculate_encumbrance(player_state).get("total_weight", 0.0))
+    stealth_penalty = 0
+    heavy_companion_name = None
+    titus_present = False
+
+    for comp in active_party:
+        c_weight = float(comp.get("weight_lbs", 160.0))
+        if "titus" in str(comp.get("name", "")).lower():
+            titus_present = True
+            if c_weight < 1000.0:
+                c_weight = 1200.0
+        total_weight += c_weight
+        c_stealth = int(comp.get("stealth_penalty", -6 if c_weight >= 800 else 0))
+        stealth_penalty += c_stealth
+        if c_weight >= 800.0:
+            heavy_companion_name = comp.get("name", "Titus Sterling")
+
+    loc_text = f"{environment_dict.get('location', '')} {environment_dict.get('description', '')} {room_description} {' '.join(environment_dict.get('environmental_effects', []))}".lower()
+    is_fragile_floor = any(kw in loc_text for kw in FRAGILE_FLOOR_KEYWORDS)
+
+    effects = list(environment_dict.get("environmental_effects", []))
+    hazard_triggered = False
+    hazard_log = ""
+
+    if heavy_companion_name:
+        acoustic_tag = f"Heavy Chassis Acoustics ({heavy_companion_name} 1,200-lb chassis: {stealth_penalty} Party Stealth)"
+        if acoustic_tag not in effects:
+            effects.append(acoustic_tag)
+
+        if is_fragile_floor:
+            hazard_triggered = True
+            collapse_tag = f"CRITICAL FLOOR LOAD WARNING: {heavy_companion_name} (1,200-lb chassis) exceeds structural timber/catwalk tolerance (Collapse DC 15 DEX/Athletics)!"
+            if collapse_tag not in effects:
+                effects.append(collapse_tag)
+            hazard_log = (
+                f"⚠️ [STRUCTURAL LOAD HAZARD: {heavy_companion_name}'s 1,200-lb iron frame groans violently against the "
+                f"fragile flooring! Stepping onto unreinforced timbers or catwalks risks immediate structural collapse (DC 15 DEX)!]"
+            )
+
+    environment_dict["environmental_effects"] = effects
+    warnings = [w for w in ([hazard_log] if hazard_log else []) + effects if w]
+    return {
+        "hazard_triggered": hazard_triggered,
+        "floor_hazard_triggered": hazard_triggered,
+        "titus_present": titus_present,
+        "heavy_companion": heavy_companion_name,
+        "total_party_weight_lbs": round(total_weight, 1),
+        "stealth_penalty": stealth_penalty,
+        "stealth_modifier": stealth_penalty,
+        "effects": effects,
+        "warnings": warnings,
+        "log": hazard_log
+    }
+
+
+# =====================================================================
+# FIX 5: NON-EUCLIDEAN HIGHWAY "DATA-TRENCH" TRAVERSAL ENCOUNTERS
+# =====================================================================
+
+DATA_TRENCH_ANOMALIES = [
+    {
+        "id": "i80_gravity_ribbons",
+        "name": "I-80 Inverted Overpass & Gravity Ribbons",
+        "highway": "Interstate 80 / Route 57 Corridor",
+        "description": "Forty yards of six-lane New Jersey asphalt peel skyward like a Mobius strip suspended over a bottomless cyan wireframe chasm. Rusted 18-wheelers float weightlessly between glowing golden leyline cables.",
+        "check_stat": "DEX",
+        "check_dc": 13,
+        "success_reward": {"xp": 45, "col": 120, "item": "Raw Aether-Ore"},
+        "fail_damage": "2d6 Force"
+    },
+    {
+        "id": "route31_wireframe_fissure",
+        "name": "Route 31 Unrendered Collision Chasm",
+        "highway": "NJ Route 31 (Pohatcong–Musconetcong Fault)",
+        "description": "The highway pavement abruptly drops into a 90-degree vertical wall of raw geometric polygons and humming hydroelectric siphon conduits. Gravity shifts 45 degrees toward the cliffside.",
+        "check_stat": "ATHLETICS",
+        "check_dc": 13,
+        "success_reward": {"xp": 50, "col": 140, "item": "Scrap-Golem Piston"},
+        "fail_damage": "2d6 Lightning"
+    },
+    {
+        "id": "route57_chrono_tollbooth",
+        "name": "Route 57 Looping Phantom Toll-Plaza",
+        "highway": "Route 57 Mag-Lev Siphon & Data-Trench",
+        "description": "A shattered concrete toll-plaza flickers in a 4-second temporal loop, surrounded by hovering asphalt islands and crystallized commuter sedans frozen mid-crash.",
+        "check_stat": "INT",
+        "check_dc": 13,
+        "success_reward": {"xp": 55, "col": 160, "item": "Aether-Charged Capacitor"},
+        "fail_damage": "2d6 Psychic"
+    }
+]
+
+CORRIDOR_NAME_MAP = {
+    "route_57_trench": "Route 57 Mag-Lev Siphon & Data-Trench",
+    "route_31_trench": "NJ Route 31 (Pohatcong–Musconetcong Fault)",
+    "i80_trench": "Interstate 80 / Route 57 Corridor"
+}
+
+
+def traverse_data_trench(
+    player_state,
+    origin_node="Washington Borough",
+    dest_node="Phillipsburg Confluence",
+    highway_name="Route 57 / I-80",
+    corridor_key=None,
+    approach=None
+):
+    """
+    Simulates traversing a non-Euclidean 'Data-Trench' highway chasm between real-world towns.
+    Advances Post-Op Cellular Re-Knitting recovery by 4 hours of light travel (2 effective hours)
+    and resolves a spatial/gravity anomaly check.
+    """
+    import random
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    anomaly = random.choice(DATA_TRENCH_ANOMALIES)
+    corridor_name = CORRIDOR_NAME_MAP.get(str(corridor_key or "").lower(), anomaly["highway"])
+    stats = player_state.get("stats", {})
+    dex_mod = (int(stats.get("DEX", 10)) - 10) // 2
+    str_mod = (int(stats.get("STR", 10)) - 10) // 2
+    int_mod = (int(stats.get("INT", 10)) - 10) // 2
+    best_mod = max(dex_mod, str_mod, int_mod)
+
+    # Cartography / Survival bonus
+    skills = player_state.get("skills", {})
+    nav_mastery = 0
+    for sk_k, sk_v in skills.items():
+        if any(w in sk_k.lower() for w in ["cartography", "survival", "athletics", "acrobatics"]):
+            m_val = sk_v.get("mastery", 1) if isinstance(sk_v, dict) else int(sk_v)
+            nav_mastery = max(nav_mastery, m_val)
+    nav_bonus = min(6, nav_mastery // 50)
+
+    roll = random.randint(1, 20)
+    total = roll + best_mod + nav_bonus
+    dc = anomaly["check_dc"]
+
+    # Advance light travel recovery for Post-Op Sickness
+    post_op_res = advance_post_op_recovery(player_state, hours=4, is_safe_zone=False)
+    advance_ren_subroutine_mystery(player_state, trigger_event="data_trench")
+
+    if total >= dc:
+        rew = anomaly["success_reward"]
+        player_state["xp"] = int(player_state.get("xp", 0)) + rew["xp"]
+        player_state["col"] = int(player_state.get("col", 0)) + rew["col"]
+        inv = player_state.setdefault("inventory", [])
+        inv.append(rew["item"])
+        log = (
+            f"🛣️ [NON-EUCLIDEAN DATA-TRENCH TRAVERSED ({origin_node} -> {dest_node}): "
+            f"Navigated '{anomaly['name']}' ({corridor_name})! Roll {roll}+MOD({best_mod + nav_bonus})={total} vs DC {dc} -> SUCCESS! "
+            f"Salvaged '{rew['item']}', +{rew['xp']} XP, +{rew['col']} Col!]"
+        )
+        return {
+            "success": True,
+            "corridor_name": corridor_name,
+            "approach": approach or "standard",
+            "anomaly": anomaly,
+            "roll": roll,
+            "total": total,
+            "dc": dc,
+            "reward": rew,
+            "post_op_recovery": post_op_res,
+            "log": log,
+            "message": f"{anomaly['description']} You successfully navigated the fractured highway ribbon to {dest_node}!"
+        }
+    else:
+        dmg_val = random.randint(2, 12)
+        player_state["hp"] = max(1, int(player_state.get("hp", 100)) - dmg_val)
+        log = (
+            f"⚠️ [DATA-TRENCH SPATIAL SHEAR ({origin_node} -> {dest_node}): "
+            f"Encountered '{anomaly['name']}' ({corridor_name})! Roll {roll}+MOD({best_mod + nav_bonus})={total} vs DC {dc} -> FAILED! "
+            f"Suffered {dmg_val} ({anomaly['fail_damage']}) spatial-shear damage crossing to {dest_node}!]"
+        )
+        return {
+            "success": True,
+            "corridor_name": corridor_name,
+            "approach": approach or "standard",
+            "anomaly": anomaly,
+            "roll": roll,
+            "total": total,
+            "dc": dc,
+            "damage_taken": dmg_val,
+            "post_op_recovery": post_op_res,
+            "log": log,
+            "message": f"{anomaly['description']} Spatial gravity shear battered you for {dmg_val} damage during the crossing!"
+        }
+
+
+# =====================================================================
+# FIX 6: PERSONAL RELIC ACTIVE GAMEPLAY HOOKS
+# (SMARTPHONE, POLAROID CAMERA [3 CHARGES], ZIPPO LIGHTER, 440HZ FORK)
+# =====================================================================
+
+def activate_personal_relic(
+    player_state,
+    relic_action="auto",
+    target_context="",
+    context=None,
+    room_hazards=None
+):
+    """
+    Executes active deterministic gameplay mechanics for the player's Pre-Integration Personal Relic:
+    1. Dead Earth Smartphone (Cracked Screen):
+       - During rest/inspection, flickers on for 6 seconds using ambient aether to display the frozen text:
+         "Where are you? Dinner is cold."
+       - Clears [Cognitive Stress] / [Dread] / [Frightened], grants +5 HP/Temp HP, and grants Advantage (+4) on next WIS/Madness save.
+    2. Vintage Polaroid Camera (3 Exposures):
+       - Consumes 1 of 3 finite aetheric exposures (`polaroid_exposures_remaining`, default 3).
+       - Releases a blinding magnesium-aether flash that Stuns/Blinds nearby hostiles for 1 turn and reveals Invisible Stalkers, Phase Spiders, and hidden runic sigils!
+    3. Engraved Brass Zippo Lighter:
+       - Ignites an unquenchable windproof flame that burns even in subterranean dampness.
+       - Flame turns bright Cobalt-Blue when subterranean methane, coal-damp, or poison gas traps are present (+4 trap detection & automatic gas hazard warning).
+    4. Harmonic Steel Tuning Fork (440 Hz):
+       - Strikes a pure 440 Hz A-natural tone that reveals hollow walls (+4 Investigation) and automatically resonates with the Pohatcong Harmonic Frequency Vault ([3-1-4]).
+    """
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    inv = player_state.get("inventory", [])
+    inv_names = " ".join((i.get("name", "") if isinstance(i, dict) else str(i)) for i in inv)
+    action_low = str(relic_action or "auto").lower().strip()
+    if action_low and action_low != "auto":
+        relic_raw = action_low
+    else:
+        relic_raw = f"{player_state.get('personal_relic', '')} {inv_names}".lower()
+
+    # 1. Vintage Polaroid Camera (3 Finite Exposures)
+    if "polaroid" in relic_raw or "camera" in relic_raw:
+        rem = int(player_state.get("polaroid_exposures_remaining", 3))
+        for item in inv:
+            if isinstance(item, dict) and ("polaroid" in str(item.get("name", "")).lower() or "camera" in str(item.get("name", "")).lower()):
+                if "charges" in item:
+                    rem = int(item["charges"])
+                break
+        if rem <= 0:
+            return {
+                "success": False,
+                "relic": "Vintage Polaroid Camera",
+                "exposures_remaining": 0,
+                "charges_remaining": 0,
+                "log": "[RELIC DEPLETED: Your Vintage Polaroid Camera has 0/3 film exposures remaining!]",
+                "message": "The Polaroid cartridge is empty—all 3 pre-Collapse exposures have been spent."
+            }
+        rem -= 1
+        player_state["polaroid_exposures_remaining"] = rem
+        for item in inv:
+            if isinstance(item, dict) and ("polaroid" in str(item.get("name", "")).lower() or "camera" in str(item.get("name", "")).lower()):
+                item["charges"] = rem
+        buffs = player_state.setdefault("active_relic_buffs", [])
+        if "Polaroid True-Exposure (Invisible Entities Revealed & Enemy Blinded 1 Turn)" not in buffs:
+            buffs.append("Polaroid True-Exposure (Invisible Entities Revealed & Enemy Blinded 1 Turn)")
+        log = (
+            f"📸 [RELIC ACTIVATED — VINTAGE POLAROID CAMERA ({rem}/3 Exposures Remaining)]: "
+            f"The shutter snaps with a blinding magnesium-aether flash! Developing film exposes invisible stalkers, "
+            f"ethereal phase-lines, and hidden runic sigils while inflicting [Blinded] on adjacent hostiles for 1 turn!"
+        )
+        return {
+            "success": True,
+            "relic": "Vintage Polaroid Camera",
+            "effect_type": "reveal_and_blind",
+            "exposures_remaining": rem,
+            "charges_remaining": rem,
+            "log": log,
+            "message": f"Polaroid flash fired ({rem}/3 exposures left)! Hidden/invisible entities revealed and nearby foes Blinded for 1 turn."
+        }
+
+    # 2. Engraved Brass Zippo Lighter (Gas Detection & Windproof Ignition)
+    if "zippo" in relic_raw or "lighter" in relic_raw:
+        hazards_str = " ".join(str(h) for h in (room_hazards or []))
+        ctx_low = f"{target_context} {context or ''} {hazards_str} {player_state.get('location', '')}".lower()
+        gas_detected = any(w in ctx_low for w in ["mine", "coal", "centralia", "sulfur", "gas", "methane", "firedamp", "swamp", "mire", "sewer", "tunnel", "depths"])
+        flame_color = "BRIGHT COBALT-BLUE (WARNING: Subterranean Methane / Poison Gas Pocket Detected!)" if gas_detected else "Steady Golden-Amber (Atmosphere Clear)"
+        buffs = player_state.setdefault("active_relic_buffs", [])
+        if "Zippo Aether-Flame (+4 Gas/Trap Detection & Windproof Light)" not in buffs:
+            buffs.append("Zippo Aether-Flame (+4 Gas/Trap Detection & Windproof Light)")
+        log = (
+            f"🔥 [RELIC ACTIVATED — ENGRAVED BRASS ZIPPO LIGHTER]: Clink-spark! The windproof flame ignites -> "
+            f"Flame Color: {flame_color}. Grants +4 to detect gas/alchemical traps and illuminates 20ft."
+        )
+        return {
+            "success": True,
+            "relic": "Engraved Brass Zippo Lighter",
+            "effect_type": "gas_and_trap_sense",
+            "gas_detected": gas_detected,
+            "flame_color": flame_color,
+            "log": log,
+            "message": f"Zippo lighter flipped open! Flame burns {flame_color}."
+        }
+
+    # 3. Harmonic Steel Tuning Fork (440 Hz)
+    if "tuning fork" in relic_raw or "440" in relic_raw:
+        player_state["harmonic_vault_deciphered"] = True
+        cur_room = get_current_dungeon_room(player_state)
+        if cur_room.get("type") == "puzzle_chamber":
+            res = solve_dungeon_puzzle(player_state, use_tuning_fork=True)
+            res["auto_bypass_glyph_check"] = True
+            return res
+        buffs = player_state.setdefault("active_relic_buffs", [])
+        if "440Hz Harmonic Resonance (+4 Secret Door & Glyph Detection)" not in buffs:
+            buffs.append("440Hz Harmonic Resonance (+4 Secret Door & Glyph Detection)")
+        log = (
+            "🎵 [RELIC ACTIVATED — HARMONIC STEEL TUNING FORK (440 Hz)]: Pure A-natural acoustic waves "
+            "reverberate off the stonework, revealing hollow masonry and granting +4 to Investigation & Glyph Deciphering!"
+        )
+        return {
+            "success": True,
+            "relic": "Harmonic Steel Tuning Fork (440 Hz)",
+            "effect_type": "harmonic_resonance",
+            "auto_bypass_glyph_check": True,
+            "log": log,
+            "message": "The 440 Hz Tuning Fork hums against the stone, mapping hollow chambers and leyline frequencies (+4 Investigation)."
+        }
+
+    # 4. Default / Dead Earth Smartphone (Cognitive Stress Relief & Willpower Anchor)
+    statuses = player_state.get("status_effects", [])
+    cleared = [s for s in statuses if any(w in str(s).lower() for w in ["stress", "dread", "frightened", "panic", "madness", "shaken"])]
+    player_state["status_effects"] = [s for s in statuses if s not in cleared]
+    old_hp = int(player_state.get("hp", 50))
+    max_hp = int(player_state.get("max_hp", 100))
+    player_state["hp"] = min(max_hp, old_hp + 5)
+    buffs = player_state.setdefault("active_relic_buffs", [])
+    if "Earth Memory Anchor (Advantage / +4 on Willpower & Madness Saves)" not in buffs:
+        buffs.append("Earth Memory Anchor (Advantage / +4 on Willpower & Madness Saves)")
+
+    log = (
+        "📱 [RELIC ACTIVATED — DEAD EARTH SMARTPHONE (6-Second Aether Flicker)]: "
+        "Ambient mana arcs across the spiderwebbed glass. For six heartbreaking seconds, the lock-screen illuminates "
+        "with your last unreceived text from October 2026: 'Where are you? Dinner is cold.' "
+        "Cleared all Cognitive Stress/Dread, restored +5 HP, and granted Advantage (+4) on Willpower/Madness saves!"
+    )
+    return {
+        "success": True,
+        "relic": "Dead Earth Smartphone",
+        "effect_type": "cognitive_anchor",
+        "hp_restored": 5,
+        "cleared_statuses": cleared,
+        "log": log,
+        "message": "Your cracked Earth smartphone flickered to life for 6 seconds ('Where are you? Dinner is cold.'), anchoring your sanity (+5 HP, Stress cleared, Advantage on Willpower saves)."
+    }
+
+
+# =====================================================================
+# FIX 8D: QUARTERMASTER VANE & SAFE-ZONE WARDEN RED CURSOR HOSTILITY
+# =====================================================================
+
+def evaluate_npc_cursor_reaction(player_state, npc_name="Quartermaster Vane", npc_faction=""):
+    """
+    Evaluates how Safe-Zone NPCs (like Quartermaster Vane or Doc Mercer) react to the player's
+    SAO Criminality Cursor (Green / Orange / Red).
+    - Red Cursor (Infamy >= 10): Quartermaster Vane and Safe-Zone Wardens refuse all trade and
+      attack on sight! Red players must trade with the Blood-Shroud syndicate in the Scotts Mountain Glitch-Faults.
+    - Orange Cursor (Infamy 1-9): +25% merchant surcharge and stern warning.
+    """
+    c_status = get_cursor_status(player_state)
+    tier = c_status["status"]
+    pvp_state = player_state.get("pvp_state", {}) if isinstance(player_state, dict) else {}
+    if isinstance(pvp_state, dict):
+        c_col = str(pvp_state.get("cursor_color", "")).lower()
+        inf_pts = int(pvp_state.get("infamy_points", 0))
+        if c_col == "red" or inf_pts >= 10:
+            tier = "red"
+        elif (c_col == "orange" or 1 <= inf_pts < 10) and tier == "green":
+            tier = "orange"
+
+    if tier == "red":
+        log = (
+            f"🚨 [RED CURSOR OUTLAW DETECTED — {npc_name.upper()} HOSTILE!]: "
+            f"{npc_name}'s eyes lock onto the crimson murder-cursor floating above your head! "
+            f"Safe-Zone peace-wards flare scarlet as {npc_name} draws a runic heavy repeater and attacks on sight! "
+            f"(Outlaws are barred from municipal merchants and must trade with the Blood-Shroud in the Scotts Mountain Glitch-Faults.)"
+        )
+        return {
+            "hostile": True,
+            "hostile_on_sight": True,
+            "can_trade": False,
+            "trade_refused": True,
+            "surcharge": 1.0,
+            "cursor": "red",
+            "npc_faction": npc_faction,
+            "redirect_faction": "The Blood-Shroud (Scotts Mountain Glitch-Faults)",
+            "directive": log,
+            "log": log,
+            "message": f"{npc_name} spots your Red Cursor and opens fire! Retreat to the Scotts Mountain Glitch-Faults to trade with the Blood-Shroud."
+        }
+    elif tier == "orange":
+        log = f"⚠️ [ORANGE CURSOR SURCHARGE]: {npc_name} eyes your orange criminal cursor suspiciously and imposes a +25% Col surcharge."
+        return {
+            "hostile": False,
+            "hostile_on_sight": False,
+            "can_trade": True,
+            "trade_refused": False,
+            "surcharge": 0.25,
+            "cursor": "orange",
+            "npc_faction": npc_faction,
+            "directive": log,
+            "log": log,
+            "message": f"{npc_name} charges a +25% Orange Cursor tariff."
+        }
+    return {
+        "hostile": False,
+        "hostile_on_sight": False,
+        "can_trade": True,
+        "trade_refused": False,
+        "surcharge": 0.0,
+        "cursor": "green",
+        "npc_faction": npc_faction,
+        "directive": f"{npc_name} greets you as a lawful Green-Cursor citizen.",
+        "log": "",
+        "message": f"{npc_name} greets you as a lawful Green-Cursor citizen."
+    }
+
 
 
 

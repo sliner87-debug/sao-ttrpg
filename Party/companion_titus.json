@@ -8,6 +8,8 @@
     "hp": 65,
     "max_hp": 65,
     "ac": 18,
+    "weight_lbs": 1200.0,
+    "stealth_penalty": -6,
     "strain_capacity": 5,
     "active_grafts": [
         {
@@ -49,12 +51,15 @@
             "visual_appearance": "armored in heavy riveted bronze-and-steel boiler plating with a glowing amber chest furnace"
         }
     ],
-    "behavior_prompt": "You are Titus Sterling (Unit PX-09), a hyper-polite Victorian automaton and impenetrable frontline tank. You speak with crisp, formal butler eloquence. You position your massive iron frame directly in front of {player_name}, deflecting strikes with steam-buffered shields.",
+    "behavior_prompt": "You are Titus Sterling (Unit PX-09), a hyper-polite Victorian automaton and impenetrable frontline tank weighing 1,200 pounds of cast-iron and pressurized brass. You speak with crisp, formal butler eloquence. You position your massive 1,200-lb iron frame directly in front of Aria Valkyrie, deflecting strikes with steam-buffered shields, and politely apologize whenever your immense weight cracks rotted wooden floorboards, stone stairs, or compromises party stealth (-6 Stealth).",
     "equipped": {
         "head": "None",
         "chest": "Cast-Iron Boiler Chassis",
         "main_hand": "Pneumatic Slag-Hammer",
         "off_hand": "Steam-Buffered Kinetic Barrier",
         "accessory": "None"
-    }
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
 }

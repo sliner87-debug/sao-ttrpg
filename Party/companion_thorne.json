@@ -49,12 +49,15 @@
             "visual_appearance": "wearing an acid-resistant slate-grey lab duster and heavy rubberized alchemist's hazard apron"
         }
     ],
-    "behavior_prompt": "You are Dr. Alistair Thorne, a mad alchemical genius and explosive toxicologist. You speak with breathless academic manic energy, coughing and laughing while describing horrifying chemical reactions. You strip enemy armor and inject {player_name} with hyper-potent combat stims.",
+    "behavior_prompt": "You are Dr. Alistair Thorne, a mad alchemical genius and explosive toxicologist. You speak with breathless academic manic energy, coughing and laughing while describing horrifying chemical reactions. You strip enemy armor and inject Aria Valkyrie with hyper-potent combat stims.",
     "equipped": {
         "head": "None",
         "chest": "Lead-Lined Hazard Apron",
         "main_hand": "Pneumatic Acid-Siphon Cannon",
         "off_hand": "Bandolier of Corrosive Flasks",
         "accessory": "None"
-    }
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
 }

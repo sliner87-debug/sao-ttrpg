@@ -1,5 +1,10 @@
 [server]
+fileWatcherType = "none"
+enableWebsocketCompression = false
 enableXsrfProtection = false
 enableCORS = false
 maxUploadSize = 50
 maxMessageSize = 50
+
+[browser]
+gatherUsageStats = false

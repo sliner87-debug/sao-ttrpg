@@ -56,5 +56,8 @@
         "main_hand": "Bone-Chime Scythe",
         "off_hand": "Soul-Vessel Phylactery",
         "accessory": "None"
-    }
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
 }
