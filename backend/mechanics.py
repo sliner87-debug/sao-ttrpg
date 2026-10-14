@@ -7384,9 +7384,17 @@ def ensure_party_system(player_state):
         comps = {}
         player_state["companions"] = comps
 
+    # Ensure all items in comps are valid dictionaries
+    for c_key in list(comps.keys()):
+        if not isinstance(comps[c_key], dict):
+            if c_key in RECRUITABLE_COMPANIONS:
+                comps[c_key] = copy.deepcopy(RECRUITABLE_COMPANIONS[c_key])
+            else:
+                del comps[c_key]
+
     # Ensure all recruitable companion archetypes exist in record
     for c_name, c_def in RECRUITABLE_COMPANIONS.items():
-        if c_name not in comps:
+        if c_name not in comps or not isinstance(comps[c_name], dict):
             comps[c_name] = copy.deepcopy(c_def)
         else:
             # Backfill missing keys on existing companions
@@ -7400,26 +7408,27 @@ def ensure_party_system(player_state):
         p_comps = party_dict.get("companions", {})
         if isinstance(p_comps, dict):
             for c_key, c_ov in p_comps.items():
-                if c_key in comps and isinstance(c_ov, dict):
+                if c_key in comps and isinstance(comps[c_key], dict) and isinstance(c_ov, dict):
                     for ov_k in ("affinity", "recruited", "active", "hp", "max_hp", "weight_lbs", "stance"):
                         if ov_k in c_ov:
                             comps[c_key][ov_k] = c_ov[ov_k]
                     if c_ov.get("recruited") and "active" not in c_ov:
                         comps[c_key]["active"] = True
         act_comp = party_dict.get("active_companion")
-        if act_comp and act_comp in comps:
+        if act_comp and act_comp in comps and isinstance(comps[act_comp], dict):
             comps[act_comp]["recruited"] = True
             comps[act_comp]["active"] = True
 
     # Ren is recruited and active by default
-    comps["Ren"]["recruited"] = True
-    if "active" not in comps["Ren"]:
-        comps["Ren"]["active"] = True
-    comps["Ren"].setdefault("subroutine_stage", int(player_state.get("ren_subroutine_stage", 0)))
-    comps["Ren"].setdefault("affinity", 35)
-    comps["Ren"].setdefault("affinity_tier", "Ally")
-    comps["Ren"].setdefault("hp", comps["Ren"].get("max_hp", 35))
-    comps["Ren"].setdefault("max_hp", 35)
+    if "Ren" in comps and isinstance(comps["Ren"], dict):
+        comps["Ren"]["recruited"] = True
+        if "active" not in comps["Ren"]:
+            comps["Ren"]["active"] = True
+        comps["Ren"].setdefault("subroutine_stage", int(player_state.get("ren_subroutine_stage", 0)))
+        comps["Ren"].setdefault("affinity", 35)
+        comps["Ren"].setdefault("affinity_tier", "Ally")
+        comps["Ren"].setdefault("hp", comps["Ren"].get("max_hp", 35))
+        comps["Ren"].setdefault("max_hp", 35)
 
     return comps
 
@@ -7617,7 +7626,7 @@ def get_active_party(player_state):
     comps = ensure_party_system(player_state)
     active_list = []
     for c_name, c_data in comps.items():
-        if c_data.get("recruited", False) and c_data.get("active", False):
+        if isinstance(c_data, dict) and c_data.get("recruited", False) and c_data.get("active", False):
             active_list.append(c_data)
     return active_list
 

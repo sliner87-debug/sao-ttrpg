@@ -1626,7 +1626,9 @@ def render_game_hud():
                 st.info("No active companions deployed in vanguard. Check Reserve or Recruit tabs!")
             else:
                 for comp in active_comps:
-                    c_name = comp["name"]
+                    if not isinstance(comp, dict):
+                        continue
+                    c_name = comp.get("name", "Companion")
                     c_lvl = comp.get("level", 1)
                     c_class = comp.get("class", comp.get("archetype", "Specialist"))
                     c_hp = comp.get("hp", 35)
@@ -1700,37 +1702,62 @@ def render_game_hud():
                     st.divider()
 
         with tab_benched_party:
-            comps = player.get("party", {})
-            benched = [c for c in comps.values() if c.get("recruited", False) and not c.get("active", False)] if isinstance(comps, dict) else [c for c in comps if c.get("recruited", False) and not c.get("active", False)]
+            comps = mechanics.ensure_party_system(player) if hasattr(mechanics, "ensure_party_system") else player.get("companions", {})
+            benched = []
+            if isinstance(comps, dict):
+                for c in comps.values():
+                    if isinstance(c, dict) and c.get("recruited", False) and not c.get("active", False):
+                        benched.append(c)
+            elif isinstance(comps, list):
+                for c in comps:
+                    if isinstance(c, dict) and c.get("recruited", False) and not c.get("active", False):
+                        benched.append(c)
+
             if not benched:
                 st.caption("No companions currently in Reserve.")
             else:
                 for b_comp in benched:
-                    st.markdown(f"**👤 {b_comp['name']}** `[Lv. {b_comp.get('level', 1)}]`")
+                    b_name = b_comp.get("name", "Unknown")
+                    st.markdown(f"**👤 {b_name}** `[Lv. {b_comp.get('level', 1)}]`")
                     st.caption(f"HP: {b_comp.get('hp', 30)}/{b_comp.get('max_hp', 30)}")
                     if len(active_comps) < 3:
-                        if st.button(f"Activate {b_comp['name']} to Vanguard", key=f"btn_activate_{b_comp['name']}"):
+                        if st.button(f"Activate {b_name} to Vanguard", key=f"btn_activate_{b_name}"):
                             b_comp["active"] = True
                             save_game(player, st.session_state.messages)
-                            st.toast(f"{b_comp['name']} activated to Vanguard!", icon="⚔️")
+                            st.toast(f"{b_name} activated to Vanguard!", icon="⚔️")
                             st.rerun()
                     else:
                         st.caption("⚠️ Vanguard is full (Max 3 companions).")
                     st.divider()
 
         with tab_recruit_pool:
-            comps = player.get("party", {})
-            all_known = mechanics.RECRUITABLE_COMPANIONS
-            unrecruited = [c for name, c in all_known.items() if not (isinstance(comps, dict) and comps.get(name, {}).get("recruited")) and not (isinstance(comps, list) and any(x.get("name") == name and x.get("recruited") for x in comps))]
+            comps = mechanics.ensure_party_system(player) if hasattr(mechanics, "ensure_party_system") else player.get("companions", {})
+            all_known = mechanics.RECRUITABLE_COMPANIONS if hasattr(mechanics, "RECRUITABLE_COMPANIONS") else {}
+            unrecruited = []
+            for name, u_comp in all_known.items():
+                is_recruited = False
+                if isinstance(comps, dict):
+                    c_entry = comps.get(name)
+                    if isinstance(c_entry, dict) and c_entry.get("recruited", False):
+                        is_recruited = True
+                elif isinstance(comps, list):
+                    for x in comps:
+                        if isinstance(x, dict) and x.get("name") == name and x.get("recruited", False):
+                            is_recruited = True
+                            break
+                if not is_recruited:
+                    unrecruited.append(u_comp)
+
             if not unrecruited:
                 st.success("All known Sector 1 companions have joined your vanguard!")
             else:
                 for u_comp in unrecruited:
-                    st.markdown(f"##### 👤 {u_comp['name']} — `{u_comp.get('title', u_comp.get('class', 'Warrior'))}`")
+                    u_name = u_comp.get("name", "Unknown Companion")
+                    st.markdown(f"##### 👤 {u_name} — `{u_comp.get('title', u_comp.get('class', 'Warrior'))}`")
                     st.caption(f"**Class:** {u_comp.get('class', '')} | **Lineage:** {u_comp.get('race', 'Human')} | **Starting Level:** {u_comp.get('level', 1)}")
                     st.write(u_comp.get("bio", u_comp.get("background", "")))
-                    if st.button(f"Recruit {u_comp['name']} into Vanguard", key=f"btn_recruit_{u_comp['name']}"):
-                        rec_res = mechanics.recruit_companion(player, u_comp["name"])
+                    if st.button(f"Recruit {u_name} into Vanguard", key=f"btn_recruit_{u_name}"):
+                        rec_res = mechanics.recruit_companion(player, u_name)
                         if rec_res["success"]:
                             save_game(player, st.session_state.messages)
                             st.balloons()
