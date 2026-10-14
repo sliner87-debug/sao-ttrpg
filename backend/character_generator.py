@@ -1460,6 +1460,41 @@ CHIMERA_BLOODLINE_OPTIONS = {
     }
 }
 
+# Part C: Biological Flaws (player must pick 1; may take a 2nd for a reward). Open to every build.
+CHIMERA_FLAWS = {
+    "thermal_flesh": {
+        "name": "Thermal Flesh (Troll)",
+        "ability": "Flaw - Thermal Flesh: Takes 50% extra damage from Fire and Acid attacks."
+    },
+    "voracious_hunger": {
+        "name": "Voracious Hunger (Troll)",
+        "ability": "Flaw - Voracious Hunger: Must consume double daily food rations. Missing a day of food inflicts -2 STR and -2 CON and halts all regeneration until you eat."
+    },
+    "brittle_cold_chitin": {
+        "name": "Brittle Cold-Chitin (Thri-Kreen)",
+        "ability": "Flaw - Brittle Cold-Chitin: Takes 50% extra damage from Cold attacks, and any Cold hit stiffens your chitin, reducing your speed by 10 feet for 1 turn."
+    },
+    "molting_cycle": {
+        "name": "Molting Cycle (Thri-Kreen)",
+        "ability": "Flaw - Molting Cycle: Every 3rd Long Rest you molt for 24 hours, suffering -2 AC and Disadvantage on DEX checks, unless you consume an extra ration to accelerate the molt."
+    },
+    "splice_rejection": {
+        "name": "Splice Rejection (Hybrid)",
+        "ability": "Flaw - Splice Rejection: Your body is already a graft, reducing your graft capacity by 1. When reduced below 25% HP or hit by a critical strike, pass a DC 12 CON save or lose your Bloodline Offense ability until your next Short Rest."
+    },
+    "uncanny_abomination": {
+        "name": "Uncanny Abomination (Hybrid)",
+        "ability": "Flaw - Uncanny Abomination: Disadvantage on Persuasion checks with humans, and Safe-Zone merchants charge you 10% more."
+    },
+    "blood_frenzy": {
+        "name": "Blood-Frenzy Instinct (Hybrid)",
+        "ability": "Flaw - Blood-Frenzy Instinct: When reduced below 25% HP, pass a DC 12 WIS save or enter a Blood-Frenzy: +2 melee damage, but you cannot retreat until the nearest hostile is dead."
+    },
+}
+
+CHIMERA_STAT_KEYS = ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
+CHIMERA_REGEN_CAP_RULE = "Hybrid Rule - Regeneration Cap: Per-turn regeneration from multiple Bloodline Defenses does not stack; only your highest per-turn regeneration applies (all other effects still apply)."
+
 DEFAULT_CHIMERA_CHOICES = {
     "frame": "troll",
     "arms": "troll",
@@ -1469,19 +1504,50 @@ DEFAULT_CHIMERA_CHOICES = {
     "defense": "hyper_regeneration",
     "offense": "savage_quad_rend",
     "instinct": "undying_reknit",
+    "flaw": "thermal_flesh",
+    "flaw_2": None,               # optional second flaw key
+    "flaw_2_reward": "stats",     # "stats" (+1 to 3 chosen stats) or "feat" (extra Bloodline option)
+    "reward_stats": [],           # up to 3 distinct stat keys
+    "reward_feat": None,          # "<category>:<option_key>" not already picked
 }
+
+
+def get_unpicked_bloodline_options(choices):
+    """Returns [(category, option_key), ...] for Bloodline options the player has not already chosen."""
+    return [(cat, opt) for cat, cat_data in CHIMERA_BLOODLINE_OPTIONS.items()
+            for opt in cat_data["options"] if choices.get(cat) != opt]
 
 
 def normalize_chimera_choices(choices=None):
     """Returns a complete, valid chimera choice dict, filling gaps/invalid entries with defaults."""
     resolved = dict(DEFAULT_CHIMERA_CHOICES)
-    if isinstance(choices, dict):
-        for slot in CHIMERA_PHYSICAL_SLOTS:
-            if choices.get(slot) in ("troll", "kreen"):
-                resolved[slot] = choices[slot]
-        for cat, cat_data in CHIMERA_BLOODLINE_OPTIONS.items():
-            if choices.get(cat) in cat_data["options"]:
-                resolved[cat] = choices[cat]
+    resolved["reward_stats"] = []
+    if not isinstance(choices, dict):
+        return resolved
+    for slot in CHIMERA_PHYSICAL_SLOTS:
+        if choices.get(slot) in ("troll", "kreen"):
+            resolved[slot] = choices[slot]
+    for cat, cat_data in CHIMERA_BLOODLINE_OPTIONS.items():
+        if choices.get(cat) in cat_data["options"]:
+            resolved[cat] = choices[cat]
+    if choices.get("flaw") in CHIMERA_FLAWS:
+        resolved["flaw"] = choices["flaw"]
+
+    # Optional second flaw + reward
+    if choices.get("flaw_2") in CHIMERA_FLAWS and choices.get("flaw_2") != resolved["flaw"]:
+        resolved["flaw_2"] = choices["flaw_2"]
+        resolved["flaw_2_reward"] = "feat" if choices.get("flaw_2_reward") == "feat" else "stats"
+        if resolved["flaw_2_reward"] == "stats":
+            picked = []
+            for s in (choices.get("reward_stats") or []):
+                if s in CHIMERA_STAT_KEYS and s not in picked:
+                    picked.append(s)
+            resolved["reward_stats"] = picked[:3]
+        else:
+            unpicked = get_unpicked_bloodline_options(resolved)
+            valid = {f"{c}:{o}" for c, o in unpicked}
+            rf = choices.get("reward_feat")
+            resolved["reward_feat"] = rf if rf in valid else (f"{unpicked[0][0]}:{unpicked[0][1]}" if unpicked else None)
     return resolved
 
 
@@ -1503,6 +1569,19 @@ def build_chimera_lineage(choices=None):
     for cat, cat_data in CHIMERA_BLOODLINE_OPTIONS.items():
         abilities.append(cat_data["options"][ch[cat]]["ability"])
 
+    # Flaws and second-flaw reward
+    abilities.append(CHIMERA_FLAWS[ch["flaw"]]["ability"])
+    if ch.get("flaw_2"):
+        abilities.append(CHIMERA_FLAWS[ch["flaw_2"]]["ability"])
+        if ch["flaw_2_reward"] == "stats":
+            for s in ch["reward_stats"]:
+                stat_mods[s] = stat_mods.get(s, 0) + 1
+        elif ch.get("reward_feat"):
+            r_cat, r_opt = ch["reward_feat"].split(":", 1)
+            abilities.append(CHIMERA_BLOODLINE_OPTIONS[r_cat]["options"][r_opt]["ability"])
+            if r_cat == "defense":
+                abilities.append(CHIMERA_REGEN_CAP_RULE)
+
     kreen_count = len(CHIMERA_PHYSICAL_SLOTS) - troll_count
     return {
         "name": f"Spliced Apex Chimera (Troll x Thri-Kreen | {troll_count} Troll / {kreen_count} Kreen)",
@@ -1522,6 +1601,8 @@ RACIAL_LINEAGES[CHIMERA_RACE_KEY] = dict(build_chimera_lineage(DEFAULT_CHIMERA_C
 CHIMERA_ABILITY_CATALOG = (
     [expr["ability"] for slot in CHIMERA_PHYSICAL_SLOTS.values() for expr in (slot["troll"], slot["kreen"])]
     + [opt["ability"] for cat in CHIMERA_BLOODLINE_OPTIONS.values() for opt in cat["options"].values()]
+    + [f["ability"] for f in CHIMERA_FLAWS.values()]
+    + [CHIMERA_REGEN_CAP_RULE]
 )
 
 # Concept art for the hybrid variants (relative to the project root)

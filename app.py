@@ -134,8 +134,11 @@ def save_game(player_state, messages):
 
 # --- CHARACTER GENERATOR & CALIBRATION INTERFACE ---
 def get_cg_chimera_choices():
-    """Reads the Spliced Apex Chimera slot/bloodline widget state (falls back to defaults)."""
-    return cg.normalize_chimera_choices({k: st.session_state.get(f"chim_{k}") for k in cg.DEFAULT_CHIMERA_CHOICES})
+    """Reads the Spliced Apex Chimera slot/bloodline/flaw widget state (falls back to defaults)."""
+    raw = {k: st.session_state.get(f"chim_{k}") for k in cg.DEFAULT_CHIMERA_CHOICES}
+    if not st.session_state.get("chim_flaw_2_enabled"):
+        raw["flaw_2"] = None
+    return cg.normalize_chimera_choices(raw)
 
 
 def get_cg_race_obj():
@@ -570,6 +573,59 @@ def render_character_calibration_wizard():
                 )
                 cur_o = st.session_state.get(f"chim_{cat_k}", cg.DEFAULT_CHIMERA_CHOICES[cat_k])
                 st.caption(cat_d["options"][cur_o]["ability"].split(":", 1)[1].strip())
+
+            st.caption("Part C — choose a Biological Flaw (required). You may take a 2nd flaw for a reward.")
+            flaw_keys = list(cg.CHIMERA_FLAWS.keys())
+            st.selectbox(
+                "Biological Flaw",
+                options=flaw_keys,
+                format_func=lambda v: cg.CHIMERA_FLAWS[v]["name"],
+                index=flaw_keys.index(cg.DEFAULT_CHIMERA_CHOICES["flaw"]),
+                key="chim_flaw"
+            )
+            cur_f = st.session_state.get("chim_flaw", cg.DEFAULT_CHIMERA_CHOICES["flaw"])
+            st.caption(cg.CHIMERA_FLAWS[cur_f]["ability"].split(":", 1)[1].strip())
+
+            if st.checkbox("⚠️ Take a 2nd Flaw for a reward", key="chim_flaw_2_enabled"):
+                flaw2_keys = [k for k in flaw_keys if k != cur_f]
+                st.selectbox(
+                    "Second Flaw",
+                    options=flaw2_keys,
+                    format_func=lambda v: cg.CHIMERA_FLAWS[v]["name"],
+                    key="chim_flaw_2"
+                )
+                cur_f2 = st.session_state.get("chim_flaw_2") or flaw2_keys[0]
+                if cur_f2 in cg.CHIMERA_FLAWS:
+                    st.caption(cg.CHIMERA_FLAWS[cur_f2]["ability"].split(":", 1)[1].strip())
+                reward = st.radio(
+                    "2nd Flaw Reward",
+                    options=["stats", "feat"],
+                    format_func=lambda v: "+1 to 3 stats of your choice" if v == "stats" else "1 extra Bloodline option you didn't pick",
+                    horizontal=True,
+                    key="chim_flaw_2_reward"
+                )
+                if reward == "stats":
+                    st.multiselect(
+                        "Choose 3 different stats to raise by +1",
+                        options=cg.CHIMERA_STAT_KEYS,
+                        max_selections=3,
+                        key="chim_reward_stats"
+                    )
+                    n_sel = len(st.session_state.get("chim_reward_stats") or [])
+                    if n_sel < 3:
+                        st.warning(f"Select {3 - n_sel} more stat(s) to claim the full reward.")
+                else:
+                    cur_choices = get_cg_chimera_choices()
+                    feat_opts = [f"{c}:{o}" for c, o in cg.get_unpicked_bloodline_options(cur_choices)]
+                    st.selectbox(
+                        "Extra Bloodline option",
+                        options=feat_opts,
+                        format_func=lambda v: f"[{cg.CHIMERA_BLOODLINE_OPTIONS[v.split(':')[0]]['label']}] {cg.CHIMERA_BLOODLINE_OPTIONS[v.split(':')[0]]['options'][v.split(':')[1]]['name']}",
+                        key="chim_reward_feat"
+                    )
+                    rf = st.session_state.get("chim_reward_feat")
+                    if rf and rf.split(":")[0] == "defense":
+                        st.caption(cg.CHIMERA_REGEN_CAP_RULE.split(":", 1)[1].strip())
 
         race_obj = get_cg_race_obj()
         if race_obj.get("max_hp_bonus"):
