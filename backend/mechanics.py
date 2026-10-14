@@ -7877,20 +7877,51 @@ def recalculate_entity_combat_stats(entity_dict):
     """
     Recalculates an entity's effective Armor Class (ac) and Damage Reduction (dr)
     from its `base_ac`, `base_dr`, and mutable `active_debuffs` list.
+    Safely handles None, string integers, and non-combat entities.
     """
     if not isinstance(entity_dict, dict):
         return entity_dict
-    base_ac = int(entity_dict.setdefault("base_ac", entity_dict.get("ac", 14)))
-    base_dr = int(entity_dict.setdefault("base_dr", entity_dict.get("dr", 0)))
-    debuffs = entity_dict.setdefault("active_debuffs", [])
+
+    def _to_int(val, default=0):
+        if val is None:
+            return default
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return default
+
+    # Extract base_ac safely
+    raw_base_ac = entity_dict.get("base_ac")
+    if raw_base_ac is None:
+        raw_base_ac = entity_dict.get("ac", 14)
+    base_ac = _to_int(raw_base_ac, 14)
+    entity_dict["base_ac"] = base_ac
+
+    # Extract base_dr safely
+    raw_base_dr = entity_dict.get("base_dr")
+    if raw_base_dr is None:
+        raw_base_dr = entity_dict.get("dr", 0)
+    base_dr = _to_int(raw_base_dr, 0)
+    entity_dict["base_dr"] = base_dr
+
+    # Ensure active_debuffs is a list
+    raw_debuffs = entity_dict.get("active_debuffs")
+    if not isinstance(raw_debuffs, list):
+        debuffs = []
+        entity_dict["active_debuffs"] = debuffs
+    else:
+        debuffs = raw_debuffs
 
     total_ac_pen = 0
     dr_override = None
     for db in debuffs:
         if isinstance(db, dict):
-            total_ac_pen += int(db.get("ac_penalty", 0))
+            total_ac_pen += _to_int(db.get("ac_penalty"), 0)
             if db.get("dr_override") is not None:
-                dr_override = int(db["dr_override"])
+                try:
+                    dr_override = int(db["dr_override"])
+                except (ValueError, TypeError):
+                    pass
 
     entity_dict["ac"] = max(5, base_ac + total_ac_pen)  # ac_penalty is negative (e.g. -4)
     entity_dict["dr"] = dr_override if dr_override is not None else base_dr
@@ -7901,18 +7932,44 @@ def apply_entity_debuff(entity_dict, debuff_data):
     """
     Applies or refreshes a structured mechanical debuff in `entity_dict['active_debuffs']`
     and immediately recalculates `ac` and `dr`.
+    Safely handles None, string integers, and malformed inputs.
     """
     if not isinstance(entity_dict, dict) or not isinstance(debuff_data, dict):
         return entity_dict
-    debuffs = entity_dict.setdefault("active_debuffs", [])
-    d_id = debuff_data.get("debuff_id", debuff_data.get("name", "debuff")).lower().replace(" ", "_")
+
+    def _to_int(val, default=0):
+        if val is None:
+            return default
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return default
+
+    raw_debuffs = entity_dict.get("active_debuffs")
+    if not isinstance(raw_debuffs, list):
+        debuffs = []
+        entity_dict["active_debuffs"] = debuffs
+    else:
+        debuffs = raw_debuffs
+
+    raw_id = debuff_data.get("debuff_id") or debuff_data.get("name") or "debuff"
+    d_id = str(raw_id).lower().replace(" ", "_")
+
+    dr_raw = debuff_data.get("dr_override")
+    dr_val = None
+    if dr_raw is not None:
+        try:
+            dr_val = int(dr_raw)
+        except (ValueError, TypeError):
+            dr_val = None
+
     debuff_entry = {
         "debuff_id": d_id,
-        "name": debuff_data.get("name", d_id),
-        "ac_penalty": int(debuff_data.get("ac_penalty", 0)),
-        "dr_override": debuff_data.get("dr_override", None),
-        "turns_remaining": int(debuff_data.get("turns_remaining", -1)),
-        "source": debuff_data.get("source", "Combat Technique")
+        "name": str(debuff_data.get("name") or d_id),
+        "ac_penalty": _to_int(debuff_data.get("ac_penalty"), 0),
+        "dr_override": dr_val,
+        "turns_remaining": _to_int(debuff_data.get("turns_remaining"), -1),
+        "source": str(debuff_data.get("source") or "Combat Technique")
     }
     replaced = False
     for idx, existing in enumerate(debuffs):
@@ -7923,7 +7980,11 @@ def apply_entity_debuff(entity_dict, debuff_data):
     if not replaced:
         debuffs.append(debuff_entry)
 
-    status_list = entity_dict.setdefault("status", [])
+    status_list = entity_dict.get("status")
+    if not isinstance(status_list, list):
+        status_list = []
+        entity_dict["status"] = status_list
+
     badge_str = f"{debuff_entry['name']}"
     if debuff_entry["ac_penalty"] != 0:
         badge_str += f" ({debuff_entry['ac_penalty']} AC)"

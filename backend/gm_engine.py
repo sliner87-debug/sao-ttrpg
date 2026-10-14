@@ -423,15 +423,30 @@ Output matching TurnResolutionSchema.
             
     # Apply updates to Master State
     for entity in master_state.get("entities", []):
-        eid = entity["id"]
-        if eid in hp_map:
-            entity["hp"] = max(0, entity["hp"] + hp_map[eid])
-        if eid in status_map:
+        if not isinstance(entity, dict):
+            continue
+        eid = entity.get("id") or entity.get("name")
+        if not eid:
+            continue
+        if eid in hp_map and hp_map[eid] is not None:
+            try:
+                curr_hp = int(entity.get("hp", 0) or 0)
+                delta = int(hp_map[eid])
+                entity["hp"] = max(0, curr_hp + delta)
+            except (ValueError, TypeError):
+                pass
+        if eid in status_map and status_map[eid] is not None:
             entity["status"] = status_map[eid]
         for d_item in debuff_list:
             if isinstance(d_item, dict) and d_item.get("entity_id") == eid and isinstance(d_item.get("debuff"), dict):
-                mechanics.apply_entity_debuff(entity, d_item["debuff"])
-        mechanics.recalculate_entity_combat_stats(entity)
+                try:
+                    mechanics.apply_entity_debuff(entity, d_item["debuff"])
+                except Exception:
+                    pass
+        try:
+            mechanics.recalculate_entity_combat_stats(entity)
+        except Exception:
+            pass
 
     # Process Environment Update
     env_update = resolution.get("environment_update")
