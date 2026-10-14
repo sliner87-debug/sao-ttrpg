@@ -19,6 +19,39 @@ import backend.world_atlas as world_atlas
 import backend.bestiary_compendium as bestiary
 
 
+def _refresh_stale_backend_modules():
+    """
+    Streamlit re-executes app.py on every rerun/redeploy but keeps already-imported backend
+    modules cached in memory. After a git push, that can pair a new app.py with old backend code
+    (-> AttributeError). Reload backend modules in dependency order whenever any of their files
+    changed on disk, and once on the first run of a process that predates this guard.
+    """
+    import importlib
+    import backend as _backend_pkg
+    order = ["schemas", "world_atlas", "bestiary_compendium", "mechanics", "character_generator",
+             "persona_engine", "voice_engine", "actor_engine", "auth", "gm_engine"]
+    current = {}
+    for name in order:
+        mod = sys.modules.get(f"backend.{name}")
+        path = getattr(mod, "__file__", None) if mod else None
+        if path and os.path.exists(path):
+            current[name] = os.path.getmtime(path)
+    previous = getattr(_backend_pkg, "_loaded_mtimes", None)
+    if previous is not None and previous == current:
+        return
+    for name in order:
+        mod = sys.modules.get(f"backend.{name}")
+        if mod is not None:
+            try:
+                importlib.reload(mod)
+            except Exception as reload_err:
+                print(f"[HOT-RELOAD] Failed to reload backend.{name}: {reload_err}", flush=True)
+    _backend_pkg._loaded_mtimes = current
+
+
+_refresh_stale_backend_modules()
+
+
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="The Fractured Overlay", page_icon="🗡️", layout="wide")
 
