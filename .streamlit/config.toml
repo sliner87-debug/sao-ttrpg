@@ -8,3 +8,7 @@ maxMessageSize = 50
 
 [browser]
 gatherUsageStats = false
+
+[runner]
+magicEnabled = false
+fastReruns = true

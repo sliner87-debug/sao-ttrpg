@@ -1,11 +1,26 @@
 {
     "name": "Banki",
     "slug": "Banki",
+    "gender": "Male",
     "level": 3,
     "race": "Unregistered Anomaly",
     "class": "Wyrd-Weaver / Battleaxe Vanguard",
     "hp": "58 / 125",
+    "hp_cur": 58,
+    "hp_max": 125,
     "col": 1170,
     "location": "Oxford Mine - Exit Junction (Cleared)",
+    "equipped": {
+        "head": "None",
+        "chest": "Reinforced Leather",
+        "main_hand": "Enchanted Bearded Axe",
+        "off_hand": "Free (Somatic Futhark Casting)",
+        "accessory": "None"
+    },
+    "avatar_image_path": null,
+    "avatar_locked": false,
+    "only_alter_by_equipment": false,
+    "turns_logged": 21,
+    "unique_url": "?character=Banki",
     "last_saved": 1791958023.1242466
 }

@@ -11,20 +11,21 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
+import backend.schemas as schemas
 import backend.gm_engine as gm_engine
 import backend.actor_engine as actor_engine
 import backend.mechanics as mechanics
 import backend.character_generator as cg
 import backend.world_atlas as world_atlas
 import backend.bestiary_compendium as bestiary
+import backend.persona_engine as persona_engine
 
 
 def _refresh_stale_backend_modules():
     """
     Streamlit re-executes app.py on every rerun/redeploy but keeps already-imported backend
-    modules cached in memory. After a git push, that can pair a new app.py with old backend code
-    (-> AttributeError). Reload backend modules in dependency order whenever any of their files
-    changed on disk, and once on the first run of a process that predates this guard.
+    modules cached in memory. Reload backend modules in dependency order ONLY when one or more
+    of their files actually changed on disk since they were loaded.
     """
     import importlib
     import backend as _backend_pkg
@@ -37,15 +38,19 @@ def _refresh_stale_backend_modules():
         if path and os.path.exists(path):
             current[name] = os.path.getmtime(path)
     previous = getattr(_backend_pkg, "_loaded_mtimes", None)
-    if previous is not None and previous == current:
+    if previous is None:
+        _backend_pkg._loaded_mtimes = current
+        return
+    if previous == current:
         return
     for name in order:
-        mod = sys.modules.get(f"backend.{name}")
-        if mod is not None:
-            try:
-                importlib.reload(mod)
-            except Exception as reload_err:
-                print(f"[HOT-RELOAD] Failed to reload backend.{name}: {reload_err}", flush=True)
+        if previous.get(name) != current.get(name):
+            mod = sys.modules.get(f"backend.{name}")
+            if mod is not None:
+                try:
+                    importlib.reload(mod)
+                except Exception as reload_err:
+                    print(f"[HOT-RELOAD] Failed to reload backend.{name}: {reload_err}", flush=True)
     _backend_pkg._loaded_mtimes = current
 
 
@@ -153,8 +158,10 @@ def activate_character_session(profile_name: str, update_query_params: bool = Tr
         m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
         try:
             os.makedirs(os.path.dirname(m_path), exist_ok=True)
+            clean_m = dict(p_data["master_state"]) if isinstance(p_data["master_state"], dict) else {}
+            clean_m.pop("player", None)
             with open(m_path, "w", encoding="utf-8") as f:
-                json.dump(p_data["master_state"], f, indent=4)
+                json.dump(clean_m, f, indent=4)
         except Exception:
             pass
 
@@ -188,6 +195,8 @@ def save_game(player_state, messages):
         try:
             with open(master_state_path, "r", encoding="utf-8") as f:
                 master_state = json.load(f)
+            if isinstance(master_state, dict):
+                master_state.pop("player", None)
         except Exception:
             pass
 
@@ -206,7 +215,7 @@ def save_game(player_state, messages):
     except Exception:
         pass
 
-    # Rolling chat thread backup
+    # Rolling chat thread backup (after messages have had any inline base64 images offloaded to disk)
     try:
         backup_path = os.path.join(BASE_DIR, "chat_history_backup.json")
         with open(backup_path, 'w', encoding="utf-8") as f:
@@ -1540,7 +1549,13 @@ if not st.session_state.get("character_selected", False) and not st.session_stat
     render_character_select_screen()
     st.stop()
 
-saved_data = load_game()
+saved_data = None
+if (
+    "player" not in st.session_state
+    or "messages" not in st.session_state
+    or "world_state" not in st.session_state
+):
+    saved_data = load_game()
 
 if "offline_processed" not in st.session_state:
     st.session_state.offline_processed = True
@@ -3126,74 +3141,88 @@ def render_game_hud():
 
     st.divider()
     with st.expander("💾 Save & Backup Management"):
-        st.caption("Streamlit Cloud erases local files when it sleeps. Download your save file or transcript to keep your game safe!")
-        
-        # Read current master state if available
-        m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
-        cur_master = {}
-        if os.path.exists(m_path):
-            try:
-                with open(m_path, "r", encoding="utf-8") as f:
-                    cur_master = json.load(f)
-            except Exception:
-                pass
-
-        # 1. Full State Export (JSON)
-        save_payload = {
-            "player": st.session_state.player,
-            "messages": st.session_state.messages,
-            "world_state": st.session_state.get("world_state", {}),
-            "master_state": cur_master,
-            "last_saved": time.time()
-        }
-        try:
-            save_json_str = json.dumps(save_payload, indent=4, default=str)
-        except Exception:
-            save_json_str = json.dumps({"error": "Failed to serialize state"}, indent=4)
+        st.caption("Streamlit Cloud erases local files when it sleeps. Save to disk anytime or prepare a downloadable backup on demand.")
 
         # Immediate Disk Flush
-        if st.button("💾 Force Instant Save to Disk", key="btn_quick_save_disk"):
+        if st.button("💾 Force Instant Save to Disk", key="btn_quick_save_disk", use_container_width=True):
             save_game(st.session_state.player, st.session_state.messages)
             st.toast("Campaign state saved to disk!", icon="💾")
             st.success("Successfully saved `save_game.json`, `world_state.json`, and rolling chat backup.")
 
-        st.download_button(
-            label="📥 Export Full Campaign State (.json)",
-            data=save_json_str,
-            file_name="crucible_campaign_save.json",
-            mime="application/json",
-            key="btn_download_campaign_json"
+        prepare_export = st.checkbox(
+            "📦 Prepare Download & Clipboard Backup Payloads",
+            value=False,
+            key="chk_prepare_save_export",
+            help="Generates the downloadable .json and .md files on demand so normal turns stay fast and memory-light."
         )
+        if prepare_export:
+            m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+            cur_master = {}
+            if os.path.exists(m_path):
+                try:
+                    with open(m_path, "r", encoding="utf-8") as f:
+                        cur_master = json.load(f)
+                    if isinstance(cur_master, dict):
+                        cur_master.pop("player", None)
+                except Exception:
+                    pass
 
-        with st.expander("📋 View / Copy Raw Save JSON (Clipboard Backup)"):
-            st.caption("If your mobile browser or network blocks file downloads, copy this raw JSON directly to your notes.")
-            st.text_area("Raw Save JSON", value=save_json_str, height=180, key="save_json_raw_area")
+            light_messages = [
+                {k: (None if k == "image_data" else v) for k, v in m.items()}
+                if isinstance(m, dict) else m
+                for m in st.session_state.messages
+            ]
+            save_payload = {
+                "player": st.session_state.player,
+                "messages": light_messages,
+                "world_state": st.session_state.get("world_state", {}),
+                "master_state": cur_master,
+                "last_saved": time.time()
+            }
+            try:
+                save_json_str = json.dumps(save_payload, indent=2, default=str)
+            except Exception:
+                save_json_str = json.dumps({"error": "Failed to serialize state"}, indent=2)
 
-        # 2. Readable Transcript Backup (Markdown)
-        transcript_lines = ["# 🗡️ Campaign Transcript: The Fractured Overlay\n\n"]
-        for idx, m in enumerate(st.session_state.messages):
-            role = m.get("role", "system")
-            content, mechanics_log, subagent_log = extract_turn_components(m)
-            if role == "user":
-                transcript_lines.append(f"### 👤 Turn {idx}: Player Action\n{content}\n\n")
-            elif role in ["assistant", "system"]:
-                icon = "🤖" if role == "assistant" else "📡"
-                title = "Resolution" if role == "assistant" else "System Announcement"
-                entry = f"### {icon} Turn {idx}: {title}\n{content}\n"
-                if mechanics_log:
-                    entry += f"\n<details>\n<summary>🎲 Dice Rolls & Game Mechanics (Click to open/close)</summary>\n\n{mechanics_log}\n\n</details>\n"
-                if subagent_log:
-                    entry += f"\n<details>\n<summary>🧠 SubAgent Thoughts & Planned Actions (Click to open/close)</summary>\n\n{subagent_log}\n\n</details>\n"
-                transcript_lines.append(entry + "\n")
-        transcript_md = "".join(transcript_lines)
-        
-        st.download_button(
-            label="📜 Download Campaign Transcript (.md)",
-            data=transcript_md,
-            file_name="campaign_transcript.md",
-            mime="text/markdown",
-            key="btn_download_campaign_transcript_md"
-        )
+            st.download_button(
+                label="📥 Export Full Campaign State (.json)",
+                data=save_json_str,
+                file_name=f"{ cg.sanitize_character_slug(st.session_state.player.get('name', 'campaign')) }_save.json",
+                mime="application/json",
+                key="btn_download_campaign_json",
+                use_container_width=True,
+            )
+
+            # 2. Readable Transcript Backup (Markdown)
+            transcript_lines = ["# 🗡️ Campaign Transcript: The Fractured Overlay\n\n"]
+            for idx, m in enumerate(st.session_state.messages):
+                role = m.get("role", "system")
+                content, mechanics_log, subagent_log = extract_turn_components(m)
+                if role == "user":
+                    transcript_lines.append(f"### 👤 Turn {idx}: Player Action\n{content}\n\n")
+                elif role in ["assistant", "system"]:
+                    icon = "🤖" if role == "assistant" else "📡"
+                    title = "Resolution" if role == "assistant" else "System Announcement"
+                    entry = f"### {icon} Turn {idx}: {title}\n{content}\n"
+                    if mechanics_log:
+                        entry += f"\n<details>\n<summary>🎲 Dice Rolls & Game Mechanics (Click to open/close)</summary>\n\n{mechanics_log}\n\n</details>\n"
+                    if subagent_log:
+                        entry += f"\n<details>\n<summary>🧠 SubAgent Thoughts & Planned Actions (Click to open/close)</summary>\n\n{subagent_log}\n\n</details>\n"
+                    transcript_lines.append(entry + "\n")
+            transcript_md = "".join(transcript_lines)
+
+            st.download_button(
+                label="📜 Download Campaign Transcript (.md)",
+                data=transcript_md,
+                file_name="campaign_transcript.md",
+                mime="text/markdown",
+                key="btn_download_campaign_transcript_md",
+                use_container_width=True,
+            )
+
+            with st.expander("📋 View / Copy Raw Save JSON (Clipboard Backup)"):
+                st.caption("If your mobile browser or network blocks file downloads, copy this raw JSON directly to your notes.")
+                st.code(save_json_str, language="json")
         
         # 3. Import & Restore (File or Direct Paste)
         st.divider()
@@ -3252,6 +3281,7 @@ def render_game_hud():
             p_loc = st.session_state.player.get("location", "").strip()
             is_safe = any(w in p_loc.lower() for w in ["safe-zone", "safe zone", "washington", "clinic", "catacomb", "depot", "sanctuary", "manor", "outpost"])
 
+            m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
             m_state = loaded_data.get("master_state")
             if not m_state and os.path.exists(m_path):
                 try:
@@ -3261,6 +3291,7 @@ def render_game_hud():
                     m_state = None
 
             if m_state and isinstance(m_state, dict):
+                m_state.pop("player", None)
                 # Clean up defeated/inert hostiles
                 m_state["entities"] = [
                     e for e in m_state.get("entities", [])
@@ -3372,8 +3403,6 @@ with st.sidebar:
     elif curr_name in profiles and st.session_state.get('active_profile') == curr_name and st.session_state['active_profile_select'] != curr_name:
         st.session_state['active_profile_select'] = curr_name
 
-    default_idx = profiles.index(st.session_state['active_profile_select']) if st.session_state['active_profile_select'] in profiles else 0
-
     def on_profile_dropdown_change():
         selected_prof = st.session_state.get('active_profile_select')
         if not selected_prof:
@@ -3409,15 +3438,25 @@ with st.sidebar:
             except Exception:
                 pass
 
-            # Sync to secret_master_state.json if present
+            # Sync to secret_master_state.json if present (without embedding redundant player dict)
             m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
-            if os.path.exists(m_path):
+            if "master_state" in p_data and isinstance(p_data["master_state"], dict) and p_data["master_state"]:
+                try:
+                    os.makedirs(os.path.dirname(m_path), exist_ok=True)
+                    clean_m = {k: v for k, v in p_data["master_state"].items() if k != "player"}
+                    with open(m_path, "w", encoding="utf-8") as f:
+                        json.dump(clean_m, f, indent=4)
+                except Exception:
+                    pass
+            elif os.path.exists(m_path):
                 try:
                     with open(m_path, "r", encoding="utf-8") as f:
                         m_data = json.load(f)
-                    m_data["player"] = p_data['player']
-                    with open(m_path, "w", encoding="utf-8") as f:
-                        json.dump(m_data, f, indent=4)
+                    if isinstance(m_data, dict):
+                        m_data.pop("player", None)
+                        m_data.setdefault("environment", {})["location"] = p_data["player"].get("location", "Sector 1 Safe-Zone: Washington Borough, NJ")
+                        with open(m_path, "w", encoding="utf-8") as f:
+                            json.dump(m_data, f, indent=4)
                 except Exception:
                     pass
             save_game(st.session_state.player, st.session_state.messages)
@@ -3440,7 +3479,6 @@ with st.sidebar:
     sel_profile = st.selectbox(
         'Active Profile',
         options=profiles,
-        index=default_idx,
         key='active_profile_select',
         on_change=on_profile_dropdown_change,
         label_visibility='collapsed'
@@ -3629,6 +3667,14 @@ st.caption("A Death-Game TTRPG powered by the Cardinal System AI.")
 
 render_tutorial_crucible_banner()
 
+# Offload any legacy inline base64 images in session_state.messages to disk
+if isinstance(st.session_state.get("messages"), list):
+    cg.migrate_messages_images_to_disk(
+        BASE_DIR,
+        st.session_state.player.get("name", "Survivor"),
+        st.session_state.messages,
+    )
+
 # Render Chat History
 for msg in st.session_state.messages:
     avatar = "👾" if msg.get("role") in ["assistant", "system"] else "👤"
@@ -3641,10 +3687,13 @@ for msg in st.session_state.messages:
         if subagent_log:
             with st.expander("🧠 SubAgent Thoughts & Planned Actions (Click to open/close)", expanded=False):
                 st.markdown(subagent_log)
-        if msg.get("image_data"):
+        img_rel = msg.get("image_path")
+        if img_rel:
+            resolved_img = img_rel if os.path.isabs(img_rel) else os.path.join(BASE_DIR, img_rel)
+            if os.path.exists(resolved_img):
+                st.image(resolved_img, use_container_width=True)
+        elif msg.get("image_data"):
             st.image(msg["image_data"], use_container_width=True)
-        elif msg.get("image_path") and os.path.exists(msg["image_path"]):
-            st.image(msg["image_path"], use_container_width=True)
 
 # User Input
 chat_prompt = st.chat_input("Action... (Type /admin to force an AI outcome)")
@@ -3905,15 +3954,21 @@ if prompt := (dev_prompt or chat_prompt):
                     st.markdown(subagent_log)
             
             # 2. Generate Scene Image matching Main Branch styling and live equipped gear / grafts
-            image_data = None
+            image_path_rel = None
             if image_prompt:
                 try:
                     with st.spinner("Rendering scene illustration..."):
                         image_bytes, img_error = gm_engine.generate_scene_image(api_key, image_prompt, player_state=st.session_state.player)
                         if image_bytes:
-                            b64_img = base64.b64encode(image_bytes).decode("utf-8")
-                            image_data = f"data:image/png;base64,{b64_img}"
-                            st.image(image_data, use_container_width=True)
+                            image_path_rel = cg.persist_turn_image_to_disk(
+                                BASE_DIR,
+                                st.session_state.player.get("name", "Survivor"),
+                                image_bytes,
+                            )
+                            if image_path_rel:
+                                st.image(os.path.join(BASE_DIR, image_path_rel), use_container_width=True)
+                            else:
+                                st.image(image_bytes, use_container_width=True)
                         elif img_error:
                             narrative += f"\n\n*(System Note: Image Generation Failed - {img_error})*"
                 except Exception as e:
@@ -3924,7 +3979,8 @@ if prompt := (dev_prompt or chat_prompt):
         "content": narrative,
         "mechanics_log": mechanics_log,
         "subagent_log": subagent_log,
-        "image_data": image_data
+        "image_path": image_path_rel,
+        "image_data": None
     }
     st.session_state.messages.append(new_msg)
     save_game(st.session_state.player, st.session_state.messages)

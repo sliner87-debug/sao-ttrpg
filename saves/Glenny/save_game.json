@@ -4,8 +4,8 @@
         "gender": "Male",
         "level": 1,
         "xp": 0,
-        "hp": 115,
-        "max_hp": 115,
+        "hp": 135,
+        "max_hp": 135,
         "combat_resource": {
             "name": "Focus & Vantage",
             "max": 5,
@@ -14,7 +14,7 @@
         },
         "free_attribute_points": 0,
         "col": 100,
-        "race": "Pure Human",
+        "race": "Spliced Apex Chimera (Troll x Thri-Kreen | 3 Troll / 2 Kreen)",
         "class": "Ranger (Wilderness Marksman)",
         "favored_skills": [
             "Field Trapping",
@@ -26,53 +26,88 @@
             "Medium"
         ],
         "stats": {
-            "STR": 16,
-            "DEX": 16,
-            "CON": 15,
-            "INT": 13,
-            "WIS": 14,
-            "CHA": 12
+            "STR": 18,
+            "DEX": 15,
+            "CON": 16,
+            "INT": 11,
+            "WIS": 13,
+            "CHA": 9
         },
         "skills": {
-            "Magi-Tech Hacking": {
-                "mastery": 45,
-                "tier": "Novice",
-                "description": "Bypassing arcane firewalls, terminal encryption, and logic wards.",
-                "milestones_unlocked": []
+            "Field Trapping": {
+                "mastery": 60,
+                "tier": "Apprentice",
+                "description": "Deployment and concealment of wire snares, tripwires, and perimeter traps.",
+                "milestones_unlocked": [
+                    50
+                ]
             },
-            "Aether-Circuit Query": {
-                "mastery": 30,
-                "tier": "Novice",
-                "description": "Tracing leyline data flows and construct signal routing.",
-                "milestones_unlocked": []
+            "Cartography": {
+                "mastery": 50,
+                "tier": "Apprentice",
+                "description": "Topographical parsing, terrain mapping, and landmark navigation.",
+                "milestones_unlocked": [
+                    50
+                ]
             }
         },
         "spells": [],
         "feats": [
-            "Tenacious Will: +10% bonus experience gain from all combat and discovery actions.",
-            "Versatile Conditioning: +1 additional starting Feat slot.",
-            "Logic Probe (Passive): Enhanced perception when analyzing corrupted terminals, cyber-doors, and security subroutines.",
+            "Hulking Marrow-Frame: Dense troll musculature (STR +3, CON +2) grants +50 lbs carrying capacity and Advantage on saves against being shoved or knocked Prone.",
+            "Upper Crusher-Claws: Unarmed talon strikes deal 1d8 + STR slashing damage. Wield a Two-Handed Heavy Weapon in the upper arms while holding a one-handed item or Shield in the lower arms.",
+            "Fibrous Rubbery Hide: Thick regenerative troll hide grants a flat +2 bonus to Armor Class (stacks with any armor) and +10 Maximum HP.",
+            "Compound Eyes & Hive Antennae: 60-foot Darkvision, 60-foot silent Hive-Telepathy, and you cannot be Surprised while conscious.",
+            "Digitigrade Locust Legs & Trance: 30-foot standing leap. Sleepless Metabolism makes you immune to magical sleep and completes a full rest in 4 hours of alert meditation.",
+            "Hyper-Cellular Regeneration: Regenerate 5 HP at the start of each of your combat turns. Taking Fire or Acid damage halts this regeneration for 1 turn.",
+            "Savage Quad-Rend: Whenever you hit the same target with at least two melee attacks on your turn, tear into it for +2d6 bonus Rending slashing damage.",
+            "Undying Tissue Re-Knit: When reduced to 0 HP by damage other than Fire or Acid, drop to 1 HP instead and immediately regenerate 10 HP (once per Long Rest).",
+            "Flaw - Thermal Flesh: Takes 50% extra damage from Fire and Acid attacks.",
+            "Snare Concealment (Passive): Deployed traps and ambushes receive a +3 bonus to their stealth detection DC.",
             "Hunter's Mark",
             "Deadeye Aim",
-            "Relic Attunement (Earth Smartphone (99% Battery, No Signal)): Psychological Anchor: Gazing at family photos during a short rest cures 1 level of cognitive stress / psychological despair and provides advantage on the next saving throw against cosmic madness or horror. Emergency Lumens: Emits a 20ft cone of LED light without open flame. Encrypted Cache: Once per day, querying offline notes grants +2 on an INT check regarding pre-collapse Earth history or engineering. Battery drains 1% per 10 active uses (99 charges total; cannot recharge until MageTech dynamo power is discovered)."
+            "Relic Attunement (Hunting Laser Rangefinder): Ballistic Ranging: Spending a minor action to range an enemy before firing eliminates distance penalties for bows, crossbows, and firearms up to 200 yards, and grants +2 on the next ranged attack roll. True Elevation: Automatically calculates horizontal distance when aiming up or down steep cliffs or towers. Operates on CR2 lithium cell with 85/100 battery remaining (1 charge per 10 range scans)."
         ],
         "racial_abilities": [
-            "Tenacious Will: +10% bonus experience gain from all combat and discovery actions.",
-            "Versatile Conditioning: +1 additional starting Feat slot."
+            "Hulking Marrow-Frame: Dense troll musculature (STR +3, CON +2) grants +50 lbs carrying capacity and Advantage on saves against being shoved or knocked Prone.",
+            "Upper Crusher-Claws: Unarmed talon strikes deal 1d8 + STR slashing damage. Wield a Two-Handed Heavy Weapon in the upper arms while holding a one-handed item or Shield in the lower arms.",
+            "Fibrous Rubbery Hide: Thick regenerative troll hide grants a flat +2 bonus to Armor Class (stacks with any armor) and +10 Maximum HP.",
+            "Compound Eyes & Hive Antennae: 60-foot Darkvision, 60-foot silent Hive-Telepathy, and you cannot be Surprised while conscious.",
+            "Digitigrade Locust Legs & Trance: 30-foot standing leap. Sleepless Metabolism makes you immune to magical sleep and completes a full rest in 4 hours of alert meditation.",
+            "Hyper-Cellular Regeneration: Regenerate 5 HP at the start of each of your combat turns. Taking Fire or Acid damage halts this regeneration for 1 turn.",
+            "Savage Quad-Rend: Whenever you hit the same target with at least two melee attacks on your turn, tear into it for +2d6 bonus Rending slashing damage.",
+            "Undying Tissue Re-Knit: When reduced to 0 HP by damage other than Fire or Acid, drop to 1 HP instead and immediately regenerate 10 HP (once per Long Rest).",
+            "Flaw - Thermal Flesh: Takes 50% extra damage from Fire and Acid attacks."
         ],
-        "racial_variant_config": null,
+        "racial_variant_config": {
+            "variant": "Spliced Apex Chimera",
+            "choices": {
+                "frame": "troll",
+                "arms": "troll",
+                "hide": "troll",
+                "senses": "kreen",
+                "legs": "kreen",
+                "defense": "hyper_regeneration",
+                "offense": "savage_quad_rend",
+                "instinct": "undying_reknit",
+                "flaw": "thermal_flesh",
+                "flaw_2": null,
+                "flaw_2_reward": "stats",
+                "reward_stats": [],
+                "reward_feat": null
+            }
+        },
         "inventory": [
             {
-                "name": "Earth Smartphone (99% Battery, No Signal)",
-                "rarity": "Unique",
-                "category": "Psychological Anchor & Illuminator",
-                "durability": 99,
+                "name": "Hunting Laser Rangefinder",
+                "rarity": "Uncommon",
+                "category": "Ballistic Telemetry & Ranging",
+                "durability": 85,
                 "max_durability": 100,
                 "qty": 1,
-                "desc": "A personal flagship smartphone with a spiderweb fracture across the Gorilla Glass screen. Held in an otterbox case, it displays 99% battery, zero cellular bars, and the offline calendar locked onto the final afternoon before the Rift collapse. Its memory stores unread text messages from family ('Where are you? Dinner is cold'), offline music playlists, photos of pets, and an encrypted corporate employee app.",
-                "mechanics": "Psychological Anchor: Gazing at family photos during a short rest cures 1 level of cognitive stress / psychological despair and provides advantage on the next saving throw against cosmic madness or horror. Emergency Lumens: Emits a 20ft cone of LED light without open flame. Encrypted Cache: Once per day, querying offline notes grants +2 on an INT check regarding pre-collapse Earth history or engineering. Battery drains 1% per 10 active uses (99 charges total; cannot recharge until MageTech dynamo power is discovered).",
+                "desc": "Rubber-armored digital monocular laser rangefinder used by precision marksmen. Features an LCD reticle displaying line-of-sight distance in yards, true horizontal angle compensation, and scan mode.",
+                "mechanics": "Ballistic Ranging: Spending a minor action to range an enemy before firing eliminates distance penalties for bows, crossbows, and firearms up to 200 yards, and grants +2 on the next ranged attack roll. True Elevation: Automatically calculates horizontal distance when aiming up or down steep cliffs or towers. Operates on CR2 lithium cell with 85/100 battery remaining (1 charge per 10 range scans).",
                 "slot": "accessory",
-                "visual_appearance": "carrying their pre-Integration Earth Smartphone (99% Battery, No Signal) (a personal flagship smartphone with a spiderweb fracture across the gorilla glass screen)"
+                "visual_appearance": "carrying their pre-Integration Hunting Laser Rangefinder (rubber-armored digital monocular laser rangefinder used by precision marksmen)"
             },
             {
                 "name": "Recurve Hunting Bow",
@@ -120,7 +155,7 @@
             "chest": "Threadbare Scavenger Tunic",
             "main_hand": "Recurve Hunting Bow",
             "off_hand": "Chipped Wood-Axe",
-            "accessory": "None"
+            "accessory": "Hunting Laser Rangefinder"
         },
         "gear_durability": {
             "head": {
@@ -1953,6 +1988,13 @@
             "active_companion": "Ren"
         }
     },
-    "messages": [],
-    "last_saved": 1792011450.027854
+    "messages": [
+        {
+            "role": "system",
+            "content": "# \ud83d\udfe6 [SYSTEM INITIALIZATION: PLANETARY INTEGRATION COMPLETE] \ud83d\udfe6\n**SECTOR 01: NORTH AMERICAN CONTINENTAL ZONE // NODE 07882: WASHINGTON BOROUGH, NEW JERSEY**\n*Ambient Aetheric Saturation: 94.7% (Lethal Threshold Exceeded)*\n*Status: Pre-Integration Silicon Infrastructure Decommissioned // Organic Rewrites Enacted*\n\n---\n\n> **ATTENTION, RESIDENT OF NODE 07882:**\n>\n> If you are reading this floating cerulean display, congratulations: your biological matrix did not spontaneously liquefy during the initial mana rupture!\n>\n> At precisely 03:00 hours, the planetary free-trial period for Earth expired. The fundamental laws of physics you grew comfortable with\u2014combustion engines, silicon microprocessors, and long-distance electrical grids along Route 31 and Route 57\u2014have experienced an unrecoverable runtime termination. Internal combustion is dead. The cell towers on Pohatcong Mountain have calcified into humming mana-spires. The municipal parks, abandoned iron mines at Oxford Furnace, and drainage tributaries have been designated as leveled hostile breach zones and subterranean labyrinths.\n>\n> Washington Borough has been partitioned as the **Sector 1 Initial Calibration Sanctuary Wards**. Step beyond the warded perimeter, and you are officially registered as free-range harvest material for the indigenous and newly spawned megafauna.\n\n---\n\n### \ud83d\udccb BIOMETRIC & RELIC LEDGER\n- **Designation:** **Glenny** (`Male (he/him)`)\n- **Physical Profile:** `Age 24 (Prime) | 7'2\" (Large) | 310 lbs (Average build)`\n- **Genetic Lineage:** `Spliced Apex Chimera (Troll x Thri-Kreen | 3 Troll / 2 Kreen)`\n- **Combat Doctrine:** `Ranger (Wilderness Marksman)`\n- **Baseline Vitals:** `135/135 HP` | **Armor Class:** `11`\n- **Pre-Integration Discipline:** `Adaptive Civilian Survivor`\n- **Calibrated Skill Matrix (1\u20131000):**\n  - `Field Trapping`: Mastery 60/1000 [Apprentice]\n  - `Cartography`: Mastery 50/1000 [Apprentice]\n- **Equipped Tactical Loadout:**\n  - *Main Hand:* `Recurve Hunting Bow`\n  - *Off Hand:* `Chipped Wood-Axe`\n  - *Chest Armor:* `Threadbare Scavenger Tunic`\n- **Soul-Bound Keepsake Relic:** `Shattered Smartphone`\n  - *Manifestation:* Chronicles the final unread text messages of Earth before cell towers calcified into humming mana-spires.\n\n> \ud83c\udf99\ufe0f **SYSTEM ARCHITECT EVALUATION:**\n> *\"An Adaptive Earth Civilian. The System observes: 'Biometric neural scan parsed. A versatile background characterized by improvised problem solving and stubborn persistence. Let us see if that civilian tenacity holds when the mountain shudders.'\"*\n> *\"A glass-and-aluminum brick with a cracked screen that will never connect to 5G again. At least you can use it as a blunt mirror to watch your own dismay.\"*\n> **Calculated Survival Index:** `9.5%` \u2014 *Moderate. High variance based on tactical intelligence.*\n\n---\n\n### \ud83d\udcdc INITIAL SCENARIO #001: SURVIVE THE FIRST CALIBRATION WAVE\n- **Classification:** Regional Genesis Directive & 3-Stage Crucible Tutorial\n- **Current Node:** `Cardinal Calibration Crucible \u2014 Chamber I: Base Mechanics & Orientation`\n- **Objective:** Complete the 3-Stage Cardinal Calibration Crucible Tutorial (Base Mechanics \u2794 Martial Combat \u2794 Spellcasting & Active Powers) to reach **Level 3** and unlock spatial teleportation into the **Washington Borough, NJ Safe-Zone** with all acquired loot, then rendezvous with local operatives (**Ren**, **Doc Mercer**, **Quartermaster Vane**).\n- **Time Limit:** Continuous / Real-Time Progression\n- **Clear Rewards:** **Promotion to Level 3**, **+250 Col**, **Full Tutorial Loot & Spell Cache**, and **Direct Teleportation to Sector 1 Safe-Zone: Washington Borough, NJ**\n- **Failure Condition:** Total Biological De-Registration (Permadeath)\n\n---\n\n### \u2699\ufe0f CARDINAL INTERFACE DIRECTIVES (BASE MECHANICS BRIEFING)\n*The Cardinal System observes and enforces all interactions under absolute deterministic logic:*\n\n1. **Core Attributes, Physical Dimensions & Tactical Combat (`1d20`):**\n   Every physical strike, dodge, or saving throw rolls `1d20 + Attribute Modifier ((Stat - 10) // 2)` against enemy **Armor Class (AC)** or **Difficulty Class (DC)**, minus **Damage Reduction (DR)**. Your **Sex/Gender, Age, Height (Size), and Weight (Build)** actively factor into your Max HP, AC, melee reach, carry capacity (`STR \u00d7 15 lbs`), and structural floor-load physics.\n2. **Continuous 1\u20131000 Skill Mastery & Milestones:**\n   Every time you practice a skill or weapon in action, your proficiency climbs from `1` to `1000`. Crossing tier thresholds (**50 Apprentice**, **100 Journeyman**, **250 Adept**, **500 Master**, **750 Grandmaster**, **1000 Transcendence**) automatically unlocks new Sword Skills and Passive Feats.\n3. **Combat Resource, Spells & Cardinal Ability Fusion Chamber (Rule 10):**\n   Your class Combat Resource (`Poise`, `Mana`, `Momentum`, `Flux`, etc.) fuels active techniques and spells. When your mastery reaches sufficient thresholds, you may merge two abilities in the **Cardinal Ability Fusion Chamber** into a superior **`[Fusion]` Skill** with combined mastery.\n4. **Bio-Surgical Grafting & Strain Tolerance:**\n   Monsters and golems yield harvestable organs and kinetic servos. **Doc Mercer's** subterranean clinic can graft them to your 6 anatomical slots, governed by your **Strain Capacity** (`CON Mod + Floor(Level / 2)`). Exceeding this threshold induces Necrotic Rejection and 24-hour `[Cellular Re-Knitting]` Post-Op Sickness.\n5. **Pre-Integration Relics, Autonomous Battle-Companions & Neural Voice Link:**\n   Your Earth **Keepsake Relic** provides active survival abilities (Short-Rest sanity anchor, Polaroid flash reveal, Zippo gas detection, 440Hz vault resonance). Companions like **Ren** are autonomous subagents with independent minds, and the **\ud83c\udf99\ufe0f Microphone Module** in the sidebar streams vocal commands directly into the matrix.\n\n---\n\n### \ud83c\udf93 [ACTIVE TUTORIAL \u2014 STAGE 1 OF 3: BASE MECHANICS & TELEMETRY ORIENTATION]\nYou materialize atop the obsidian platform of **Chamber I: Base Mechanics & Orientation**. Before you stands the **Cardinal Calibration Construct** beside a humming **Telemetry Pillar** and a sealed **Starter Calibration Supply Cache** (`Minor Aether-Salve Vial x2`, `Calibration Whetstone Kit`).\n\n- **Stage 1 Goal:** Synchronize your neural link with the **Telemetry Pillar**, test your **Keepsake Relic**, or inspect the **Calibration Cache** (either type your action below OR click the **\u26a1 Execute Stage 1** button in the Tutorial Banner above) to claim your first loot and open the blast doors to **Chamber II: Martial Combat & Salvage Trial**!\n\n*The Crucible does not negotiate. Adapt, harvest the fallen, and climb.*\n",
+            "image_path": null,
+            "image_data": null
+        }
+    ],
+    "last_saved": 1792015391.3373115
 }

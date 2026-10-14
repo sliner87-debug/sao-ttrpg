@@ -58,6 +58,8 @@ def generate_visible_state(api_key: str = None, player_state: dict = None, world
             "entities": [],
             "players": ["player", "companion_ren"]
         }
+    elif isinstance(master_state, dict) and "player" in master_state:
+        master_state.pop("player", None)
 
     # If player_state not provided, attempt reading from save_game.json to ensure sync
     if player_state is None:
@@ -287,6 +289,8 @@ def resolve_turn(api_key: str, player_action: str, player_state: dict = None):
     rules_path = os.path.join("System_Core", "cardinal_rules.md")
     
     master_state = load_json(master_state_path)
+    if isinstance(master_state, dict) and "player" in master_state:
+        master_state.pop("player", None)
     action_queue = load_json(queue_path) or []
     
     if player_state is None:
@@ -637,8 +641,9 @@ def generate_scene_image(api_key: str, prompt: str, player_state: dict = None, a
         try:
             with open(lock_info["resolved_path"], "rb") as img_f:
                 ref_bytes = img_f.read()
+            comp_ref, ref_mime = _compress_image_bytes(ref_bytes, max_dim=512, quality=80)
             contents_payload = [
-                types.Part.from_bytes(data=ref_bytes, mime_type="image/png"),
+                types.Part.from_bytes(data=comp_ref, mime_type=ref_mime),
                 full_prompt,
             ]
         except Exception:
@@ -660,7 +665,8 @@ def generate_scene_image(api_key: str, prompt: str, player_state: dict = None, a
         )
         for part in response.parts:
             if part.inline_data:
-                return part.inline_data.data, None
+                comp_data, _ = _compress_image_bytes(part.inline_data.data, max_dim=1024, quality=82)
+                return comp_data, None
     except Exception as e1:
         # 2. Attempt fallback model
         try:
@@ -676,11 +682,36 @@ def generate_scene_image(api_key: str, prompt: str, player_state: dict = None, a
             )
             for part in response.parts:
                 if part.inline_data:
-                    return part.inline_data.data, None
+                    comp_data, _ = _compress_image_bytes(part.inline_data.data, max_dim=1024, quality=82)
+                    return comp_data, None
         except Exception as e2:
             return None, f"Image generation failed: {e1} | Fallback failed: {e2}"
             
     return None, "No image parts returned"
+
+
+def _compress_image_bytes(raw_bytes: bytes, max_dim: int = 1024, quality: int = 82):
+    """
+    Compresses raw image bytes to an optimized RGB JPEG bounded by `max_dim` to prevent
+    multi-megabyte uncompressed PNG payloads in memory, API calls, and WebSocket updates.
+    Safely falls back to `(raw_bytes, 'image/png')` if input is not a decodable PIL image.
+    """
+    if not raw_bytes or not isinstance(raw_bytes, (bytes, bytearray)):
+        return raw_bytes, "image/png"
+    try:
+        import io
+        from PIL import Image
+        with Image.open(io.BytesIO(raw_bytes)) as im:
+            rgb = im.convert("RGB")
+            try:
+                rgb.thumbnail((max_dim, max_dim))
+                buf = io.BytesIO()
+                rgb.save(buf, format="JPEG", quality=quality, optimize=True)
+                return buf.getvalue(), "image/jpeg"
+            finally:
+                rgb.close()
+    except Exception:
+        return raw_bytes, "image/png"
 
 
 def generate_equipment_altered_avatar(api_key: str, player_state: dict, base_dir: str = None):
@@ -722,8 +753,9 @@ def generate_equipment_altered_avatar(api_key: str, player_state: dict, base_dir
     )
 
     client = genai.Client(api_key=api_key)
+    comp_ref, ref_mime = _compress_image_bytes(base_bytes, max_dim=512, quality=82)
     contents_payload = [
-        types.Part.from_bytes(data=base_bytes, mime_type="image/png"),
+        types.Part.from_bytes(data=comp_ref, mime_type=ref_mime),
         avatar_prompt,
     ]
     for model_name in ("gemini-3.1-flash-lite-image", "gemini-2.5-flash-image"):
@@ -737,7 +769,8 @@ def generate_equipment_altered_avatar(api_key: str, player_state: dict, base_dir
             )
             for part in response.parts:
                 if part.inline_data:
-                    return part.inline_data.data, None
+                    comp_out, _ = _compress_image_bytes(part.inline_data.data, max_dim=768, quality=85)
+                    return comp_out, None
         except Exception:
             continue
 

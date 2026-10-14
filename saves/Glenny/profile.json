@@ -1,14 +1,26 @@
 {
     "name": "Glenny",
     "slug": "Glenny",
+    "gender": "Male",
     "level": 1,
-    "race": "Pure Human",
+    "race": "Spliced Apex Chimera (Troll x Thri-Kreen | 3 Troll / 2 Kreen)",
     "class": "Ranger (Wilderness Marksman)",
-    "hp": "115 / 115",
+    "hp": "135 / 135",
+    "hp_cur": 135,
+    "hp_max": 135,
     "col": 100,
     "location": "Cardinal Calibration Crucible \u2014 Chamber I: Base Mechanics & Orientation",
+    "equipped": {
+        "head": "None",
+        "chest": "Threadbare Scavenger Tunic",
+        "main_hand": "Recurve Hunting Bow",
+        "off_hand": "Chipped Wood-Axe",
+        "accessory": "Hunting Laser Rangefinder"
+    },
     "avatar_image_path": "assets/avatars/glenny_avatar.png",
     "avatar_locked": true,
     "only_alter_by_equipment": true,
-    "last_saved": 1792011450.027854
+    "turns_logged": 1,
+    "unique_url": "?character=Glenny",
+    "last_saved": 1792015391.3373115
 }

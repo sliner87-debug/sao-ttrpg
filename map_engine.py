@@ -89,7 +89,11 @@ def has_cartography_skill(req_skill, p_skills):
             return cart_mastery >= 50
     return False
 
+_LAST_OVERLAY_HASH = None
+_LAST_GLOBAL_HASH = None
+
 def generate_overlay(player_skills=None):
+    global _LAST_OVERLAY_HASH
     if player_skills is None:
         player_skills = []
         
@@ -97,7 +101,16 @@ def generate_overlay(player_skills=None):
         return None
         
     state = load_map_state()
-    base_img = Image.open(BASE_MAP_FILE).convert("RGBA")
+    try:
+        state_sig = json.dumps({"s": state, "k": player_skills}, sort_keys=True, default=str)
+    except Exception:
+        state_sig = None
+
+    if state_sig and state_sig == _LAST_OVERLAY_HASH and os.path.exists(CURRENT_MAP_FILE):
+        return CURRENT_MAP_FILE
+
+    with Image.open(BASE_MAP_FILE) as raw_base:
+        base_img = raw_base.convert("RGBA")
     
     # 1. Fog of War Layer
     fog = Image.new("RGBA", base_img.size, (0, 0, 0, 200)) # 200 alpha for dark fog
@@ -219,8 +232,16 @@ def generate_overlay(player_skills=None):
     except Exception as e:
         print("Legend drawing failed:", e)
     
-    map_img = map_img.convert("RGB")
-    map_img.save(CURRENT_MAP_FILE)
+    rgb_img = map_img.convert("RGB")
+    try:
+        rgb_img.save(CURRENT_MAP_FILE)
+        _LAST_OVERLAY_HASH = state_sig
+    finally:
+        rgb_img.close()
+        map_img.close()
+        fog.close()
+        mask.close()
+        base_img.close()
     return CURRENT_MAP_FILE
 
 
@@ -249,59 +270,72 @@ def generate_global_atlas_overlay(player_state=None):
     Renders the Global Patchwork Earth Atlas (768x440 tactical projection) showing all 6
     Planetary 1–50 Floor Raid Anchors, Leyline Gate connections, Stabilizer status, and active Raid marker.
     """
+    global _LAST_GLOBAL_HASH
+    raids_data = (player_state or {}).get("planetary_raids", {}) if isinstance(player_state, dict) else {}
+    try:
+        global_sig = json.dumps(raids_data, sort_keys=True, default=str)
+    except Exception:
+        global_sig = None
+
+    if global_sig and global_sig == _LAST_GLOBAL_HASH and os.path.exists(GLOBAL_MAP_FILE):
+        return GLOBAL_MAP_FILE
+
     width, height = 768, 440
     img = Image.new("RGB", (width, height), (12, 18, 32))
-    draw = ImageDraw.Draw(img)
+    try:
+        draw = ImageDraw.Draw(img)
 
-    # Draw subtle planetary lat/lon gridlines
-    for gx in range(0, width, 64):
-        draw.line([(gx, 0), (gx, height)], fill=(25, 38, 62), width=1)
-    for gy in range(0, height, 55):
-        draw.line([(0, gy), (width, gy)], fill=(25, 38, 62), width=1)
+        # Draw subtle planetary lat/lon gridlines
+        for gx in range(0, width, 64):
+            draw.line([(gx, 0), (gx, height)], fill=(25, 38, 62), width=1)
+        for gy in range(0, height, 55):
+            draw.line([(0, gy), (width, gy)], fill=(25, 38, 62), width=1)
 
-    # Stylized continental silhouettes (North America, Europe, East Asia)
-    draw.polygon([(70, 180), (290, 170), (275, 355), (120, 360)], fill=(22, 42, 58), outline=(45, 90, 120))
-    draw.polygon([(365, 175), (505, 175), (495, 335), (375, 330)], fill=(22, 42, 58), outline=(45, 90, 120))
-    draw.polygon([(545, 185), (715, 195), (695, 365), (560, 350)], fill=(22, 42, 58), outline=(45, 90, 120))
+        # Stylized continental silhouettes (North America, Europe, East Asia)
+        draw.polygon([(70, 180), (290, 170), (275, 355), (120, 360)], fill=(22, 42, 58), outline=(45, 90, 120))
+        draw.polygon([(365, 175), (505, 175), (495, 335), (375, 330)], fill=(22, 42, 58), outline=(45, 90, 120))
+        draw.polygon([(545, 185), (715, 195), (695, 365), (560, 350)], fill=(22, 42, 58), outline=(45, 90, 120))
 
-    raids_data = (player_state or {}).get("planetary_raids", {}) if isinstance(player_state, dict) else {}
-    active_raid = raids_data.get("active_raid_id", "pohatcong_spire")
-    raid_nodes = raids_data.get("raid_nodes", {})
+        active_raid = raids_data.get("active_raid_id", "pohatcong_spire")
+        raid_nodes = raids_data.get("raid_nodes", {})
 
-    # Draw Leyline Gate Corridors
-    for r1, r2 in GLOBAL_LEYLINE_LINKS:
-        n1, n2 = GLOBAL_RAID_MAP_NODES[r1], GLOBAL_RAID_MAP_NODES[r2]
-        unsealed = raid_nodes.get(r2, {}).get("gate_unsealed", False)
-        line_col = (0, 220, 255) if unsealed else (95, 70, 95)
-        draw.line([(n1["px"], n1["py"]), (n2["px"], n2["py"])], fill=line_col, width=3 if unsealed else 1)
+        # Draw Leyline Gate Corridors
+        for r1, r2 in GLOBAL_LEYLINE_LINKS:
+            n1, n2 = GLOBAL_RAID_MAP_NODES[r1], GLOBAL_RAID_MAP_NODES[r2]
+            unsealed = raid_nodes.get(r2, {}).get("gate_unsealed", False)
+            line_col = (0, 220, 255) if unsealed else (95, 70, 95)
+            draw.line([(n1["px"], n1["py"]), (n2["px"], n2["py"])], fill=line_col, width=3 if unsealed else 1)
 
-    # Draw Raid Nodes
-    for r_id, coord in GLOBAL_RAID_MAP_NODES.items():
-        px, py = coord["px"], coord["py"]
-        live = raid_nodes.get(r_id, {})
-        is_stabilized = live.get("is_stabilized", False)
-        is_unsealed = live.get("gate_unsealed", r_id == "pohatcong_spire")
-        cur_f = live.get("current_floor", 1)
-        tot_f = coord["floors"]
+        # Draw Raid Nodes
+        for r_id, coord in GLOBAL_RAID_MAP_NODES.items():
+            px, py = coord["px"], coord["py"]
+            live = raid_nodes.get(r_id, {})
+            is_stabilized = live.get("is_stabilized", False)
+            is_unsealed = live.get("gate_unsealed", r_id == "pohatcong_spire")
+            cur_f = live.get("current_floor", 1)
+            tot_f = coord["floors"]
 
-        if is_stabilized:
-            node_col = (40, 225, 130)  # Green Stabilized
-        elif is_unsealed:
-            node_col = (255, 165, 40)  # Orange Active/Unsealed
-        else:
-            node_col = (140, 60, 75)   # Sealed Crimson
+            if is_stabilized:
+                node_col = (40, 225, 130)  # Green Stabilized
+            elif is_unsealed:
+                node_col = (255, 165, 40)  # Orange Active/Unsealed
+            else:
+                node_col = (140, 60, 75)   # Sealed Crimson
 
-        draw.ellipse([px - 9, py - 9, px + 9, py + 9], fill=node_col, outline="white", width=2)
-        if r_id == active_raid:
-            draw.ellipse([px - 15, py - 15, px + 15, py + 15], outline=(0, 255, 255), width=2)
-        draw.text((px - 45, py + 12), f"{coord['label']} [F{cur_f}/{tot_f}]", fill="white")
+            draw.ellipse([px - 9, py - 9, px + 9, py + 9], fill=node_col, outline="white", width=2)
+            if r_id == active_raid:
+                draw.ellipse([px - 15, py - 15, px + 15, py + 15], outline=(0, 255, 255), width=2)
+            draw.text((px - 45, py + 12), f"{coord['label']} [F{cur_f}/{tot_f}]", fill="white")
 
-    # Header & Legend
-    draw.rectangle([10, 10, 425, 58], fill=(8, 12, 22), outline=(0, 200, 255))
-    draw.text((18, 16), "PLANETARY PATCHWORK OVERLAY // GLOBAL RAID ATLAS", fill=(0, 230, 255))
-    draw.text((18, 34), "Green: Stabilized (0% Bleed) | Orange: Gate Open | Red: Overland Only", fill=(200, 215, 230))
+        # Header & Legend
+        draw.rectangle([10, 10, 425, 58], fill=(8, 12, 22), outline=(0, 200, 255))
+        draw.text((18, 16), "PLANETARY PATCHWORK OVERLAY // GLOBAL RAID ATLAS", fill=(0, 230, 255))
+        draw.text((18, 34), "Green: Stabilized (0% Bleed) | Orange: Gate Open | Red: Overland Only", fill=(200, 215, 230))
 
-    img.save(GLOBAL_MAP_FILE)
+        img.save(GLOBAL_MAP_FILE)
+        _LAST_GLOBAL_HASH = global_sig
+    finally:
+        img.close()
     return GLOBAL_MAP_FILE
 
 

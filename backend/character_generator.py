@@ -2155,6 +2155,84 @@ def get_character_save_dir(base_dir, character_name):
     os.makedirs(char_dir, exist_ok=True)
     return char_dir
 
+def persist_turn_image_to_disk(base_dir: str, character_name: str, image_bytes_or_b64) -> str:
+    """
+    Saves a turn illustration (raw bytes or data:image/...;base64 string) as a compressed JPEG
+    inside saves/<slug>/images/ and returns its relative path from base_dir.
+    Prevents multi-megabyte base64 strings from bloating st.session_state.messages and save_game.json.
+    """
+    import base64
+    import hashlib
+    import io
+    if not image_bytes_or_b64:
+        return None
+    raw_bytes = None
+    if isinstance(image_bytes_or_b64, (bytes, bytearray)):
+        raw_bytes = bytes(image_bytes_or_b64)
+    elif isinstance(image_bytes_or_b64, str):
+        s = image_bytes_or_b64.strip()
+        if s.startswith("data:image") and "," in s:
+            s = s.split(",", 1)[1]
+        try:
+            raw_bytes = base64.b64decode(s)
+        except Exception:
+            return None
+    if not raw_bytes:
+        return None
+
+    char_dir = get_character_save_dir(base_dir, character_name or "Survivor")
+    img_dir = os.path.join(char_dir, "images")
+    os.makedirs(img_dir, exist_ok=True)
+
+    digest = hashlib.sha1(raw_bytes).hexdigest()[:12]
+    out_bytes = raw_bytes
+    ext = "jpg"
+    try:
+        from PIL import Image
+        with Image.open(io.BytesIO(raw_bytes)) as im:
+            rgb = im.convert("RGB")
+            try:
+                rgb.thumbnail((1024, 1024))
+                buf = io.BytesIO()
+                rgb.save(buf, format="JPEG", quality=82, optimize=True)
+                out_bytes = buf.getvalue()
+            finally:
+                rgb.close()
+    except Exception:
+        ext = "png"
+
+    fname = f"turn_{digest}.{ext}"
+    abs_path = os.path.join(img_dir, fname)
+    if not os.path.exists(abs_path):
+        try:
+            with open(abs_path, "wb") as f:
+                f.write(out_bytes)
+        except Exception:
+            return None
+    return os.path.relpath(abs_path, base_dir).replace("\\", "/")
+
+
+def migrate_messages_images_to_disk(base_dir: str, character_name: str, messages: list) -> bool:
+    """
+    Scans a messages list in-place and offloads any inline base64 `image_data` strings
+    to compressed files on disk referenced via `image_path`. Returns True if any message was migrated.
+    """
+    if not isinstance(messages, list):
+        return False
+    migrated = False
+    for msg in messages:
+        if not isinstance(msg, dict):
+            continue
+        img_data = msg.get("image_data")
+        if img_data and isinstance(img_data, str) and len(img_data) > 256:
+            rel_path = persist_turn_image_to_disk(base_dir, character_name, img_data)
+            if rel_path:
+                msg["image_path"] = rel_path
+                msg["image_data"] = None
+                migrated = True
+    return migrated
+
+
 def save_character_to_folder(base_dir, player_state, messages=None, extra_meta=None):
     """
     Saves character gamestate into a dedicated folder: saves/<character_name>/save_game.json.
@@ -2169,6 +2247,10 @@ def save_character_to_folder(base_dir, player_state, messages=None, extra_meta=N
     char_dir = get_character_save_dir(base_dir, p_name)
     save_file = os.path.join(char_dir, "save_game.json")
     profile_file = os.path.join(char_dir, "profile.json")
+
+    # Offload any inline base64 turn images in messages to saves/<slug>/images/
+    if isinstance(messages, list):
+        migrate_messages_images_to_disk(base_dir, p_name, messages)
 
     # If character has a locked avatar_image_path, ensure saves/<slug>/avatar.png is synchronized
     avatar_rel = player_state.get("avatar_image_path")
@@ -2186,13 +2268,18 @@ def save_character_to_folder(base_dir, player_state, messages=None, extra_meta=N
         "messages": messages or [],
         "last_saved": time.time()
     }
-    if extra_meta:
-        full_data.update(extra_meta)
+    if extra_meta and isinstance(extra_meta, dict):
+        cleaned_meta = dict(extra_meta)
+        if isinstance(cleaned_meta.get("master_state"), dict) and "player" in cleaned_meta["master_state"]:
+            cleaned_meta["master_state"] = {
+                k: v for k, v in cleaned_meta["master_state"].items() if k != "player"
+            }
+        full_data.update(cleaned_meta)
         
     with open(save_file, 'w', encoding="utf-8") as f:
         json.dump(full_data, f, indent=4)
         
-    # Write quick summary manifest for rapid profile picking
+    # Write quick summary manifest for rapid profile picking (avoids parsing full save_game.json on every rerun)
     manifest = {
         "name": p_name,
         "slug": sanitize_character_slug(p_name),
@@ -2205,10 +2292,12 @@ def save_character_to_folder(base_dir, player_state, messages=None, extra_meta=N
         "hp_max": player_state.get("max_hp", 100),
         "col": player_state.get("col", 100),
         "location": player_state.get("location", "Sector 1 Safe-Zone: Washington Borough, NJ"),
+        "equipped": player_state.get("equipped", {}),
         "avatar_image_path": player_state.get("avatar_image_path"),
         "avatar_locked": bool(player_state.get("avatar_locked", False)),
         "only_alter_by_equipment": bool(player_state.get("only_alter_by_equipment", False)),
         "turns_logged": len(messages or []),
+        "unique_url": build_character_unique_url(p_name),
         "last_saved": full_data["last_saved"]
     }
     with open(profile_file, 'w', encoding="utf-8") as f:
@@ -2231,15 +2320,25 @@ def save_character_to_folder(base_dir, player_state, messages=None, extra_meta=N
     return save_file
 
 def load_character_from_folder(base_dir, character_name):
-    """Loads gamestate from saves/<character_name>/save_game.json."""
+    """Loads gamestate from saves/<character_name>/save_game.json and migrates any inline base64 images."""
     import backend.mechanics as _mech
     char_dir = get_character_save_dir(base_dir, character_name)
     save_file = os.path.join(char_dir, "save_game.json")
     if os.path.exists(save_file):
         with open(save_file, 'r', encoding="utf-8") as f:
             data = json.load(f)
-        if isinstance(data, dict) and isinstance(data.get("player"), dict) and hasattr(_mech, "ensure_character_avatar_lock"):
-            _mech.ensure_character_avatar_lock(data["player"])
+        if isinstance(data, dict):
+            p = data.get("player")
+            if isinstance(p, dict) and hasattr(_mech, "ensure_character_avatar_lock"):
+                _mech.ensure_character_avatar_lock(p)
+            msgs = data.get("messages")
+            p_name = p.get("name", character_name) if isinstance(p, dict) else character_name
+            if isinstance(msgs, list) and migrate_messages_images_to_disk(base_dir, p_name, msgs):
+                try:
+                    with open(save_file, 'w', encoding="utf-8") as fw:
+                        json.dump(data, fw, indent=4)
+                except Exception:
+                    pass
         return data
     return None
 
@@ -2272,7 +2371,8 @@ def resolve_character_profile_name(base_dir: str, query_name: str):
 def list_all_character_folders(base_dir):
     """
     Discovers all character save folders in saves/.
-    Auto-migrates any legacy flat files (saves/<slug>.json) into dedicated folders.
+    Uses lightweight `profile.json` manifests when up-to-date so full `save_game.json` files
+    are NOT parsed repeatedly on every Streamlit rerun.
     Returns list of manifest dictionaries sorted by most recent save.
     """
     import backend.mechanics as _mech
@@ -2297,14 +2397,31 @@ def list_all_character_folders(base_dir):
                 except Exception:
                     pass
 
-    # 2. Collect all directories containing save_game.json
+    # 2. Collect all directories containing save_game.json (preferring fast profile.json when synced)
     profiles = []
     for item in os.listdir(saves_root):
         char_dir = os.path.join(saves_root, item)
         if os.path.isdir(char_dir):
             save_file = os.path.join(char_dir, "save_game.json")
+            profile_file = os.path.join(char_dir, "profile.json")
             if os.path.exists(save_file):
                 try:
+                    # Fast path: use profile.json if it exists, is fresh, and has required fields
+                    if os.path.exists(profile_file):
+                        try:
+                            p_mtime = os.path.getmtime(profile_file)
+                            s_mtime = os.path.getmtime(save_file)
+                            if p_mtime >= s_mtime - 1.0:
+                                with open(profile_file, 'r', encoding="utf-8") as pf:
+                                    manifest = json.load(pf)
+                                if isinstance(manifest, dict) and manifest.get("name") and "unique_url" in manifest and "equipped" in manifest:
+                                    manifest.setdefault("slug", item)
+                                    profiles.append(manifest)
+                                    continue
+                        except Exception:
+                            pass
+
+                    # Fallback path: read save_game.json and write fresh profile.json
                     with open(save_file, 'r', encoding="utf-8") as f:
                         data = json.load(f)
                     p = data.get("player", {})
@@ -2315,7 +2432,7 @@ def list_all_character_folders(base_dir):
                     avatar_rel = p.get("avatar_image_path")
                     if not avatar_rel and os.path.exists(avatar_candidate):
                         avatar_rel = os.path.relpath(avatar_candidate, base_dir).replace("\\", "/")
-                    profiles.append({
+                    manifest = {
                         "name": p.get("name", item),
                         "slug": item,
                         "gender": p.get("gender", "Male"),
@@ -2334,7 +2451,13 @@ def list_all_character_folders(base_dir):
                         "turns_logged": len(msgs) if isinstance(msgs, list) else 0,
                         "unique_url": build_character_unique_url(p.get("name", item)),
                         "last_saved": data.get("last_saved", 0)
-                    })
+                    }
+                    try:
+                        with open(profile_file, 'w', encoding="utf-8") as pf:
+                            json.dump(manifest, pf, indent=4)
+                    except Exception:
+                        pass
+                    profiles.append(manifest)
                 except Exception:
                     pass
                     
@@ -2372,18 +2495,18 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
     if str(name or "").strip().lower() == "glenny":
         if point_alloc is None:
             point_alloc = {"STR": 5, "DEX": 5, "CON": 4, "INT": 2, "WIS": 3, "CHA": 1}
-        if background_key == "adaptive":
-            background_key = "hunter"
-        if race_key == "human":
-            race_key = "spliced_apex_chimera"
+        if background_key in ("adaptive", "hunter"):
+            background_key = "hunter_tracker"
+        if race_key in ("human", "pure_human", "spliced_apex_chimera"):
+            race_key = "troll_kreen_chimera"
         if class_key == "pathless":
             class_key = "ranger"
-        if relic_key == "smartphone":
-            relic_key = "hunting_rangefinder"
+        if relic_key in ("smartphone", "hunting_rangefinder"):
+            relic_key = "laser_rangefinder"
         if starting_weapons is None:
             starting_weapons = {"main_hand": "Recurve Hunting Bow", "off_hand": "Chipped Wood-Axe"}
         if chimera_choices is None:
-            chimera_choices = {"base": "troll", "splice": "thri_kreen"}
+            chimera_choices = dict(DEFAULT_CHIMERA_CHOICES)
         if physical is None:
             physical = {"age": 24, "height_in": 86, "weight_lbs": 310}
         if gender is None:
