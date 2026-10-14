@@ -1022,6 +1022,288 @@ RACIAL_LINEAGES = {
             "Dragon-Wrought Trapmaster: Field traps, tripwires, and alchemical bombs you deploy deal +1d6 bonus damage and have +3 added to their Save DC.",
             "Draconic Cry: Unleash a startling yip-roar as a bonus action once per encounter, granting all party members Advantage on attacks until your next turn."
         ]
+    },
+
+    # --- D&D & PATHFINDER MONSTROUS PLAYABLE RACES ---
+    "troll_fleshwarped": {
+        "name": "Troll (Flesh-Warped Regeneration Juggernaut)",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Hulking brute with moss-green rubbery hide, elongated limbs, and ferocious predatory appetite. Legendary for rapid cellular re-knitting that closes mortal wounds in seconds.",
+        "stat_mods": {"STR": 4, "CON": 4, "WIS": -1, "INT": -2, "CHA": -2, "DEX": 0},
+        "racial_abilities": [
+            "Rapid Cellular Regeneration: Passively regenerates 5 HP at the start of each of your turns in combat, unless you took Fire or Acid damage since your last turn.",
+            "Rending Talons: Unarmed strikes deal 1d8 + STR slashing damage. If you hit a target with two claw attacks on the same turn, rend for +2d6 bonus tearing damage.",
+            "Keen Scent: Gain Advantage on Wisdom (Perception) checks that rely on smell and track wounded targets automatically within 100 feet.",
+            "Flaw - Voracious Hunger & Fire Vulnerability: Takes 50% extra damage from Fire and Acid attacks; requires consuming double daily food rations to sustain hyper-regeneration."
+        ]
+    },
+    "illithid_mind_flayer": {
+        "name": "Illithid / Ceremorph (Renegade Mind Flayer)",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Renegade cephalopod aberration liberated from Elder Brain hive-networks when ambient rift aether severed the collective synaptic tether. Purplish-slate rubbery flesh, four writhing facial tentacles, and terrifying psionic brain-wave mastery.",
+        "stat_mods": {"INT": 4, "WIS": 2, "CHA": 1, "STR": -2, "CON": 0, "DEX": 0},
+        "racial_abilities": [
+            "Psionic Mind Blast: Unleash a 20ft frontal cone of psychic pressure dealing 2d8 + INT psychic damage; targets must pass an INT saving throw or be Stunned for 1 round (once per rest).",
+            "Tentacle Grapple & Neural Siphon: Attack with facial tentacles dealing 1d6 + INT psychic damage; on hit, grapple the target and drain 10 HP / 10 Combat Resource from incapacitated foes.",
+            "Telepathic Net & Aberrant Senses: Communicate telepathically up to 120 feet with any sentient mind, and passively sense the exact location of any thinking creature within 60 feet.",
+            "Flaw - Neural Siphon Dependency: Must consume intellectual psychic essence or neural tissue once per week or suffer progressive psychic exhaustion."
+        ]
+    },
+    "mountain_orc_blood": {
+        "name": "Mountain Orc (Gruumsh War-Born)",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Towering gray-green warrior bred in blood-stained war bands, carrying scarred tusk canines, bone piercings, and ancestral fury that surges into an unstoppable melee rush.",
+        "stat_mods": {"STR": 4, "CON": 3, "DEX": 0, "WIS": 0, "INT": -2, "CHA": -1},
+        "racial_abilities": [
+            "Aggressive Rush: As a bonus action on your turn, move up to your full movement speed toward a hostile creature you can see.",
+            "Relentless Juggernaut: When reduced to 0 HP, drop to 1 HP instead and immediately gain +10 temporary HP and +2 to melee damage for 1 round (once per long rest).",
+            "Primal Intimidation: Add double your Strength modifier to Intimidation checks against non-construct creatures."
+        ]
+    },
+    "goblin_pyromaniac": {
+        "name": "Goblin Sapper / Pyromaniac (Kek-Clan Sneak)",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Pointy-eared, yellow-eyed cackling green menace with needle teeth, sharp claws, and a maniacal obsession with explosive alchemy, singing fire, and dirty fighting.",
+        "stat_mods": {"DEX": 4, "CON": 1, "INT": 1, "STR": -2, "WIS": -1, "CHA": 0},
+        "racial_abilities": [
+            "Nimble Escape: You can take the Disengage or Hide action as a bonus action on each of your combat turns.",
+            "Fury of the Small: When you damage a creature with an attack that is of a larger size than you, deal extra damage equal to your character level (once per encounter).",
+            "Volatile Fire-Tinker: Improvised incendiary vials, molotovs, and bombs you toss gain +1d6 fire damage and ignite flammable cover."
+        ]
+    },
+    "kobold_dragon_herald": {
+        "name": "Kobold Wyrm-Herald (Dragon-Speaker)",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Scaled, canine-snouted miniature draconic survivor bearing glowing red eye-slits, a sweeping tail, and ancestral dragon-blood that hums with raw elemental power.",
+        "stat_mods": {"DEX": 3, "CHA": 3, "CON": 0, "STR": -2, "INT": 1, "WIS": 0},
+        "racial_abilities": [
+            "Draconic Roar & Grovel: Unleash an alarming draconic screech or distracting feint as a bonus action, granting allies Advantage on attack rolls against enemies within 10 feet.",
+            "Pack Hunter Telemetry: When an ally is adjacent to your target, your attacks gain +2 to hit and your critical strike range is expanded by 1 (e.g. 19-20).",
+            "Dragon-Spark Cantrip: Innately cast a minor elemental bolt (Fire, Cold, or Acid) dealing 1d8 damage with 60ft range without using spell slots."
+        ]
+    },
+    "bugbear_shadow_stalker": {
+        "name": "Bugbear Shadow-Stalker (Apex Brute)",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Massive seven-foot furred goblinoid juggernaut with disproportionately long limbs, padded paws, and silent ambushing instincts that belie their massive size.",
+        "stat_mods": {"STR": 3, "DEX": 2, "CON": 2, "WIS": 0, "INT": -1, "CHA": -1},
+        "racial_abilities": [
+            "Long-Limbed Reach: Your melee attacks have +5 feet of reach, allowing you to strike with two-handed axes and polearms from safe distances.",
+            "Surprise Attack (Ambush Carnage): If you hit a creature on the first round of combat before they act, the attack deals an extra 2d6 weapon damage.",
+            "Sneaky Titan: Gain proficiency in Stealth; can squeeze through narrow gaps meant for creatures of Small size despite your hulking build."
+        ]
+    },
+    "gnoll_hyena_ravager": {
+        "name": "Gnoll Hyena-Ravager (Fang of Yeenoghu)",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Feral, spotted-pelt hyena humanoid driven by ceaseless blood-hunger and terrifying cackling laughter, tearing through enemy battle-lines with bone-crushing jaws.",
+        "stat_mods": {"STR": 3, "CON": 3, "DEX": 1, "INT": -2, "WIS": 0, "CHA": -1},
+        "racial_abilities": [
+            "Rampage: When you reduce a creature to 0 hit points with a melee attack on your turn, you can take a bonus action to move up to half your speed and make a bite attack.",
+            "Crushing Jaws: Secondary bite attack dealing 1d6 + STR piercing damage in melee that inflicts the Bleeding status on hit.",
+            "Cackling Terror: Once per encounter, emit an eerie hyena laugh that forces hostiles within 30ft to make a WIS save or suffer Disadvantage on attacks for 1 round."
+        ]
+    },
+    "minotaur_labyrinth_breaker": {
+        "name": "Minotaur Labyrinth-Breaker (Gore-Horn Juggernaut)",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Mighty bull-headed titan of corded muscle, cloven hooves, and sweeping bronze horns, possessing a supernatural mental compass that pierces any maze or dungeon.",
+        "stat_mods": {"STR": 4, "CON": 3, "WIS": 1, "DEX": -1, "INT": -1, "CHA": -1},
+        "racial_abilities": [
+            "Goring Horn Charge: If you move at least 20 feet straight toward a target before hitting with a melee attack, gore with your horns for +2d6 piercing damage.",
+            "Hammering Horns: Immediately after hitting with a melee attack on your turn, use a bonus action to shove the target up to 10 feet away or knock them Prone.",
+            "Labyrinthine Memory: Perfect directional recall; immune to getting lost, can never be trapped in maze spells, and detect secret doors/passages with +3 Perception."
+        ]
+    },
+    "half_ogre_crusher": {
+        "name": "Ogrekin / Half-Ogre Earth-Crusher",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Nine-foot-tall primordial brute with skin thick as weathered granite, hands like iron shovels, and raw earth-splitting physical power that breaks stone fortifications.",
+        "stat_mods": {"STR": 5, "CON": 4, "DEX": -2, "INT": -3, "WIS": 0, "CHA": -1},
+        "racial_abilities": [
+            "Colossal Swing: When attacking with two-handed heavy weapons, deal bludgeoning splash damage equal to your STR mod to all adjacent enemies.",
+            "Rock Hurler: Pick up and throw large boulders, rubble, or metal scrap up to 60 feet dealing 2d8 + STR bludgeoning damage.",
+            "Hulking Bulk: Carrying capacity and push/drag limits are doubled (+100 lbs unencumbered); natural Armor Class increased by +2.",
+            "Flaw - Clumsy Giant: Suffers Disadvantage on delicate manual dexterity, lockpicking, and stealth checks."
+        ]
+    },
+    "medusa_gorgon_scion": {
+        "name": "Medusa / Gorgon Scion (Serpent-Gaze)",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Cursed, serpentine immortal whose hair is a writhing nest of venomous vipers and whose unblinking golden gaze can petrify living tissue into solid granite.",
+        "stat_mods": {"CHA": 3, "DEX": 2, "CON": 1, "INT": 1, "STR": 0, "WIS": -1},
+        "racial_abilities": [
+            "Petrifying Gaze: Target a creature within 30 feet that can see your eyes; target must pass a CON saving throw or become Restrained as stone creeps across their limbs (DC 13 + CON mod).",
+            "Serpent-Hair Bite: As a reaction when an enemy enters your melee reach, your viper locks strike for 1d4 piercing + 1d6 poison damage.",
+            "Stone-Immunity & Darkvision: Complete immunity to petrification, paralysis, and poison; see in pitch darkness up to 90 feet."
+        ]
+    },
+    "gargoyle_lithic_sentinel": {
+        "name": "Gargoyle Lithic Wing-Sentinel",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Chiseled from ancient demonic granite, possessing bat-like stone wings, horned brows, and razor talons. Masters of architectural ambushes and roof-stalking.",
+        "stat_mods": {"CON": 4, "STR": 3, "DEX": 0, "WIS": 1, "INT": -2, "CHA": -2},
+        "racial_abilities": [
+            "Stony Carapace: Resistance (25% damage reduction) against non-magical bludgeoning, piercing, and slashing attacks.",
+            "Stone Wings (Glide & Hover): Fly and glide up to 30 feet per round, ignoring ground-level traps and difficult terrain.",
+            "False Appearance (Statue Stance): While remaining motionless atop stone or building ledges, you are completely indistinguishable from an inanimate gothic statue."
+        ]
+    },
+    "troglodyte_stench_stalker": {
+        "name": "Troglodyte Cavern Stench-Stalker",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Reptilian Underdark carnivore covered in gray-green scales with a spiny dorsal ridge, exuding a pungent, sickening glandular musk that nauseates warm-blooded prey.",
+        "stat_mods": {"CON": 4, "STR": 2, "DEX": 1, "INT": -2, "WIS": 0, "CHA": -3},
+        "racial_abilities": [
+            "Stench Musk Aura: Any non-troglodyte starting their turn within 5 feet of you must pass a CON save (DC 12 + CON mod) or become Poisoned until the start of their next turn.",
+            "Chameleon Scales: Natural skin color shifts to match stone, gravel, and dirt, granting Advantage on Dexterity (Stealth) checks in subterranean areas.",
+            "Claw-and-Bite Multiattack: Secondary bite attack in melee dealing 1d4 piercing + 1d4 acid damage."
+        ]
+    },
+    "doppelganger_morph": {
+        "name": "Doppelganger Flesh-Morph Infiltrator",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Faceless, slate-skinned psychic shapeshifter possessing uncanny empathy, surface-mind eavesdropping, and seamless physiological replication.",
+        "stat_mods": {"CHA": 4, "DEX": 2, "INT": 2, "STR": 0, "CON": 0, "WIS": -1},
+        "racial_abilities": [
+            "Shapechanger Master: Magically polymorph into any Medium or Small humanoid you have seen, precisely replicating their facial features, voice, gait, and gear visual.",
+            "Read Surface Thoughts: Sense surface thoughts and combat intentions within 60 feet, granting +2 on Insight, Deception, and AC against the read target.",
+            "Ambusher Strike: When attacking a target that is unaware of your true nature, deal +3d6 bonus precision damage on the first hit."
+        ]
+    },
+    "hag_born_caliban": {
+        "name": "Hag-Born / Caliban Hex-Witch",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Offspring of ancient swamp and night hags—crooked posture, weeping willow bark skin, needle-iron nails, and inherited coven blood-curses.",
+        "stat_mods": {"WIS": 3, "CHA": 2, "CON": 2, "STR": 1, "INT": 0, "DEX": -1},
+        "racial_abilities": [
+            "Coven Blood-Hex: Curse a creature within 60 feet as a bonus action; target suffers -2 to all saving throws and takes 1d6 necrotic damage whenever you hit them.",
+            "Iron Claws & Nails: Unarmed strikes deal 1d6 + STR slashing damage and count as magical cold-iron weapons.",
+            "Rot-Eater Fortitude: Immune to biological disease and gain +3 on saving throws against poison, rotting spores, and necrotic corruption."
+        ]
+    },
+    "grung_tree_frog": {
+        "name": "Grung Poison-Dipped Anuran",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Brightly-colored, three-foot-tall humanoid tree frog possessing adhesive suction pads, hyper-flexible joints, and glistening toxic dermal secretions.",
+        "stat_mods": {"DEX": 4, "CON": 2, "WIS": 1, "STR": -2, "INT": 0, "CHA": 0},
+        "racial_abilities": [
+            "Poisonous Skin Secretions: Any creature that grapples you or strikes you with an unarmed attack must pass a CON save or be Poisoned for 1 minute; coat weapons in poison on contact (+1d4 poison damage).",
+            "Standing Leap: Your high jump is up to 15 feet and your long jump is up to 25 feet without needing a running start.",
+            "Adhesive Wall-Crawl: Climb smooth vertical surfaces and ceilings effortlessly without slipping."
+        ]
+    },
+    "were_kin_shifter": {
+        "name": "Shifter / Were-Kin (Lycanthrope-Born)",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Mortal carrier of dormant therianthropy, capable of calling upon their inner beast to sprout razor fangs, thick bristling fur, and predator senses.",
+        "stat_mods": {"STR": 2, "DEX": 2, "CON": 2, "WIS": 1, "INT": -1, "CHA": -1},
+        "racial_abilities": [
+            "Feral Beast Shift: As a bonus action once per encounter, enter a shifted beast-aspect for 1 minute—gaining 10 temporary HP, +10ft movement speed, and 1d6 predatory bite/claw attacks.",
+            "Apex Scent & Darkvision: Scent tracking up to 60 feet, Darkvision (60ft), and +2 to Survival and Perception checks.",
+            "Predator Reflexes: Advantage on Dexterity saving throws against area-of-effect hazards and traps."
+        ]
+    },
+    "centaur_plains_vanguard": {
+        "name": "Centaur Plains-Vanguard (Equine Charger)",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Majestic fusion of human torso and mighty equine body, combining the heavy charging momentum of a warhorse with martial weapon mastery.",
+        "stat_mods": {"STR": 4, "CON": 2, "WIS": 1, "DEX": 0, "INT": -1, "CHA": 0},
+        "racial_abilities": [
+            "Equine Charge: If you move at least 30 feet straight toward a target and hit with a melee attack, deal +2d6 bonus damage and make a bonus action Hooves attack.",
+            "Hooves Strike: Unarmed melee strike with iron-shod hooves dealing 1d6 + STR bludgeoning damage.",
+            "Galloping Overland Speed: Base movement speed is 40 feet (30% faster than standard humanoids); carrying capacity is doubled (+80 lbs).",
+            "Flaw - Climb Impairment: Suffer double movement cost when attempting to climb sheer vertical ladders or ropes."
+        ]
+    },
+    "thrikreen_mantis": {
+        "name": "Thri-Kreen Desert Mantis (Four-Armed Wanderer)",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Four-armed arid insectoid with sandy chitin, compound antennae, clicking mandibles, and an alien hive-telepathy.",
+        "stat_mods": {"DEX": 4, "WIS": 2, "CON": 1, "STR": 0, "INT": 0, "CHA": -2},
+        "racial_abilities": [
+            "Secondary Arms (Four-Armed Wielding): Possess two primary arms and two secondary arms; can dual-wield weapons while simultaneously holding a shield or loading a projectile weapon.",
+            "Chameleon Carapace: Alter color to match sand, stone, and dirt, granting natural AC 15 + DEX mod (max 2) and Advantage on Stealth checks.",
+            "Sleepless Alien Metabolism: Do not require sleep and cannot be put to sleep by magic; rest by remaining in a light meditative awareness for 4 hours."
+        ]
+    },
+    "satyr_fey_reveler": {
+        "name": "Satyr Fey-Horned Reveler",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Goat-legged woodland wanderer crowned with curling ram horns, possessing nimble cloven hooves, ancient panpipe melodies, and uncanny fey magic resistance.",
+        "stat_mods": {"CHA": 3, "DEX": 2, "WIS": 1, "STR": 0, "CON": 0, "INT": -1},
+        "racial_abilities": [
+            "Magic Resistance (Fey Blessing): Gain Advantage on all saving throws against spells and magical hexes.",
+            "Mirthful Ram-Horn Strike: Headbutt melee strike dealing 1d6 + STR bludgeoning damage; on hit after moving 20ft, knock foes prone.",
+            "Panpipe Enchantment: Play an aetheric melody on pipes or flute once per encounter to Charm or Frighten targets within 30 feet (WIS save DC 13 + CHA mod)."
+        ]
+    },
+    "sahuagin_blood_frenzy": {
+        "name": "Sahuagin Blood-Frenzy Deep-Hunter",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Predatory piscine monstrosity from flooded sumps and subterranean rivers, possessing webbed talons, razor fins, needle shark teeth, and uncontrollable blood-frenzy.",
+        "stat_mods": {"STR": 3, "CON": 2, "WIS": 2, "DEX": 1, "INT": -1, "CHA": -2},
+        "racial_abilities": [
+            "Blood Frenzy: Gain Advantage on melee attack rolls against any creature that does not have all its hit points.",
+            "Shark-Kin Telepathy & Breath: Amphibious (breathe air and water equally) and communicate telepathically with aquatic beasts within 120 feet.",
+            "Claw & Bite Multiattack: Deliver a 1d6 claw slash and 1d4 bite attack in rapid succession."
+        ]
+    },
+    "grimlock_blindsight": {
+        "name": "Grimlock Blind-Sight Under-Stalker",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Eyeless, gray-skinned subterranean humanoid whose vestigial eye-sockets are fused shut, possessing supernatural ultrasonic hearing and scent that pierces total darkness and invisibility.",
+        "stat_mods": {"STR": 3, "CON": 3, "WIS": 2, "DEX": 0, "INT": -2, "CHA": -2},
+        "racial_abilities": [
+            "Blindsight (60ft): Perceive surroundings up to 60 feet via hearing and scent, completely ignoring total darkness, visual fog, and enemy invisibility.",
+            "Blind Senses Immunity: Completely immune to being Blinded, visual illusions, gaze attacks (like Medusa's stare), and hypnotic patterns.",
+            "Stone-Hugging Stealth: Gain a +4 bonus to Stealth checks in cavern, mine, or rubble terrain."
+        ]
+    },
+    "rust_monster_kin": {
+        "name": "Rust-Monster Touched / Metallivore",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Mutant scavenger bearing feathery rust-antennae, chitinous orange-brown carapace, and a chemical sweat that dissolves refined ores and steel on contact.",
+        "stat_mods": {"CON": 3, "DEX": 2, "INT": 1, "STR": 0, "WIS": 1, "CHA": -2},
+        "racial_abilities": [
+            "Oxidizing Touch: Melee touch attack or strike that corrodes non-magical metal armor and weapons, reducing enemy AC by -2 or destroying weapons that hit you.",
+            "Iron-Scent Telemetry: Passively sense the location and quantity of refined ferrous metals, weapons, and iron ore veins within 90 feet.",
+            "Chitin Carapace: Natural +2 Armor Class; immune to rusting and acid corrosion hazards."
+        ]
+    },
+    "derro_deep_savant": {
+        "name": "Derro Maddened Deep-Savant",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Pale, white-haired degenerate dwarven mutant from the deepest subterranean aether-trenches. Immune to mind-control due to inherent mental madness, wielding bizarre repeating crossbows and psychic hexes.",
+        "stat_mods": {"DEX": 3, "CHA": 3, "CON": 1, "STR": -1, "INT": 0, "WIS": -2},
+        "racial_abilities": [
+            "Insanity Fortress: Complete immunity to being Charmed, Confused, or Frightened; use Charisma instead of Wisdom for all mental saving throws.",
+            "Sneak Ambush: Deal an extra 1d6 damage when striking from concealment or when flanking with an ally.",
+            "Cytoplasmic Hex: Cast a burst of blinding sonic madness once per encounter (CON save DC 13 + CHA mod or blinded for 1 round).",
+            "Flaw - Sunlight Vulnerability: Suffers a -2 penalty on attack rolls when fighting under bright daylight."
+        ]
+    },
+    "harpy_siren_reaver": {
+        "name": "Harpy Siren-Winged Reaver",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Avian-feral predator possessing broad feathered wings instead of forearms, wicked curved talon feet, and a piercing, hypnotic siren song that lures prey to their doom.",
+        "stat_mods": {"CHA": 4, "DEX": 3, "CON": 0, "STR": -1, "INT": -1, "WIS": 0},
+        "racial_abilities": [
+            "Luring Siren Song: Sing an eerie melody as an action; humanoids within 60 feet must pass a WIS save (DC 13 + CHA mod) or become Charmed and compelled to walk toward you.",
+            "Winged Aerial Flight: Fly up to 35 feet per round, lifting off and delivering diving strikes from the air.",
+            "Rending Talons: Talon foot-strikes deal 1d6 + DEX slashing damage in melee."
+        ]
+    },
+    "rakshasa_tiger_lord": {
+        "name": "Rakshasa Fiendish Tiger-Lord",
+        "genre": "D&D & Pathfinder Monstrous",
+        "desc": "Aristocratic fiendish shapechanger with feline tiger features, backward-jointed hands, exquisite silken garments, and innate sorcerous warding that repels mortal spells.",
+        "stat_mods": {"CHA": 4, "INT": 2, "DEX": 2, "STR": 1, "CON": 0, "WIS": -2},
+        "racial_abilities": [
+            "Limited Magic Immunity: Completely immune to spells of 1st level or lower unless you choose to be affected, and gain Advantage on saves against all other magic.",
+            "Deceitful Guise: Polymorph into any humanoid form at will, masking your fiendish nature and thoughts (+5 to Deception checks).",
+            "Cursed Claws: Melee claw strike deals 1d6 + STR slashing damage + 1d6 necrotic curse damage that prevents the target from regaining hit points for 1 round."
+        ]
     }
 }
 

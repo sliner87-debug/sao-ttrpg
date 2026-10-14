@@ -516,7 +516,7 @@ def render_character_calibration_wizard():
         cur_r_idx = race_keys.index(st.session_state.cg_race_key) if st.session_state.cg_race_key in race_keys else 0
         
         sel_race_label = st.selectbox(
-            "Select Lineage / Mutation (20 Options):",
+            f"Select Lineage / Monstrous Race ({len(race_keys)} Playable Forms):",
             options=race_display_labels,
             index=cur_r_idx,
             key="sel_race_box"
