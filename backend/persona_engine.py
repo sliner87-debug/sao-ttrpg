@@ -77,8 +77,6 @@ def get_subagent_action(api_key: str, entity_id: str, visible_room: dict, player
     They read ONLY their persona sheet, visible_room.json, and the player's current action/speech.
     Ensures all companions and NPCs know and address the human player by their actual entered name.
     """
-    client = genai.Client(api_key=api_key)
-
     # Determine the human player's active name
     p_name = "Survivor"
     if player_state and isinstance(player_state, dict) and player_state.get("name"):
@@ -101,9 +99,52 @@ def get_subagent_action(api_key: str, entity_id: str, visible_room: dict, player
     party_path = os.path.join(PARTY_DIR, f"{entity_id}.json")
     party_sheet = load_json(party_path)
 
-    # Fallback to Party if persona missing
+    # Built-in Tutorial Construct Personas (avoid extra LLM call during tutorial stages)
+    tutorial_personas = {
+        "npc_cardinal_arbiter": {
+            "id": "npc_cardinal_arbiter",
+            "name": "Cardinal Calibration Construct",
+            "species_or_type": "Holographic System Arbiter",
+            "role": "neutral",
+            "backstory_interview": "Compiled at 03:00 UTC to calibrate newly integrated Sector 1 survivors before releasing them into Washington Borough, NJ.",
+            "personality": "Clinical, sardonic, precise, and instructional.",
+            "quirks": ["Projects floating blue telemetry glyphs", "Quotes survival statistics"],
+            "dreams_and_desires": "Complete the survivor's 3-stage calibration without a fatal neural desync.",
+            "fears_and_dreads": "Unrecoverable kernel exceptions.",
+            "tactical_style": "Observational and instructional",
+            "behavior_prompt": f"Guide {p_name} through Stage 1 Telemetry & Relic calibration and open the blast doors to Chamber II."
+        },
+        "tutorial_clockwork_sentinel": {
+            "id": "tutorial_clockwork_sentinel",
+            "name": "Clockwork Calibration Sentinel",
+            "species_or_type": "Bronze-and-Aether Training Construct",
+            "role": "hostile",
+            "backstory_interview": "Forged in the Cardinal Crucible to test a survivor's physical weapon strikes, Armor Class evasion, and graft-harvesting instincts.",
+            "personality": "Relentless, mechanical, telegraphed.",
+            "quirks": ["Gears whir loudly before every cleaver swing", "Cyan core pulses when vulnerable"],
+            "dreams_and_desires": "Test the survivor's martial readiness.",
+            "fears_and_dreads": "Having its Clockwork Reflex Servo and Astral Bolt spell slate harvested.",
+            "tactical_style": "Measured telegraphed melee strikes",
+            "behavior_prompt": f"Deliver a telegraphed practice cleaver swing against {p_name} so they can counterattack and shatter your bronze core."
+        },
+        "tutorial_crucible_warden": {
+            "id": "tutorial_crucible_warden",
+            "name": "Aether-Forged Crucible Warden",
+            "species_or_type": "Arcane Gate-Guardian Construct",
+            "role": "hostile",
+            "backstory_interview": "The final guardian of the Sector 1 Calibration Crucible, standing before the Spatial Teleportation Gate to Washington Borough, NJ.",
+            "personality": "Imposing, resonant, arcane-shielded.",
+            "quirks": ["Projects a shimmering violet Kinetic Ward that only spells and active powers can shatter"],
+            "dreams_and_desires": "Force the survivor to awaken their spellcasting and active class power before entering Washington, NJ.",
+            "fears_and_dreads": "Direct hits from Astral Bolt or active class techniques.",
+            "tactical_style": "Defensive ward projection before the Teleportation Gate",
+            "behavior_prompt": f"Project your Kinetic Ward before the Washington, NJ Teleportation Gate, challenging {p_name} to shatter it with Astral Bolt or an active power."
+        }
+    }
+
+    # Fallback to Party or Tutorial Personas if persona missing
     if not persona:
-        persona = party_sheet
+        persona = party_sheet or tutorial_personas.get(entity_id)
 
     if not persona:
         # Forge on the fly if missing
@@ -170,9 +211,17 @@ PHYSICAL MASS & FLOOR-INTEGRITY PROTOCOL (1,200 LBS):
 - Your Cast-Iron Boiler Chassis weighs 1,200 lbs (`weight_lbs: 1200.0`, `-6` Stealth). If `Visible Room.environment.environmental_effects` mentions rotted timbers, wooden floorboards, rickety catwalks, or fragile bridges, explicitly acknowledge the structural load risk in your thought and action!
 """
 
+    try:
+        import backend.mechanics as _mech_p
+        _p_prof = _mech_p.get_physical_profile(player_state or {})
+        _p_gender_line = f"{_p_prof['gender']} ({_p_prof['pronouns']})"
+    except Exception:
+        _p_gender_line = "Male (he/him)"
+
     player_action_section = f"""
 HUMAN PLAYER IDENTITY & CURRENT TURN ACTION:
 - Human Player Name: {p_name}
+- Human Player Sex / Gender & Pronouns: {_p_gender_line}
 - Human Player's Speech / Action This Turn:
 "{player_action or 'Observes and stands ready.'}"
 """
@@ -201,8 +250,8 @@ WHAT YOU CAN CURRENTLY SEE (Visible Room):
 CRITICAL GROUNDING & NAMING RULES:
 1. GROUNDING: Ground your thoughts and intended action strictly in `Visible Room.environment.location` and `Visible Room.environment.environmental_effects`.
    - If there are NO hostile entities in `Visible Room.entities` and no active collapse in `environmental_effects`, do NOT hallucinate cave-ins, falling shale, or active combat! Follow or coordinate with the Human Player's current action/speech naturally.
-2. ABSOLUTE PLAYER NAME MANDATE: The human player's entered character name is "{p_name}".
-   - In your internal thoughts, tactical plans, and spoken dialogue, ALWAYS refer to the human player as "{p_name}".
+2. ABSOLUTE PLAYER NAME & PRONOUN MANDATE: The human player's entered character name is "{p_name}" ({_p_gender_line}).
+   - In your internal thoughts, tactical plans, and spoken dialogue, ALWAYS refer to the human player as "{p_name}" and use their correct pronouns ({_p_gender_line}).
    - NEVER call them any placeholder name, legacy alias, or generic title!
 
 Decide your next action based on your instincts, physical condition, available gear, fear level, and tactical goals.
@@ -210,6 +259,17 @@ Do not break character. Speak from your internal thought and declare your action
 Output strictly matching ActorActionSchema.
 """
 
+    if not api_key:
+        return {
+            "actor_id": entity_id,
+            "actor_name": persona.get("name", entity_id),
+            "internal_thought": f"Tracking {p_name} ({_p_gender_line}) in the current chamber.",
+            "intended_action": persona.get("behavior_prompt", "Stands ready."),
+            "target_id": None,
+            "dialogue": ""
+        }
+
+    client = genai.Client(api_key=api_key)
     response = client.models.generate_content(
         model="gemini-3.8-flash",
         contents=prompt,

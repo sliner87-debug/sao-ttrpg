@@ -2293,17 +2293,23 @@ def compute_starting_max_hp(race, chosen_class, final_stats, physical=None):
     return hp
 
 
-def generate_starting_character(name, point_alloc, background_key, race_key, class_key, relic_key, 
+def generate_starting_character(name="Survivor", point_alloc=None, background_key="adaptive",
+                                race_key="human", class_key="pathless", relic_key="smartphone", 
                                 custom_background_text=None, starting_weapons=None,
                                 custom_relic_data=None, custom_collaborated_data=None,
-                                chimera_choices=None, physical=None):
+                                chimera_choices=None, physical=None, gender=None,
+                                start_tutorial=True):
     """
     Constructs a complete, valid player character dictionary ready for save_game.json.
     Supports class-themed starter weapons with optional manual override,
     custom collaborative background skills, and custom personal relics.
     `chimera_choices` configures the modular Spliced Apex Chimera lineage.
     `physical` is {"age": int, "height_in": float, "weight_lbs": float}.
+    `gender` is "Male" or "Female" (defaults to "Male").
+    `start_tutorial` launches newly created characters into the 3-stage Cardinal Calibration Crucible tutorial.
     """
+    if point_alloc is None:
+        point_alloc = {"STR": 4, "DEX": 4, "CON": 4, "INT": 4, "WIS": 2, "CHA": 2}
     # 1. Base Stats (10 base + allocated points + racial mods)
     race = resolve_racial_lineage(race_key, chimera_choices)
     r_mods = race["stat_mods"]
@@ -2323,11 +2329,12 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
     base_hp_val = chosen_class.get("base_hp", 100)
     max_hp = base_hp_val + (con_mod * 10) + int(race.get("max_hp_bonus", 0))
 
-    # Physical profile (age / height / weight) creation-time modifiers
+    # Physical profile (gender / age / height / weight) creation-time modifiers
     import backend.mechanics as _mech
     phys_in = physical if isinstance(physical, dict) else {}
+    gender_val = _mech.normalize_gender(gender or phys_in.get("gender") or "Male")
     physical_data = {k: phys_in.get(k, _mech.DEFAULT_PHYSICAL[k]) for k in ("age", "height_in", "weight_lbs")}
-    phys_mods = _mech.get_physical_profile({"physical": physical_data})["modifiers"]
+    phys_mods = _mech.get_physical_profile({"gender": gender_val, "physical": physical_data})["modifiers"]
     max_hp = compute_starting_max_hp(race, chosen_class, final_stats, physical_data)
     
     # 3. Skills & Perks from Background (Preset, Custom Collaboration, or Heuristic)
@@ -2471,9 +2478,19 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
         "name": "Poise & Threat", "max": 100, "current": 0, "type": "poise"
     })
     combat_resource = dict(res_def)
+
+    initial_tutorial = _mech.create_initial_tutorial_state() if start_tutorial else {
+        "active": False, "stage": 4, "max_stages": 3, "completed": True, "loot_acquired": []
+    }
+    initial_location = (
+        _mech.TUTORIAL_STAGES[1]["location"]
+        if start_tutorial
+        else _mech.TUTORIAL_SAFE_ZONE_DESTINATION
+    )
     
     player_sheet = {
         "name": name if name and name.strip() else "Survivor",
+        "gender": gender_val,
         "level": 1,
         "xp": 0,
         "hp": max_hp,
@@ -2495,10 +2512,11 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
         "equipped": equipped,
         "gear_durability": gear_durability,
         "quests": [],
-        "location": "Sector 1 Safe-Zone: Washington Borough, NJ",
+        "location": initial_location,
         "companions": {},
         "is_paused": False,
-        "physical": physical_data
+        "physical": physical_data,
+        "tutorial": initial_tutorial,
     }
 
     # Veteran / Elder: bonus starting mastery on background skills (milestones unlock normally)
@@ -2515,23 +2533,8 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
 
 def build_system_initialization_welcome_message(player_state: dict) -> str:
     """
-    Constructs the immersive V2 System Initialization welcome message.
-    Blending:
-    1. 'The System Apocalypse' (Tao Wong) as the Main Tone:
-       Universal blue screen freezing human electronics, initializing baseline attributes,
-       and declaring Earth an active monster-spawning zone where pre-integration technology
-       fails unless mana-adapted, grounded in real-world geography (Route 31, Route 57,
-       Oxford Furnace, Pohatcong Depths, Washington Borough, NJ 07882).
-    2. Interactive System AI (Sardonic Architect Broadcast - Dungeon Crawler Carl + The Crucible):
-       Cold planetary reclamation notice paired with a darkly witty, observant System AI / Architect
-       voice that specifically evaluates the player's pre-integration vocation, keepsake relic,
-       and calculates their chilling survival odds.
-    3. Biometric & Relic Ledger:
-       Dynamic readout of the calibrated Avatar, Vocation, Equipped Gear, Keepsake Relic, and
-       a Dungeon Crawler Carl-style System evaluation note on their build.
-    4. Tutorial (Initial Scenario #001 & In-Universe Cardinal Interface Briefing):
-       Action input, Autonomous Companions (Ren), Ability Fusion (Rule 10), Graft Strain,
-       and Voice Link onboarding replacing out-of-character tutorial bullets.
+    Constructs the immersive V2 System Initialization welcome message and launches the player
+    into Stage 1 of the 3-Stage Cardinal Calibration Crucible Tutorial.
     """
     if not isinstance(player_state, dict):
         player_state = {}
@@ -2544,10 +2547,13 @@ def build_system_initialization_welcome_message(player_state: dict) -> str:
     col = player_state.get("col", 100)
     stats = player_state.get("stats", {"STR": 10, "DEX": 10, "CON": 10, "INT": 10, "WIS": 10, "CHA": 10})
 
-    # Derive AC
+    # Derive AC & Physical/Gender Profile
     import backend.mechanics as mechanics
     ac_info = mechanics.calculate_ac(player_state) if hasattr(mechanics, "calculate_ac") else {"ac": 12}
-    ac_val = ac_info.get("ac", 12) if isinstance(ac_info, dict) else 12
+    ac_val = ac_info.get("ac", 12) if isinstance(ac_info, dict) else (int(ac_info) if isinstance(ac_info, (int, float)) else 12)
+    phys_profile = mechanics.get_physical_profile(player_state)
+    gender_disp = f"{phys_profile['gender']} ({phys_profile['pronouns']})"
+    body_disp = f"Age {phys_profile['age']} ({phys_profile['age_bracket']}) | {phys_profile['height_display']} ({phys_profile['size']}) | {round(phys_profile['weight_lbs'])} lbs ({phys_profile['build']} build)"
 
     # Identify Pre-Integration Vocation / Skills
     skills_dict = player_state.get("skills", {})
@@ -2724,7 +2730,8 @@ def build_system_initialization_welcome_message(player_state: dict) -> str:
 ---
 
 ### 📋 BIOMETRIC & RELIC LEDGER
-- **Designation:** **{char_name}**
+- **Designation:** **{char_name}** (`{gender_disp}`)
+- **Physical Profile:** `{body_disp}`
 - **Genetic Lineage:** `{race}`
 - **Combat Doctrine:** `{class_doctrine}`
 - **Baseline Vitals:** `{hp}/{max_hp} HP` | **Armor Class:** `{ac_val}`
@@ -2746,28 +2753,37 @@ def build_system_initialization_welcome_message(player_state: dict) -> str:
 ---
 
 ### 📜 INITIAL SCENARIO #001: SURVIVE THE FIRST CALIBRATION WAVE
-- **Classification:** Regional Genesis Directive
-- **Objective:** Establish situational awareness within the Washington Borough Safe-Zone, rendezvous with local survivors and key node operatives (Ren, Doc Mercer, Quartermaster Vane), and prepare for incoming environmental Aetheric surges.
+- **Classification:** Regional Genesis Directive & 3-Stage Crucible Tutorial
+- **Current Node:** `Cardinal Calibration Crucible — Chamber I: Base Mechanics & Orientation`
+- **Objective:** Complete the 3-Stage Cardinal Calibration Crucible Tutorial (Base Mechanics ➔ Martial Combat ➔ Spellcasting & Active Powers) to reach **Level 3** and unlock spatial teleportation into the **Washington Borough, NJ Safe-Zone** with all acquired loot, then rendezvous with local operatives (**Ren**, **Doc Mercer**, **Quartermaster Vane**).
 - **Time Limit:** Continuous / Real-Time Progression
-- **Clear Rewards:** +100 Col, 50 XP, Sector 1 Safe-Zone Clearance
+- **Clear Rewards:** **Promotion to Level 3**, **+250 Col**, **Full Tutorial Loot & Spell Cache**, and **Direct Teleportation to Sector 1 Safe-Zone: Washington Borough, NJ**
 - **Failure Condition:** Total Biological De-Registration (Permadeath)
 
 ---
 
-### ⚙️ CARDINAL INTERFACE DIRECTIVES (TACTICAL ONBOARDING)
+### ⚙️ CARDINAL INTERFACE DIRECTIVES (BASE MECHANICS BRIEFING)
 *The Cardinal System observes and enforces all interactions under absolute deterministic logic:*
 
-1. **Tactical Commands & Narrative Manifestation:**
-   Type your physical strikes, tactical repositioning, incantations, or speech into the command prompt. The Cardinal System calculates all weapon reach, Armor Class (AC), Saving Throws (DC), and kinetic impact damage behind the curtain.
-2. **Autonomous Battle-Companions:**
-   Companions like **Ren** are fully autonomous subagents with independent neural logic, tactical stances, and psychological thresholds. They react to enemy telegraphs, protect flanks, celebrate victories, or retreat when bloodied. Coordinate with them; they are living allies, not scripted minions.
-3. **Cardinal Ability Fusion Chamber (Rule 10):**
-   When your mastery reaches sufficient thresholds, you may merge two active skills into a superior **`[Fusion]` Skill** with combined mastery along the 1–1000 scale. Consumed base skills are archived and can be relearned from Novice (1/1000) whenever foundational retraining is needed.
+1. **Core Attributes, Physical Dimensions & Tactical Combat (`1d20`):**
+   Every physical strike, dodge, or saving throw rolls `1d20 + Attribute Modifier ((Stat - 10) // 2)` against enemy **Armor Class (AC)** or **Difficulty Class (DC)**, minus **Damage Reduction (DR)**. Your **Sex/Gender, Age, Height (Size), and Weight (Build)** actively factor into your Max HP, AC, melee reach, carry capacity (`STR × 15 lbs`), and structural floor-load physics.
+2. **Continuous 1–1000 Skill Mastery & Milestones:**
+   Every time you practice a skill or weapon in action, your proficiency climbs from `1` to `1000`. Crossing tier thresholds (**50 Apprentice**, **100 Journeyman**, **250 Adept**, **500 Master**, **750 Grandmaster**, **1000 Transcendence**) automatically unlocks new Sword Skills and Passive Feats.
+3. **Combat Resource, Spells & Cardinal Ability Fusion Chamber (Rule 10):**
+   Your class Combat Resource (`Poise`, `Mana`, `Momentum`, `Flux`, etc.) fuels active techniques and spells. When your mastery reaches sufficient thresholds, you may merge two abilities in the **Cardinal Ability Fusion Chamber** into a superior **`[Fusion]` Skill** with combined mastery.
 4. **Bio-Surgical Grafting & Strain Tolerance:**
-   Monsters and golems yield harvestable organs and kinetic servos. Doc Mercer's subterranean clinic can graft them to your anatomy, but heed your **Strain Capacity** (`CON Mod + Floor(Level / 2)`). Exceeding this threshold induces Necrotic Rejection and Arcane Dissonance.
-5. **Neural Voice Link:**
-   Toggle the **🎙️ Microphone Module** in the sidebar to stream vocal commands and dialogue directly into the Cardinal Matrix.
+   Monsters and golems yield harvestable organs and kinetic servos. **Doc Mercer's** subterranean clinic can graft them to your 6 anatomical slots, governed by your **Strain Capacity** (`CON Mod + Floor(Level / 2)`). Exceeding this threshold induces Necrotic Rejection and 24-hour `[Cellular Re-Knitting]` Post-Op Sickness.
+5. **Pre-Integration Relics, Autonomous Battle-Companions & Neural Voice Link:**
+   Your Earth **Keepsake Relic** provides active survival abilities (Short-Rest sanity anchor, Polaroid flash reveal, Zippo gas detection, 440Hz vault resonance). Companions like **Ren** are autonomous subagents with independent minds, and the **🎙️ Microphone Module** in the sidebar streams vocal commands directly into the matrix.
+
+---
+
+### 🎓 [ACTIVE TUTORIAL — STAGE 1 OF 3: BASE MECHANICS & TELEMETRY ORIENTATION]
+You materialize atop the obsidian platform of **Chamber I: Base Mechanics & Orientation**. Before you stands the **Cardinal Calibration Construct** beside a humming **Telemetry Pillar** and a sealed **Starter Calibration Supply Cache** (`Minor Aether-Salve Vial x2`, `Calibration Whetstone Kit`).
+
+- **Stage 1 Goal:** Synchronize your neural link with the **Telemetry Pillar**, test your **Keepsake Relic**, or inspect the **Calibration Cache** (either type your action below OR click the **⚡ Execute Stage 1** button in the Tutorial Banner above) to claim your first loot and open the blast doors to **Chamber II: Martial Combat & Salvage Trial**!
 
 *The Crucible does not negotiate. Adapt, harvest the fallen, and climb.*
 """
+
 

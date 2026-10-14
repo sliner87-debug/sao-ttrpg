@@ -157,6 +157,14 @@ def get_item_weight(item):
 # so older save files behave exactly as before.
 # =====================================================================
 DEFAULT_PHYSICAL = {"age": 25, "height_in": 70, "weight_lbs": 185}
+VALID_GENDERS = ("Male", "Female")
+
+
+def normalize_gender(value) -> str:
+    """Normalizes a gender/sex value into 'Male' or 'Female' (defaults to 'Male')."""
+    if isinstance(value, str) and value.strip().lower() in ("female", "f", "woman", "girl", "she", "she/her"):
+        return "Female"
+    return "Male"
 
 
 def format_height(height_in) -> str:
@@ -168,10 +176,14 @@ def format_height(height_in) -> str:
 
 
 def get_physical_profile(player_state) -> dict:
-    """Derives Size, Build and Age bracket plus their gameplay modifiers from the player's body stats."""
+    """Derives Gender, Size, Build and Age bracket plus their gameplay modifiers from the player's body stats."""
     phys = player_state.get("physical", {}) if isinstance(player_state, dict) else {}
     if not isinstance(phys, dict):
         phys = {}
+
+    raw_gender = (player_state.get("gender") if isinstance(player_state, dict) else None) or phys.get("gender") or "Male"
+    gender = normalize_gender(raw_gender)
+    pronouns = "she/her" if gender == "Female" else "he/him"
 
     def _num(key):
         try:
@@ -232,6 +244,8 @@ def get_physical_profile(player_state) -> dict:
         age_bracket = "Prime"
 
     return {
+        "gender": gender,
+        "pronouns": pronouns,
         "age": age,
         "height_in": round(height_in, 1),
         "height_display": format_height(height_in),
@@ -242,7 +256,7 @@ def get_physical_profile(player_state) -> dict:
         "age_bracket": age_bracket,
         "modifiers": mods,
         "effects": effects,
-        "summary": f"Age {age} ({age_bracket}) | {format_height(height_in)} ({size}) | {round(weight_lbs)} lbs ({build} build)",
+        "summary": f"{gender} ({pronouns}) | Age {age} ({age_bracket}) | {format_height(height_in)} ({size}) | {round(weight_lbs)} lbs ({build} build)",
     }
 
 
@@ -11144,7 +11158,8 @@ def build_character_visual_profile(character_state: dict, entity_id: str = "play
                 break
 
     if not base_anat:
-        base_anat = f"{race} {char_class} named {name}"
+        gender_str = normalize_gender(character_state.get("gender") or (character_state.get("physical") or {}).get("gender"))
+        base_anat = f"{gender_str} {race} {char_class} named {name}"
 
     # 2. Resolve Currently Equipped Gear per slot
     equipped = character_state.get("equipped", {})
@@ -11246,9 +11261,9 @@ def build_scene_visual_manifest(player_state: dict = None, active_companions: li
     lines = []
     if player_state and isinstance(player_state, dict):
         lines.append(build_character_visual_profile(player_state, entity_id="banki" if player_state.get("name", "").lower() == "banki" else "player"))
-        if isinstance(player_state.get("physical"), dict):
+        if isinstance(player_state.get("physical"), dict) or player_state.get("gender"):
             _pp = get_physical_profile(player_state)
-            lines.append(f"  • BODY: {_pp['age']} years old, {_pp['height_display']} tall ({_pp['size']}), {round(_pp['weight_lbs'])} lbs ({_pp['build']} build) — render proportions accordingly.")
+            lines.append(f"  • BODY: {_pp['age']} years old, {_pp['height_display']} tall ({_pp['size']}), {round(_pp['weight_lbs'])} lbs ({_pp['build']} build), {_pp['gender']} ({_pp['pronouns']}) — render proportions accordingly.")
 
     # Determine active companions
     comp_ids = []
@@ -12439,6 +12454,2919 @@ def evaluate_npc_cursor_reaction(player_state, npc_name="Quartermaster Vane", np
         "log": "",
         "message": f"{npc_name} greets you as a lawful Green-Cursor citizen."
     }
+
+
+# =====================================================================
+# CARDINAL CALIBRATION CRUCIBLE — INTERACTIVE TUTORIAL SYSTEM
+# Stage 1: Base Mechanics & Telemetry Orientation (Level 1)
+# Stage 2: Martial Combat, Armor Class & Monster Looting (Level 1 -> Level 2)
+# Stage 3: Spellcasting, Active Powers & Crucible Graduation (Level 2 -> Level 3 + Teleport to Washington, NJ Safe-Zone)
+# =====================================================================
+
+TUTORIAL_SAFE_ZONE_DESTINATION = "Sector 1 Safe-Zone: Washington Borough, NJ"
+
+TUTORIAL_ASTRAL_BOLT_SPELL = (
+    "Astral Bolt: Channel 15 Mana/Resource to hurl a spear of condensed starlight "
+    "(60ft range, 2d8 + INT/WIS Mod Force damage) that shatters arcane barriers."
+)
+
+TUTORIAL_STAGES = {
+    1: {
+        "stage": 1,
+        "location": "Cardinal Calibration Crucible — Chamber I: Base Mechanics & Orientation",
+        "title": "Stage 1/3: Base Mechanics, Telemetry & Keepsake Resonance",
+        "short_label": "Stage 1: Base Mechanics",
+        "objective": (
+            "Review the Cardinal System's core rules (6 Core Attributes, Physical Size/Build/Age modifiers, "
+            "1–1000 Skill Mastery continuum, Encumbrance/Durability, and Keepsake Relics), then synchronize "
+            "with the Telemetry Pillar or resonate your Personal Relic to open the Martial Combat Arena."
+        ),
+        "default_action": (
+            "I synchronize my neural link with the Cardinal Telemetry Pillar, test my Keepsake Relic resonance, "
+            "and claim the starter calibration cache."
+        ),
+        "button_label": "⚡ Execute Stage 1: Sync Telemetry Pillar & Claim Calibration Cache",
+        "xp_reward": 500,
+        "col_reward": 50,
+        "mastery_bonus": 10,
+        "target_level": 1,
+        "environment_description": (
+            "A circular obsidian-and-cerulean calibration sanctum suspended inside the Cardinal System's dimensional "
+            "buffer above Sector 1. Floating holographic glyphs project your 6 Core Attributes, 1–1000 Skill Mastery "
+            "continuum, Carry Physics, Strain Capacity, and Keepsake Relic resonance around a central Telemetry Pedestal."
+        ),
+        "environmental_effects": [
+            "Cardinal Tutorial Sanctuary Buffer",
+            "Telemetry Pedestal Active",
+            "Starter Calibration Supply Cache"
+        ],
+        "entities": [
+            {
+                "id": "npc_cardinal_arbiter",
+                "name": "Cardinal Calibration Construct",
+                "type": "neutral",
+                "hp": 100,
+                "max_hp": 100,
+                "ac": 18,
+                "base_ac": 18,
+                "dr": 4,
+                "base_dr": 4,
+                "active_debuffs": [],
+                "status": ["Holographic Guide", "Awaiting Telemetry Sync"],
+                "intent": "Instruct the newly integrated survivor on Core Attributes, 1-1000 Skill Mastery, Carry Physics, and Keepsake Relics before unlocking Chamber II."
+            }
+        ],
+        "loot": [
+            {
+                "name": "Minor Aether-Salve Vial",
+                "rarity": "Common",
+                "category": "Consumable",
+                "slot": "consumable",
+                "qty": 2,
+                "durability": 1,
+                "max_durability": 1,
+                "weight_lbs": 0.5,
+                "desc": "A luminescent blue alchemical salve dispensed during Cardinal Calibration. Restores 35 HP and staunches minor bleeding.",
+                "visual_appearance": "Twin crystal phials filled with glowing cyan aether-salve."
+            },
+            {
+                "name": "Calibration Whetstone Kit",
+                "rarity": "Common",
+                "category": "Consumable",
+                "slot": "consumable",
+                "qty": 1,
+                "durability": 1,
+                "max_durability": 1,
+                "weight_lbs": 1.0,
+                "desc": "A runic silicon-carbide field maintenance stone. Restores +25 Durability to any equipped weapon or armor piece.",
+                "visual_appearance": "A compact dark-iron case holding a rune-etched whetstone and oil vial."
+            }
+        ]
+    },
+    2: {
+        "stage": 2,
+        "location": "Cardinal Calibration Crucible — Chamber II: Martial Combat & Salvage Trial",
+        "title": "Stage 2/3: Martial Combat, Armor Class & Monster Looting",
+        "short_label": "Stage 2: Martial Combat (➔ Lv. 2)",
+        "objective": (
+            "Engage and destroy the Clockwork Calibration Sentinel using your equipped weapons and martial skills, "
+            "then loot its bronze armguards, harvest its Clockwork Reflex Servo graft, and claim the Astral Bolt Spell Slate to reach Level 2."
+        ),
+        "default_action": (
+            "I strike the Clockwork Calibration Sentinel with my equipped weapon, shatter its bronze chassis, "
+            "and harvest its armguards, reflex servo graft, and Astral Bolt spell slate!"
+        ),
+        "button_label": "⚔️ Execute Stage 2: Fight & Loot Clockwork Sentinel (Reach Level 2)",
+        "xp_reward": 500,
+        "col_reward": 75,
+        "mastery_bonus": 15,
+        "target_level": 2,
+        "unlocked_spell": TUTORIAL_ASTRAL_BOLT_SPELL,
+        "environment_description": (
+            "A sunken basalt combat arena ringed by glowing weapon-telemetry matrices. In the center of the stone floor, "
+            "a bronze-and-aether Clockwork Calibration Sentinel whirs to life, raising a notched practice cleaver."
+        ),
+        "environmental_effects": [
+            "Live Combat Telemetry Matrix",
+            "Tactical Flanking Pillars (+2 AC Cover)",
+            "Salvage Extraction Conduit"
+        ],
+        "entities": [
+            {
+                "id": "tutorial_clockwork_sentinel",
+                "name": "Clockwork Calibration Sentinel",
+                "type": "hostile",
+                "hp": 25,
+                "max_hp": 25,
+                "ac": 12,
+                "base_ac": 12,
+                "dr": 1,
+                "base_dr": 1,
+                "active_debuffs": [],
+                "status": ["Intact", "Combat Calibration Mode", "Exposed Bronze Joints"],
+                "intent": "Test the survivor's melee/ranged weapon accuracy and Armor Class defense with telegraphed strikes."
+            }
+        ],
+        "loot": [
+            {
+                "name": "Sentinel Brass Armguards",
+                "rarity": "Uncommon",
+                "category": "Armor",
+                "slot": "accessory",
+                "qty": 1,
+                "durability": 60,
+                "max_durability": 60,
+                "weight_lbs": 2.5,
+                "desc": "Interlocking calibration-bronze vambraces salvaged from a Clockwork Sentinel. Grants +1 AC and reinforces forearm parry stability.",
+                "visual_appearance": "Polished brass-and-iron forearm vambraces etched with glowing blue calibration lines."
+            },
+            {
+                "name": "Clockwork Reflex Servo",
+                "rarity": "Uncommon",
+                "category": "Monster Graft Component",
+                "type": "golem",
+                "element": "none",
+                "slot": "left_arm",
+                "strain": 1,
+                "unit_strain": 1,
+                "qty": 1,
+                "durability": 100,
+                "max_durability": 100,
+                "weight_lbs": 2.0,
+                "desc": "A precision aether-piston harvested from a Clockwork Sentinel (Left/Right Arm Graft, Unit Strain 1: +1 DEX, +5ft reaction lunge). Can be surgically grafted at Doc Mercer's Clinic in Washington, NJ.",
+                "visual_appearance": "A humming brass-and-silver hydraulic reflex actuator pulsing with cyan mana."
+            },
+            {
+                "name": "Inscribed Spell Slate: Astral Bolt",
+                "rarity": "Uncommon",
+                "category": "Spell Slate",
+                "slot": "item",
+                "qty": 1,
+                "durability": 1,
+                "max_durability": 1,
+                "weight_lbs": 0.5,
+                "desc": "An obsidian runic tablet that imprints the active spell [Astral Bolt] (2d8 + INT/WIS Mod Force damage, 60ft range, shatters arcane wards) directly into your neural matrix.",
+                "visual_appearance": "A palm-sized black obsidian tablet glowing with silver constellation runes."
+            }
+        ]
+    },
+    3: {
+        "stage": 3,
+        "location": "Cardinal Calibration Crucible — Chamber III: Arcane Casting & Crucible Warden",
+        "title": "Stage 3/3: Spellcasting, Active Powers & Crucible Graduation",
+        "short_label": "Stage 3: Spellcasting & Boss (➔ Lv. 3 & Washington, NJ)",
+        "objective": (
+            "Channel your Combat Resource to cast [Astral Bolt] or unleash a Class/Lineage Active Power against the "
+            "Aether-Forged Crucible Warden, shatter its kinetic barrier, claim its boss loot, reach Level 3, and "
+            "teleport to the Washington, NJ Safe-Zone!"
+        ),
+        "default_action": (
+            "I channel my combat resource to cast Astral Bolt and unleash my active class power, shattering the "
+            "Aether-Forged Crucible Warden's barrier, claiming its boss loot, and stepping through the Teleportation Gate to Washington, NJ!"
+        ),
+        "button_label": "🔮 Execute Stage 3: Cast Astral Bolt, Defeat Warden & Teleport to Washington, NJ (Lv. 3)",
+        "xp_reward": 2000,
+        "col_reward": 125,
+        "mastery_bonus": 20,
+        "target_level": 3,
+        "environment_description": (
+            "The apex chamber of the Cardinal Calibration Crucible. Behind the towering Aether-Forged Crucible Warden, "
+            "a swirling cerulean Spatial Teleportation Gate opens directly onto the warded streets of Washington Borough, NJ (07882)."
+        ),
+        "environmental_effects": [
+            "High-Density Mana Conduit (+2 Spell Attack)",
+            "Spatial Teleportation Gate: Washington Borough, NJ (Locked by Warden)",
+            "Arcane Resonance Field"
+        ],
+        "entities": [
+            {
+                "id": "tutorial_crucible_warden",
+                "name": "Aether-Forged Crucible Warden",
+                "type": "hostile",
+                "hp": 40,
+                "max_hp": 40,
+                "ac": 13,
+                "base_ac": 13,
+                "dr": 3,
+                "base_dr": 3,
+                "active_debuffs": [],
+                "status": ["Kinetic Ward Active (Vulnerable to Spells & Active Powers)", "Guarding Washington NJ Teleport Gate"],
+                "intent": "Challenge the survivor to cast a Spell (Astral Bolt) or Active Power to shatter its Kinetic Ward and earn Level 3 clearance into Washington Borough, NJ."
+            }
+        ],
+        "loot": [
+            {
+                "name": "Crucible Vanguard Signet",
+                "rarity": "Rare",
+                "category": "Accessory",
+                "slot": "accessory",
+                "qty": 1,
+                "durability": 100,
+                "max_durability": 100,
+                "weight_lbs": 0.2,
+                "desc": "A platinum-and-aether signet ring awarded upon clearing the Cardinal Calibration Crucible. Grants +1 to all Saving Throws and +10 Max Combat Resource / Mana.",
+                "visual_appearance": "A heavy platinum signet ring set with a glowing sapphire Cardinal crest."
+            },
+            {
+                "name": "Condensed Aether-Core",
+                "rarity": "Rare",
+                "category": "Crafting & Fusion Catalyst",
+                "slot": "item",
+                "qty": 1,
+                "durability": 1,
+                "max_durability": 1,
+                "weight_lbs": 1.0,
+                "desc": "The crystalline heart of the Crucible Warden. Used for high-tier weapon forging, Ability Fusion resonance, or trading with Quartermaster Vane in Washington, NJ.",
+                "visual_appearance": "A faceted violet-and-cyan mana crystal humming with harmonic energy."
+            },
+            {
+                "name": "Greater Crimson Draught",
+                "rarity": "Uncommon",
+                "category": "Consumable",
+                "slot": "consumable",
+                "qty": 2,
+                "durability": 1,
+                "max_durability": 1,
+                "weight_lbs": 0.5,
+                "desc": "Concentrated restorative elixir awarded to Crucible graduates. Restores 60 HP and purges elemental debuffs.",
+                "visual_appearance": "Tworuby-glass flasks of shimmering crimson vitality elixir."
+            }
+        ]
+    }
+}
+
+
+def create_initial_tutorial_state() -> dict:
+    """Creates the initial tutorial tracking dictionary for newly calibrated characters."""
+    st1 = TUTORIAL_STAGES[1]
+    return {
+        "active": True,
+        "stage": 1,
+        "max_stages": 3,
+        "stage_title": st1["title"],
+        "objective": st1["objective"],
+        "completed": False,
+        "loot_acquired": [],
+        "acquired_loot": [],
+        "levels_granted": 0,
+    }
+
+
+def is_tutorial_active(player_state: dict) -> bool:
+    """Returns True if the player is currently inside the active post-creation tutorial."""
+    if not isinstance(player_state, dict):
+        return False
+    tut = player_state.get("tutorial")
+    return bool(isinstance(tut, dict) and tut.get("active", False) and not tut.get("completed", False))
+
+
+def get_tutorial_stage_info(stage: int = 1) -> dict:
+    """Returns the canonical stage definition for tutorial stage 1, 2, or 3."""
+    try:
+        s_num = int(stage)
+    except (TypeError, ValueError):
+        s_num = 1
+    clamped = max(1, min(3, s_num))
+    base = dict(TUTORIAL_STAGES.get(clamped, TUTORIAL_STAGES[1]))
+    base.setdefault("suggested_action", base.get("default_action", ""))
+    base.setdefault("loot_items", base.get("loot", []))
+    base.setdefault("skill_gain", base.get("mastery_bonus", 10))
+    base.setdefault("short_title", base.get("short_label", base.get("title", "")))
+    if "mechanics_focus" not in base:
+        if clamped == 1:
+            base["mechanics_focus"] = [
+                "**6 Core Attributes & Physical Profile:** `1d20 + Stat Mod` checks; Sex/Gender, Age, Height (Size), and Weight (Build) modify HP, AC, reach, and carry load.",
+                "**1–1000 Skill Mastery Continuum:** Practicing skills raises mastery from `1` to `1000`, unlocking new techniques at **50 / 100 / 250 / 500 / 750 / 1000**.",
+                "**Encumbrance, Durability & Keepsake Relics:** Manage `STR × 15 lbs` carry weight, weapon durability, and your Earth Keepsake Relic's active survival trigger.",
+            ]
+        elif clamped == 2:
+            base["mechanics_focus"] = [
+                "**Martial Combat (`1d20 + Stat Mod` vs `AC`):** Roll to hit enemy Armor Class and subtract their Damage Reduction (`DR`).",
+                "**Monster Salvage & Bio-Grafting:** Harvest equipment (`Sentinel Brass Armguards`) and golem grafts (`Clockwork Reflex Servo` for Doc Mercer's clinic).",
+                "**Spell Slate Attunement & Level Up:** Imprint **`Astral Bolt`** into your spellbook and advance to **Level 2**!",
+            ]
+        else:
+            base["mechanics_focus"] = [
+                "**Spellcasting & Combat Resource (`Mana` / `Poise` / `Flux`):** Cast **`Astral Bolt`** (`2d8 + INT/WIS Force`) to shatter boss wards.",
+                "**Active Class & Lineage Powers:** Chain your doctrine or racial active skill for high-impact combo damage.",
+                "**Level 3 Graduation & Safe-Zone Teleportation:** Reach **Level 3** and teleport to **`Sector 1 Safe-Zone: Washington Borough, NJ`** with all tutorial loot!",
+            ]
+    return base
+
+
+def build_tutorial_master_state(player_state: dict, stage: int = None) -> dict:
+    """Builds the `.game_state/secret_master_state.json` payload for a given tutorial stage (or Safe-Zone on graduation)."""
+    import copy
+    if stage is None and isinstance(player_state, dict):
+        stage = (player_state.get("tutorial") or {}).get("stage", 1)
+    if stage in (1, 2, 3):
+        s_info = TUTORIAL_STAGES[stage]
+        return {
+            "campaign_name": "SAO_Sandbox",
+            "turn_number": int(stage),
+            "environment": {
+                "location": s_info["location"],
+                "description": s_info["environment_description"],
+                "hidden_traps": [],
+                "environmental_effects": list(s_info["environmental_effects"]),
+                "safe_zone": (stage == 1)
+            },
+            "entities": copy.deepcopy(s_info["entities"]),
+            "players": ["player"]
+        }
+    return {
+        "campaign_name": "SAO_Sandbox",
+        "turn_number": 4,
+        "environment": {
+            "location": TUTORIAL_SAFE_ZONE_DESTINATION,
+            "description": (
+                "The fortified sanctuary hub of Washington Borough, NJ (Node 07882) at the intersection of Routes 31 and 57. "
+                "Shimmering cerulean Safe-Zone barrier wards arch above the historic brick storefronts, Quartermaster Vane's "
+                "Logistics Depot, and the stone stairwell descending to Doc Mercer's Underground Clinic."
+            ),
+            "hidden_traps": [],
+            "environmental_effects": ["Safe-Zone Sanctuary Wards", "Calm Ambient Mana"],
+            "safe_zone": True
+        },
+        "entities": [],
+        "players": ["player", "companion_ren"]
+    }
+
+
+def get_tutorial_gm_directive(player_state: dict) -> str:
+    """Returns the stage-specific GM prompt directive when the player is in the Cardinal Calibration Crucible tutorial."""
+    if not is_tutorial_active(player_state):
+        return ""
+    tut = player_state.get("tutorial", {})
+    stage = int(tut.get("stage", 1))
+    s_info = get_tutorial_stage_info(stage)
+    if stage == 1:
+        return (
+            f"🎓 ACTIVE TUTORIAL — {s_info['title']} ({s_info['location']}):\n"
+            "   - The player has just launched from Character Creation into Stage 1 of the Cardinal Calibration Crucible.\n"
+            "   - Clearly explain and demonstrate the base mechanics as they act (Core Attributes, Physical Size/Build/Age modifiers, "
+            "1–1000 Skill Mastery continuum, Carry Physics/Durability, and Personal Relic resonance).\n"
+            "   - Narrate the Cardinal Calibration Construct verifying their telemetry, dispensing the Stage 1 Calibration Cache "
+            "(`Minor Aether-Salve Vial x2`, `Calibration Whetstone Kit`), and opening the blast doors to Chamber II (Martial Combat Arena)!"
+        )
+    elif stage == 2:
+        return (
+            f"🎓 ACTIVE TUTORIAL — {s_info['title']} ({s_info['location']}):\n"
+            "   - The player is fighting the `Clockwork Calibration Sentinel` (AC 12, HP 25) in Chamber II.\n"
+            "   - Resolve their martial/weapon attack, narrate them smashing the construct's bronze chassis, and describe them looting "
+            "`Sentinel Brass Armguards`, `Clockwork Reflex Servo` (a Tier 1 golem graft component), and the `Inscribed Spell Slate: Astral Bolt`.\n"
+            "   - Announce their promotion to **Level 2**, attune the `[Astral Bolt]` spell in their neural matrix, and open the gate to Chamber III (Arcane Casting & Crucible Warden)!"
+        )
+    else:
+        return (
+            f"🎓 ACTIVE TUTORIAL — {s_info['title']} ({s_info['location']}):\n"
+            "   - The player is facing the `Aether-Forged Crucible Warden` (AC 13, HP 40, Kinetic Ward vulnerable to Spells & Active Powers) in Chamber III.\n"
+            "   - Resolve their spellcast (`Astral Bolt` or class spell) and active power, shattering the Warden's Kinetic Ward and destroying it!\n"
+            "   - Narrate them claiming the `Crucible Vanguard Signet`, `Condensed Aether-Core`, and `Greater Crimson Draught x2`, surging to **Level 3**, "
+            f"and stepping through the Spatial Teleportation Gate directly into `{TUTORIAL_SAFE_ZONE_DESTINATION}` with all acquired loot intact!"
+        )
+
+
+def _add_or_merge_tutorial_loot(player_state: dict, item_dict: dict) -> str:
+    """Adds a tutorial loot item to `player_state['inventory']` without duplicating existing items from the same turn."""
+    inv = player_state.setdefault("inventory", [])
+    target_name = item_dict.get("name", "").strip()
+    enriched = enrich_item_dict(dict(item_dict), inventory=inv)
+    for existing in inv:
+        if isinstance(existing, dict) and existing.get("name", "").strip().lower() == target_name.lower():
+            return target_name
+        elif isinstance(existing, str) and existing.strip().lower() == target_name.lower():
+            return target_name
+    inv.append(enriched)
+    return target_name
+
+
+def _ensure_player_level(player_state: dict, target_level: int) -> list:
+    """
+    Deterministically ensures `player_state['level']` reaches at least `target_level`,
+    applying +25 Max HP and +1 to all 6 Core Stats for each level gained that hasn't been applied yet.
+    """
+    logs = []
+    cur_lvl = int(player_state.get("level", 1))
+    while cur_lvl < target_level:
+        cur_lvl += 1
+        player_state["level"] = cur_lvl
+        player_state["max_hp"] = int(player_state.get("max_hp", 100)) + 25
+        player_state["hp"] = player_state["max_hp"]
+        stats = player_state.setdefault("stats", {"STR": 10, "DEX": 10, "CON": 10, "INT": 10, "WIS": 10, "CHA": 10})
+        for s_k in ("STR", "DEX", "CON", "INT", "WIS", "CHA"):
+            stats[s_k] = int(stats.get(s_k, 10)) + 1
+        logs.append(f"LEVEL UP -> Level {cur_lvl}! (+25 Max HP -> {player_state['max_hp']} HP, +1 to all 6 Core Attributes)")
+    return logs
+
+
+def advance_tutorial_stage(
+    player_state: dict,
+    player_action: str = "",
+    master_state: dict = None,
+    complete_all: bool = False
+) -> dict:
+    """
+    Deterministic progression engine for the 3-Stage Cardinal Calibration Crucible tutorial.
+    - Stage 1 -> Stage 2: Explains base mechanics, awards +500 XP, +50 Col, +10 Skill Mastery, and Stage 1 Loot.
+    - Stage 2 -> Stage 3: Resolves martial combat vs Clockwork Sentinel, awards Stage 2 Loot, unlocks `Astral Bolt`, and levels player to Level 2.
+    - Stage 3 -> Graduation: Resolves spellcasting/power vs Crucible Warden, awards Stage 3 Loot, levels player to Level 3,
+      and teleports player to `Sector 1 Safe-Zone: Washington Borough, NJ` with all acquired loot!
+    If `complete_all=True`, executes all remaining stages sequentially so the player graduates at Level 3 in Washington, NJ with all loot from Stages 1–3.
+    """
+    if not isinstance(player_state, dict):
+        return {"success": False, "graduated": False, "narrative_block": "", "combat_logs": []}
+
+    tut = player_state.setdefault("tutorial", create_initial_tutorial_state())
+    if not tut.get("active", False) or tut.get("completed", False):
+        return {
+            "success": False,
+            "graduated": bool(tut.get("completed", False)),
+            "level": player_state.get("level", 1),
+            "location": player_state.get("location", TUTORIAL_SAFE_ZONE_DESTINATION),
+            "loot_acquired": list(tut.get("loot_acquired", [])),
+            "narrative_block": "",
+            "combat_logs": []
+        }
+
+    if complete_all:
+        combined_narratives = []
+        combined_logs = []
+        last_res = {}
+        while is_tutorial_active(player_state):
+            cur_s = int(player_state.get("tutorial", {}).get("stage", 1))
+            s_def = get_tutorial_stage_info(cur_s)
+            step_res = advance_tutorial_stage(
+                player_state,
+                player_action=s_def["default_action"],
+                master_state=master_state,
+                complete_all=False
+            )
+            if step_res.get("narrative_block"):
+                combined_narratives.append(step_res["narrative_block"])
+            combined_logs.extend(step_res.get("combat_logs", []))
+            last_res = step_res
+        merged_md = "\n\n---\n\n".join(combined_narratives)
+        last_res["narrative_block"] = merged_md
+        last_res["summary_markdown"] = merged_md
+        last_res["combat_logs"] = combined_logs
+        return last_res
+
+    stage = int(tut.get("stage", 1))
+    s_info = get_tutorial_stage_info(stage)
+    p_name = str(player_state.get("name", "Survivor")).strip()
+    phys_prof = get_physical_profile(player_state)
+    stats = player_state.get("stats", {"STR": 10, "DEX": 10, "CON": 10, "INT": 10, "WIS": 10, "CHA": 10})
+    combat_logs = []
+    stage_loot_names = []
+
+    # 1. Grant Stage Loot & Track in `tutorial.loot_acquired` / `tutorial.acquired_loot`
+    loot_tracked = tut.setdefault("loot_acquired", [])
+    for l_item in s_info.get("loot", []):
+        added_name = _add_or_merge_tutorial_loot(player_state, l_item)
+        stage_loot_names.append(added_name)
+        if added_name not in loot_tracked:
+            loot_tracked.append(added_name)
+
+    # Also capture any extra non-starter loot the player acquired in inventory during tutorial turns
+    starter_baseline = {"bottled water", "survival rations", "threadbare scavenger tunic"}
+    eq_main = str(player_state.get("equipped", {}).get("main_hand", "")).lower()
+    eq_off = str(player_state.get("equipped", {}).get("off_hand", "")).lower()
+    for inv_it in player_state.get("inventory", []):
+        it_n = inv_it.get("name", "") if isinstance(inv_it, dict) else str(inv_it)
+        it_low = it_n.strip().lower()
+        if not it_low or it_low in starter_baseline or it_low in (eq_main, eq_off):
+            continue
+        if isinstance(inv_it, dict) and "relic" in str(inv_it.get("category", "")).lower():
+            continue
+        if it_n not in loot_tracked:
+            loot_tracked.append(it_n)
+    tut["acquired_loot"] = list(loot_tracked)
+
+    # 2. Grant Col & Skill Mastery
+    col_gain = int(s_info.get("col_reward", 50))
+    player_state["col"] = int(player_state.get("col", 100)) + col_gain
+    combat_logs.append(f"Cardinal Calibration Reward (Stage {stage}): +{col_gain} Col (Total: {player_state['col']} Col)")
+
+    skills = player_state.setdefault("skills", {})
+    if skills:
+        first_skill = next(iter(skills.keys()))
+        m_res = update_skill_mastery(player_state, first_skill, int(s_info.get("mastery_bonus", 10)))
+        combat_logs.append(f"Skill Mastery Calibration: {first_skill} +{m_res.get('actual_gain', 10)} Mastery (-> {m_res.get('new_mastery')}/1000)")
+
+    # 3. Stage-Specific Mechanics, Spell Unlocks, XP & Level Progression
+    if stage == 1:
+        # Stage 1: Base Mechanics & Telemetry Orientation -> Advance to Stage 2 (Combat)
+        if int(player_state.get("level", 1)) == 1 and int(player_state.get("xp", 0)) < 500:
+            xp_delta = 500 - int(player_state.get("xp", 0))
+            player_state["xp"] = 500
+            combat_logs.append(f"Telemetry Sync Complete: +{xp_delta} XP (500 / 1000 XP toward Level 2)")
+        wis_mod = (int(stats.get("WIS", 10)) - 10) // 2
+        combat_logs.append(f"Telemetry Resonance Check: 1d20(16) + WIS({wis_mod:+d}) = {16 + wis_mod} vs DC 10 -> SUCCESS!")
+        combat_logs.append(f"Acquired Stage 1 Loot: {', '.join(stage_loot_names)}")
+
+        tut["stage"] = 2
+        st2 = TUTORIAL_STAGES[2]
+        tut["stage_title"] = st2["title"]
+        tut["objective"] = st2["objective"]
+        player_state["location"] = st2["location"]
+
+        if isinstance(master_state, dict):
+            new_ms = build_tutorial_master_state(player_state, stage=2)
+            master_state["environment"] = new_ms["environment"]
+            master_state["entities"] = new_ms["entities"]
+
+        narrative_block = (
+            f"### 🎓 [TUTORIAL STAGE 1/3 COMPLETE: BASE MECHANICS & TELEMETRY VERIFIED]\n"
+            f"Your palm presses against the **Cardinal Telemetry Pillar**. Cerulean light cascades across your frame "
+            f"(`{phys_prof['summary']}`), calibrating your 6 Core Attributes, your **1–1000 Skill Mastery** receptors, "
+            f"and your Soul-Bound Keepsake Relic.\n\n"
+            f"- **XP & Currency Awarded:** `+500 XP` (`500 / 1000 XP`) | `+{col_gain} Col`\n"
+            f"- **Loot Claimed from Calibration Cache:** `{', '.join(stage_loot_names)}`\n\n"
+            f"---\n"
+            f"### ⚔️ [ENTERING STAGE 2/3: MARTIAL COMBAT & SALVAGE TRIAL]\n"
+            f"The obsidian blast doors grind open into **{st2['location']}**. Across the basalt floor, a bronze-and-aether "
+            f"**Clockwork Calibration Sentinel** (`HP: 25/25 | AC: 12 | DR: 1`) ignites its ocular visor and raises a notched cleaver!\n"
+            f"- **Combat Mechanics Briefing:** When you attack, the Cardinal System rolls `1d20 + Stat Mod + Weapon Proficiency` against the target's **Armor Class (AC)** and subtracts their **Damage Reduction (DR)**. Slaying monsters yields **XP, Col, Equipment, and Harvestable Bio/Golem Grafts**.\n"
+            f"- **Your Next Directive:** Strike down the **Clockwork Calibration Sentinel** using your equipped `{player_state.get('equipped', {}).get('main_hand', 'weapon')}` or a martial technique!"
+        )
+        return {
+            "success": True,
+            "stage_completed": 1,
+            "completed_stage": 1,
+            "new_stage": 2,
+            "graduated": False,
+            "teleported": False,
+            "level": player_state["level"],
+            "location": player_state["location"],
+            "loot_acquired": list(loot_tracked),
+            "loot_gained": list(loot_tracked),
+            "narrative_block": narrative_block,
+            "summary_markdown": narrative_block,
+            "combat_logs": combat_logs
+        }
+
+    elif stage == 2:
+        # Stage 2: Martial Combat & Salvage Trial -> Level 2 + Unlock Astral Bolt -> Advance to Stage 3 (Casting)
+        str_mod = (int(stats.get("STR", 10)) - 10) // 2
+        dex_mod = (int(stats.get("DEX", 10)) - 10) // 2
+        atk_mod = max(str_mod, dex_mod) + 2
+        main_w = player_state.get("equipped", {}).get("main_hand", "Starter Weapon")
+        combat_logs.append(f"Martial Attack ({main_w}) vs Clockwork Calibration Sentinel (AC 12): 1d20(17) + {atk_mod} = {17 + atk_mod} -> CRITICAL STRIKE!")
+        combat_logs.append(f"Weapon Damage vs Sentinel: 2d8(13) + {max(2, atk_mod)} - 1 DR = 25 Damage -> Clockwork Calibration Sentinel DESTROYED (0/25 HP)!")
+        combat_logs.append(f"Acquired Stage 2 Combat & Graft Loot: {', '.join(stage_loot_names)}")
+
+        # Unlock Astral Bolt spell for Stage 3 casting trial
+        spells_list = player_state.setdefault("spells", [])
+        if not any("astral bolt" in str(sp).lower() for sp in spells_list):
+            spells_list.append(TUTORIAL_ASTRAL_BOLT_SPELL)
+            combat_logs.append("Spell Slate Attuned: Unlocked active spell [Astral Bolt] (2d8 + INT/WIS Force damage, 60ft, shatters arcane wards)!")
+
+        # Ensure player reaches Level 2
+        lvl_logs = _ensure_player_level(player_state, target_level=2)
+        player_state["xp"] = 0
+        combat_logs.extend(lvl_logs)
+
+        tut["stage"] = 3
+        st3 = TUTORIAL_STAGES[3]
+        tut["stage_title"] = st3["title"]
+        tut["objective"] = st3["objective"]
+        player_state["location"] = st3["location"]
+
+        if isinstance(master_state, dict):
+            new_ms = build_tutorial_master_state(player_state, stage=3)
+            master_state["environment"] = new_ms["environment"]
+            master_state["entities"] = new_ms["entities"]
+
+        narrative_block = (
+            f"### 🎉 [TUTORIAL STAGE 2/3 COMPLETE: SENTINEL DESTROYED & LEVEL 2 ACHIEVED!]\n"
+            f"Your strike shears straight through the **Clockwork Calibration Sentinel's** central bronze gear-housing, "
+            f"showering the arena floor in azure sparks! As the construct collapses, you harvest its intact components and "
+            f"press your hand to the dropped **Inscribed Spell Slate: Astral Bolt**, imprinting the spell directly into your neural cortex.\n\n"
+            f"- **Level Up Achieved:** **Level 2!** (`Max HP: {player_state['max_hp']}` | `+1 to all 6 Core Attributes` | Full HP Restored)\n"
+            f"- **Spell Unlocked:** `🔮 Astral Bolt` *(2d8 + INT/WIS Force damage, 60ft range, shatters arcane barriers)*\n"
+            f"- **Loot Salvaged:** `{', '.join(stage_loot_names)}` | `+{col_gain} Col`\n\n"
+            f"---\n"
+            f"### 🔮 [ENTERING STAGE 3/3: SPELLCASTING, ACTIVE POWERS & CRUCIBLE GRADUATION]\n"
+            f"You ascend into **{st3['location']}**. Directly ahead, the swirling cerulean **Spatial Teleportation Gate to Washington Borough, NJ** "
+            f"hums with dimensional energy—guarded by the towering **Aether-Forged Crucible Warden** (`HP: 40/40 | AC: 13 | Kinetic Ward Active`).\n"
+            f"- **Spellcasting & Active Power Briefing:** Spells and Class/Lineage techniques draw from your **Combat Resource** (`{player_state.get('combat_resource', {}).get('name', 'Mana / Poise')}`) to bypass physical resistance, shatter boss wards, and trigger elemental/arcane combos.\n"
+            f"- **Your Final Tutorial Directive:** Cast **`Astral Bolt`** (or unleash a Class/Lineage active power) to shatter the Warden's Kinetic Ward, claim your **Level 3 Graduation Cache**, and teleport to **Washington, NJ Safe-Zone**!"
+        )
+        return {
+            "success": True,
+            "stage_completed": 2,
+            "completed_stage": 2,
+            "new_stage": 3,
+            "graduated": False,
+            "teleported": False,
+            "level": player_state["level"],
+            "location": player_state["location"],
+            "loot_acquired": list(loot_tracked),
+            "loot_gained": list(loot_tracked),
+            "narrative_block": narrative_block,
+            "summary_markdown": narrative_block,
+            "combat_logs": combat_logs
+        }
+
+    else:
+        # Stage 3: Spellcasting, Active Powers & Graduation to Level 3 + Teleport to Washington, NJ Safe-Zone!
+        int_mod = (int(stats.get("INT", 10)) - 10) // 2
+        wis_mod = (int(stats.get("WIS", 10)) - 10) // 2
+        cast_mod = max(int_mod, wis_mod) + 3
+        combat_logs.append(f"Spellcast [Astral Bolt] vs Aether-Forged Crucible Warden (AC 13): 1d20(18) + {cast_mod} = {18 + cast_mod} -> DIRECT HIT (Kinetic Ward SHATTERED!)")
+        combat_logs.append("Active Class Power Follow-Up Combo: 2d8(14) + 2d10(16) + 10 = 40 Force/Radiant Damage -> Aether-Forged Crucible Warden ANNIHILATED (0/40 HP)!")
+        combat_logs.append(f"Acquired Stage 3 Graduation Loot: {', '.join(stage_loot_names)}")
+
+        # Auto-equip Crucible Vanguard Signet if accessory slot is empty
+        eq = player_state.setdefault("equipped", {})
+        if not eq.get("accessory") or eq.get("accessory") == "None":
+            eq["accessory"] = "Crucible Vanguard Signet"
+            combat_logs.append("Auto-Equipped Graduation Relic: [Crucible Vanguard Signet] in Accessory Slot (+1 Saving Throws, +10 Max Resource)!")
+
+        # Guarantee exact Level 3 Graduation
+        lvl_logs = _ensure_player_level(player_state, target_level=3)
+        player_state["level"] = max(3, int(player_state.get("level", 3)))
+        player_state["xp"] = 0
+        player_state["hp"] = player_state["max_hp"]
+        if isinstance(player_state.get("combat_resource"), dict):
+            max_r = int(player_state["combat_resource"].get("max", 100)) + 10
+            player_state["combat_resource"]["max"] = max_r
+            player_state["combat_resource"]["current"] = max_r
+        combat_logs.extend(lvl_logs)
+
+        # Teleport player to Washington, NJ Safe-Zone & mark tutorial complete
+        player_state["location"] = TUTORIAL_SAFE_ZONE_DESTINATION
+        tut["active"] = False
+        tut["completed"] = True
+        tut["stage"] = 4
+        tut["stage_title"] = "Graduated — Teleported to Washington, NJ Safe-Zone (Level 3)"
+        tut["objective"] = "Explore Sector 1 Safe-Zone: Washington Borough, NJ, visit Doc Mercer's Clinic or Quartermaster Vane's Depot, and team up with Ren."
+
+        if isinstance(master_state, dict):
+            new_ms = build_tutorial_master_state(player_state, stage=4)
+            master_state["environment"] = new_ms["environment"]
+            master_state["entities"] = new_ms["entities"]
+            master_state["players"] = new_ms["players"]
+
+        combat_logs.append(f"SPATIAL TELEPORTATION EXECUTED -> Destination: {TUTORIAL_SAFE_ZONE_DESTINATION} (Level {player_state['level']} | All Tutorial Loot Retained)")
+
+        all_loot_str = ", ".join(f"`{x}`" for x in loot_tracked) if loot_tracked else "`Starter Loadout`"
+        narrative_block = (
+            f"### 🏆 [CARDINAL CALIBRATION CRUCIBLE COMPLETE — LEVEL 3 GRADUATION!]\n"
+            f"A lance of condensed starlight erupts from your outstretched hand! **`Astral Bolt`** detonates squarely against "
+            f"the **Aether-Forged Crucible Warden's** chest plate, shattering its Kinetic Ward in a violent cascade of violet prisms "
+            f"before your follow-up class technique cleaves its core in two!\n\n"
+            f"- **Promoted to Level 3!** (`Level: {player_state['level']}` | `HP: {player_state['hp']}/{player_state['max_hp']}` | `+2 Total Bonus to All 6 Core Attributes`)\n"
+            f"- **Total Tutorial Loot Retained & Carried into Sector 1:** {all_loot_str}\n"
+            f"- **Total Currency:** `{player_state['col']} Col`\n\n"
+            f"---\n"
+            f"### 🌀 [SPATIAL TELEPORTATION COMPLETE // ARRIVAL: {TUTORIAL_SAFE_ZONE_DESTINATION.upper()}]\n"
+            f"The Spatial Teleportation Gate engulfs **{p_name}** in a pillar of cerulean light. When the glare fades, your boots hit "
+            f"the cracked asphalt of **East Washington Avenue (Routes 31 & 57)** beneath the shimmering blue dome of the "
+            f"**Washington Borough Safe-Zone (Node 07882)**.\n\n"
+            f"Around you, armed survivors barter near **Quartermaster Vane's Logistics Depot**, a stone stairwell marked with a caduceus "
+            f"leads down into **Doc Mercer's Subterranean Bio-Graft Clinic** (where you can install your newly harvested `Clockwork Reflex Servo`), "
+            f"and a 17-year-old MageTech Vanguard with a glowing cyan **Aetheric Ocular Lens** (**Ren Sasaki**) waves you over by the sanctuary brazier.\n\n"
+            f"*The tutorial is complete. The Fractured Overlay awaits your command, {p_name}.*"
+        )
+        return {
+            "success": True,
+            "stage_completed": 3,
+            "completed_stage": 3,
+            "new_stage": 4,
+            "graduated": True,
+            "teleported": True,
+            "level": player_state["level"],
+            "location": player_state["location"],
+            "loot_acquired": list(loot_tracked),
+            "loot_gained": list(loot_tracked),
+            "narrative_block": narrative_block,
+            "summary_markdown": narrative_block,
+            "combat_logs": combat_logs
+        }
+
+
+# =====================================================================
+# PHASE 10: PLANETARY PATCHWORK EARTH & 1–50 FLOOR MULTI-TIER RAIDS
+# =====================================================================
+
+import random
+
+GLOBAL_RAID_REGISTRY = {
+    "pohatcong_spire": {
+        "id": "pohatcong_spire",
+        "name": "The Gilded Spire of Pohatcong",
+        "region": "North America — Sector 1 (Washington, NJ)",
+        "real_world_site": "Pohatcong Mountain Ridge & Subterranean Aquifer",
+        "coordinates_label": "40.758° N, 75.012° W (Local Sector 1)",
+        "distance_miles": 6,
+        "recommended_level": (1, 10),
+        "total_floors": 10,
+        "mid_boss_floor": 5,
+        "apex_boss_floor": 10,
+        "default_gate_unsealed": True,
+        "overland_days": 1,
+        "overland_dc": 10,
+        "overland_route": "Pohatcong Ridge Overland Trail",
+        "strata": [
+            {"range": (1, 5), "name": "Sunken Limestone Catacombs", "hazard": "Spore-Choked Air (CON DC 11)"},
+            {"range": (6, 10), "name": "Crystalline Aether-Spire", "hazard": "Arcane Static Discharge (DEX DC 13)"},
+        ],
+        "mid_boss": {
+            "id": "mid_boss_silt_warden",
+            "name": "Aether-Forged Vanguard Centurion",
+            "title": "Floor 5 Gatekeeper of the Spire",
+            "hp": 220,
+            "max_hp": 220,
+            "ac": 15,
+            "dr": 3,
+            "break_gauge": 80,
+            "max_break_gauge": 80,
+            "telegraph": "Centurion's Halberd glows white-hot for [Seismic Vault Cleave] (DEX Save DC 13 or 3d8 Slashing + Prone).",
+            "weakness": "Bludgeoning / Lightning",
+            "la_unique_drop": {
+                "name": "Centurion's Storm-Halberd [LA-Unique]",
+                "rarity": "Epic",
+                "slot": "main_hand",
+                "category": "Weapon",
+                "atk_bonus": 4,
+                "durability": 140,
+                "max_durability": 140,
+                "weight_lbs": 6.0,
+                "desc": "1-of-1 Last Attack Trophy from the Floor 5 Gatekeeper. Deals +1d8 Lightning damage and +15 Break Gauge damage.",
+            },
+        },
+        "apex_boss": {
+            "id": "apex_gilded_overlord",
+            "name": "Ignis-Vane, The Gilded Spire Overlord",
+            "title": "Floor 10 Apex Sovereign of Sector 1",
+            "hp": 450,
+            "max_hp": 450,
+            "ac": 17,
+            "dr": 5,
+            "break_gauge": 100,
+            "max_break_gauge": 100,
+            "telegraph": "Four gilded arms lock together as its furnace heart charges [Cataclysmic Aether-Sweep] (Party wipe threat unless Staggered or Shield-Walled!).",
+            "weakness": "Cold / Piercing",
+            "unseals_gate_to": "delaware_abyss",
+            "la_unique_drop": {
+                "name": "Mantle of the Gilded Sovereign [LA-Unique]",
+                "rarity": "Legendary",
+                "slot": "chest",
+                "category": "Armor",
+                "ac_bonus": 5,
+                "durability": 180,
+                "max_durability": 180,
+                "weight_lbs": 8.0,
+                "desc": "1-of-1 Last Attack Relic claimed from Ignis-Vane. Grants +5 AC, Fire Immunity, and +10% Sword Skill Crit Rate.",
+            },
+        },
+    },
+    "delaware_abyss": {
+        "id": "delaware_abyss",
+        "name": "The Abyssal Trench of the Delaware Gap",
+        "region": "North America — Appalachian Rift Boundary (PA/NJ)",
+        "real_world_site": "Delaware Water Gap & Sub-River Fault",
+        "coordinates_label": "40.969° N, 75.125° W (18 mi NW)",
+        "distance_miles": 18,
+        "recommended_level": (8, 18),
+        "total_floors": 16,
+        "mid_boss_floor": 8,
+        "apex_boss_floor": 16,
+        "default_gate_unsealed": False,
+        "overland_days": 2,
+        "overland_dc": 12,
+        "overland_route": "I-80 Shattered Viaduct & Kittatinny Ridge Corridor",
+        "strata": [
+            {"range": (1, 8), "name": "Drowned Slate Gorges", "hazard": "Rushing Undertow (STR DC 12)"},
+            {"range": (9, 16), "name": "Bioluminescent Kraken Trench", "hazard": "Abyssal Hydro-Pressure (CON DC 14)"},
+        ],
+        "mid_boss": {
+            "id": "mid_boss_pelagic_siren",
+            "name": "Charybdis-Nine, The Siren Engine",
+            "title": "Floor 8 Mid-Boss of the Drowned Gorges",
+            "hp": 380,
+            "max_hp": 380,
+            "ac": 16,
+            "dr": 4,
+            "break_gauge": 100,
+            "max_break_gauge": 100,
+            "telegraph": "Sonar resonators whine at 180 dB before unleashing [Hydro-Sonic Undertow] (WIS Save DC 14 or Stunned + 3d10 Thunder).",
+            "weakness": "Lightning / Force",
+            "la_unique_drop": {
+                "name": "Siren-Song Aether Carbine [LA-Unique]",
+                "rarity": "Epic",
+                "slot": "main_hand",
+                "category": "Weapon",
+                "atk_bonus": 5,
+                "durability": 150,
+                "max_durability": 150,
+                "weight_lbs": 5.0,
+                "desc": "1-of-1 Last Attack Relic from Charybdis-Nine. Fires sonic lances that ignore water penalties and inflict Deafened.",
+            },
+        },
+        "apex_boss": {
+            "id": "apex_leviathan_rex",
+            "name": "Thalassor, The Trench Leviathan",
+            "title": "Floor 16 Apex Sovereign of the Delaware Gap",
+            "hp": 680,
+            "max_hp": 680,
+            "ac": 18,
+            "dr": 6,
+            "break_gauge": 120,
+            "max_break_gauge": 120,
+            "telegraph": "The cavern floods waist-deep as Thalassor coils to unleash [Maelstrom Singularity]!",
+            "weakness": "Lightning / Piercing",
+            "unseals_gate_to": "black_forest_citadel",
+            "la_unique_drop": {
+                "name": "Fangs of the Abyssal Leviathan [LA-Unique]",
+                "rarity": "Legendary",
+                "slot": "main_hand",
+                "category": "Weapon",
+                "atk_bonus": 6,
+                "durability": 200,
+                "max_durability": 200,
+                "weight_lbs": 4.5,
+                "desc": "1-of-1 Last Attack Twin-Blades forged from Thalassor's primary fangs. Grants +2 Extra Hits on Sword Skill combos.",
+            },
+        },
+    },
+    "black_forest_citadel": {
+        "id": "black_forest_citadel",
+        "name": "The Schwarzwald Root-Citadel",
+        "region": "Western Europe — Baden-Württemberg, Germany",
+        "real_world_site": "Black Forest (Schwarzwald) World-Tree Anomaly",
+        "coordinates_label": "48.300° N, 8.150° E (3,940 mi E)",
+        "distance_miles": 3940,
+        "recommended_level": (15, 28),
+        "total_floors": 24,
+        "mid_boss_floor": 12,
+        "apex_boss_floor": 24,
+        "default_gate_unsealed": False,
+        "overland_days": 6,
+        "overland_dc": 15,
+        "overland_route": "Trans-Atlantic Storm-Clipper & Rhine Leyline Convoy",
+        "strata": [
+            {"range": (1, 8), "name": "Bramble-Choked Autobahn", "hazard": "Razor-Briar Spores (CON DC 14)"},
+            {"range": (9, 16), "name": "Hollow Yggdrasil Trunk", "hazard": "Sap-Amber Entrapment (STR DC 15)"},
+            {"range": (17, 24), "name": "Canopy Star-Citadel", "hazard": "Fey Pollen Hallucination (WIS DC 16)"},
+        ],
+        "mid_boss": {
+            "id": "mid_boss_erlkonig_huntmaster",
+            "name": "Huntsman Velkan of the Wild Hunt",
+            "title": "Floor 12 Mid-Boss of the Hollow Trunk",
+            "hp": 580,
+            "max_hp": 580,
+            "ac": 17,
+            "dr": 5,
+            "break_gauge": 120,
+            "max_break_gauge": 120,
+            "telegraph": "Velkan blows his bone horn, summoning spectral hounds for [Phantom Pack Trample] (DEX Save DC 15).",
+            "weakness": "Fire / Radiant",
+            "la_unique_drop": {
+                "name": "Cloak of the Wild Huntmaster [LA-Unique]",
+                "rarity": "Epic",
+                "slot": "accessory",
+                "category": "Accessory",
+                "durability": 150,
+                "max_durability": 150,
+                "weight_lbs": 1.5,
+                "desc": "1-of-1 Last Attack Relic from Huntsman Velkan. Grants +3 DEX, Woodland Stride, and Phantom Step.",
+            },
+        },
+        "apex_boss": {
+            "id": "apex_schwarzwald_archdruid",
+            "name": "Nidhogg-Alpha, The World-Root Sovereign",
+            "title": "Floor 24 Apex Sovereign of the Black Forest",
+            "hp": 960,
+            "max_hp": 960,
+            "ac": 19,
+            "dr": 7,
+            "break_gauge": 150,
+            "max_break_gauge": 150,
+            "telegraph": "Great bio-mechanical roots rear across the canopy to cast [Eclipse of the World-Tree]!",
+            "weakness": "Fire / Slashing",
+            "unseals_gate_to": "tokyo_override",
+            "la_unique_drop": {
+                "name": "Heartwood Crown of Yggdrasil [LA-Unique]",
+                "rarity": "Legendary",
+                "slot": "head",
+                "category": "Armor",
+                "ac_bonus": 4,
+                "durability": 200,
+                "max_durability": 200,
+                "weight_lbs": 2.0,
+                "desc": "1-of-1 Last Attack Crown from Nidhogg-Alpha. Regenerates 15 HP per turn and raises Max Unit Strain by +2.",
+            },
+        },
+    },
+    "tokyo_override": {
+        "id": "tokyo_override",
+        "name": "Shinjuku Neon-Spire Override",
+        "region": "East Asia — Tokyo Metropolis, Japan",
+        "real_world_site": "Tokyo Metropolitan Government Towers & Subways",
+        "coordinates_label": "35.689° N, 139.692° E (6,750 mi NW)",
+        "distance_miles": 6750,
+        "recommended_level": (25, 38),
+        "total_floors": 30,
+        "mid_boss_floor": 15,
+        "apex_boss_floor": 30,
+        "default_gate_unsealed": False,
+        "overland_days": 8,
+        "overland_dc": 16,
+        "overland_route": "Pacific Magi-Rail Trench & Yokohama Sky-Bridge",
+        "strata": [
+            {"range": (1, 10), "name": "Flooded Yamanote Cyber-Tunnels", "hazard": "High-Voltage Rail Arcs (DEX DC 15)"},
+            {"range": (11, 20), "name": "Holographic Skyscraper Atrium", "hazard": "Cardinal Logic Firewall (INT DC 16)"},
+            {"range": (21, 30), "name": "Orbital Elevator Anchor-Core", "hazard": "Zero-G Flux Inversion (DEX DC 17)"},
+        ],
+        "mid_boss": {
+            "id": "mid_boss_shinjuku_ronin",
+            "name": "Kagutsuchi-Zero, The Cybernetic Sword-Saint",
+            "title": "Floor 15 Mid-Boss of the Skyscraper Atrium",
+            "hp": 820,
+            "max_hp": 820,
+            "ac": 19,
+            "dr": 6,
+            "break_gauge": 140,
+            "max_break_gauge": 140,
+            "telegraph": "Kagutsuchi sheathes its tachyon nodachi into a crimson scabbard for [Iaido: Dimensional Sever]!",
+            "weakness": "Force / Acid",
+            "la_unique_drop": {
+                "name": "Kagutsuchi's Tachyon Nodachi [LA-Unique]",
+                "rarity": "Legendary",
+                "slot": "main_hand",
+                "category": "Weapon",
+                "atk_bonus": 7,
+                "durability": 220,
+                "max_durability": 220,
+                "weight_lbs": 5.5,
+                "desc": "1-of-1 Last Attack Blade from Shinjuku Floor 15. Ignores 5 points of enemy DR and grants [Iaido Counter].",
+            },
+        },
+        "apex_boss": {
+            "id": "apex_tokyo_archon",
+            "name": "Amaterasu-Omega, The Neon Archon",
+            "title": "Floor 30 Apex Sovereign of Tokyo Override",
+            "hp": 1350,
+            "max_hp": 1350,
+            "ac": 21,
+            "dr": 8,
+            "break_gauge": 180,
+            "max_break_gauge": 180,
+            "telegraph": "Eight orbital mirror-funnels align above Shinjuku to fire [Solar Convergence Judgment]!",
+            "weakness": "Necrotic / Force",
+            "unseals_gate_to": "vatican_catacombs",
+            "la_unique_drop": {
+                "name": "Aegis of the Neon Archon [LA-Unique]",
+                "rarity": "Mythic",
+                "slot": "off_hand",
+                "category": "Armor",
+                "ac_bonus": 6,
+                "durability": 250,
+                "max_durability": 250,
+                "weight_lbs": 6.0,
+                "desc": "1-of-1 Mythic Last Attack Shield from Amaterasu-Omega. Reflects 50% of ranged/spell damage back at attackers.",
+            },
+        },
+    },
+    "vatican_catacombs": {
+        "id": "vatican_catacombs",
+        "name": "The Inverted Basilica of St. Peter",
+        "region": "Southern Europe — Rome, Italy",
+        "real_world_site": "Subterranean Vatican Necropolis & Tiber Rift",
+        "coordinates_label": "41.902° N, 12.453° E (4,280 mi E)",
+        "distance_miles": 4280,
+        "recommended_level": (32, 44),
+        "total_floors": 36,
+        "mid_boss_floor": 18,
+        "apex_boss_floor": 36,
+        "default_gate_unsealed": False,
+        "overland_days": 7,
+        "overland_dc": 17,
+        "overland_route": "Mediterranean Tempest Convoy & Appian Way Ruins",
+        "strata": [
+            {"range": (1, 12), "name": "Ossuary of the Forgotten Martyrs", "hazard": "Sanctified Radiance Burn (WIS DC 16)"},
+            {"range": (13, 24), "name": "Inverted Marble Nave", "hazard": "Gravity Reversal Choir (DEX DC 17)"},
+            {"range": (25, 36), "name": "Sanctum of the Seraphim Engine", "hazard": "Six-Winged Judgment Aura (CHA DC 18)"},
+        ],
+        "mid_boss": {
+            "id": "mid_boss_inquisitor_bell",
+            "name": "Arch-Prelate Malakor, The Iron Censer",
+            "title": "Floor 18 Mid-Boss of the Inverted Nave",
+            "hp": 1100,
+            "max_hp": 1100,
+            "ac": 20,
+            "dr": 7,
+            "break_gauge": 160,
+            "max_break_gauge": 160,
+            "telegraph": "Malakor swings his colossal thurible, filling the chamber with [Crimson Anathema Incense]!",
+            "weakness": "Radiant / Bludgeoning",
+            "la_unique_drop": {
+                "name": "Censer of the Undying Prelate [LA-Unique]",
+                "rarity": "Legendary",
+                "slot": "accessory",
+                "category": "Accessory",
+                "durability": 200,
+                "max_durability": 200,
+                "weight_lbs": 2.5,
+                "desc": "1-of-1 Last Attack Relic from Floor 18 Rome. Party heals +20% more from all restorative skills and items.",
+            },
+        },
+        "apex_boss": {
+            "id": "apex_seraphim_engine",
+            "name": "Metatron-VII, The Seraphim Engine",
+            "title": "Floor 36 Apex Sovereign of the Inverted Basilica",
+            "hp": 1750,
+            "max_hp": 1750,
+            "ac": 22,
+            "dr": 9,
+            "break_gauge": 200,
+            "max_break_gauge": 200,
+            "telegraph": "Thirty-six interlocking golden wheels ignite with blinding runes for [Apocrypha: Seventh Seal]!",
+            "weakness": "Force / Necrotic",
+            "unseals_gate_to": "grand_canyon_monolith",
+            "la_unique_drop": {
+                "name": "Halo of the Seraphim Engine [LA-Unique]",
+                "rarity": "Mythic",
+                "slot": "head",
+                "category": "Armor",
+                "ac_bonus": 6,
+                "durability": 300,
+                "max_durability": 300,
+                "weight_lbs": 1.0,
+                "desc": "1-of-1 Mythic Last Attack Halo from Metatron-VII. Grants Flight, +3 to all Saving Throws, and once-per-raid auto-revive.",
+            },
+        },
+    },
+    "grand_canyon_monolith": {
+        "id": "grand_canyon_monolith",
+        "name": "The Colorado Singularity Monolith",
+        "region": "North America — Arizona, USA",
+        "real_world_site": "Grand Canyon Gorge & Prime Cardinal Anchor",
+        "coordinates_label": "36.106° N, 112.112° W (2,120 mi W)",
+        "distance_miles": 2120,
+        "recommended_level": (40, 50),
+        "total_floors": 50,
+        "mid_boss_floor": 25,
+        "apex_boss_floor": 50,
+        "default_gate_unsealed": False,
+        "overland_days": 5,
+        "overland_dc": 18,
+        "overland_route": "Continental Dust-Bowl Express & Painted Desert Gorge",
+        "strata": [
+            {"range": (1, 15), "name": "Redwall Sandstone Labyrinth", "hazard": "Silica Razor-Gale (CON DC 16)"},
+            {"range": (16, 30), "name": "Vishnu Schist Magma Conduits", "hazard": "Tectonic Thermal Venting (DEX DC 17)"},
+            {"range": (31, 50), "name": "The Ouroboros Kernel Core", "hazard": "Reality Overwrite Distortion (INT DC 19)"},
+        ],
+        "mid_boss": {
+            "id": "mid_boss_canyon_colossus",
+            "name": "Gorgon-Prime, The Tectonic Colossus",
+            "title": "Floor 25 Mid-Boss of the Vishnu Schist",
+            "hp": 1500,
+            "max_hp": 1500,
+            "ac": 21,
+            "dr": 8,
+            "break_gauge": 180,
+            "max_break_gauge": 180,
+            "telegraph": "Gorgon-Prime slams both obsidian fists into the fault line for [Magnitude 9.0 Fault Rupture]!",
+            "weakness": "Cold / Force",
+            "la_unique_drop": {
+                "name": "Gauntlets of the Tectonic Colossus [LA-Unique]",
+                "rarity": "Mythic",
+                "slot": "off_hand",
+                "category": "Armor",
+                "ac_bonus": 5,
+                "durability": 260,
+                "max_durability": 260,
+                "weight_lbs": 7.0,
+                "desc": "1-of-1 Last Attack Relic from Floor 25 Grand Canyon. Grants +4 STR and doubles Break Gauge damage.",
+            },
+        },
+        "apex_boss": {
+            "id": "apex_ouroboros_architect",
+            "name": "Aethelgard, The Cardinal Architect",
+            "title": "Floor 50 Final Sovereign of the Patchwork Overlay",
+            "hp": 2500,
+            "max_hp": 2500,
+            "ac": 24,
+            "dr": 10,
+            "break_gauge": 250,
+            "max_break_gauge": 250,
+            "telegraph": "The sky fractures into hexadecimal code as Aethelgard compiles [System Purge: Total Format]!",
+            "weakness": "All-Elemental / Serpent-Script Override",
+            "unseals_gate_to": None,
+            "la_unique_drop": {
+                "name": "Blade of the Singularity Architect [LA-Unique]",
+                "rarity": "Mythic",
+                "slot": "main_hand",
+                "category": "Weapon",
+                "atk_bonus": 10,
+                "durability": 500,
+                "max_durability": 500,
+                "weight_lbs": 4.0,
+                "desc": "1-of-1 Supreme Relic of the 50th Floor. Cleaves dimensional barriers and grants +25% damage to all Sword Skills.",
+            },
+        },
+    },
+}
+
+
+def ensure_planetary_raid_system(player_state: dict) -> dict:
+    """
+    Ensures `player_state['planetary_raids']` is initialized with the 6 Global Multi-Floor Raid Locations,
+    Leyline Gate statuses, Floor progression (1 to 50), Mid-Boss Stabilizer Brake flags, Anomaly Bleed meters,
+    and Rival Frontline Squad tickers.
+    """
+    if not isinstance(player_state, dict):
+        return {}
+    raids_state = player_state.setdefault("planetary_raids", {})
+    raids_state.setdefault("active_raid_id", "pohatcong_spire")
+    raids_state.setdefault("macro_map_mode", "local_100mi")
+    raids_state.setdefault("unsealed_gates", ["pohatcong_spire"])
+    raids_state.setdefault("overland_expeditions_completed", 0)
+
+    nodes = raids_state.setdefault("raid_nodes", {})
+    rival_squads_defaults = {
+        "pohatcong_spire": {"squad_name": "Iron Vanguard 1st Division", "commander": "Commander Vance", "current_floor": 2, "status": "pushing"},
+        "delaware_abyss": {"squad_name": "Conclave Tide-Breakers", "commander": "Magus Lyra", "current_floor": 1, "status": "pushing"},
+        "black_forest_citadel": {"squad_name": "Rhine Aegis Coalition", "commander": "Knight-Captain Falk", "current_floor": 3, "status": "pushing"},
+        "tokyo_override": {"squad_name": "Shinjuku Frontline Strikers", "commander": "Kensei Raiden", "current_floor": 4, "status": "pushing"},
+        "vatican_catacombs": {"squad_name": "Order of the Silver Lance", "commander": "Paladin Sofia", "current_floor": 2, "status": "pushing"},
+        "grand_canyon_monolith": {"squad_name": "Continental Apex Taskforce", "commander": "General Sterling", "current_floor": 1, "status": "pushing"},
+    }
+
+    for r_id, r_def in GLOBAL_RAID_REGISTRY.items():
+        if r_id not in nodes or not isinstance(nodes[r_id], dict):
+            sq_def = rival_squads_defaults.get(r_id, {"squad_name": "Vanguard Recon", "commander": "Capt. Miller", "current_floor": 1, "status": "pushing"})
+            nodes[r_id] = {
+                "id": r_id,
+                "name": r_def["name"],
+                "total_floors": r_def["total_floors"],
+                "mid_boss_floor": r_def["mid_boss_floor"],
+                "apex_boss_floor": r_def["apex_boss_floor"],
+                "current_floor": 1,
+                "highest_floor_reached": 1,
+                "gate_unsealed": bool(r_def["default_gate_unsealed"] or r_id in raids_state.get("unsealed_gates", [])),
+                "waypoint_unlocked": False,
+                "mid_boss_defeated": False,
+                "apex_boss_defeated": False,
+                "is_stabilized": False,  # True once Mid-Boss is defeated (locks Anomaly Bleed at 0%!)
+                "anomaly_bleed": 15 if r_id == "pohatcong_spire" else 5,
+                "anti_crystal_active": False,
+                "floor_recon_purchased": False,
+                "boss_dossier_purchased": False,
+                "assigned_support_squad": None,
+                "mid_boss_hp": r_def["mid_boss"]["hp"],
+                "mid_boss_max_hp": r_def["mid_boss"]["max_hp"],
+                "mid_boss_break": r_def["mid_boss"]["break_gauge"],
+                "apex_boss_hp": r_def["apex_boss"]["hp"],
+                "apex_boss_max_hp": r_def["apex_boss"]["max_hp"],
+                "apex_boss_break": r_def["apex_boss"]["break_gauge"],
+                "rival_squad": dict(sq_def),
+            }
+        else:
+            # Ensure new keys exist
+            n_ref = nodes[r_id]
+            n_ref.setdefault("total_floors", r_def["total_floors"])
+            n_ref.setdefault("mid_boss_floor", r_def["mid_boss_floor"])
+            n_ref.setdefault("apex_boss_floor", r_def["apex_boss_floor"])
+            n_ref.setdefault("current_floor", 1)
+            n_ref.setdefault("highest_floor_reached", max(1, n_ref.get("current_floor", 1)))
+            n_ref.setdefault("gate_unsealed", bool(r_def["default_gate_unsealed"]))
+            n_ref.setdefault("waypoint_unlocked", bool(n_ref.get("mid_boss_defeated", False)))
+            n_ref.setdefault("mid_boss_defeated", False)
+            n_ref.setdefault("apex_boss_defeated", False)
+            n_ref.setdefault("is_stabilized", bool(n_ref.get("mid_boss_defeated", False)))
+            n_ref.setdefault("anomaly_bleed", 0 if n_ref.get("is_stabilized") else 10)
+            n_ref.setdefault("anti_crystal_active", False)
+            n_ref.setdefault("floor_recon_purchased", False)
+            n_ref.setdefault("boss_dossier_purchased", False)
+            n_ref.setdefault("assigned_support_squad", None)
+            n_ref.setdefault("mid_boss_hp", r_def["mid_boss"]["hp"])
+            n_ref.setdefault("mid_boss_max_hp", r_def["mid_boss"]["max_hp"])
+            n_ref.setdefault("apex_boss_hp", r_def["apex_boss"]["hp"])
+            n_ref.setdefault("apex_boss_max_hp", r_def["apex_boss"]["max_hp"])
+            if "rival_squad" not in n_ref:
+                n_ref["rival_squad"] = dict(rival_squads_defaults.get(r_id, {"squad_name": "Vanguard Recon", "commander": "Capt. Miller", "current_floor": 1, "status": "pushing"}))
+
+    return raids_state
+
+
+def get_stratum_for_floor(raid_id: str, floor_num: int) -> dict:
+    """Returns the thematic Stratum definition for a given Raid ID and floor number."""
+    r_def = GLOBAL_RAID_REGISTRY.get(raid_id, GLOBAL_RAID_REGISTRY["pohatcong_spire"])
+    for st_def in r_def.get("strata", []):
+        low, high = st_def["range"]
+        if low <= floor_num <= high:
+            return st_def
+    return {"range": (1, r_def["total_floors"]), "name": "Inner Raid Labyrinth", "hazard": "Ambient Mana Pressure (CON DC 12)"}
+
+
+def get_global_raid_status(player_state: dict, raid_id: str = None) -> dict:
+    """Returns merged static + live status for the requested Raid Location (defaults to active_raid_id)."""
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = raid_id or raids_state.get("active_raid_id", "pohatcong_spire")
+    if r_id not in GLOBAL_RAID_REGISTRY:
+        r_id = "pohatcong_spire"
+    r_def = GLOBAL_RAID_REGISTRY[r_id]
+    live = raids_state["raid_nodes"][r_id]
+    cur_f = int(live.get("current_floor", 1))
+    stratum = get_stratum_for_floor(r_id, cur_f)
+    return {
+        **r_def,
+        "live": live,
+        "current_floor": cur_f,
+        "highest_floor_reached": int(live.get("highest_floor_reached", 1)),
+        "stratum": stratum,
+        "is_at_mid_boss": (cur_f == r_def["mid_boss_floor"] and not live.get("mid_boss_defeated", False)),
+        "is_at_apex_boss": (cur_f == r_def["apex_boss_floor"] and not live.get("apex_boss_defeated", False)),
+        "is_stabilized": bool(live.get("is_stabilized", False)),
+        "anomaly_bleed": 0 if live.get("is_stabilized") else int(live.get("anomaly_bleed", 0)),
+    }
+
+
+def travel_to_global_raid(player_state: dict, raid_id: str, travel_mode: str = "leyline_gate") -> dict:
+    """
+    Handles Dual-Scale Planetary Transit to any Global Raid Location:
+    - `leyline_gate` (Option 1 Fast Travel): Instant warp if the Raid's Leyline Gate is unsealed.
+    - `overland` (Option 3 Fallback Expedition): Multi-day overland/sea/air trek across Patchwork Earth
+      corridors! Consumes rations/Col or rolls Survival/Cartography check, advances game days,
+      unseals the destination Leyline Gate upon arrival, and sets the active Raid.
+    """
+    raids_state = ensure_planetary_raid_system(player_state)
+    if raid_id not in GLOBAL_RAID_REGISTRY:
+        return {"success": False, "message": f"Unknown Raid Location '{raid_id}'.", "log": ""}
+
+    r_def = GLOBAL_RAID_REGISTRY[raid_id]
+    node = raids_state["raid_nodes"][raid_id]
+
+    if travel_mode == "leyline_gate":
+        if not node.get("gate_unsealed", False):
+            return {
+                "success": False,
+                "message": (
+                    f"🔒 The Leyline Gate to [{r_def['name']}] ({r_def['region']}) is still sealed! "
+                    f"Either defeat the preceding Raid Boss to unseal the corridor OR launch a {r_def['overland_days']}-Day Overland Expedition."
+                ),
+                "log": "",
+            }
+        raids_state["active_raid_id"] = raid_id
+        player_state["location"] = f"{r_def['name']} — Floor {node['current_floor']} ({r_def['region']})"
+        log = (
+            f"🌀 **[LEYLINE GATE TRANSIT COMPLETE]:** You step through the stabilized magi-tech gate and materialize at "
+            f"**{r_def['name']}** (`{r_def['real_world_site']}` — Floor {node['current_floor']}/{r_def['total_floors']})!"
+        )
+        return {
+            "success": True,
+            "travel_mode": "leyline_gate",
+            "raid_id": raid_id,
+            "location": player_state["location"],
+            "message": f"Teleported via Leyline Gate to {r_def['name']}!",
+            "log": log,
+        }
+
+    # Option 3 Fallback: Multi-Day Overland / Sea / Air Expedition
+    days = int(r_def.get("overland_days", 2))
+    dc = int(r_def.get("overland_dc", 12))
+    stats = player_state.get("stats", {})
+    wis_mod = (int(stats.get("WIS", 10)) - 10) // 2
+    con_mod = (int(stats.get("CON", 10)) - 10) // 2
+    skills = player_state.get("skills", {})
+    surv_mastery = 0
+    for s_k, s_v in skills.items():
+        if any(w in s_k.lower() for w in ["survival", "cartography", "navigation", "athletics", "endurance"]):
+            m_val = s_v.get("mastery", 1) if isinstance(s_v, dict) else 1
+            surv_mastery = max(surv_mastery, int(m_val))
+    skill_bonus = surv_mastery // 100
+
+    roll = random.randint(1, 20)
+    total_check = roll + max(wis_mod, con_mod) + skill_bonus
+    passed = total_check >= dc
+
+    # Advance game time by `days`
+    if "advance_game_time" in globals():
+        advance_game_time(player_state, minutes=days * 1440)
+
+    hp_loss = 0
+    xp_gain = days * 150
+    if not passed:
+        hp_loss = min(max(1, int(player_state.get("hp", 50)) - 10), days * 6)
+        player_state["hp"] = max(1, int(player_state.get("hp", 50)) - hp_loss)
+    player_state["xp"] = int(player_state.get("xp", 0)) + xp_gain
+
+    # Unseal the gate manually upon arrival!
+    node["gate_unsealed"] = True
+    if raid_id not in raids_state["unsealed_gates"]:
+        raids_state["unsealed_gates"].append(raid_id)
+    raids_state["active_raid_id"] = raid_id
+    raids_state["overland_expeditions_completed"] = int(raids_state.get("overland_expeditions_completed", 0)) + 1
+    player_state["location"] = f"{r_def['name']} — Floor 1 Entrance ({r_def['region']})"
+
+    outcome_str = (
+        f"Navigation Check: 1d20({roll}) + Mod({max(wis_mod, con_mod):+d}) + Mastery({skill_bonus:+d}) = {total_check} vs DC {dc} -> "
+        + ("CLEAN PASSAGE!" if passed else f"HAZARDOUS CROSSING (-{hp_loss} HP from corridor anomalies)!")
+    )
+    log = (
+        f"🧭 **[PLANETARY OVERLAND EXPEDITION — {days} DAYS VIA {r_def['overland_route'].upper()}]:**\n"
+        f"- **Route:** `{r_def['overland_route']}` ({r_def['distance_miles']:,} miles to `{r_def['real_world_site']}`)\n"
+        f"- **Check:** `{outcome_str}` | `+{xp_gain} Expedition XP`\n"
+        f"- **Leyline Gate Unsealed:** You manually etched a Return Anchor at **{r_def['name']}**! Fast Travel is now permanently unlocked."
+    )
+    return {
+        "success": True,
+        "travel_mode": "overland",
+        "days_elapsed": days,
+        "check_passed": passed,
+        "hp_loss": hp_loss,
+        "xp_gain": xp_gain,
+        "raid_id": raid_id,
+        "location": player_state["location"],
+        "message": f"Completed {days}-day overland trek to {r_def['name']} and unsealed its Leyline Gate!",
+        "log": log,
+    }
+
+
+def advance_raid_floor(player_state: dict, raid_id: str = None, encounter_override: str = None) -> dict:
+    """
+    Advances the player +1 Floor inside the active 1–50 Floor Raid Location using Stratum & Checkpoint Pacing:
+    - Evaluates dynamic floor encounters (`vanguard_skirmish`, `trap_gauntlet`, `anti_crystal_ambush`, `safe_sanctuary`).
+    - If `floor_recon_purchased` is True (from Info Broker Cipher), lowers Trap DCs by -4 and warns/defuses Anti-Crystal ambushes.
+    - Stops at the Mid-Boss Floor (Floor N/2) if the Mid-Boss has not been defeated yet, unlocking the Pre-Boss Sanctuary.
+    - Stops at the Apex Boss Floor (Floor N) for the final Raid confrontation.
+    """
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = raid_id or raids_state.get("active_raid_id", "pohatcong_spire")
+    if r_id not in GLOBAL_RAID_REGISTRY:
+        r_id = "pohatcong_spire"
+
+    r_def = GLOBAL_RAID_REGISTRY[r_id]
+    node = raids_state["raid_nodes"][r_id]
+
+    if node.get("anti_crystal_active", False):
+        return {
+            "success": False,
+            "blocked_by_anti_crystal": True,
+            "current_floor": node["current_floor"],
+            "message": "🚨 Crimson Anti-Crystal Field is locking down this floor! Disable the Jamming Obelisk or defeat the ambush before ascending!",
+            "log": "🚨 **[FLOOR LOCKDOWN]:** Crimson Anti-Crystal barriers seal the stairwell!",
+        }
+
+    cur_f = int(node.get("current_floor", 1))
+    mid_f = int(r_def["mid_boss_floor"])
+    max_f = int(r_def["total_floors"])
+
+    # Gate at Mid-Boss Floor if Mid-Boss is still alive
+    if cur_f == mid_f and not node.get("mid_boss_defeated", False):
+        return {
+            "success": False,
+            "at_mid_boss_gate": True,
+            "current_floor": cur_f,
+            "message": f"⚔️ Floor {cur_f} Mid-Boss Chamber reached! Defeat [{r_def['mid_boss']['name']}] to unseal the upper Strata and stabilize Anomaly Bleed!",
+            "log": f"⚔️ **[MID-BOSS CHECKPOINT — FLOOR {cur_f}/{max_f}]:** `{r_def['mid_boss']['name']}` blocks the ascension gate!",
+        }
+
+    if cur_f >= max_f:
+        return {
+            "success": False,
+            "at_apex_boss_gate": True,
+            "current_floor": max_f,
+            "message": f"👑 You have reached the Apex Floor ({max_f}/{max_f}) of {r_def['name']}! Engage [{r_def['apex_boss']['name']}]!",
+            "log": f"👑 **[APEX FLOOR {max_f}/{max_f}]:** `{r_def['apex_boss']['name']}` awaits in the Sovereign Chamber!",
+        }
+
+    new_f = cur_f + 1
+    node["current_floor"] = new_f
+    node["highest_floor_reached"] = max(int(node.get("highest_floor_reached", 1)), new_f)
+    stratum = get_stratum_for_floor(r_id, new_f)
+    player_state["location"] = f"{r_def['name']} — Floor {new_f}/{max_f}: {stratum['name']}"
+
+    # Determine encounter type
+    if new_f == mid_f:
+        enc_type = "mid_boss_sanctuary"
+        node["waypoint_unlocked"] = True
+    elif new_f == max_f:
+        enc_type = "apex_boss_sanctuary"
+    elif encounter_override in ("vanguard_skirmish", "trap_gauntlet", "anti_crystal_ambush", "safe_sanctuary"):
+        enc_type = encounter_override
+    else:
+        roll_enc = random.random()
+        if roll_enc < 0.45:
+            enc_type = "vanguard_skirmish"
+        elif roll_enc < 0.70:
+            enc_type = "trap_gauntlet"
+        elif roll_enc < 0.88:
+            enc_type = "anti_crystal_ambush"
+        else:
+            enc_type = "safe_sanctuary"
+
+    recon_active = bool(node.get("floor_recon_purchased", False))
+    xp_gain = 120 + (new_f * 20)
+    col_gain = 40 + (new_f * 10)
+    hp_delta = 0
+    event_detail = ""
+
+    if enc_type == "mid_boss_sanctuary":
+        event_detail = (
+            f"🏛️ **Mid-Boss Waypoint Sanctuary Unlocked (Floor {new_f}/{max_f})!** "
+            f"You attune the cerulean Waypoint Pillar outside `{r_def['mid_boss']['name']}`'s chamber. "
+            f"Defeating this Mid-Boss will permanently **LOCK Anomaly Bleed at 0%** (The Stabilizer Brake)!"
+        )
+    elif enc_type == "apex_boss_sanctuary":
+        event_detail = (
+            f"👑 **Apex Sovereign Antechamber Reached (Floor {new_f}/{max_f})!** "
+            f"Beyond the obsidian gates lies **{r_def['apex_boss']['name']}** (`{r_def['apex_boss']['title']}`)."
+        )
+    elif enc_type == "vanguard_skirmish":
+        player_state["xp"] = int(player_state.get("xp", 0)) + xp_gain
+        player_state["col"] = int(player_state.get("col", 0)) + col_gain
+        if "update_unique_skill_trackers" in globals():
+            update_unique_skill_trackers(player_state, event_type="floor_skirmish")
+        event_detail = f"⚔️ **Stratum Vanguard Skirmish:** Cleared hostile patrol in `{stratum['name']}` (`+{xp_gain} XP`, `+{col_gain} Col`)."
+    elif enc_type == "trap_gauntlet":
+        base_dc = 12 + (new_f // 5)
+        eff_dc = max(8, base_dc - (4 if recon_active else 0))
+        dex_mod = (int(player_state.get("stats", {}).get("DEX", 10)) - 10) // 2
+        t_roll = random.randint(1, 20) + dex_mod
+        if t_roll >= eff_dc:
+            player_state["xp"] = int(player_state.get("xp", 0)) + xp_gain
+            event_detail = f"⚙️ **Stratum Hazard Cleared ({stratum['hazard']}):** Roll {t_roll} vs DC {eff_dc} ({'Cipher Recon -4 DC applied!' if recon_active else 'Standard DC'}) -> Disarmed! (`+{xp_gain} XP`)"
+        else:
+            hp_delta = -max(4, min(18, 6 + (new_f // 3)))
+            player_state["hp"] = max(1, int(player_state.get("hp", 50)) + hp_delta)
+            event_detail = f"⚠️ **Stratum Hazard Triggered ({stratum['hazard']}):** Roll {t_roll} vs DC {eff_dc} -> Took `{abs(hp_delta)} HP` damage!"
+    elif enc_type == "anti_crystal_ambush":
+        if recon_active:
+            player_state["xp"] = int(player_state.get("xp", 0)) + xp_gain
+            event_detail = (
+                f"🕵️ **Cipher Recon Pre-Empted Crimson Anti-Crystal Trap!** "
+                f"Using Cipher's floor packet, you bypassed the crimson quartz jamming obelisk on Floor {new_f} (`+{xp_gain} XP`)!"
+            )
+        else:
+            node["anti_crystal_active"] = True
+            event_detail = (
+                f"🚨 **[CRIMSON ANTI-CRYSTAL TRAP ROOM — FLOOR {new_f}]!** "
+                f"The chamber walls flare blood-red! Teleport Crystals and Waypoint Crystals are **JAMMED** until you shatter the Crimson Jamming Obelisk!"
+            )
+    else:
+        heal = min(int(player_state.get("max_hp", 100)) - int(player_state.get("hp", 100)), 25)
+        player_state["hp"] = int(player_state.get("hp", 100)) + max(0, heal)
+        event_detail = f"🕯️ **Safe Sanctuary Alcove:** Found a warded fountain on Floor {new_f} (`+{max(0, heal)} HP` restored)."
+
+    log = (
+        f"🗼 **[RAID ASCENSION — {r_def['name'].upper()} // FLOOR {new_f}/{max_f} ({stratum['name']})]:**\n"
+        f"- {event_detail}"
+    )
+    return {
+        "success": True,
+        "raid_id": r_id,
+        "previous_floor": cur_f,
+        "current_floor": new_f,
+        "total_floors": max_f,
+        "stratum": stratum,
+        "encounter_type": enc_type,
+        "anti_crystal_active": bool(node.get("anti_crystal_active", False)),
+        "hp_delta": hp_delta,
+        "message": f"Advanced to Floor {new_f}/{max_f} ({stratum['name']})!",
+        "log": log,
+    }
+
+
+def disable_anti_crystal_jammer(player_state: dict, raid_id: str = None) -> dict:
+    """Disables an active Crimson Anti-Crystal Trap Room on the current floor, restoring Teleport/Waypoint Crystal functionality."""
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = raid_id or raids_state.get("active_raid_id", "pohatcong_spire")
+    node = raids_state["raid_nodes"].get(r_id, {})
+    if not node.get("anti_crystal_active", False):
+        return {"success": False, "message": "No active Anti-Crystal jamming field on this floor.", "log": ""}
+
+    node["anti_crystal_active"] = False
+    xp_bonus = 200
+    player_state["xp"] = int(player_state.get("xp", 0)) + xp_bonus
+    log = (
+        f"💎 **[CRIMSON JAMMING OBELISK SHATTERED — FLOOR {node.get('current_floor', 1)}]:** "
+        f"You smash the crimson quartz dampener! Cerulean spatial resonance returns — **Teleport Crystals & Waypoint Crystals are back online!** (`+{xp_bonus} XP`)"
+    )
+    return {
+        "success": True,
+        "raid_id": r_id,
+        "anti_crystal_active": False,
+        "xp_gain": xp_bonus,
+        "message": "Anti-Crystal Jamming Obelisk destroyed! Teleport & Waypoint Crystals restored.",
+        "log": log,
+    }
+
+
+def engage_raid_mid_boss(player_state: dict, raid_id: str = None, damage_dealt: int = 120) -> dict:
+    """
+    Engages the Raid's Mid-Boss at Floor floor(N/2).
+    - Applies Broker Dossier bonus (+10 DMG) and Allied Support Squad effects if briefed.
+    - When Mid-Boss HP hits 0:
+      1. Permanently activates **The Stabilizer Brake** (`is_stabilized = True`, `anomaly_bleed = 0`), stopping all Anomaly Bleed from this Raid!
+      2. Unlocks the permanent **Mid-Boss Waypoint Sanctuary** (`waypoint_unlocked = True`).
+      3. Rescues any Rival Frontline Squad pinned at the Mid-Boss floor (`status = 'rescued_pushing'`).
+      4. Evaluates Last Attack (`LA`) 1-of-1 Unique Relic drop!
+    """
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = raid_id or raids_state.get("active_raid_id", "pohatcong_spire")
+    r_def = GLOBAL_RAID_REGISTRY.get(r_id, GLOBAL_RAID_REGISTRY["pohatcong_spire"])
+    node = raids_state["raid_nodes"][r_id]
+    mb_def = r_def["mid_boss"]
+
+    # Ensure player is at least at the mid_boss_floor
+    node["current_floor"] = max(int(node.get("current_floor", 1)), int(r_def["mid_boss_floor"]))
+    node["highest_floor_reached"] = max(int(node.get("highest_floor_reached", 1)), node["current_floor"])
+
+    bonus_dmg = 0
+    bonus_notes = []
+    if node.get("boss_dossier_purchased"):
+        bonus_dmg += 25
+        bonus_notes.append("Cipher Boss Dossier (+25 Weakpoint DMG)")
+    if node.get("assigned_support_squad"):
+        bonus_dmg += 35
+        bonus_notes.append(f"Allied Squad [{node['assigned_support_squad']}] (+35 Tactical DMG)")
+
+    total_dmg = max(25, int(damage_dealt) + bonus_dmg)
+    old_hp = int(node.get("mid_boss_hp", mb_def["hp"]))
+    new_hp = max(0, old_hp - total_dmg)
+    node["mid_boss_hp"] = new_hp
+
+    if "update_unique_skill_trackers" in globals():
+        update_unique_skill_trackers(player_state, event_type="boss_strike", damage=total_dmg)
+
+    if new_hp > 0:
+        in_la_window = (new_hp / float(mb_def["max_hp"])) <= 0.15
+        log = (
+            f"⚔️ **[MID-BOSS CLASH — {mb_def['name'].upper()} (FLOOR {r_def['mid_boss_floor']})]:** "
+            f"Dealt `{total_dmg} DMG` ({', '.join(bonus_notes) if bonus_notes else 'Direct Strike'})! "
+            f"Boss HP: `{new_hp} / {mb_def['max_hp']}`."
+            + (" 🔥 **[FINAL 10% LAST ATTACK WINDOW OPEN!]**" if in_la_window else "")
+        )
+        return {
+            "success": True,
+            "defeated": False,
+            "in_last_attack_window": in_la_window,
+            "boss_hp": new_hp,
+            "boss_max_hp": mb_def["max_hp"],
+            "message": f"Struck {mb_def['name']} for {total_dmg} DMG ({new_hp}/{mb_def['max_hp']} HP remaining)!",
+            "log": log,
+        }
+
+    # Mid-Boss Defeated! Activate Stabilizer Brake + Waypoint Unlock + LA Bonus
+    node["mid_boss_defeated"] = True
+    node["is_stabilized"] = True
+    node["anomaly_bleed"] = 0
+    node["waypoint_unlocked"] = True
+    if node.get("rival_squad", {}).get("status") == "pinned_at_mid_boss":
+        node["rival_squad"]["status"] = "pushing_upper_strata"
+
+    la_res = resolve_boss_last_attack_window(player_state, raid_id=r_id, boss_tier="mid_boss", player_claimed_la=True)
+    xp_reward = 600 + (r_def["mid_boss_floor"] * 40)
+    col_reward = 400 + (r_def["mid_boss_floor"] * 25)
+    player_state["xp"] = int(player_state.get("xp", 0)) + xp_reward
+    player_state["col"] = int(player_state.get("col", 0)) + col_reward
+
+    log = (
+        f"🏆 **[MID-BOSS DEFEATED — {mb_def['name'].upper()} SHATTERED INTO POLYGONS!]**\n"
+        f"- **🛡️ THE STABILIZER BRAKE ACTIVATED:** `{r_def['name']}` Anomaly Bleed is now **PERMANENTLY LOCKED AT 0%**! "
+        f"Safe-Zones are secure from this Raid's outbreaks—you now have unlimited sandbox time to craft, rest, and prepare before pushing Floors {r_def['mid_boss_floor']+1}–{r_def['total_floors']}.\n"
+        f"- **🌀 Waypoint Sanctuary Attuned:** Floor {r_def['mid_boss_floor']} Waypoint Crystal warp unlocked!\n"
+        f"- **🎁 Spoils:** `+{xp_reward} XP`, `+{col_reward} Col` | {la_res.get('message', '')}"
+    )
+    return {
+        "success": True,
+        "defeated": True,
+        "is_stabilized": True,
+        "anomaly_bleed": 0,
+        "waypoint_unlocked": True,
+        "la_result": la_res,
+        "xp_reward": xp_reward,
+        "col_reward": col_reward,
+        "message": f"Defeated {mb_def['name']}! {r_def['name']} Anomaly Bleed locked at 0% & Floor {r_def['mid_boss_floor']} Waypoint unlocked!",
+        "log": log,
+    }
+
+
+def engage_raid_apex_boss(player_state: dict, raid_id: str = None, damage_dealt: int = 200) -> dict:
+    """
+    Engages the Raid's Apex Sovereign Boss at Floor N.
+    When defeated:
+    - Marks the entire Raid Location conquered (`apex_boss_defeated = True`, `is_stabilized = True`, `anomaly_bleed = 0`).
+    - Unseals the Leyline Transit Gate to the next planetary Raid Location (`unseals_gate_to`).
+    - Awards the 1-of-1 Last Attack (`LA`) Legendary/Mythic Relic.
+    """
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = raid_id or raids_state.get("active_raid_id", "pohatcong_spire")
+    r_def = GLOBAL_RAID_REGISTRY.get(r_id, GLOBAL_RAID_REGISTRY["pohatcong_spire"])
+    node = raids_state["raid_nodes"][r_id]
+    ab_def = r_def["apex_boss"]
+
+    node["current_floor"] = int(r_def["apex_boss_floor"])
+    node["highest_floor_reached"] = int(r_def["apex_boss_floor"])
+
+    bonus_dmg = 0
+    if node.get("boss_dossier_purchased"):
+        bonus_dmg += 35
+    if node.get("assigned_support_squad"):
+        bonus_dmg += 50
+
+    total_dmg = max(40, int(damage_dealt) + bonus_dmg)
+    old_hp = int(node.get("apex_boss_hp", ab_def["hp"]))
+    new_hp = max(0, old_hp - total_dmg)
+    node["apex_boss_hp"] = new_hp
+
+    if "update_unique_skill_trackers" in globals():
+        update_unique_skill_trackers(player_state, event_type="boss_strike", damage=total_dmg)
+
+    if new_hp > 0:
+        in_la_window = (new_hp / float(ab_def["max_hp"])) <= 0.15
+        log = (
+            f"👑 **[APEX RAID BOSS CLASH — {ab_def['name'].upper()} (FLOOR {r_def['apex_boss_floor']})]:** "
+            f"Dealt `{total_dmg} DMG` -> Boss HP: `{new_hp} / {ab_def['max_hp']}`."
+            + (" 🔥 **[FINAL 10% LAST ATTACK WINDOW OPEN!]**" if in_la_window else "")
+        )
+        return {
+            "success": True,
+            "defeated": False,
+            "in_last_attack_window": in_la_window,
+            "boss_hp": new_hp,
+            "boss_max_hp": ab_def["max_hp"],
+            "message": f"Struck Apex Boss {ab_def['name']} for {total_dmg} DMG ({new_hp}/{ab_def['max_hp']} HP)!",
+            "log": log,
+        }
+
+    node["apex_boss_defeated"] = True
+    node["mid_boss_defeated"] = True
+    node["is_stabilized"] = True
+    node["anomaly_bleed"] = 0
+    node["waypoint_unlocked"] = True
+
+    next_raid_id = ab_def.get("unseals_gate_to")
+    unsealed_name = None
+    if next_raid_id and next_raid_id in raids_state["raid_nodes"]:
+        raids_state["raid_nodes"][next_raid_id]["gate_unsealed"] = True
+        if next_raid_id not in raids_state["unsealed_gates"]:
+            raids_state["unsealed_gates"].append(next_raid_id)
+        unsealed_name = GLOBAL_RAID_REGISTRY[next_raid_id]["name"]
+
+    la_res = resolve_boss_last_attack_window(player_state, raid_id=r_id, boss_tier="apex_boss", player_claimed_la=True)
+    xp_reward = 1500 + (r_def["apex_boss_floor"] * 50)
+    col_reward = 1000 + (r_def["apex_boss_floor"] * 40)
+    player_state["xp"] = int(player_state.get("xp", 0)) + xp_reward
+    player_state["col"] = int(player_state.get("col", 0)) + col_reward
+
+    gate_msg = f"🌀 **Planetary Leyline Gate Unsealed:** `{unsealed_name}`!" if unsealed_name else "🌟 **All Planetary Gates Unlocked!**"
+    log = (
+        f"👑 **[APEX RAID CONQUERED — {ab_def['name'].upper()} ERADICATED ON FLOOR {r_def['apex_boss_floor']}!]**\n"
+        f"- {gate_msg}\n"
+        f"- **🎁 Spoils:** `+{xp_reward} XP`, `+{col_reward} Col` | {la_res.get('message', '')}"
+    )
+    return {
+        "success": True,
+        "defeated": True,
+        "unsealed_raid_id": next_raid_id,
+        "unsealed_raid_name": unsealed_name,
+        "la_result": la_res,
+        "xp_reward": xp_reward,
+        "col_reward": col_reward,
+        "message": f"Conquered {r_def['name']} Floor {r_def['apex_boss_floor']}! {gate_msg}",
+        "log": log,
+    }
+
+
+# =====================================================================
+# PHASE 11: CLASSIC SAO DEATH STAKES, ANTI-CRYSTAL ROOMS, BROKER INTEL,
+#           STRATEGY BRIEFINGS, LAST ATTACK (LA) BONUS & UNIQUE SKILLS
+# =====================================================================
+
+def ensure_death_and_legacy_system(player_state: dict) -> dict:
+    """Initializes the 10-Second Revival Window, Monument of Life, and Corpse Cache trackers."""
+    if not isinstance(player_state, dict):
+        return {}
+    death_sys = player_state.setdefault("death_system", {})
+    death_sys.setdefault("crisis_active", False)
+    death_sys.setdefault("seconds_remaining", 10)
+    death_sys.setdefault("crisis_location", "")
+    death_sys.setdefault("crisis_floor", 1)
+    death_sys.setdefault("monument_of_life", [])
+    death_sys.setdefault("corpse_caches", [])
+    death_sys.setdefault("legacy_generation", 1)
+    return death_sys
+
+
+def trigger_zero_hp_crisis(player_state: dict) -> dict:
+    """
+    Triggered when `player_state['hp'] <= 0`.
+    Starts the iconic SAO **10-Second Shatter Countdown** (`seconds_remaining = 10`), during which:
+    - A *Divine Stone of Returning Soul* can be consumed,
+    - An active Companion with `Affinity >= 40` can dive in to execute an Emergency Save, or
+    - An Emergency Teleport Crystal can extract the player (unless jammed by a Crimson Anti-Crystal room!).
+    """
+    death_sys = ensure_death_and_legacy_system(player_state)
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = raids_state.get("active_raid_id", "pohatcong_spire")
+    node = raids_state.get("raid_nodes", {}).get(r_id, {})
+
+    player_state["hp"] = 0
+    death_sys["crisis_active"] = True
+    death_sys["seconds_remaining"] = 10
+    death_sys["crisis_location"] = player_state.get("location", "Unknown Raid Floor")
+    death_sys["crisis_raid_id"] = r_id
+    death_sys["crisis_floor"] = int(node.get("current_floor", 1))
+
+    log = (
+        "💔 **[0 HP MORTAL CRISIS — 10-SECOND SHATTER COUNTDOWN INITIATED!]**\n"
+        "Your HP gauge hits `0 / " + str(player_state.get("max_hp", 100)) + "`! Blue-white polygonal fractures spiderweb across your chest. "
+        "You have **10.0 seconds** before complete avatar deletion: trigger a **Divine Stone of Returning Soul**, "
+        "call for a **Companion Emergency Save** (`Affinity >= 40`), or shatter an **Emergency Teleport Crystal**!"
+    )
+    return {
+        "crisis_active": True,
+        "seconds_remaining": 10,
+        "anti_crystal_jammed": bool(node.get("anti_crystal_active", False)),
+        "message": "0 HP Crisis! 10-Second Revival Window active!",
+        "log": log,
+    }
+
+
+def resolve_revival_window(player_state: dict, method: str = "companion_save") -> dict:
+    """
+    Resolves the 10-Second Revival Window at 0 HP:
+    - `revival_stone`: Uses a 'Divine Stone of Returning Soul' (or 'Revival Stone') from inventory -> Full 100% HP revival!
+    - `companion_save`: Active companion with `Affinity >= 40` intercepts the killing blow / administers emergency salve -> 50% HP revival!
+    - `emergency_crystal`: Uses a Teleport Crystal (blocked if `anti_crystal_active` is True!) -> Warps to Washington Safe-Zone at 25% HP!
+    - `expire`: Countdown hits 0.0s -> Executes the Rogue-Lite Legacy Reset (`execute_legacy_reset`).
+    """
+    death_sys = ensure_death_and_legacy_system(player_state)
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = raids_state.get("active_raid_id", "pohatcong_spire")
+    node = raids_state.get("raid_nodes", {}).get(r_id, {})
+    max_hp = max(1, int(player_state.get("max_hp", 100)))
+
+    if method == "revival_stone":
+        inv = player_state.get("inventory", [])
+        stone_item = None
+        for it in inv:
+            nm = it.get("name", "") if isinstance(it, dict) else str(it)
+            if any(k in nm.lower() for k in ["divine stone", "returning soul", "revival stone", "phoenix"]):
+                stone_item = it
+                break
+        if not stone_item:
+            return {"success": False, "message": "No Divine Stone of Returning Soul found in inventory!", "log": ""}
+        if isinstance(stone_item, dict) and stone_item.get("qty", 1) > 1:
+            stone_item["qty"] -= 1
+        else:
+            inv.remove(stone_item)
+        player_state["hp"] = max_hp
+        death_sys["crisis_active"] = False
+        if "update_unique_skill_trackers" in globals():
+            update_unique_skill_trackers(player_state, event_type="survived_zero_hp")
+        log = (
+            f"✨ **[DIVINE STONE OF RETURNING SOUL ACTIVATED — WITHIN 10 SECONDS!]:** "
+            f"Golden Klein-light engulfs your shattering polygons, knitting your avatar back together at **Full HP ({max_hp}/{max_hp})**!"
+        )
+        return {"success": True, "method": "revival_stone", "hp": max_hp, "message": "Revived to 100% HP via Divine Stone of Returning Soul!", "log": log}
+
+    elif method == "companion_save":
+        comps = player_state.get("companions", {})
+        savior = None
+        if isinstance(comps, dict):
+            for c_name, c_data in comps.items():
+                if isinstance(c_data, dict) and c_data.get("affinity", 0) >= 40 and c_data.get("hp", 35) > 0:
+                    savior = c_data
+                    break
+            # Fallback to Ren if present and affinity not yet set on legacy sheet
+            if not savior and "Ren" in comps and isinstance(comps["Ren"], dict) and comps["Ren"].get("hp", 35) > 0:
+                if int(comps["Ren"].get("affinity", 45)) >= 40:
+                    savior = comps["Ren"]
+        if not savior:
+            return {"success": False, "message": "No active companion with Affinity >= 40 is able to intercept the shatter!", "log": ""}
+
+        s_name = savior.get("name", "Ren")
+        savior["hp"] = max(1, int(savior.get("hp", 35)) // 2)
+        player_state["hp"] = max(1, max_hp // 2)
+        death_sys["crisis_active"] = False
+        if "update_unique_skill_trackers" in globals():
+            update_unique_skill_trackers(player_state, event_type="survived_zero_hp")
+        log = (
+            f"🛡️ **[COMPANION EMERGENCY INTERVENTION — {s_name.upper()} SAVES YOUR LIFE AT 2.4 SECONDS!]:** "
+            f"{s_name} lunges across the chamber, taking the brunt of the fatal shockwave and jamming an Aether-Defibrillator Injector into your chest! "
+            f"Your HP stabilizes at **{player_state['hp']}/{max_hp} HP**!"
+        )
+        return {"success": True, "method": "companion_save", "savior": s_name, "hp": player_state["hp"], "message": f"{s_name} rescued you before the 10-second shatter expired!", "log": log}
+
+    elif method == "emergency_crystal":
+        if node.get("anti_crystal_active", False):
+            return {
+                "success": False,
+                "blocked_by_anti_crystal": True,
+                "message": "🚨 TELEPORT CRYSTAL FAILED! Crimson Anti-Crystal quartz jams spatial extraction in this chamber!",
+                "log": "🚨 *[Teleport!]* ... Nothing happens! The Teleport Crystal fizzles in red static inside the Anti-Crystal field!",
+            }
+        player_state["hp"] = max(1, max_hp // 4)
+        player_state["location"] = "Sector 1 Safe-Zone: Washington Borough, NJ"
+        death_sys["crisis_active"] = False
+        if "update_unique_skill_trackers" in globals():
+            update_unique_skill_trackers(player_state, event_type="survived_zero_hp")
+        log = (
+            f"💎 **[EMERGENCY TELEPORT CRYSTAL SHATTERED AT 0.8 SECONDS!]:** "
+            f"Cerulean light rips you out of the Raid floor before your polygons scatter, depositing you on the cobblestones of "
+            f"**Washington Borough Safe-Zone** at `{player_state['hp']}/{max_hp} HP`!"
+        )
+        return {"success": True, "method": "emergency_crystal", "hp": player_state["hp"], "location": player_state["location"], "message": "Emergency Teleport Crystal extracted you to Washington Safe-Zone!", "log": log}
+
+    # Expire -> Rogue-Lite Legacy Reset
+    return execute_legacy_reset(player_state)
+
+
+def execute_legacy_reset(player_state: dict, new_survivor_name: str = None) -> dict:
+    """
+    Executes the **Rogue-Lite Legacy Reset** when the 10-Second Revival Window expires:
+    1. Enshrines the fallen character's name, level, class, and death floor on the **Monument of Life**.
+    2. Stores the fallen character's equipped gear, backpack inventory, and 50% of carried Col inside a
+       **Corpse Cache** on the exact Raid floor where they fell.
+    3. Preserves the Sovereign Homestead, Vault items/Col, Planetary World State, and Guild for the newly
+       calibrated Survivor, who spawns in Washington Borough Safe-Zone ready to reclaim the Corpse Cache!
+    """
+    import copy
+    death_sys = ensure_death_and_legacy_system(player_state)
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = death_sys.get("crisis_raid_id") or raids_state.get("active_raid_id", "pohatcong_spire")
+    node = raids_state.get("raid_nodes", {}).get(r_id, {})
+    death_floor = int(death_sys.get("crisis_floor") or node.get("current_floor", 1))
+    death_loc = death_sys.get("crisis_location") or player_state.get("location", "Raid Labyrinth")
+
+    old_name = player_state.get("name", "Fallen Vanguard")
+    old_level = int(player_state.get("level", 1))
+    old_class = player_state.get("class", "Warrior")
+    gen_num = int(death_sys.get("legacy_generation", 1))
+
+    # 1. Record on Monument of Life
+    epitaph = {
+        "generation": gen_num,
+        "name": old_name,
+        "level": old_level,
+        "class": old_class,
+        "raid_id": r_id,
+        "death_floor": death_floor,
+        "death_location": death_loc,
+        "status": "KIA — Polygon Shatter",
+    }
+    death_sys["monument_of_life"].append(epitaph)
+
+    # 2. Create Corpse Cache on the death floor
+    dropped_col = int(player_state.get("col", 0)) // 2
+    retained_col = int(player_state.get("col", 0)) - dropped_col
+    cached_items = copy.deepcopy(player_state.get("inventory", []))
+    cached_equipped = copy.deepcopy(player_state.get("equipped", {}))
+
+    cache_entry = {
+        "cache_id": f"cache_gen_{gen_num}_{r_id}_f{death_floor}",
+        "fallen_name": old_name,
+        "raid_id": r_id,
+        "floor": death_floor,
+        "location": death_loc,
+        "col": dropped_col,
+        "inventory": cached_items,
+        "equipped": cached_equipped,
+        "recovered": False,
+    }
+    death_sys["corpse_caches"].append(cache_entry)
+
+    # 3. Reset Avatar to Next-Gen Legacy Survivor while preserving Homestead, Vault, World & Guild
+    next_gen = gen_num + 1
+    death_sys["legacy_generation"] = next_gen
+    death_sys["crisis_active"] = False
+    death_sys["seconds_remaining"] = 10
+
+    successor_name = new_survivor_name or f"{old_name} II"
+    player_state["name"] = successor_name
+    player_state["level"] = max(1, old_level - 1)
+    player_state["max_hp"] = 100 + ((player_state["level"] - 1) * 25)
+    player_state["hp"] = player_state["max_hp"]
+    player_state["xp"] = 0
+    player_state["col"] = max(100, retained_col)
+    player_state["location"] = "Sector 1 Safe-Zone: Washington Borough, NJ"
+    player_state["equipped"] = {
+        "head": "None",
+        "chest": "Threadbare Scavenger Tunic",
+        "main_hand": "Iron Sword",
+        "off_hand": "None",
+        "accessory": "None",
+    }
+    player_state["inventory"] = [
+        {"name": "Iron Sword", "rarity": "Common", "slot": "main_hand", "qty": 1, "durability": 80, "max_durability": 80, "desc": "Standard replacement blade issued at the Washington Sanctuary."},
+        {"name": "Bottled Water", "rarity": "Common", "slot": "consumable", "qty": 2, "durability": 1, "max_durability": 1, "desc": "Clean drinking water."},
+    ]
+
+    log = (
+        f"🪦 **[10-SECOND COUNTDOWN EXPIRED — AVATAR SHATTERED & ENSHRINED ON THE MONUMENT OF LIFE]**\n"
+        f"- **Fallen Vanguard:** `{old_name}` (`Lv. {old_level} {old_class}`) has been etched into the **Iron Gate Monument of Life**.\n"
+        f"- **Corpse Cache Created:** `{old_name}`'s equipped loadout, `{len(cached_items)}` items, and `{dropped_col} Col` remain on **{GLOBAL_RAID_REGISTRY.get(r_id, {}).get('name', r_id)} — Floor {death_floor}**.\n"
+        f"- **Legacy Inheritor Awakened:** `{successor_name}` (`Lv. {player_state['level']}`) inherits your **Homestead, Vault, Guild, and World Progress** in Washington Borough Safe-Zone!"
+    )
+    return {
+        "success": True,
+        "legacy_reset_executed": True,
+        "fallen_epitaph": epitaph,
+        "corpse_cache": cache_entry,
+        "new_survivor": successor_name,
+        "message": f"{old_name} fell on Floor {death_floor}. Legacy Survivor {successor_name} has awakened to reclaim their Corpse Cache!",
+        "log": log,
+    }
+
+
+def recover_corpse_cache(player_state: dict, cache_id: str = None) -> dict:
+    """Reclaims a fallen predecessor's Corpse Cache (restoring all lost inventory items, gear, and Col)."""
+    death_sys = ensure_death_and_legacy_system(player_state)
+    caches = death_sys.get("corpse_caches", [])
+    target = None
+    for c in caches:
+        if not c.get("recovered", False) and (cache_id is None or c.get("cache_id") == cache_id):
+            target = c
+            break
+    if not target:
+        return {"success": False, "message": "No unrecovered Corpse Cache found.", "log": ""}
+
+    target["recovered"] = True
+    recovered_col = int(target.get("col", 0))
+    player_state["col"] = int(player_state.get("col", 0)) + recovered_col
+
+    inv = player_state.setdefault("inventory", [])
+    existing_names = {(i.get("name", "").lower() if isinstance(i, dict) else str(i).lower()) for i in inv}
+    items_restored = 0
+    for it in target.get("inventory", []):
+        it_name = it.get("name", "") if isinstance(it, dict) else str(it)
+        if it_name.lower() not in existing_names:
+            inv.append(it)
+            existing_names.add(it_name.lower())
+            items_restored += 1
+
+    # Restore equipped gear if superior/non-empty
+    for slot_k, eq_val in target.get("equipped", {}).items():
+        if eq_val and eq_val != "None":
+            player_state.setdefault("equipped", {})[slot_k] = eq_val
+
+    log = (
+        f"⚱️ **[CORPSE CACHE RECLAIMED — {target['fallen_name'].upper()}'S REMAINS RECOVERED!]:** "
+        f"You kneel beside the crystalline remnant on Floor {target['floor']} and recover `{items_restored} items`, "
+        f"equipped heirlooms, and `+{recovered_col} Col`!"
+    )
+    return {
+        "success": True,
+        "cache_id": target["cache_id"],
+        "col_recovered": recovered_col,
+        "items_restored": items_restored,
+        "message": f"Reclaimed {target['fallen_name']}'s Corpse Cache (+{recovered_col} Col, {items_restored} items)!",
+        "log": log,
+    }
+
+
+def use_teleport_crystal(player_state: dict, destination: str = "Sector 1 Safe-Zone: Washington Borough, NJ") -> dict:
+    """
+    Uses a Blue Teleport Crystal for instant Safe-Zone extraction.
+    Fails if the player is inside an active **Crimson Anti-Crystal Trap Room** (`anti_crystal_active == True`)!
+    """
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = raids_state.get("active_raid_id", "pohatcong_spire")
+    node = raids_state.get("raid_nodes", {}).get(r_id, {})
+
+    if node.get("anti_crystal_active", False):
+        return {
+            "success": False,
+            "blocked_by_anti_crystal": True,
+            "message": "🚨 TELEPORT CRYSTAL JAMMED! Crimson Anti-Crystal quartz blocks all spatial extraction on this floor!",
+            "log": "🚨 **[ANTI-CRYSTAL INTERFERENCE]:** You raise a Blue Teleport Crystal and shout *'Teleport!'* — but crimson static smothers the facet! Destroy the Jamming Obelisk first!",
+        }
+
+    player_state["location"] = destination
+    log = f"💎 **[TELEPORT CRYSTAL ACTIVATED — '{destination.upper()}']:** Cerulean spatial columns envelop your party and warp you safely back to **{destination}**!"
+    return {
+        "success": True,
+        "destination": destination,
+        "message": f"Teleported safely to {destination}!",
+        "log": log,
+    }
+
+
+def use_waypoint_crystal(player_state: dict, raid_id: str = None) -> dict:
+    """
+    Warps the party directly to the Raid's Floor floor(N/2) **Mid-Boss Waypoint Sanctuary**
+    once `waypoint_unlocked` is True (and if not blocked by an active Anti-Crystal field).
+    """
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = raid_id or raids_state.get("active_raid_id", "pohatcong_spire")
+    r_def = GLOBAL_RAID_REGISTRY.get(r_id, GLOBAL_RAID_REGISTRY["pohatcong_spire"])
+    node = raids_state["raid_nodes"][r_id]
+
+    if node.get("anti_crystal_active", False):
+        return {
+            "success": False,
+            "blocked_by_anti_crystal": True,
+            "message": "🚨 WAYPOINT CRYSTAL JAMMED! Disable the floor's Crimson Anti-Crystal Jammer first!",
+            "log": "",
+        }
+    if not node.get("waypoint_unlocked", False):
+        return {
+            "success": False,
+            "message": f"🔒 Floor {r_def['mid_boss_floor']} Waypoint Sanctuary in {r_def['name']} has not been reached/attuned yet!",
+            "log": "",
+        }
+
+    raids_state["active_raid_id"] = r_id
+    node["current_floor"] = int(r_def["mid_boss_floor"])
+    player_state["location"] = f"{r_def['name']} — Floor {r_def['mid_boss_floor']} Waypoint Sanctuary"
+    log = (
+        f"🌀 **[WAYPOINT CRYSTAL WARP]:** You step directly onto the attuned Floor {r_def['mid_boss_floor']} Waypoint Sanctuary "
+        f"inside **{r_def['name']}**, bypassing the lower strata!"
+    )
+    return {
+        "success": True,
+        "raid_id": r_id,
+        "floor": node["current_floor"],
+        "location": player_state["location"],
+        "message": f"Warped directly to {r_def['name']} Floor {node['current_floor']} Waypoint Sanctuary!",
+        "log": log,
+    }
+
+
+def purchase_broker_intel(player_state: dict, raid_id: str = None, intel_type: str = "floor_recon") -> dict:
+    """
+    Purchases tactical intelligence from Info Broker "Cipher" (Argo-style underworld informant):
+    - `floor_recon` (150 Col): Reveals hidden floor hazards (-4 to Trap DCs) and pre-warns/bypasses Crimson Anti-Crystal Trap Rooms!
+    - `boss_dossier` (250 Col): Reveals the Raid Boss's elemental weakness & telegraph cues (+25/35 Boss Weakpoint DMG, -2 Telegraph Save DC)!
+    """
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = raid_id or raids_state.get("active_raid_id", "pohatcong_spire")
+    r_def = GLOBAL_RAID_REGISTRY.get(r_id, GLOBAL_RAID_REGISTRY["pohatcong_spire"])
+    node = raids_state["raid_nodes"][r_id]
+
+    costs = {"floor_recon": 150, "boss_dossier": 250}
+    cost = costs.get(intel_type, 150)
+    if int(player_state.get("col", 0)) < cost:
+        return {"success": False, "message": f"Insufficient Col! Cipher requires {cost} Col (You have {player_state.get('col', 0)} Col).", "log": ""}
+
+    if intel_type == "floor_recon":
+        if node.get("floor_recon_purchased"):
+            return {"success": False, "message": f"You already own Cipher's Floor Recon Packet for {r_def['name']}!", "log": ""}
+        player_state["col"] -= cost
+        node["floor_recon_purchased"] = True
+        log = (
+            f"🕵️ **[INFO BROKER 'CIPHER' — FLOOR RECON PACKET ACQUIRED ({cost} Col)]:** "
+            f"Cipher flicks a hooded data-slate across the crate: *'Every trap wire and Crimson Anti-Crystal obelisk in {r_def['name']} is mapped right here. Don't get yourselves zeroed.'* "
+            f"(`-4 Trap DCs` & **Auto-Bypass Anti-Crystal Ambush Rooms** in `{r_def['name']}`!)"
+        )
+        return {"success": True, "intel_type": "floor_recon", "raid_id": r_id, "cost": cost, "message": f"Purchased Cipher's Floor Recon for {r_def['name']}!", "log": log}
+
+    if node.get("boss_dossier_purchased"):
+        return {"success": False, "message": f"You already own Cipher's Boss Dossier for {r_def['name']}!", "log": ""}
+    player_state["col"] -= cost
+    node["boss_dossier_purchased"] = True
+    mb = r_def["mid_boss"]
+    ab = r_def["apex_boss"]
+    log = (
+        f"📑 **[INFO BROKER 'CIPHER' — BOSS TELEGRAPH DOSSIER ACQUIRED ({cost} Col)]:**\n"
+        f"- **Mid-Boss ({mb['name']}):** Weakness `{mb['weakness']}` | Telegraph: *{mb['telegraph']}*\n"
+        f"- **Apex Boss ({ab['name']}):** Weakness `{ab['weakness']}` | Telegraph: *{ab['telegraph']}*\n"
+        f"- **Tactical Edge:** `+25/+35 Weakpoint DMG` & `-2 Telegraph Dodge DC`!"
+    )
+    return {"success": True, "intel_type": "boss_dossier", "raid_id": r_id, "cost": cost, "message": f"Purchased Cipher's Boss Dossier for {r_def['name']}!", "log": log}
+
+
+RAID_STRATEGY_SUPPORT_SQUADS = {
+    "Iron Vanguard Shield-Wall": {
+        "name": "Iron Vanguard Shield-Wall",
+        "commander": "Commander Vance",
+        "effect": "+3 AC vs Boss Telegraphs, +35/50 Support Damage, intercepts 30% of AoE splash damage.",
+    },
+    "Deepforge Sapper Battery": {
+        "name": "Deepforge Sapper Battery",
+        "commander": "Artificer Korin",
+        "effect": "Detonates Aether-Charges each round (+25 Boss Break Gauge shred, +35/50 Support Damage).",
+    },
+    "Aether-Conclave Disruptors": {
+        "name": "Aether-Conclave Disruptors",
+        "commander": "Magus Lyra",
+        "effect": "Suppresses Boss mana regeneration, lowers Boss DR by -3, and adds +35/50 Support Damage.",
+    },
+}
+
+
+def conduct_raid_strategy_briefing(player_state: dict, raid_id: str = None, support_squad: str = "Iron Vanguard Shield-Wall") -> dict:
+    """
+    Conducts a classic SAO **Pre-Boss Raid Strategy Briefing**, assigning an allied NPC faction strike squad
+    to coordinate during Mid-Boss and Apex Boss engagements.
+    """
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = raid_id or raids_state.get("active_raid_id", "pohatcong_spire")
+    r_def = GLOBAL_RAID_REGISTRY.get(r_id, GLOBAL_RAID_REGISTRY["pohatcong_spire"])
+    node = raids_state["raid_nodes"][r_id]
+
+    if support_squad not in RAID_STRATEGY_SUPPORT_SQUADS:
+        support_squad = "Iron Vanguard Shield-Wall"
+    sq_info = RAID_STRATEGY_SUPPORT_SQUADS[support_squad]
+    node["assigned_support_squad"] = support_squad
+
+    log = (
+        f"📋 **[RAID STRATEGY BRIEFING COMPLETE — {r_def['name'].upper()}]:**\n"
+        f"Around the holographic floor projection, **{sq_info['commander']}** salutes and locks in the **{support_squad}** battle plan!\n"
+        f"- **Coordinated Raid Effect:** {sq_info['effect']}"
+    )
+    return {
+        "success": True,
+        "raid_id": r_id,
+        "assigned_support_squad": support_squad,
+        "effect": sq_info["effect"],
+        "message": f"Strategy Briefing complete! Assigned [{support_squad}] to {r_def['name']}.",
+        "log": log,
+    }
+
+
+def resolve_boss_last_attack_window(
+    player_state: dict,
+    raid_id: str = None,
+    boss_tier: str = "mid_boss",
+    player_claimed_la: bool = True,
+    share_spoils_with_allies: bool = False,
+) -> dict:
+    """
+    Resolves the classic SAO **Last Attack (`LA`) Bonus & Beater/Monopoly Reputation**:
+    - During the final 10% of a Raid Boss's HP, the Player and Allied/Rival NPCs race for the killing blow (`LA`).
+    - If `player_claimed_la` is True, the **1-of-1 Unique `[LA-Unique]` Relic** drops directly into the player's inventory!
+    - Repeatedly hoarding `LA` drops without sharing spoils increases `beater_notoriety` ("Beater / Monopoly" title, +10% solo crit, +15% NPC tension),
+      whereas sharing spoils (`share_spoils_with_allies=True`) boosts Faction Reputation and Frontline Hero standing.
+    """
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = raid_id or raids_state.get("active_raid_id", "pohatcong_spire")
+    r_def = GLOBAL_RAID_REGISTRY.get(r_id, GLOBAL_RAID_REGISTRY["pohatcong_spire"])
+    boss_def = r_def.get("apex_boss" if boss_tier == "apex_boss" else "mid_boss", r_def["mid_boss"])
+    la_item = dict(boss_def["la_unique_drop"])
+
+    rep_sys = player_state.setdefault("frontline_reputation", {"la_count": 0, "beater_notoriety": 0, "title": "Frontline Clearer"})
+
+    if player_claimed_la:
+        rep_sys["la_count"] = int(rep_sys.get("la_count", 0)) + 1
+        _add_or_merge_tutorial_loot(player_state, la_item)
+        if share_spoils_with_allies:
+            rep_sys["beater_notoriety"] = max(0, int(rep_sys.get("beater_notoriety", 0)) - 1)
+            rep_sys["title"] = "Frontline Paragon"
+            if "modify_faction_reputation" in globals():
+                modify_faction_reputation(player_state, "iron_vanguard", 15, reason="Shared Boss Raid Spoils")
+        else:
+            rep_sys["beater_notoriety"] = int(rep_sys.get("beater_notoriety", 0)) + 1
+            if rep_sys["beater_notoriety"] >= 2:
+                rep_sys["title"] = "🖤 Beater (Solo Monopoly)"
+
+        if "update_unique_skill_trackers" in globals():
+            update_unique_skill_trackers(player_state, event_type="boss_last_attack")
+
+        log = (
+            f"⚔️ **[LAST ATTACK (`LA`) BONUS CLAIMED BY {player_state.get('name', 'PLAYER').upper()}!]**\n"
+            f"- **1-of-1 Unique Relic Inscribed:** `{la_item['name']}` (`{la_item['rarity']}`) materialized directly into your inventory!\n"
+            f"- **Frontline Standing:** `{rep_sys['title']}` (`LA Count: {rep_sys['la_count']}` | `Beater Notoriety: {rep_sys['beater_notoriety']}`)"
+        )
+        return {
+            "success": True,
+            "player_claimed_la": True,
+            "la_item": la_item,
+            "reputation": rep_sys,
+            "message": f"LAST ATTACK BONUS! Acquired 1-of-1 [{la_item['name']}] ({rep_sys['title']})!",
+            "log": log,
+        }
+
+    return {
+        "success": True,
+        "player_claimed_la": False,
+        "la_item": None,
+        "reputation": rep_sys,
+        "message": "Allied Strike Commander claimed the Last Attack bonus.",
+        "log": "⚔️ Allied Strike Commander landed the final blow on the boss.",
+    }
+
+
+UNIQUE_SKILLS_REGISTRY = {
+    "twin_titan_execution": {
+        "id": "twin_titan_execution",
+        "name": "[Unique Skill] Twin-Titan Execution (Dual Blades)",
+        "archetype": "The Starburst Anomaly (1-of-1 Dual Wielding)",
+        "description": (
+            "A 1-of-1 Cardinal Overlay anomaly granted to the survivor with the highest reaction speed and dual-weapon "
+            "proficiency. Unlocks the 16-hit [Starburst Eclipse] combo and allows equipping two full-sized one-handed weapons with +2 AC Parry and +2 Extra Attacks."
+        ),
+        "requirement_desc": "Reach 250+ Mastery in at least 2 combat skills OR land 2+ Boss Last Attacks / Strikes.",
+    },
+    "unyielding_bastion": {
+        "id": "unyielding_bastion",
+        "name": "[Unique Skill] Unyielding Bastion (Holy Sword / Aegis)",
+        "archetype": "The Immortal Wall (1-of-1 Commander Shield)",
+        "description": (
+            "A 1-of-1 Cardinal Overlay anomaly granted to the survivor who defies 0 HP deletion and shields the frontline. "
+            "Converts your shield/armor into an indestructible force-field (+4 AC, immunity to Critical Hits, and once-per-day party invulnerability)."
+        ),
+        "requirement_desc": "Survive a 0 HP 10-Second Crisis OR reach CON >= 16 with 1+ Boss Strike.",
+    },
+    "singularity_overwrite": {
+        "id": "singularity_overwrite",
+        "name": "[Unique Skill] Singularity Overwrite (Serpent-Script Kernel)",
+        "archetype": "The Code-Breaker (1-of-1 Cardinal Override)",
+        "description": (
+            "A 1-of-1 Cardinal Overlay anomaly awakened by rewriting the alien Ouroboros Kernel. "
+            "Allows rewriting 1 enemy telegraph or environmental hazard per combat into an allied buff and deals True Force damage."
+        ),
+        "requirement_desc": "Perform 2+ Ability Fusions or reach INT/WIS >= 16 with 2+ Floor Skirmishes.",
+    },
+}
+
+
+def update_unique_skill_trackers(player_state: dict, event_type: str = "", damage: int = 0) -> dict:
+    """Updates hidden behavioral counters used to awaken 1-of-1 Unique Skills."""
+    if not isinstance(player_state, dict):
+        return {}
+    trackers = player_state.setdefault("unique_skill_trackers", {
+        "boss_strikes": 0,
+        "boss_last_attacks": 0,
+        "survived_zero_hp": 0,
+        "floor_skirmishes": 0,
+        "highest_single_hit": 0,
+        "unlocked_unique_skill": None,
+    })
+    if event_type == "boss_strike":
+        trackers["boss_strikes"] = int(trackers.get("boss_strikes", 0)) + 1
+        trackers["highest_single_hit"] = max(int(trackers.get("highest_single_hit", 0)), int(damage))
+    elif event_type == "boss_last_attack":
+        trackers["boss_last_attacks"] = int(trackers.get("boss_last_attacks", 0)) + 1
+    elif event_type == "survived_zero_hp":
+        trackers["survived_zero_hp"] = int(trackers.get("survived_zero_hp", 0)) + 1
+    elif event_type == "floor_skirmish":
+        trackers["floor_skirmishes"] = int(trackers.get("floor_skirmishes", 0)) + 1
+
+    evaluate_unique_skill_awakening(player_state)
+    return trackers
+
+
+def evaluate_unique_skill_awakening(player_state: dict, force_skill_id: str = None) -> dict:
+    """
+    Evaluates whether the player has satisfied the hidden behavioral triggers to awaken one of the
+    1-of-1 SAO **Unique Skills** (`twin_titan_execution`, `unyielding_bastion`, `singularity_overwrite`).
+    """
+    if not isinstance(player_state, dict):
+        return {"awakened": False}
+    trackers = player_state.setdefault("unique_skill_trackers", {
+        "boss_strikes": 0,
+        "boss_last_attacks": 0,
+        "survived_zero_hp": 0,
+        "floor_skirmishes": 0,
+        "highest_single_hit": 0,
+        "unlocked_unique_skill": None,
+    })
+    if trackers.get("unlocked_unique_skill") and not force_skill_id:
+        u_id = trackers["unlocked_unique_skill"]
+        return {"awakened": True, "already_unlocked": True, "skill_id": u_id, "skill": UNIQUE_SKILLS_REGISTRY.get(u_id)}
+
+    chosen_id = force_skill_id
+    if not chosen_id:
+        skills = player_state.get("skills", {})
+        high_mastery_count = sum(1 for v in skills.values() if isinstance(v, dict) and int(v.get("mastery", 0)) >= 250)
+        fusion_count = sum(1 for k, v in skills.items() if "[fusion]" in str(k).lower() or (isinstance(v, dict) and v.get("is_fusion")))
+        stats = player_state.get("stats", {})
+
+        if high_mastery_count >= 2 or int(trackers.get("boss_last_attacks", 0)) >= 1:
+            chosen_id = "twin_titan_execution"
+        elif int(trackers.get("survived_zero_hp", 0)) >= 1 or (int(stats.get("CON", 10)) >= 16 and int(trackers.get("boss_strikes", 0)) >= 1):
+            chosen_id = "unyielding_bastion"
+        elif fusion_count >= 2 or (max(int(stats.get("INT", 10)), int(stats.get("WIS", 10))) >= 16 and int(trackers.get("floor_skirmishes", 0)) >= 2):
+            chosen_id = "singularity_overwrite"
+
+    if not chosen_id or chosen_id not in UNIQUE_SKILLS_REGISTRY:
+        return {"awakened": False}
+
+    u_def = UNIQUE_SKILLS_REGISTRY[chosen_id]
+    trackers["unlocked_unique_skill"] = chosen_id
+    feats = player_state.setdefault("feats", [])
+    feat_str = f"{u_def['name']}: {u_def['description']}"
+    if not any(u_def["name"].lower() in str(f).lower() for f in feats):
+        feats.append(feat_str)
+    player_state.setdefault("skills", {})[u_def["name"]] = {
+        "mastery": 500,
+        "tier": "Master",
+        "description": u_def["description"],
+        "is_unique_skill": True,
+    }
+    log = (
+        f"🌟 **[CARDINAL SYSTEM ANOMALY — 1-OF-1 UNIQUE SKILL AWAKENED: {u_def['name'].upper()}!]**\n"
+        f"- **Classification:** `{u_def['archetype']}`\n"
+        f"- **Effect:** {u_def['description']}"
+    )
+    return {
+        "awakened": True,
+        "already_unlocked": False,
+        "skill_id": chosen_id,
+        "skill": u_def,
+        "message": f"1-of-1 Unique Skill Awakened: {u_def['name']}!",
+        "log": log,
+    }
+
+
+# =====================================================================
+# PHASE 12: MACRO PLAYER MOTIVATION — "THE STABILIZER MERGE"
+#           (RIVAL FRONTLINE TICKER + ANOMALY BLEED + ENCLAVE STEWARDSHIP)
+# =====================================================================
+
+def ensure_enclave_stewardship(player_state: dict) -> dict:
+    """Initializes the Washington Borough Enclave Stewardship & Outbreak Siege defenses."""
+    if not isinstance(player_state, dict):
+        return {}
+    enclave = player_state.setdefault("enclave_stewardship", {})
+    enclave.setdefault("name", "Washington Borough Safe-Zone Enclave")
+    enclave.setdefault("prosperity", 50)        # 0-100
+    enclave.setdefault("defense_rating", 40)    # 0-100
+    enclave.setdefault("citizen_morale", "Hopeful")
+    enclave.setdefault("total_col_invested", 0)
+    enclave.setdefault("boss_cores_donated", 0)
+    enclave.setdefault("outbreak_siege_active", False)
+    enclave.setdefault("siege_source_raid", None)
+    return enclave
+
+
+def advance_living_world_day(player_state: dict, days: int = 1) -> dict:
+    """
+    Advances the Living World Macro Simulation by `days` (triggered on 24h Rest, Overland Expeditions, or Manual Tick):
+    1. **The Stabilizer Merge (Anomaly Bleed vs. Mid-Boss Brake):**
+       - Any unsealed Raid whose **Mid-Boss is NOT yet defeated** (`is_stabilized == False`) accumulates `+10% Anomaly Bleed` per day.
+       - Any Raid whose **Mid-Boss HAS been defeated** (`is_stabilized == True`) stays **permanently locked at 0% Anomaly Bleed**!
+       - At `>= 50%` Bleed, regional weather shifts to *Crimson Ash*; at `100%` Bleed, an **Enclave Outbreak Siege** triggers!
+    2. **Rival Frontline Squad Ticker:**
+       - Allied/Rival NPC squads advance floors in active Raids until they hit the **Mid-Boss Floor**, where they become `pinned_at_mid_boss` and broadcast an SOS Rescue flare!
+    """
+    raids_state = ensure_planetary_raid_system(player_state)
+    enclave = ensure_enclave_stewardship(player_state)
+    news_events = []
+
+    for _ in range(max(1, int(days))):
+        for r_id, node in raids_state.get("raid_nodes", {}).items():
+            r_def = GLOBAL_RAID_REGISTRY.get(r_id, {})
+            if not node.get("gate_unsealed", False):
+                continue
+
+            # 1. Anomaly Bleed Escalation (or 0% Lock if Stabilized!)
+            if node.get("is_stabilized", False) or node.get("mid_boss_defeated", False):
+                node["is_stabilized"] = True
+                node["anomaly_bleed"] = 0
+            else:
+                old_bleed = int(node.get("anomaly_bleed", 0))
+                new_bleed = min(100, old_bleed + 10)
+                node["anomaly_bleed"] = new_bleed
+                if new_bleed >= 100 and not enclave.get("outbreak_siege_active"):
+                    enclave["outbreak_siege_active"] = True
+                    enclave["siege_source_raid"] = r_id
+                    news_events.append(
+                        f"🚨 [OUTBREAK SIEGE ALERT]: {r_def.get('name', r_id)} reached 100% Anomaly Bleed! "
+                        f"Rift-stalker hordes are besieging the {enclave['name']} perimeter!"
+                    )
+                elif new_bleed >= 50 and old_bleed < 50:
+                    news_events.append(
+                        f"🌪️ [CRIMSON ASH WARNING]: Anomaly Bleed from {r_def.get('name', r_id)} hit {new_bleed}%! "
+                        f"Defeat its Floor {r_def.get('mid_boss_floor', 5)} Mid-Boss to engage the Stabilizer Brake!"
+                    )
+
+            # 2. Rival Squad Progression & Mid-Boss Pinning
+            sq = node.get("rival_squad", {})
+            if sq and not node.get("apex_boss_defeated", False):
+                mid_f = int(r_def.get("mid_boss_floor", 5))
+                cur_sq_f = int(sq.get("current_floor", 1))
+                if not node.get("mid_boss_defeated", False):
+                    if cur_sq_f < mid_f:
+                        sq["current_floor"] = cur_sq_f + 1
+                        if sq["current_floor"] == mid_f:
+                            sq["status"] = "pinned_at_mid_boss"
+                            news_events.append(
+                                f"🆘 [FRONTLINE SOS]: {sq['squad_name']} ({sq['commander']}) is pinned down by "
+                                f"{r_def['mid_boss']['name']} on Floor {mid_f} of {r_def['name']}! Rescue requested!"
+                            )
+                    else:
+                        sq["status"] = "pinned_at_mid_boss"
+
+    log = "\n".join(news_events) if news_events else "✅ Living World Telemetry: All stabilized Leyline Anchors holding steady at 0% Anomaly Bleed."
+    return {
+        "success": True,
+        "days_advanced": days,
+        "news_events": news_events,
+        "outbreak_siege_active": bool(enclave.get("outbreak_siege_active", False)),
+        "message": news_events[0] if news_events else "Living World Day advanced.",
+        "log": log,
+    }
+
+
+def rescue_pinned_frontline_squad(player_state: dict, raid_id: str = None) -> dict:
+    """
+    Responds to a Rival/Allied Squad's SOS at the Mid-Boss Floor, extracting their wounded vanguard,
+    awarding Faction Reputation, Col, and unlocking their support for the Mid-Boss battle.
+    """
+    raids_state = ensure_planetary_raid_system(player_state)
+    r_id = raid_id or raids_state.get("active_raid_id", "pohatcong_spire")
+    r_def = GLOBAL_RAID_REGISTRY.get(r_id, GLOBAL_RAID_REGISTRY["pohatcong_spire"])
+    node = raids_state["raid_nodes"][r_id]
+    sq = node.get("rival_squad", {})
+
+    sq["status"] = "rescued_allied"
+    node["assigned_support_squad"] = "Iron Vanguard Shield-Wall"
+    col_reward = 300
+    xp_reward = 450
+    player_state["col"] = int(player_state.get("col", 0)) + col_reward
+    player_state["xp"] = int(player_state.get("xp", 0)) + xp_reward
+    if "modify_faction_reputation" in globals():
+        modify_faction_reputation(player_state, "iron_vanguard", 20, reason=f"Rescued {sq.get('squad_name', 'Frontline Squad')}")
+
+    log = (
+        f"🤝 **[FRONTLINE SOS RESCUE COMPLETE — {sq.get('squad_name', 'VANGUARD SQUAD').upper()} SAVED!]:** "
+        f"You break the encirclement on Floor {r_def['mid_boss_floor']} and stabilize **{sq.get('commander', 'Commander Vance')}**'s squad! "
+        f"(`+{xp_reward} XP`, `+{col_reward} Col`, `+20 Faction Rep`, and automatic **Shield-Wall Support** for the Mid-Boss fight!)"
+    )
+    return {
+        "success": True,
+        "raid_id": r_id,
+        "squad": sq,
+        "xp_reward": xp_reward,
+        "col_reward": col_reward,
+        "message": f"Rescued {sq.get('squad_name', 'Frontline Squad')} on Floor {r_def['mid_boss_floor']}!",
+        "log": log,
+    }
+
+
+def contribute_to_enclave_stewardship(player_state: dict, col_amount: int = 250) -> dict:
+    """Invests Col into Washington Borough Enclave Stewardship to upgrade ward turrets, walls, and Prosperity."""
+    enclave = ensure_enclave_stewardship(player_state)
+    amt = max(50, int(col_amount))
+    if int(player_state.get("col", 0)) < amt:
+        return {"success": False, "message": f"Insufficient Col! Need {amt} Col.", "log": ""}
+
+    player_state["col"] -= amt
+    gain = max(5, amt // 25)
+    enclave["defense_rating"] = min(100, int(enclave.get("defense_rating", 40)) + gain)
+    enclave["prosperity"] = min(100, int(enclave.get("prosperity", 50)) + (gain // 2))
+    enclave["total_col_invested"] = int(enclave.get("total_col_invested", 0)) + amt
+    enclave["citizen_morale"] = "Exalted" if enclave["prosperity"] >= 80 else "Steadfast"
+
+    log = (
+        f"🏰 **[ENCLAVE STEWARDSHIP UPGRADED (+{amt} Col)]:** "
+        f"Washington Borough Safe-Zone Defense Rating rose to `{enclave['defense_rating']}/100` "
+        f"and Prosperity reached `{enclave['prosperity']}/100` (`{enclave['citizen_morale']}`)!"
+    )
+    return {
+        "success": True,
+        "defense_rating": enclave["defense_rating"],
+        "prosperity": enclave["prosperity"],
+        "message": f"Enclave Defense upgraded to {enclave['defense_rating']}/100!",
+        "log": log,
+    }
+
+
+def resolve_enclave_outbreak_siege(player_state: dict) -> dict:
+    """Repels an active 100% Anomaly Bleed Outbreak Siege at the Safe-Zone perimeter and resets source bleed to 40%."""
+    enclave = ensure_enclave_stewardship(player_state)
+    raids_state = ensure_planetary_raid_system(player_state)
+    src_id = enclave.get("siege_source_raid") or raids_state.get("active_raid_id", "pohatcong_spire")
+    node = raids_state.get("raid_nodes", {}).get(src_id, {})
+
+    enclave["outbreak_siege_active"] = False
+    enclave["siege_source_raid"] = None
+    if not node.get("is_stabilized", False):
+        node["anomaly_bleed"] = 40
+
+    xp_reward = 500
+    col_reward = 350
+    player_state["xp"] = int(player_state.get("xp", 0)) + xp_reward
+    player_state["col"] = int(player_state.get("col", 0)) + col_reward
+
+    log = (
+        f"🛡️ **[SAFE-ZONE OUTBREAK SIEGE REPELLED!]:** "
+        f"Fighting alongside the Washington Borough Wardens (Defense `{enclave.get('defense_rating', 40)}/100`), "
+        f"you shatter the Outbreak Vanguard! (`+{xp_reward} XP`, `+{col_reward} Col`). "
+        f"*Tip: Defeat the Mid-Boss of `{GLOBAL_RAID_REGISTRY.get(src_id, {}).get('name', src_id)}` to permanently lock its Anomaly Bleed at 0%!*"
+    )
+    return {
+        "success": True,
+        "xp_reward": xp_reward,
+        "col_reward": col_reward,
+        "message": f"Outbreak Siege repelled! (+{xp_reward} XP, +{col_reward} Col)",
+        "log": log,
+    }
+
+
+# =====================================================================
+# PHASE 13: LONG-TERM ECONOMIC, COMPANION & SOCIAL SINKS
+#           (1. +1 TO +50 LISBETH SMITHING, 2. COMPANION QUESTS & CRISIS,
+#            3. PLAYER-FOUNDED GUILDS & STRIKE SQUAD DISPATCH)
+# =====================================================================
+
+def enhance_equipment(
+    player_state: dict,
+    slot: str = "main_hand",
+    use_master_smith: bool = True,
+    target_levels: int = 1,
+) -> dict:
+    """
+    Implements the classic SAO **Weapon & Armor Enhancement Loop (`+1` to `+50`)**:
+    - Tracks per-slot enhancement levels in `player_state['equipment_enhancements'][slot]` (`0` to `50`).
+    - Updates the equipped item's display name (`Iron Sword +15`) and grants scaling ATK/AC/Max Durability bonuses.
+    - `+1` to `+10`: 100% Safe Calibration.
+    - `+11` to `+30`: High-Tension Forging (Risk of -1 level downgrade on failure UNLESS `use_master_smith=True`,
+      which commissions Master Artisan Lisbeth/Torvald for +25% success rate and ZERO downgrade protection!).
+    - `+31` to `+50`: Sovereign Mythic Resonance (Unlocks glowing weapon auras and Break Gauge multipliers).
+    """
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    eq = player_state.setdefault("equipped", {})
+    raw_name = str(eq.get(slot, "None")).strip()
+    if not raw_name or raw_name == "None":
+        return {"success": False, "message": f"No item equipped in slot '{slot}'.", "log": ""}
+
+    enh_map = player_state.setdefault("equipment_enhancements", {})
+    cur_plus = int(enh_map.get(slot, 0))
+    if cur_plus >= 50:
+        return {"success": False, "message": f"{raw_name} has already reached the maximum +50 Sovereign Cap!", "log": ""}
+
+    steps = max(1, min(int(target_levels), 50 - cur_plus))
+    base_name = re.sub(r"\s*\+\d+$", "", raw_name).strip()
+
+    total_cost = 0
+    successes = 0
+    downgrades = 0
+
+    for _ in range(steps):
+        next_plus = cur_plus + 1
+        step_cost = 50 + (next_plus * 20) + (75 if use_master_smith and next_plus > 10 else 0)
+        if int(player_state.get("col", 0)) < step_cost:
+            if successes == 0:
+                return {"success": False, "message": f"Insufficient Col for +{next_plus} enhancement (Need {step_cost} Col).", "log": ""}
+            break
+
+        player_state["col"] -= step_cost
+        total_cost += step_cost
+
+        if next_plus <= 10:
+            chance = 1.0
+        elif next_plus <= 30:
+            chance = 0.70 + (0.25 if use_master_smith else 0.0)
+        else:
+            chance = 0.55 + (0.35 if use_master_smith else 0.0)
+
+        if random.random() <= chance or use_master_smith:
+            cur_plus = next_plus
+            successes += 1
+        else:
+            if next_plus > 10 and not use_master_smith:
+                cur_plus = max(10, cur_plus - 1)
+                downgrades += 1
+
+    enh_map[slot] = cur_plus
+    new_display_name = f"{base_name} +{cur_plus}" if cur_plus > 0 else base_name
+    eq[slot] = new_display_name
+
+    # Boost durability & stats metadata
+    dur_map = normalize_gear_durability(player_state) if "normalize_gear_durability" in globals() else {}
+    if slot in dur_map:
+        dur_map[slot]["max"] = 100 + (cur_plus * 5)
+        dur_map[slot]["cur"] = dur_map[slot]["max"]
+
+    aura_tier = (
+        "Sovereign Mythic Aura (+31 to +50)" if cur_plus >= 31
+        else ("High-Tension Masterwork (+11 to +30)" if cur_plus >= 11 else "Tempered Calibration (+1 to +10)")
+    )
+    atk_or_ac_bonus = (cur_plus // 2) + 1
+    log = (
+        f"🔨 **[MASTER SMITH ENHANCEMENT — {new_display_name.upper()}]:**\n"
+        f"- **Forging Result:** `+{cur_plus} / +50` (`{aura_tier}`) | Cost: `{total_cost} Col`\n"
+        f"- **Enhancement Bonus:** `+{atk_or_ac_bonus}` Scaling ATK/AC & `{100 + cur_plus * 5}` Max Durability!"
+    )
+    return {
+        "success": True,
+        "slot": slot,
+        "item_name": new_display_name,
+        "enhancement_level": cur_plus,
+        "aura_tier": aura_tier,
+        "bonus": atk_or_ac_bonus,
+        "cost": total_cost,
+        "downgrades": downgrades,
+        "message": f"Enhanced {new_display_name} (+{atk_or_ac_bonus} ATK/AC, {aura_tier})!",
+        "log": log,
+    }
+
+
+COMPANION_PERSONAL_QUESTS = {
+    "Ren": {
+        "companion": "Ren",
+        "quest_title": "The Ouroboros Beta-Tester's Ghost",
+        "target_raid_id": "tokyo_override",
+        "ascended_class": "Ouroboros Kernel Architect (Tier 2 MageTech Vanguard)",
+        "ultimate_dual_tech": "Serpent-Script: Starlight Horizon Override",
+        "stages": [
+            "Stage 1: Decode the encrypted Shinjuku Beta-Test partition inside Ren's Aetheric Ocular Lens.",
+            "Stage 2: Breach the Tokyo Override Raid ( or Sector 1 Spire Relay) and recover the lost Beta-Tester Log.",
+            "Stage 3: Awaken Ren's Tier 2 Ascended Class [Ouroboros Kernel Architect] & Ultimate Dual-Tech!",
+        ],
+    },
+    "Elora": {
+        "companion": "Elora",
+        "quest_title": "Roots of the Schwarzwald World-Tree",
+        "target_raid_id": "black_forest_citadel",
+        "ascended_class": "Arch-Druid of the Astral Canopy (Tier 2 Warden)",
+        "ultimate_dual_tech": "Yggdrasil Sanctuary Bloom",
+        "stages": [
+            "Stage 1: Purify the blighted leyline seedlings in the Washington Greenhouse.",
+            "Stage 2: Harvest a Living Heartwood Bough from the Schwarzwald Root-Citadel.",
+            "Stage 3: Awaken Elora's Tier 2 Ascended Class & Ultimate Dual-Tech!",
+        ],
+    },
+    "Torvald": {
+        "companion": "Torvald",
+        "quest_title": "The Deepforge Ingot of the Canyon Colossus",
+        "target_raid_id": "grand_canyon_monolith",
+        "ascended_class": "Sovereign Runesmith of the First Anvil (Tier 2 Artificer)",
+        "ultimate_dual_tech": "Mjolnir Tectonic Shatter",
+        "stages": [
+            "Stage 1: Calibrate the Deepforged Master-Anvil to withstand 5,000°K plasma.",
+            "Stage 2: Extract a Primordial Schist Core from the Grand Canyon Monolith.",
+            "Stage 3: Awaken Torvald's Tier 2 Ascended Class & Ultimate Dual-Tech!",
+        ],
+    },
+    "Kibs": {
+        "companion": "Kibs",
+        "quest_title": "The Seventh Choir of the Inverted Basilica",
+        "target_raid_id": "vatican_catacombs",
+        "ascended_class": "Phantom Maestro of the Void (Tier 2 Trickster)",
+        "ultimate_dual_tech": "Requiem of the Shattered Crown",
+        "stages": [
+            "Stage 1: Decipher the stolen Vatican choir score in Washington Borough.",
+            "Stage 2: Infiltrate the Inverted Basilica catacombs and ring the Silent Bell.",
+            "Stage 3: Awaken Kibs's Tier 2 Ascended Class & Ultimate Dual-Tech!",
+        ],
+    },
+}
+
+
+def advance_companion_personal_quest(player_state: dict, companion_name: str = "Ren") -> dict:
+    """
+    Advances a Companion's 3-Stage Personal Raid Story Quest.
+    Upon completing Stage 3, awakens their **Tier 2 Ascended Class**, boosts Max HP by +25,
+    raises Affinity to 100, and unlocks their **Ultimate Dual-Tech**!
+    """
+    if companion_name not in COMPANION_PERSONAL_QUESTS:
+        companion_name = "Ren"
+    q_def = COMPANION_PERSONAL_QUESTS[companion_name]
+
+    comps = player_state.setdefault("companions", {})
+    c_sheet = comps.setdefault(companion_name, {"name": companion_name, "hp": 35, "max_hp": 35, "ac": 16, "affinity": 50})
+    cur_stage = int(c_sheet.get("personal_quest_stage", 0))
+    if cur_stage >= 3:
+        return {"success": True, "completed": True, "stage": 3, "message": f"{companion_name}'s Personal Quest is already complete!", "log": ""}
+
+    new_stage = cur_stage + 1
+    c_sheet["personal_quest_stage"] = new_stage
+    c_sheet["personal_quest_title"] = q_def["quest_title"]
+    c_sheet["affinity"] = min(100, int(c_sheet.get("affinity", 50)) + 20)
+
+    if new_stage < 3:
+        stage_text = q_def["stages"][new_stage - 1]
+        log = f"📜 **[COMPANION QUEST — {companion_name.upper()}: '{q_def['quest_title']}']:** Completed {stage_text} (`Affinity: {c_sheet['affinity']}/100`)"
+        return {
+            "success": True,
+            "completed": False,
+            "stage": new_stage,
+            "companion": companion_name,
+            "message": f"Advanced {companion_name}'s quest to Stage {new_stage}/3!",
+            "log": log,
+        }
+
+    # Stage 3 Complete -> Ascend Companion!
+    c_sheet["class"] = q_def["ascended_class"]
+    c_sheet["archetype"] = q_def["ascended_class"]
+    c_sheet["role"] = q_def["ascended_class"]
+    c_sheet["max_hp"] = int(c_sheet.get("max_hp", 35)) + 25
+    c_sheet["hp"] = c_sheet["max_hp"]
+    c_sheet["ac"] = int(c_sheet.get("ac", 16)) + 2
+    c_sheet["affinity"] = 100
+    c_sheet["affinity_tier"] = "Soulbound Vanguard"
+    c_sheet["dual_tech_name"] = q_def["ultimate_dual_tech"]
+    c_sheet["ascended"] = True
+
+    log = (
+        f"🌟 **[COMPANION ASCENSION COMPLETE — {companion_name.upper()} AWAKENS '{q_def['ascended_class'].upper()}'!]**\n"
+        f"- **Quest Completed:** `{q_def['quest_title']}` (Stage 3/3)\n"
+        f"- **Ascended Stats:** `HP: {c_sheet['hp']}/{c_sheet['max_hp']}` | `AC: {c_sheet['ac']}` | `Affinity: 100/100 [Soulbound Vanguard]`\n"
+        f"- **Ultimate Dual-Tech Unlocked:** `⚡ {q_def['ultimate_dual_tech']}`!"
+    )
+    return {
+        "success": True,
+        "completed": True,
+        "stage": 3,
+        "companion": companion_name,
+        "ascended_class": q_def["ascended_class"],
+        "ultimate_dual_tech": q_def["ultimate_dual_tech"],
+        "message": f"{companion_name} ascended to [{q_def['ascended_class']}]!",
+        "log": log,
+    }
+
+
+def trigger_companion_crisis(player_state: dict, companion_name: str = "Ren") -> dict:
+    """Places a companion at 0 HP into a mortal 10-Second Shatter Crisis."""
+    comps = player_state.setdefault("companions", {})
+    c_sheet = comps.setdefault(companion_name, {"name": companion_name, "hp": 35, "max_hp": 35})
+    c_sheet["hp"] = 0
+    c_sheet["in_mortal_crisis"] = True
+    c_sheet["status"] = "0 HP — 10-Second Shatter Crisis!"
+    log = f"🚨 **[COMPANION MORTAL CRISIS — {companion_name.upper()} AT 0 HP!]:** {companion_name} drops to one knee as blue polygons begin flaking from their armor! Rescue them immediately!"
+    return {"success": True, "companion": companion_name, "in_mortal_crisis": True, "message": f"{companion_name} is at 0 HP in a 10-Second Shatter Crisis!", "log": log}
+
+
+def resolve_companion_crisis(player_state: dict, companion_name: str = "Ren") -> dict:
+    """Saves a companion from their 0 HP 10-Second Shatter Crisis, restoring 60% HP and granting +15 Affinity."""
+    comps = player_state.setdefault("companions", {})
+    c_sheet = comps.setdefault(companion_name, {"name": companion_name, "hp": 0, "max_hp": 35})
+    max_hp = max(1, int(c_sheet.get("max_hp", 35)))
+    c_sheet["hp"] = max(1, int(max_hp * 0.6))
+    c_sheet["in_mortal_crisis"] = False
+    c_sheet["status"] = "Vigilant and operational"
+    c_sheet["affinity"] = min(100, int(c_sheet.get("affinity", 50)) + 15)
+    log = (
+        f"💚 **[COMPANION SAVED — {companion_name.upper()} PULLED BACK FROM THE BRINK!]:** "
+        f"You shield {companion_name} and shatter a restorative crystal over their chest! "
+        f"`{companion_name}` recovers to `{c_sheet['hp']}/{max_hp} HP` (`+15 Affinity` -> `{c_sheet['affinity']}/100`)!"
+    )
+    return {"success": True, "companion": companion_name, "hp": c_sheet["hp"], "affinity": c_sheet["affinity"], "message": f"Rescued {companion_name} from 0 HP crisis!", "log": log}
+
+
+def ensure_player_guild_system(player_state: dict) -> dict:
+    """Initializes the Player-Founded Guild & Autonomous Strike Squad Management system."""
+    if not isinstance(player_state, dict):
+        return {}
+    guild = player_state.setdefault("player_guild", {})
+    guild.setdefault("chartered", False)
+    guild.setdefault("name", "Unchartered Vanguard")
+    guild.setdefault("motto", "Until the Final Floor Clears.")
+    guild.setdefault("level", 1)
+    guild.setdefault("treasury_col", 0)
+    guild.setdefault("strike_squads", [])
+    return guild
+
+
+def charter_player_guild(player_state: dict, guild_name: str = "Knights of the Fractured Oath", motto: str = "No Survivor Left Behind.") -> dict:
+    """Charters a custom Player-Founded Guild (Cost: 500 Col) and recruits the 1st Vanguard Strike Squad."""
+    guild = ensure_player_guild_system(player_state)
+    if guild.get("chartered"):
+        guild["name"] = guild_name.strip() or guild["name"]
+        guild["motto"] = motto.strip() or guild["motto"]
+        return {"success": True, "guild": guild, "message": f"Updated Guild Charter: {guild['name']}!", "log": ""}
+
+    cost = 500
+    if int(player_state.get("col", 0)) < cost:
+        return {"success": False, "message": f"Chartering a Guild requires {cost} Col (You have {player_state.get('col', 0)} Col).", "log": ""}
+
+    player_state["col"] -= cost
+    guild["chartered"] = True
+    guild["name"] = guild_name.strip() or "Knights of the Fractured Oath"
+    guild["motto"] = motto.strip() or "No Survivor Left Behind."
+    if not guild["strike_squads"]:
+        guild["strike_squads"].append({
+            "squad_id": "squad_alpha",
+            "name": "Alpha Frontline Strikers",
+            "rank": 1,
+            "members": ["Vanguard Kael", "Shield-Maiden Sera", "Runesmith Dax", "Cleric Mina"],
+            "assigned_raid_id": "pohatcong_spire",
+            "mission_type": "farm_strata",
+            "pending_col": 150,
+            "pending_ingots": 2,
+        })
+
+    log = (
+        f"🚩 **[PLAYER GUILD CHARTERED — '{guild['name'].upper()}']:** "
+        f"Your Guild Banner unfurls over the Washington Borough Estate! (`Alpha Frontline Strikers` 4-NPC squad recruited and ready for Raid dispatch!)"
+    )
+    return {"success": True, "guild": guild, "message": f"Chartered Guild [{guild['name']}]!", "log": log}
+
+
+def recruit_guild_strike_squad(player_state: dict, squad_name: str = "Bravo Rift-Reapers") -> dict:
+    """Recruits an additional 4-NPC Strike Squad into the Player's Guild (Cost: 350 Col)."""
+    guild = ensure_player_guild_system(player_state)
+    if not guild.get("chartered"):
+        return {"success": False, "message": "Charter your Guild first before recruiting Strike Squads!", "log": ""}
+
+    cost = 350
+    if int(player_state.get("col", 0)) < cost:
+        return {"success": False, "message": f"Recruiting a 4-NPC Strike Squad costs {cost} Col.", "log": ""}
+
+    player_state["col"] -= cost
+    sq_idx = len(guild["strike_squads"]) + 1
+    new_sq = {
+        "squad_id": f"squad_{sq_idx}",
+        "name": squad_name.strip() or f"Strike Division #{sq_idx}",
+        "rank": 1,
+        "members": [f"Striker {sq_idx}-A", f"Aegis {sq_idx}-B", f"Caster {sq_idx}-C", f"Scout {sq_idx}-D"],
+        "assigned_raid_id": "pohatcong_spire",
+        "mission_type": "farm_strata",
+        "pending_col": 120,
+        "pending_ingots": 1,
+    }
+    guild["strike_squads"].append(new_sq)
+    log = f"⚔️ **[GUILD STRIKE SQUAD RECRUITED]:** `{new_sq['name']}` joined **{guild['name']}**!"
+    return {"success": True, "squad": new_sq, "message": f"Recruited [{new_sq['name']}]!", "log": log}
+
+
+def dispatch_guild_squad(player_state: dict, squad_id: str = "squad_alpha", raid_id: str = "pohatcong_spire", mission_type: str = "farm_strata") -> dict:
+    """
+    Dispatches a Guild Strike Squad on an autonomous Raid assignment:
+    - `farm_strata`: Harvests Col & Aether-Ingots from cleared Raid strata.
+    - `hold_sanctuary`: Suppresses `-10% Anomaly Bleed` in the target Raid and fortifies the Mid-Boss Sanctuary.
+    """
+    guild = ensure_player_guild_system(player_state)
+    raids_state = ensure_planetary_raid_system(player_state)
+    if not guild.get("chartered") or not guild.get("strike_squads"):
+        return {"success": False, "message": "Charter a Guild and recruit a Strike Squad first!", "log": ""}
+
+    sq = next((s for s in guild["strike_squads"] if s.get("squad_id") == squad_id), guild["strike_squads"][0])
+    if raid_id not in GLOBAL_RAID_REGISTRY:
+        raid_id = "pohatcong_spire"
+
+    sq["assigned_raid_id"] = raid_id
+    sq["mission_type"] = mission_type
+    sq["pending_col"] = int(sq.get("pending_col", 0)) + 200
+    sq["pending_ingots"] = int(sq.get("pending_ingots", 0)) + 2
+
+    node = raids_state["raid_nodes"][raid_id]
+    if mission_type == "hold_sanctuary" and not node.get("is_stabilized", False):
+        node["anomaly_bleed"] = max(0, int(node.get("anomaly_bleed", 0)) - 10)
+
+    r_name = GLOBAL_RAID_REGISTRY[raid_id]["name"]
+    log = (
+        f"📡 **[GUILD SQUAD DISPATCHED — {sq['name'].upper()} -> {r_name.upper()} ({mission_type})]:** "
+        f"Accumulated `{sq['pending_col']} Col` and `{sq['pending_ingots']} Aether-Steel Ingots` ready for collection!"
+    )
+    return {"success": True, "squad": sq, "raid_id": raid_id, "mission_type": mission_type, "message": f"Dispatched {sq['name']} to {r_name}!", "log": log}
+
+
+def collect_guild_dispatch_rewards(player_state: dict) -> dict:
+    """Collects all Col and Smithing Ingots farmed by the Player's Guild Strike Squads."""
+    guild = ensure_player_guild_system(player_state)
+    if not guild.get("chartered"):
+        return {"success": False, "message": "No chartered Guild active.", "log": ""}
+
+    total_col = 0
+    total_ingots = 0
+    for sq in guild.get("strike_squads", []):
+        total_col += int(sq.get("pending_col", 0))
+        total_ingots += int(sq.get("pending_ingots", 0))
+        sq["pending_col"] = 0
+        sq["pending_ingots"] = 0
+
+    if total_col == 0 and total_ingots == 0:
+        total_col = 150
+        total_ingots = 1
+
+    player_state["col"] = int(player_state.get("col", 0)) + total_col
+    if total_ingots > 0:
+        _add_or_merge_tutorial_loot(player_state, {
+            "name": "Frontline Aether-Steel Ingot",
+            "rarity": "Rare",
+            "category": "Crafting & Smithing Material",
+            "slot": "item",
+            "qty": total_ingots,
+            "durability": 1,
+            "max_durability": 1,
+            "weight_lbs": 1.0,
+            "desc": "High-purity raid ingot harvested by Guild Strike Squads for +1 to +50 Master Smith weapon/armor enhancement.",
+        })
+
+    log = f"💰 **[GUILD DISPATCH SPOILS COLLECTED]:** Claimed `+{total_col} Col` and `+{total_ingots}x Frontline Aether-Steel Ingot` from your Strike Squads!"
+    return {
+        "success": True,
+        "col_collected": total_col,
+        "ingots_collected": total_ingots,
+        "message": f"Collected +{total_col} Col and +{total_ingots} Aether-Steel Ingots from Guild Squads!",
+        "log": log,
+    }
+
 
 
 

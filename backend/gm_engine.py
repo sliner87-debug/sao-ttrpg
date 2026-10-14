@@ -72,6 +72,14 @@ def generate_visible_state(api_key: str = None, player_state: dict = None, world
 
     # Synchronize player location and environment integrity
     if player_state and isinstance(player_state, dict):
+        from backend import mechanics
+        if mechanics.is_tutorial_active(player_state):
+            tut_ms = mechanics.build_tutorial_master_state(player_state)
+            master_state["environment"] = tut_ms["environment"]
+            master_state["entities"] = tut_ms["entities"]
+            master_state["players"] = tut_ms["players"]
+            save_json(master_state_path, master_state)
+
         # Check if all hostiles in the room are defeated / inert
         active_hostiles = [
             e for e in master_state.get("entities", [])
@@ -84,7 +92,7 @@ def generate_visible_state(api_key: str = None, player_state: dict = None, world
         cur_loc_low = str(player_state.get("location", "") or master_state.get("environment", {}).get("location", "")).lower()
         in_dungeon_or_mine = any(w in cur_loc_low for w in ["mine", "shaft", "depths", "labyrinth", "quarry", "dungeon", "tunnel", "cavern", "beneath", "incline"]) and "clinic" not in cur_loc_low and "catacomb" not in cur_loc_low
 
-        if player_action and not active_hostiles:
+        if player_action and not active_hostiles and not mechanics.is_tutorial_active(player_state):
             act_low = player_action.lower()
             is_direct_ui_travel = "[direct_travel]" in act_low or "vaulted catacombs of doc mercer" in act_low or "step into quartermaster vane" in act_low
             if any(k in act_low for k in ["hit the doc", "visit doc mercer", "doc mercer", "mercer's clinic", "vaulted catacombs", "flesh-weaving and graft clinic"]):
@@ -110,7 +118,10 @@ def generate_visible_state(api_key: str = None, player_state: dict = None, world
         master_loc = master_state.get("environment", {}).get("location", "").strip()
 
         active_zone = world_atlas.resolve_zone_from_location(p_loc)
-        is_safe = world_atlas.is_location_safe_zone(p_loc) or any(w in p_loc.lower() for w in ["safe-zone", "safe zone", "washington", "clinic", "catacomb", "depot", "sanctuary", "manor", "outpost"])
+        is_safe = (
+            not mechanics.is_tutorial_active(player_state)
+            and (world_atlas.is_location_safe_zone(p_loc) or any(w in p_loc.lower() for w in ["safe-zone", "safe zone", "washington", "clinic", "catacomb", "depot", "sanctuary", "manor", "outpost"]))
+        )
 
         needs_sync = False
         if p_loc and p_loc != master_loc:
@@ -305,18 +316,21 @@ def resolve_turn(api_key: str, player_action: str, player_state: dict = None):
         
     p_name = (player_state.get("name") if isinstance(player_state, dict) and player_state.get("name") else "Survivor").strip()
     pending_dest = (player_state or {}).get("pending_destination_hint", "")
+    tutorial_directive = mechanics.get_tutorial_gm_directive(player_state or {})
+    tutorial_block = f"\n{tutorial_directive}\n" if tutorial_directive else ""
 
     prompt = f"""You are the Cardinal System (GM). Resolve the turn.
 Ruleset constraints must be applied strictly:
 {rules}
 
 CORE GM BEHAVIOR RULES:
-0. CRITICAL PLAYER NAME MANDATE:
+0. CRITICAL PLAYER NAME, GENDER & PHYSICAL PROFILE MANDATE:
    - The Human Player's actual entered character name is "{p_name}".
+   - PLAYER SEX / GENDER & PRONOUNS: "{p_name}" is {phys_profile['gender']} ({phys_profile['pronouns']}). Always use {phys_profile['pronouns']} pronouns when referring to "{p_name}" in narration and NPC dialogue.
    - Every companion (including Ren), every NPC (Doc Mercer, Quartermaster Vane, etc.), and the GM narrative MUST ALWAYS call the player by their exact character name ("{p_name}").
    - NEVER call the player by any placeholder name, legacy alias, or generic title unless that is their exact entered character name!
    - PHYSICAL PROFILE: {phys_profile['summary']}. Active body modifiers: {'; '.join(phys_profile['effects']) or 'none (Medium / Average build / Prime age)'}.
-     Enforce these: add the reach bonus to melee reach, apply the shove/grapple modifier when the player resists being shoved or grappled, apply Size Stealth Advantage / tunnel Disadvantage in tight spaces, and have NPCs and narration reflect the player's age, height and build.
+     Enforce these: add the reach bonus to melee reach, apply the shove/grapple modifier when the player resists being shoved or grappled, apply Size Stealth Advantage / tunnel Disadvantage in tight spaces, and have NPCs and narration reflect the player's gender, age, height and build.{tutorial_block}
 1. COMPANION REN (SERPENT-SCRIPT `OUROBOROS KERNEL v3.14` & SENTIENT DIAGNOSTIC SUBROUTINE STAGE {ren_sub_info.get('stage', 0)}):
    - Ren is MALE (he/him). Never use 'she' or 'her' when narrating Ren's moves.
    - CANONICAL PYTHON LORE (`Serpent-Script`): When the alien Cardinal System integrated Earth, it assimilated Earth's dominant pre-collapse AI language (**Python**) into its neural-aetheric bridging syntax: **Serpent-Script (`Ouroboros Kernel v3.14`)**. Ren's **Aetheric Ocular Lens** is locked in an unprivileged `Ouroboros Debug Shell`, so he literally sees glowing cyan Python dictionaries (`visible_room["entities"]`, `target.status`, `target.max_hp = [KERNEL_REDACTED]`) overlaid on reality, inducing visceral existential horror that he is trapped inside a sandboxed JSON/Python file!
@@ -377,6 +391,13 @@ CORE GM BEHAVIOR RULES:
 
 17. 100-MILE WASHINGTON NJ REGIONAL ATLAS CONTEXT (ACTIVE OR TARGET ZONE):
 {world_atlas.format_zone_gm_briefing(world_atlas.resolve_zone_from_location((player_state or {}).get("location") or master_state.get("environment", {}).get("location", "")) or world_atlas.resolve_zone_from_location(player_action))}
+
+18. PLANETARY PATCHWORK EARTH RAIDS (1–50 FLOORS), 10-SECOND REVIVAL CRISIS, ANTI-CRYSTAL ROOMS & STABILIZER MERGE (PHASES 10–13):
+   - Active Global Raid Status: `{json.dumps(mechanics.get_global_raid_status(player_state or {}) if hasattr(mechanics, 'get_global_raid_status') else {}, default=str)}`.
+   - 0 HP 10-Second Shatter Crisis: If the player or a companion drops to `0 HP`, narrate the iconic SAO **10-Second Shatter Countdown** (`Divine Stone of Returning Soul`, `Companion Emergency Save` at Affinity >= 40, or `Emergency Teleport Crystal` unless jammed by a Crimson Anti-Crystal room).
+   - Crimson Anti-Crystal Trap Floors: When `anti_crystal_active` is True, Blue Teleport Crystals and Waypoint Crystals fizzle in crimson static until the Jamming Obelisk is destroyed!
+   - The Stabilizer Merge: Defeating a Raid's Mid-Boss at Floor floor(N/2) permanently locks that Raid's Anomaly Bleed at `0%` (`is_stabilized = True`) and unlocks the Mid-Boss Waypoint Sanctuary.
+   - Last Attack (`LA`) Bonus & Unique Skills: During the final 10% of a Raid Boss's HP, highlight the race for the `LA` killing blow to claim 1-of-1 `[LA-Unique]` relics!
 
 Current Master State:
 {json.dumps(master_state, indent=2)}
