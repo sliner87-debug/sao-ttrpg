@@ -18,55 +18,159 @@
     /* Sci-Fi HUD Header */
     #hud-header {
       position: absolute; top: 15px; left: 60px; z-index: 1000;
-      background: rgba(12, 16, 24, 0.92); border: 1px solid #00d2ff;
-      border-radius: 8px; padding: 12px 18px; box-shadow: 0 4px 25px rgba(0, 210, 255, 0.25);
-      backdrop-filter: blur(8px); max-width: 550px;
+      background: rgba(12, 16, 24, 0.94); border: 1px solid #00d2ff;
+      border-radius: 8px; padding: 8px 14px; box-shadow: 0 4px 25px rgba(0, 210, 255, 0.25);
+      backdrop-filter: blur(8px); max-width: 520px; transition: all 0.25s ease;
     }
-    #hud-header h1 { font-size: 18px; font-weight: 700; color: #00d2ff; letter-spacing: 0.8px; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
-    #hud-header p { font-size: 12px; color: #a4b3c6; line-height: 1.4; }
+    .header-top-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    #hud-header h1 {
+      font-size: 14px; font-weight: 700; color: #00d2ff; letter-spacing: 0.8px;
+      margin: 0; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .header-toggle-btn {
+      background: #141b24; border: 1px solid #233044; color: #00d2ff;
+      border-radius: 4px; padding: 1px 7px; font-size: 12px; font-weight: 700;
+      cursor: pointer; line-height: 1.4;
+    }
+    .header-toggle-btn:hover { background: #00d2ff; color: #0a0e14; }
+    #hud-header-content {
+      margin-top: 6px;
+    }
+    #hud-header p { font-size: 11px; color: #a4b3c6; line-height: 1.35; }
+    
+    /* Floating Open Button for Controls */
+    #btn-open-panel {
+      position: absolute; top: 15px; right: 15px; z-index: 1001;
+      background: rgba(12, 16, 24, 0.95); border: 1px solid #00d2ff;
+      color: #00d2ff; font-weight: 700; font-size: 12px; border-radius: 30px;
+      padding: 8px 14px; cursor: pointer; box-shadow: 0 4px 20px rgba(0,210,255,0.3);
+      display: none; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    #btn-open-panel:hover { background: #00d2ff; color: #0a0e14; transform: scale(1.03); }
     
     /* Control Panel Box (Top Right) */
     #hud-panel {
-      position: absolute; top: 15px; right: 15px; z-index: 1000;
-      background: rgba(12, 16, 24, 0.94); border: 1px solid #303e54;
-      border-radius: 8px; padding: 14px; width: 340px; max-height: 90vh;
-      overflow-y: auto; box-shadow: 0 6px 30px rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+      position: absolute; top: 15px; right: 15px; z-index: 1002;
+      background: rgba(12, 16, 24, 0.96); border: 1px solid #303e54;
+      border-radius: 8px; padding: 12px; width: 340px; max-height: 90vh;
+      overflow-y: auto; box-shadow: 0 6px 30px rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+      transition: transform 0.25s ease, opacity 0.25s ease;
     }
-    .panel-section-title {
-      font-size: 13px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1px; color: #00d2ff; margin-bottom: 10px; border-bottom: 1px solid #233044; padding-bottom: 4px;
+    #hud-panel.collapsed {
+      transform: translateX(120%);
+      pointer-events: none;
+      opacity: 0;
+    }
+    
+    .panel-header-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #233044; padding-bottom: 8px; margin-bottom: 10px;
+    }
+    .panel-header-bar h2 {
+      font-size: 13px; font-weight: 700; color: #00d2ff; letter-spacing: 0.5px;
+    }
+    .btn-close-panel {
+      background: #1e293b; border: 1px solid #475569; color: #cbd5e1;
+      border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .btn-close-panel:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+
+    /* Accordion Sections */
+    .accordion-section {
+      margin-bottom: 6px; border: 1px solid #233044; border-radius: 6px; overflow: hidden;
+    }
+    .accordion-header {
+      background: #141b24; padding: 7px 10px; cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 12px; font-weight: 700; color: #00d2ff; letter-spacing: 0.3px;
+      user-select: none; transition: background 0.15s;
+    }
+    .accordion-header:hover { background: #1c2635; }
+    .accordion-chevron {
+      font-size: 11px; color: #64748b; transition: transform 0.2s ease;
+    }
+    .accordion-header.active .accordion-chevron {
+      transform: rotate(90deg); color: #00d2ff;
+    }
+    .accordion-body {
+      padding: 8px 10px; background: #0c1017; display: none;
+    }
+    .accordion-body.open {
+      display: block;
     }
     
     .layer-toggle {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 10px; margin-bottom: 6px; border-radius: 6px;
+      padding: 6px 8px; margin-bottom: 4px; border-radius: 4px;
       background: #141b24; border: 1px solid #233044; cursor: pointer; transition: all 0.2s;
     }
     .layer-toggle:hover { background: #1c2635; border-color: #00d2ff; }
-    .layer-toggle label { cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex: 1; }
-    .badge-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-    .dot-underground { background: #ff3344; box-shadow: 0 0 8px #ff3344; }
-    .dot-underwater { background: #00b4d8; box-shadow: 0 0 8px #00b4d8; }
-    .dot-surface { background: #2ec4b6; box-shadow: 0 0 8px #2ec4b6; }
-    .dot-elevated { background: #b5179e; box-shadow: 0 0 8px #b5179e; }
+    .layer-toggle label { cursor: pointer; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; flex: 1; }
+    .badge-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot-underground { background: #ff3344; box-shadow: 0 0 6px #ff3344; }
+    .dot-underwater { background: #00b4d8; box-shadow: 0 0 6px #00b4d8; }
+    .dot-surface { background: #2ec4b6; box-shadow: 0 0 6px #2ec4b6; }
+    .dot-elevated { background: #b5179e; box-shadow: 0 0 6px #b5179e; }
     
+    /* Basemap Selection Box */
+    .basemap-option {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 8px; margin-bottom: 4px; border-radius: 4px;
+      background: #141b24; border: 1px solid #233044; cursor: pointer;
+      font-size: 11.5px; font-weight: 600; color: #cbd5e1; transition: all 0.2s;
+    }
+    .basemap-option:hover { background: #1c2635; border-color: #00d2ff; }
+    .basemap-option input { cursor: pointer; accent-color: #00d2ff; }
+
     /* Quick Jump Selector */
     .jump-btn {
       background: #16202c; border: 1px solid #28374d; color: #d0dbe8;
-      font-size: 12px; padding: 6px 10px; border-radius: 4px; cursor: pointer;
+      font-size: 11px; padding: 5px 8px; border-radius: 4px; cursor: pointer;
       text-align: left; margin-bottom: 4px; width: 100%; transition: all 0.15s;
     }
     .jump-btn:hover { background: #00d2ff; color: #0a0e14; font-weight: 700; border-color: #00d2ff; }
     
+    /* Archival Records Panel */
+    .archive-box {
+      background: #101622; border: 1px solid #ffaa00;
+      border-radius: 6px; padding: 8px; font-size: 10.5px; line-height: 1.35;
+    }
+    .archive-box h3 {
+      font-size: 11px; font-weight: 700; color: #ffaa00; text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+    }
+    .archive-item {
+      margin-bottom: 6px; border-bottom: 1px solid #233044; padding-bottom: 5px;
+    }
+    .archive-item:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+    .archive-title { font-weight: 700; color: #38bdf8; }
+    .archive-scale { color: #f59e0b; font-weight: 600; }
+
     /* Resolution Disclaimer Banner */
     #resolution-banner {
-      position: absolute; bottom: 25px; left: 60px; z-index: 1000;
-      background: rgba(16, 22, 32, 0.95); border: 1px solid #ffaa00;
-      border-radius: 6px; padding: 10px 16px; font-size: 12px; color: #e0e6ed;
-      max-width: 600px; line-height: 1.4; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      position: absolute; bottom: 20px; left: 60px; z-index: 1000;
+      background: rgba(16, 22, 32, 0.96); border: 1px solid #ffaa00;
+      border-radius: 6px; padding: 8px 12px; font-size: 11px; color: #e0e6ed;
+      max-width: 480px; line-height: 1.35; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
     }
-    #resolution-banner strong { color: #ffaa00; }
-    
+    .banner-close-btn {
+      background: transparent; border: none; color: #ffaa00; font-size: 13px;
+      font-weight: 700; cursor: pointer; padding: 0 4px; line-height: 1;
+    }
+    .banner-close-btn:hover { color: #fff; }
+    #btn-reopen-banner {
+      position: absolute; bottom: 20px; left: 60px; z-index: 999;
+      background: rgba(16, 22, 32, 0.9); border: 1px solid #ffaa00;
+      color: #ffaa00; border-radius: 50%; width: 28px; height: 28px;
+      display: none; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 13px; font-weight: 700; box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    #btn-reopen-banner:hover { background: #ffaa00; color: #0a0e14; }
+
     /* Custom Map Markers */
     .custom-icon {
       display: flex; align-items: center; justify-content: center;
@@ -85,146 +189,204 @@
       box-shadow: 0 8px 30px rgba(0, 210, 255, 0.3) !important;
     }
     .leaflet-popup-tip { background: #0e121a !important; border: 1px solid #00d2ff; }
-    .popup-title { font-size: 15px; font-weight: 700; color: #00d2ff; margin-bottom: 6px; border-bottom: 1px solid #233044; padding-bottom: 4px; }
-    .popup-meta { font-size: 12px; margin-bottom: 4px; color: #94a3b8; }
+    .popup-title { font-size: 14px; font-weight: 700; color: #00d2ff; margin-bottom: 6px; border-bottom: 1px solid #233044; padding-bottom: 4px; }
+    .popup-meta { font-size: 11.5px; margin-bottom: 3px; color: #94a3b8; }
     .popup-meta strong { color: #cbd5e1; }
-    .popup-desc { font-size: 12px; line-height: 1.4; color: #e2e8f0; margin: 8px 0; }
+    .popup-desc { font-size: 11.5px; line-height: 1.35; color: #e2e8f0; margin: 6px 0; }
     .streetview-btn {
       display: inline-block; background: #00d2ff; color: #0a0e14 !important;
       font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
-      padding: 6px 12px; border-radius: 4px; text-decoration: none; margin-top: 6px;
+      padding: 5px 10px; border-radius: 4px; text-decoration: none; margin-top: 6px;
       transition: background 0.2s;
     }
     .streetview-btn:hover { background: #38bdf8; }
 
-    /* Basemap Selection Box */
-    .basemap-option {
-      display: flex; align-items: center; gap: 8px;
-      padding: 6px 10px; margin-bottom: 4px; border-radius: 4px;
-      background: #141b24; border: 1px solid #233044; cursor: pointer;
-      font-size: 12px; font-weight: 600; color: #cbd5e1; transition: all 0.2s;
+    /* Responsive Mobile Media Queries */
+    @media (max-width: 768px) {
+      #hud-header {
+        left: 10px; top: 10px; max-width: calc(100vw - 110px); padding: 6px 10px;
+      }
+      #hud-header h1 { font-size: 12px; }
+      #hud-header p { font-size: 10px; }
+      
+      #btn-open-panel {
+        top: 10px; right: 10px; padding: 6px 10px; font-size: 11px;
+      }
+      #hud-panel {
+        top: 10px; right: 10px; width: calc(100vw - 20px); max-height: 85vh;
+        padding: 10px;
+      }
+      #resolution-banner {
+        left: 10px; right: 10px; bottom: 10px; max-width: none; font-size: 10px;
+      }
+      #btn-reopen-banner {
+        left: 10px; bottom: 10px;
+      }
+      .leaflet-top.leaflet-left {
+        top: 55px !important;
+      }
     }
-    .basemap-option:hover { background: #1c2635; border-color: #00d2ff; }
-    .basemap-option input { cursor: pointer; accent-color: #00d2ff; }
-    
-    /* Archival Records Panel */
-    .archive-box {
-      margin-top: 14px; background: #101622; border: 1px solid #ffaa00;
-      border-radius: 6px; padding: 10px; font-size: 11px; line-height: 1.4;
-    }
-    .archive-box h3 {
-      font-size: 12px; font-weight: 700; color: #ffaa00; text-transform: uppercase;
-      letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
-    }
-    .archive-item {
-      margin-bottom: 8px; border-bottom: 1px solid #233044; padding-bottom: 6px;
-    }
-    .archive-item:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
-    .archive-title { font-weight: 700; color: #38bdf8; }
-    .archive-scale { color: #f59e0b; font-weight: 600; }
-  </style>
+</style>
 </head>
 <body>
 
+  
+  <!-- Top-Left Collapsible HUD Header -->
   <div id="hud-header">
-    <h1><span>🛰️</span> SECTOR 1 MULTI-LAYER RADIAL MAP (0–25 MILES)</h1>
-    <p>Origin: <strong>Washington Borough, NJ (07882)</strong> • 40.7584° N, 74.9793° W • Base Elev: 460 ft ASL<br>
-    Coverage: 1,963.5 sq mi circular core encompassing Warren, Hunterdon, Morris, Sussex (NJ) & Northampton (PA).</p>
+    <div class="header-top-row">
+      <h1><span>🛰️</span> SECTOR 1 RADIAL MAP</h1>
+      <button id="btn-toggle-header" class="header-toggle-btn" onclick="toggleHeader()" title="Collapse / Expand Info">−</button>
+    </div>
+    <div id="hud-header-content">
+      <p>Origin: <strong>Washington Borough, NJ (07882)</strong> • 40.7584° N, 74.9793° W • Base Elev: 460 ft ASL<br>
+      Coverage: 1,963.5 sq mi circular core encompassing Warren, Hunterdon, Morris, Sussex (NJ) & Northampton (PA).</p>
+    </div>
   </div>
 
+  <!-- Floating Button to Open Control Panel when Collapsed -->
+  <button id="btn-open-panel" onclick="toggleControlPanel()" title="Open Controls & Layers">
+    <span>🎛️</span><span>Controls & Layers</span>
+  </button>
+
+  <!-- Top-Right Collapsible HUD Control Panel -->
   <div id="hud-panel">
-    <div class="panel-section-title">Ultra-Res Basemaps</div>
-    <label class="basemap-option">
-      <input type="radio" name="basemap" value="njOrtho" checked>
-      <span>🌟 NJ 15cm Ultra-Res Ortho (Level 20 - 5.8" GSD)</span>
-    </label>
-    <label class="basemap-option">
-      <input type="radio" name="basemap" value="esriSat">
-      <span>🛰️ Esri Global Satellite (30cm GSD)</span>
-    </label>
-    <label class="basemap-option">
-      <input type="radio" name="basemap" value="usgsHillshade">
-      <span>🏔️ USGS 3DEP Bare-Earth LiDAR Hillshade</span>
-    </label>
-    <label class="basemap-option">
-      <input type="radio" name="basemap" value="usgsTopo">
-      <span>🗺️ USGS National Map Topographic</span>
-    </label>
-    <label class="basemap-option">
-      <input type="radio" name="basemap" value="osm">
-      <span>🧭 OpenStreetMap Carto Grid</span>
-    </label>
-
-    <div class="panel-section-title" style="margin-top: 14px;">Vertical Datum Layers</div>
-    
-    <div class="layer-toggle">
-      <label><input type="checkbox" id="toggle-underground" checked> <span class="badge-dot dot-underground"></span> Underground Layer</label>
-      <span style="font-size: 11px; color:#ff6b6b;">Tunnels / Bunkers / Mines</span>
+    <div class="panel-header-bar">
+      <h2>🎛️ CONTROLS & LAYERS</h2>
+      <button class="btn-close-panel" onclick="toggleControlPanel()" title="Hide Controls Panel">✕ Close</button>
     </div>
     
-    <div class="layer-toggle">
-      <label><input type="checkbox" id="toggle-underwater" checked> <span class="badge-dot dot-underwater"></span> Underwater Layer</label>
-      <span style="font-size: 11px; color:#4cc9f0;">Bathymetry / Drowned Ruins</span>
-    </div>
-    
-    <div class="layer-toggle">
-      <label><input type="checkbox" id="toggle-surface" checked> <span class="badge-dot dot-surface"></span> Surface Layer</label>
-      <span style="font-size: 11px; color:#2ec4b6;">Rail / Roads / Safe-Zones</span>
-    </div>
-    
-    <div class="layer-toggle">
-      <label><input type="checkbox" id="toggle-elevated" checked> <span class="badge-dot dot-elevated"></span> Elevated Layer</label>
-      <span style="font-size: 11px; color:#f72585;">Viaducts / Towers / Peaks</span>
-    </div>
-    
-    <div class="panel-section-title" style="margin-top: 14px;">Radial Range Rings</div>
-    <div class="layer-toggle">
-      <label><input type="checkbox" id="toggle-rings" checked> ⭕ 5, 10, 15, 20, 25-Mile Rings</label>
+    <!-- Accordion 1: Ultra-Res Basemaps -->
+    <div class="accordion-section">
+      <div class="accordion-header active" onclick="toggleAccordion('acc-basemaps', this)">
+        <span>🗺️ Ultra-Res Basemaps</span>
+        <span class="accordion-chevron">▶</span>
+      </div>
+      <div id="acc-basemaps" class="accordion-body open">
+        <label class="basemap-option">
+          <input type="radio" name="basemap" value="njOrtho" checked>
+          <span>🌟 NJ 15cm Ultra-Res Ortho (Level 20 - 5.8" GSD)</span>
+        </label>
+        <label class="basemap-option">
+          <input type="radio" name="basemap" value="esriSat">
+          <span>🛰️ Esri Global Satellite (30cm GSD)</span>
+        </label>
+        <label class="basemap-option">
+          <input type="radio" name="basemap" value="usgsHillshade">
+          <span>🏔️ USGS 3DEP Bare-Earth LiDAR Hillshade</span>
+        </label>
+        <label class="basemap-option">
+          <input type="radio" name="basemap" value="usgsTopo">
+          <span>🗺️ USGS National Map Topographic</span>
+        </label>
+        <label class="basemap-option">
+          <input type="radio" name="basemap" value="osm">
+          <span>🧭 OpenStreetMap Carto Grid</span>
+        </label>
+      </div>
     </div>
 
-    <div class="panel-section-title" style="margin-top: 14px;">Tactical Jump Bookmarks</div>
-    <button class="jump-btn" onclick="jumpTo(40.7584, -74.9793, 15)">📍 Sector 1 Safe-Zone Hub (Washington Borough)</button>
-    <button class="jump-btn" onclick="jumpTo(40.8026, -74.9940, 16)">🚇 Oxford Tunnel & Sunken Rail Cut</button>
-    <button class="jump-btn" onclick="jumpTo(40.7384, -74.9409, 16)">🏛️ Changewater Trestle River Monoliths</button>
-    <button class="jump-btn" onclick="jumpTo(40.7750, -75.0833, 14)">🌊 Merrill Creek Reservoir (-225ft Abyss)</button>
-    <button class="jump-btn" onclick="jumpTo(40.6130, -74.8350, 14)">🏘️ Round Valley & Drowned McPherson</button>
-    <button class="jump-btn" onclick="jumpTo(40.9419, -75.0603, 16)">🌉 Paulinskill Concrete Viaduct (115ft)</button>
-    <button class="jump-btn" onclick="jumpTo(40.8920, -74.6850, 16)">🛡️ Netcong / Roxbury AT&T Nuclear Bunker</button>
-    <button class="jump-btn" onclick="jumpTo(41.0822, -74.6053, 15)">💎 Sterling Hill Zinc Mine (-2,675ft)</button>
-    <button class="jump-btn" onclick="jumpTo(40.6140, -75.3670, 15)">🏭 Bethlehem Steel 240ft Blast Furnaces</button>
-    <button class="jump-btn" onclick="jumpTo(40.7584, -74.9793, 10)">🔄 Reset to 25-Mile Overview</button>
-    <div class="archive-box">
-      <h3>🏛️ Legal & Historic Engineering Archives</h3>
-      <div class="archive-item">
-        <div class="archive-title">ICC Railroad Valuation Maps (NARA RG 134)</div>
-        <div class="archive-scale">Scale: 1" = 100' (1:1,200) • Legal Surveys</div>
-        <p>Complete right-of-way, track centerline, rail weight (80-130 lb), switches, culverts, bridge spans, and easement deeds for Warren RR, DL&W Old Road, and Morris & Essex.</p>
+    <!-- Accordion 2: Vertical Datum Layers -->
+    <div class="accordion-section">
+      <div class="accordion-header active" onclick="toggleAccordion('acc-layers', this)">
+        <span>📊 Vertical Datum Layers</span>
+        <span class="accordion-chevron">▶</span>
       </div>
-      <div class="archive-item">
-        <div class="archive-title">NJ State Archives Railroad Inventories</div>
-        <div class="archive-scale">1918–1924 State Comptroller Records</div>
-        <p>Field books, tax schedules, depot architectural prints, and maintenance notes for Warren, Sussex, and Hunterdon railroad corridors.</p>
-      </div>
-      <div class="archive-item">
-        <div class="archive-title">1930s Historic Aerial Survey (NJGIN / AWS)</div>
-        <div class="archive-scale">Scale: 1:12,000 • S3: s3://njogis-imagery</div>
-        <p>1931-1932 statewide flights showing active Warren RR mainline, operating Oxford mines, and intact Morris Canal locks before redevelopment.</p>
-      </div>
-      <div class="archive-item">
-        <div class="archive-title">Sanborn Fire Insurance Maps (LoC / Princeton)</div>
-        <div class="archive-scale">Scale: 1" = 50' • Structural Footprints</div>
-        <p>Detailed building footprints, wall thickness, boiler rooms, private sidings, and water mains in Washington Borough and Oxford.</p>
+      <div id="acc-layers" class="accordion-body open">
+        <div class="layer-toggle">
+          <label><input type="checkbox" id="toggle-underground" checked> <span class="badge-dot dot-underground"></span> Underground Layer</label>
+          <span style="font-size: 11px; color:#ff6b6b;">Tunnels / Mines</span>
+        </div>
+        <div class="layer-toggle">
+          <label><input type="checkbox" id="toggle-underwater" checked> <span class="badge-dot dot-underwater"></span> Underwater Layer</label>
+          <span style="font-size: 11px; color:#4cc9f0;">Bathymetry / Ruins</span>
+        </div>
+        <div class="layer-toggle">
+          <label><input type="checkbox" id="toggle-surface" checked> <span class="badge-dot dot-surface"></span> Surface Layer</label>
+          <span style="font-size: 11px; color:#2ec4b6;">Railroads / Roads</span>
+        </div>
+        <div class="layer-toggle">
+          <label><input type="checkbox" id="toggle-elevated" checked> <span class="badge-dot dot-elevated"></span> Elevated Layer</label>
+          <span style="font-size: 11px; color:#f72585;">Viaducts / Peaks</span>
+        </div>
       </div>
     </div>
+
+    <!-- Accordion 3: Radial Range Rings -->
+    <div class="accordion-section">
+      <div class="accordion-header" onclick="toggleAccordion('acc-rings', this)">
+        <span>⭕ Radial Range Rings</span>
+        <span class="accordion-chevron">▶</span>
+      </div>
+      <div id="acc-rings" class="accordion-body">
+        <div class="layer-toggle">
+          <label><input type="checkbox" id="toggle-rings" checked> ⭕ 5, 10, 15, 20, 25-Mile Rings</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Accordion 4: Tactical Jump Bookmarks -->
+    <div class="accordion-section">
+      <div class="accordion-header" onclick="toggleAccordion('acc-jumps', this)">
+        <span>📍 Tactical Jump Bookmarks</span>
+        <span class="accordion-chevron">▶</span>
+      </div>
+      <div id="acc-jumps" class="accordion-body">
+        <button class="jump-btn" onclick="jumpTo(40.7584, -74.9793, 15)">📍 Sector 1 Safe-Zone Hub (Washington)</button>
+        <button class="jump-btn" onclick="jumpTo(40.8026, -74.9940, 16)">🚇 Oxford Tunnel & Sunken Rail Cut</button>
+        <button class="jump-btn" onclick="jumpTo(40.7384, -74.9409, 16)">🏛️ Changewater Trestle Monoliths</button>
+        <button class="jump-btn" onclick="jumpTo(40.7750, -75.0833, 14)">🌊 Merrill Creek Reservoir (-225ft)</button>
+        <button class="jump-btn" onclick="jumpTo(40.6130, -74.8350, 14)">🏘️ Round Valley & Drowned McPherson</button>
+        <button class="jump-btn" onclick="jumpTo(40.9419, -75.0603, 16)">🌉 Paulinskill Concrete Viaduct (115ft)</button>
+        <button class="jump-btn" onclick="jumpTo(40.8920, -74.6850, 16)">🛡️ Netcong AT&T Nuclear Bunker</button>
+        <button class="jump-btn" onclick="jumpTo(41.0822, -74.6053, 15)">💎 Sterling Hill Zinc Mine (-2,675ft)</button>
+        <button class="jump-btn" onclick="jumpTo(40.6140, -75.3670, 15)">🏭 Bethlehem Steel 240ft Furnaces</button>
+        <button class="jump-btn" onclick="jumpTo(40.7584, -74.9793, 10)">🔄 Reset to 25-Mile Overview</button>
+      </div>
+    </div>
+
+    <!-- Accordion 5: Legal & Historic Archives -->
+    <div class="accordion-section">
+      <div class="accordion-header" onclick="toggleAccordion('acc-archives', this)">
+        <span>🏛️ Legal & Historic Archives</span>
+        <span class="accordion-chevron">▶</span>
+      </div>
+      <div id="acc-archives" class="accordion-body">
+        <div class="archive-box">
+          <div class="archive-item">
+            <div class="archive-title">ICC Railroad Valuation Maps (NARA RG 134)</div>
+            <div class="archive-scale">Scale: 1" = 100' (1:1,200) • Legal Surveys</div>
+            <p>Track centerline, rail weight (80-130 lb), switches, culverts, bridge spans, and easement deeds for Warren RR, DL&W Old Road, and Morris & Essex.</p>
+          </div>
+          <div class="archive-item">
+            <div class="archive-title">NJ State Archives Railroad Inventories</div>
+            <div class="archive-scale">1918–1924 State Comptroller Records</div>
+            <p>Field books, tax schedules, depot architectural prints, and maintenance notes for Warren, Sussex, and Hunterdon railroad corridors.</p>
+          </div>
+          <div class="archive-item">
+            <div class="archive-title">1930s Historic Aerial Survey (NJGIN / AWS)</div>
+            <div class="archive-scale">Scale: 1:12,000 • S3: s3://njogis-imagery</div>
+            <p>1931-1932 flights showing active Warren RR mainline, operating Oxford mines, and intact Morris Canal locks before redevelopment.</p>
+          </div>
+          <div class="archive-item">
+            <div class="archive-title">Sanborn Fire Insurance Maps (LoC / Princeton)</div>
+            <div class="archive-scale">Scale: 1" = 50' • Structural Footprints</div>
+            <p>Detailed building footprints, wall thickness, boiler rooms, private sidings, and water mains in Washington Borough and Oxford.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 
+  <!-- Bottom Resolution Notice Banner (Collapsible / Dismissible) -->
   <div id="resolution-banner">
-    <strong>🔍 15cm Ultra-High Resolution Aerial Ortho Enabled (Level 20):</strong> 
-    You are viewing imagery at <strong>5.8 inches (14.9 cm) per pixel</strong>—twice the spatial sharpness of commercial 30cm orbital satellites! 
-    Every railroad tie, track switch, building roofline, manhole, and curb cut is clearly visible. 
-    For true millimeter optical resolution to read vehicle license plates, utility stencils, and street signage, 
-    <strong>click any marker to open full 360° Ground-Level Google Street View</strong>.
+    <div>
+      <strong>🔍 15cm Ultra-Res Aerial Ortho (Level 20):</strong> 
+      Viewing at <strong>5.8 inches (14.9 cm)/px</strong>—twice the spatial sharpness of commercial 30cm orbital satellites! Click markers for 360° Google Street View.
+    </div>
+    <button class="banner-close-btn" onclick="toggleBanner()" title="Dismiss Banner">✕</button>
   </div>
+  <button id="btn-reopen-banner" onclick="toggleBanner()" title="Show Resolution Notice">ℹ️</button>
 
   <div id="map"></div>
 
@@ -812,6 +974,71 @@
         duration: 1.2
       });
     }
+
+    // UI Collapse & Expand Functions
+    function toggleHeader() {
+      const content = document.getElementById('hud-header-content');
+      const btn = document.getElementById('btn-toggle-header');
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        btn.innerHTML = '−';
+      } else {
+        content.style.display = 'none';
+        btn.innerHTML = '+';
+      }
+    }
+
+    function toggleControlPanel() {
+      const panel = document.getElementById('hud-panel');
+      const btn = document.getElementById('btn-open-panel');
+      if (panel.classList.contains('collapsed')) {
+        panel.classList.remove('collapsed');
+        btn.style.display = 'none';
+      } else {
+        panel.classList.add('collapsed');
+        btn.style.display = 'flex';
+      }
+    }
+
+    function toggleAccordion(id, headerEl) {
+      const body = document.getElementById(id);
+      if (body.classList.contains('open')) {
+        body.classList.remove('open');
+        headerEl.classList.remove('active');
+      } else {
+        body.classList.add('open');
+        headerEl.classList.add('active');
+      }
+    }
+
+    function toggleBanner() {
+      const banner = document.getElementById('resolution-banner');
+      const btn = document.getElementById('btn-reopen-banner');
+      if (banner.style.display === 'none') {
+        banner.style.display = 'flex';
+        btn.style.display = 'none';
+      } else {
+        banner.style.display = 'none';
+        btn.style.display = 'flex';
+      }
+    }
+
+    // Responsive default states
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.innerWidth <= 768) {
+        // Mobile: start collapsed for full map visibility
+        document.getElementById('hud-header-content').style.display = 'none';
+        document.getElementById('btn-toggle-header').innerHTML = '+';
+        document.getElementById('hud-panel').classList.add('collapsed');
+        document.getElementById('btn-open-panel').style.display = 'flex';
+        document.getElementById('resolution-banner').style.display = 'none';
+        document.getElementById('btn-reopen-banner').style.display = 'flex';
+      } else {
+        // Desktop: show open panel, hide open button
+        document.getElementById('btn-open-panel').style.display = 'none';
+        document.getElementById('btn-reopen-banner').style.display = 'none';
+      }
+    });
   </script>
 </body>
 </html>
