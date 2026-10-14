@@ -2196,15 +2196,19 @@ def save_character_to_folder(base_dir, player_state, messages=None, extra_meta=N
     manifest = {
         "name": p_name,
         "slug": sanitize_character_slug(p_name),
+        "gender": player_state.get("gender", "Male"),
         "level": player_state.get("level", 1),
         "race": player_state.get("race", "Pure Human"),
         "class": player_state.get("class", "Pathless (Freeform Anomaly)"),
         "hp": f"{player_state.get('hp', 100)} / {player_state.get('max_hp', 100)}",
+        "hp_cur": player_state.get("hp", 100),
+        "hp_max": player_state.get("max_hp", 100),
         "col": player_state.get("col", 100),
         "location": player_state.get("location", "Sector 1 Safe-Zone: Washington Borough, NJ"),
         "avatar_image_path": player_state.get("avatar_image_path"),
         "avatar_locked": bool(player_state.get("avatar_locked", False)),
         "only_alter_by_equipment": bool(player_state.get("only_alter_by_equipment", False)),
+        "turns_logged": len(messages or []),
         "last_saved": full_data["last_saved"]
     }
     with open(profile_file, 'w', encoding="utf-8") as f:
@@ -2239,12 +2243,39 @@ def load_character_from_folder(base_dir, character_name):
         return data
     return None
 
+def build_character_unique_url(character_name: str) -> str:
+    """Returns the relative unique query link for a character (e.g. '?character=Glenny')."""
+    from urllib.parse import quote
+    clean = str(character_name or "Survivor").strip()
+    return f"?character={quote(clean)}"
+
+def resolve_character_profile_name(base_dir: str, query_name: str):
+    """
+    Resolves a URL query parameter (e.g. 'Glenny', 'glenny', 'Banki') against available saved profiles.
+    Returns the canonical profile name string if found, or None if not found.
+    """
+    if not query_name or not str(query_name).strip():
+        return None
+    q = str(query_name).strip()
+    q_lower = q.lower()
+    q_slug = sanitize_character_slug(q).lower()
+    manifests = list_all_character_folders(base_dir)
+    for m in manifests:
+        m_name = str(m.get("name", "")).strip()
+        m_slug = str(m.get("slug", "")).strip()
+        if m_name == q:
+            return m_name
+        if m_name.lower() == q_lower or m_slug.lower() == q_lower or m_slug.lower() == q_slug:
+            return m_name
+    return None
+
 def list_all_character_folders(base_dir):
     """
     Discovers all character save folders in saves/.
     Auto-migrates any legacy flat files (saves/<slug>.json) into dedicated folders.
     Returns list of manifest dictionaries sorted by most recent save.
     """
+    import backend.mechanics as _mech
     saves_root = os.path.join(base_dir, 'saves')
     if not os.path.exists(saves_root):
         os.makedirs(saves_root, exist_ok=True)
@@ -2273,28 +2304,35 @@ def list_all_character_folders(base_dir):
         if os.path.isdir(char_dir):
             save_file = os.path.join(char_dir, "save_game.json")
             if os.path.exists(save_file):
-                prof_manifest = os.path.join(char_dir, "profile.json")
-                if os.path.exists(prof_manifest):
-                    try:
-                        with open(prof_manifest, 'r', encoding="utf-8") as f:
-                            profiles.append(json.load(f))
-                            continue
-                    except Exception:
-                        pass
-                # Fallback: parse save_game.json directly
                 try:
                     with open(save_file, 'r', encoding="utf-8") as f:
                         data = json.load(f)
                     p = data.get("player", {})
+                    if hasattr(_mech, "ensure_character_avatar_lock"):
+                        _mech.ensure_character_avatar_lock(p)
+                    msgs = data.get("messages", [])
+                    avatar_candidate = os.path.join(char_dir, "avatar.png")
+                    avatar_rel = p.get("avatar_image_path")
+                    if not avatar_rel and os.path.exists(avatar_candidate):
+                        avatar_rel = os.path.relpath(avatar_candidate, base_dir).replace("\\", "/")
                     profiles.append({
                         "name": p.get("name", item),
                         "slug": item,
+                        "gender": p.get("gender", "Male"),
                         "level": p.get("level", 1),
                         "race": p.get("race", "Unknown"),
                         "class": p.get("class", "Unknown"),
                         "hp": f"{p.get('hp', 100)} / {p.get('max_hp', 100)}",
+                        "hp_cur": p.get("hp", 100),
+                        "hp_max": p.get("max_hp", 100),
                         "col": p.get("col", 0),
                         "location": p.get("location", "Sector 1"),
+                        "equipped": p.get("equipped", {}),
+                        "avatar_image_path": avatar_rel,
+                        "avatar_locked": bool(p.get("avatar_locked", False)),
+                        "only_alter_by_equipment": bool(p.get("only_alter_by_equipment", False)),
+                        "turns_logged": len(msgs) if isinstance(msgs, list) else 0,
+                        "unique_url": build_character_unique_url(p.get("name", item)),
                         "last_saved": data.get("last_saved", 0)
                     })
                 except Exception:

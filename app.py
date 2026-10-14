@@ -53,7 +53,17 @@ _refresh_stale_backend_modules()
 
 
 # --- PAGE CONFIGURATION ---
-st.set_page_config(page_title="The Fractured Overlay", page_icon="🗡️", layout="wide")
+_initial_url_char = None
+try:
+    _initial_url_char = st.query_params.get("character") or st.query_params.get("profile")
+except Exception:
+    _initial_url_char = None
+
+st.set_page_config(
+    page_title=f"{_initial_url_char} | The Fractured Overlay" if _initial_url_char else "Choose Your Character | The Fractured Overlay",
+    page_icon="🗡️",
+    layout="wide",
+)
 
 # --- AUTHENTICATION CHECK ---
 try:
@@ -107,7 +117,61 @@ def get_available_profiles():
             seed_data["player"]["name"] = "Banki"
             cg.save_character_to_folder(BASE_DIR, seed_data["player"], seed_data.get("messages", []))
             profiles.append("Banki")
+
+    # Ensure Glenny profile folder is seeded if not present
+    if "Glenny" not in profiles:
+        try:
+            glenny_sheet = cg.generate_starting_character("Glenny")
+            glenny_welcome = [{
+                "role": "system",
+                "content": cg.build_system_initialization_welcome_message(glenny_sheet),
+                "image_path": None
+            }]
+            cg.save_character_to_folder(BASE_DIR, glenny_sheet, glenny_welcome)
+            profiles.append("Glenny")
+        except Exception:
+            pass
+
     return sorted(list(set(profiles)))
+
+def activate_character_session(profile_name: str, update_query_params: bool = True) -> bool:
+    """Loads the specified character profile into session_state and syncs query params."""
+    resolved = cg.resolve_character_profile_name(BASE_DIR, profile_name) or profile_name
+    p_data = cg.load_character_from_folder(BASE_DIR, resolved)
+    if not p_data or "player" not in p_data:
+        return False
+
+    st.session_state.player = p_data["player"]
+    st.session_state.messages = p_data.get("messages", [])
+    if "world_state" in p_data and isinstance(p_data["world_state"], dict):
+        st.session_state.world_state = p_data["world_state"]
+    st.session_state.active_profile = resolved
+    st.session_state.character_selected = True
+    st.session_state.character_creation_mode = False
+
+    if "master_state" in p_data and p_data["master_state"]:
+        m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+        try:
+            os.makedirs(os.path.dirname(m_path), exist_ok=True)
+            with open(m_path, "w", encoding="utf-8") as f:
+                json.dump(p_data["master_state"], f, indent=4)
+        except Exception:
+            pass
+
+    try:
+        if hasattr(mechanics, "restore_companions_for_character"):
+            mechanics.restore_companions_for_character(BASE_DIR, resolved, st.session_state.player)
+    except Exception:
+        pass
+
+    if update_query_params:
+        try:
+            st.query_params["character"] = resolved
+            if "mode" in st.query_params:
+                del st.query_params["mode"]
+        except Exception:
+            pass
+    return True
 
 def load_game():
     active_prof = st.session_state.get("active_profile")
@@ -115,19 +179,6 @@ def load_game():
         char_data = cg.load_character_from_folder(BASE_DIR, active_prof)
         if char_data:
             return char_data
-    if os.path.exists(SAVE_PATH):
-        try:
-            with open(SAVE_PATH, 'r', encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    fallback_path = os.path.join(BASE_DIR, 'campaign_default_save.json')
-    if os.path.exists(fallback_path):
-        try:
-            with open(fallback_path, 'r', encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
     return None
 
 def save_game(player_state, messages):
@@ -923,10 +974,17 @@ def render_character_calibration_wizard():
                     }
                 ]
                 st.session_state.active_profile = char_name
+                st.session_state.character_selected = True
                 # NOTE: don't assign st.session_state['active_profile_select'] here: that sidebar widget is
                 # already drawn this run (StreamlitWidgetAlreadyInstantiatedError). The sidebar syncs the
                 # dropdown to `active_profile` before rendering it on the rerun below.
                 st.session_state.character_creation_mode = False
+                try:
+                    st.query_params["character"] = char_name
+                    if "mode" in st.query_params:
+                        del st.query_params["mode"]
+                except Exception:
+                    pass
                 
                 # Sync V2 master state on disk (seeded with Cardinal Calibration Crucible Stage 1)
                 m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
@@ -943,6 +1001,162 @@ def render_character_calibration_wizard():
                 st.success(f"Calibration Complete! Avatar **{char_name}** linked to the Cardinal System. Launching Cardinal Calibration Crucible (Stage 1/3)...")
                 time.sleep(1.0)
                 st.rerun()
+
+
+def render_character_select_screen():
+    """
+    Renders the 'Choose Your Character' loading screen when no character query parameter is active.
+    Choosing a character opens a new tab with that character's unique link (?character=<Name>).
+    """
+    import datetime
+
+    # Ensure default profiles (Banki, Glenny) are seeded before listing
+    get_available_profiles()
+    manifests = cg.list_all_character_folders(BASE_DIR)
+
+    st.markdown(
+        """
+        <div style="text-align:center; padding: 1.2rem 1rem 0.8rem 1rem; border: 1px solid rgba(0, 212, 255, 0.35); border-radius: 12px; background: linear-gradient(135deg, rgba(10, 18, 32, 0.92), rgba(20, 32, 58, 0.88)); margin-bottom: 1.5rem;">
+            <div style="font-size: 0.85rem; letter-spacing: 0.25em; color: #00d4ff; text-transform: uppercase; font-weight: 700;">
+                CARDINAL SYSTEM // NEURAL LINK LOBBY
+            </div>
+            <h1 style="margin: 0.3rem 0; font-size: 2.3rem;">🗡️ Choose Your Character</h1>
+            <p style="margin: 0.2rem auto 0 auto; max-width: 720px; color: #b8c7e0; font-size: 0.98rem;">
+                Select a registered Survivor Profile below to launch a new tab with a unique direct link for that character's profile and story, or calibrate a new Avatar.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    total_cards = len(manifests) + 1
+    num_cols = min(3, max(2, total_cards))
+    cols = st.columns(num_cols, gap="large")
+
+    for idx, m in enumerate(manifests):
+        col = cols[idx % num_cols]
+        prof_name = m.get("name", "Survivor")
+        slug = m.get("slug", cg.sanitize_character_slug(prof_name))
+        level = m.get("level", 1)
+        gender = m.get("gender", "Male")
+        race = m.get("race", "Unknown")
+        c_class = m.get("class", "Unknown")
+        hp_cur = int(m.get("hp_cur", 100))
+        hp_max = max(1, int(m.get("hp_max", 100)))
+        col_coins = m.get("col", 0)
+        location = m.get("location", "Sector 1")
+        turns_logged = m.get("turns_logged", 0)
+        unique_url = m.get("unique_url") or cg.build_character_unique_url(prof_name)
+        last_saved_ts = m.get("last_saved", 0)
+        last_saved_str = (
+            datetime.datetime.fromtimestamp(last_saved_ts).strftime("%Y-%m-%d %H:%M")
+            if last_saved_ts
+            else "Ready"
+        )
+
+        # Resolve portrait path if available
+        char_dir = cg.get_character_save_dir(BASE_DIR, prof_name)
+        eq_avatar = os.path.join(char_dir, "avatar_equipped.png")
+        folder_avatar = os.path.join(char_dir, "avatar.png")
+        rel_avatar = m.get("avatar_image_path")
+        abs_rel_avatar = (
+            rel_avatar
+            if (rel_avatar and os.path.isabs(rel_avatar))
+            else (os.path.join(BASE_DIR, rel_avatar) if rel_avatar else None)
+        )
+
+        portrait_path = None
+        if os.path.exists(eq_avatar):
+            portrait_path = eq_avatar
+        elif os.path.exists(folder_avatar):
+            portrait_path = folder_avatar
+        elif abs_rel_avatar and os.path.exists(abs_rel_avatar):
+            portrait_path = abs_rel_avatar
+
+        with col:
+            with st.container(border=True):
+                if portrait_path:
+                    st.image(portrait_path, use_container_width=True)
+                else:
+                    st.markdown(
+                        f"""
+                        <div style="height: 220px; border-radius: 8px; background: radial-gradient(circle at 50% 35%, rgba(0, 212, 255, 0.22), rgba(13, 19, 33, 0.95)); border: 1px solid rgba(0, 212, 255, 0.28); display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                            <div style="font-size: 3.6rem;">🗡️</div>
+                            <div style="font-size: 1.15rem; font-weight: 700; color: #e2efff; margin-top: 0.35rem;">{prof_name}</div>
+                            <div style="font-size: 0.8rem; color: #7fa6d6;">CARDINAL NEURAL AVATAR</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                lock_badge = " 🔒" if m.get("avatar_locked") else ""
+                st.markdown(f"### 🛡️ {prof_name}{lock_badge}")
+                st.caption(f"**Level {level}** • **{gender}** • *{race}*")
+                st.write(f"**Doctrine:** {c_class}")
+
+                hp_pct = max(0.0, min(1.0, hp_cur / hp_max))
+                st.progress(hp_pct, text=f"HP: {hp_cur} / {hp_max}  |  🪙 {col_coins} Col")
+
+                eq = m.get("equipped") or {}
+                mh = eq.get("main_hand", "None")
+                oh = eq.get("off_hand", "None")
+                st.caption(f"⚔️ **Loadout:** {mh}" + (f" & {oh}" if oh and oh != "None" else ""))
+                st.caption(f"📍 **Location:** {location}")
+                st.caption(f"📜 **Story Log:** {turns_logged} entries • 🕒 Saved: {last_saved_str}")
+                st.markdown(f"🔗 **Unique Link:** `{unique_url}`")
+
+                st.link_button(
+                    f"⚡ Choose {prof_name} (Open in New Tab ↗)",
+                    url=unique_url,
+                    type="primary",
+                    use_container_width=True,
+                )
+                if st.button(
+                    f"▶️ Load {prof_name} in This Tab",
+                    key=f"btn_choose_same_tab_{slug}",
+                    use_container_width=True,
+                ):
+                    activate_character_session(prof_name, update_query_params=True)
+                    st.rerun()
+
+    # Add 'Create New Character' card in the final slot
+    create_col = cols[len(manifests) % num_cols]
+    with create_col:
+        with st.container(border=True):
+            st.markdown(
+                """
+                <div style="height: 220px; border-radius: 8px; background: radial-gradient(circle at 50% 35%, rgba(168, 85, 247, 0.24), rgba(13, 19, 33, 0.95)); border: 1px dashed rgba(168, 85, 247, 0.45); display: flex; flex-direction: column; align-items: center; justify-content: center; margin-bottom: 0.75rem;">
+                    <div style="font-size: 3.6rem;">🧬</div>
+                    <div style="font-size: 1.15rem; font-weight: 700; color: #f3e8ff; margin-top: 0.35rem;">New Survivor Calibration</div>
+                    <div style="font-size: 0.8rem; color: #c084fc;">5-STAGE CARDINAL CREATION CRUCIBLE</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.markdown("### ✨ Calibrate New Avatar")
+            st.caption("**Level 1 → Level 3 Tutorial Crucible** • **Custom Lineage & Relic**")
+            st.write(
+                "Forge a brand-new Survivor with custom Sex/Gender, Physical Build, Genetic Lineage (including Spliced Apex Chimera), Class Doctrine, and Earth Relic, then launch into the 3-stage Tutorial Crucible."
+            )
+            st.markdown("🔗 **Unique Link:** `?mode=create`")
+            st.link_button(
+                "🧬 New Character (Open in New Tab ↗)",
+                url="?mode=create",
+                type="primary",
+                use_container_width=True,
+            )
+            if st.button(
+                "▶️ Calibrate New Character in This Tab",
+                key="btn_create_char_same_tab",
+                use_container_width=True,
+            ):
+                st.session_state.character_creation_mode = True
+                try:
+                    st.query_params["mode"] = "create"
+                except Exception:
+                    pass
+                st.rerun()
+
 
 def extract_turn_components(msg: dict) -> tuple:
     """
@@ -1297,7 +1511,35 @@ def apply_companion_state_updates(hp_changes: dict):
                 except Exception as e:
                     print(f"[COMPANION SYNC ERROR] {e}", flush=True)
 
-# --- INITIALIZE SESSION STATE ---
+# --- INITIALIZE SESSION STATE & URL CHARACTER ROUTING ---
+get_available_profiles()
+
+_url_char_param = None
+_url_mode_param = None
+try:
+    _url_char_param = st.query_params.get("character") or st.query_params.get("profile")
+    _url_mode_param = st.query_params.get("mode")
+except Exception:
+    pass
+
+if _url_mode_param == "create" and not st.session_state.get("character_selected"):
+    st.session_state.character_creation_mode = True
+
+if _url_char_param:
+    _resolved_url_prof = cg.resolve_character_profile_name(BASE_DIR, _url_char_param)
+    if _resolved_url_prof:
+        if (
+            st.session_state.get("active_profile") != _resolved_url_prof
+            or "player" not in st.session_state
+            or not st.session_state.get("character_selected")
+        ):
+            activate_character_session(_resolved_url_prof, update_query_params=False)
+
+# Show the "Choose Your Character" loading screen when no character is selected and not in creation mode
+if not st.session_state.get("character_selected", False) and not st.session_state.get("character_creation_mode", False):
+    render_character_select_screen()
+    st.stop()
+
 saved_data = load_game()
 
 if "offline_processed" not in st.session_state:
@@ -3152,7 +3394,14 @@ with st.sidebar:
             st.session_state.player = p_data['player']
             st.session_state.messages = p_data.get('messages', [])
             st.session_state.active_profile = selected_prof
+            st.session_state.character_selected = True
             st.session_state.character_creation_mode = False
+            try:
+                st.query_params["character"] = selected_prof
+                if "mode" in st.query_params:
+                    del st.query_params["mode"]
+            except Exception:
+                pass
 
             # 2. Restore target character's companions into Party/ and Entities/
             try:
@@ -3173,6 +3422,20 @@ with st.sidebar:
                     pass
             save_game(st.session_state.player, st.session_state.messages)
 
+    if st.button("🏠 Choose Your Character Lobby", use_container_width=True, key="btn_return_char_select"):
+        try:
+            if st.session_state.get("character_selected") and "player" in st.session_state:
+                save_game(st.session_state.player, st.session_state.get("messages", []))
+        except Exception:
+            pass
+        st.session_state.character_selected = False
+        st.session_state.character_creation_mode = False
+        try:
+            st.query_params.clear()
+        except Exception:
+            pass
+        st.rerun()
+
     st.markdown('##### 👤 Character Slot')
     sel_profile = st.selectbox(
         'Active Profile',
@@ -3182,6 +3445,17 @@ with st.sidebar:
         on_change=on_profile_dropdown_change,
         label_visibility='collapsed'
     )
+    st.caption(f"🔗 Unique Link: `{cg.build_character_unique_url(sel_profile)}`")
+
+    other_profiles = [pr for pr in profiles if pr != sel_profile]
+    if other_profiles:
+        with st.expander("↗ Open Character in New Tab", expanded=False):
+            for opr in other_profiles:
+                st.link_button(
+                    f"⚡ {opr} (New Tab ↗)",
+                    url=cg.build_character_unique_url(opr),
+                    use_container_width=True,
+                )
             
     if not st.session_state.get('character_creation_mode', False):
         if st.button('🧬 New Avatar Calibration', use_container_width=True):
@@ -3191,6 +3465,11 @@ with st.sidebar:
         st.warning('⚡ Calibration Mode Active')
         if st.button('❌ Exit Calibration', use_container_width=True):
             st.session_state.character_creation_mode = False
+            try:
+                if "mode" in st.query_params:
+                    del st.query_params["mode"]
+            except Exception:
+                pass
             st.rerun()
             
     st.divider()
