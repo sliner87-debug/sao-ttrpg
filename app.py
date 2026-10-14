@@ -901,7 +901,9 @@ def render_character_calibration_wizard():
                     }
                 ]
                 st.session_state.active_profile = char_name
-                st.session_state['active_profile_select'] = char_name
+                # NOTE: don't assign st.session_state['active_profile_select'] here: that sidebar widget is
+                # already drawn this run (StreamlitWidgetAlreadyInstantiatedError). The sidebar syncs the
+                # dropdown to `active_profile` before rendering it on the rerun below.
                 st.session_state.character_creation_mode = False
                 
                 # Sync V2 master state on disk
