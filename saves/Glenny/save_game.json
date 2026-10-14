@@ -154,8 +154,10 @@
             "head": "None",
             "chest": "Threadbare Scavenger Tunic",
             "main_hand": "Recurve Hunting Bow",
-            "off_hand": "Chipped Wood-Axe",
-            "accessory": "Hunting Laser Rangefinder"
+            "off_hand": "[2H Grip: Recurve Hunting Bow]",
+            "accessory": "Hunting Laser Rangefinder",
+            "lower_main_hand": "Chipped Wood-Axe",
+            "lower_off_hand": "None"
         },
         "gear_durability": {
             "head": {
@@ -164,11 +166,13 @@
             },
             "chest": {
                 "cur": 100,
-                "max": 100
+                "max": 100,
+                "grade": 1
             },
             "main_hand": {
                 "cur": 45,
-                "max": 50
+                "max": 50,
+                "grade": 1
             },
             "off_hand": {
                 "cur": 45,
@@ -176,7 +180,18 @@
             },
             "accessory": {
                 "cur": 100,
-                "max": 100
+                "max": 100,
+                "grade": 1
+            },
+            "lower_main_hand": {
+                "cur": 50,
+                "max": 50,
+                "grade": 1
+            },
+            "lower_off_hand": {
+                "cur": 100,
+                "max": 100,
+                "grade": 1
             }
         },
         "quests": [],
@@ -1969,7 +1984,9 @@
             "head": "None",
             "chest": "Threadbare Scavenger Tunic",
             "main_hand": "Recurve Hunting Bow",
-            "off_hand": "Chipped Wood-Axe",
+            "off_hand": "[2H Grip: Recurve Hunting Bow]",
+            "lower_main_hand": "Chipped Wood-Axe",
+            "lower_off_hand": "None",
             "accessory": "Hunting Laser Rangefinder"
         },
         "ren_subroutine_stage": 0,
@@ -1986,6 +2003,30 @@
                 }
             },
             "active_companion": "Ren"
+        },
+        "graft_system": {
+            "installed_grafts": {},
+            "harmonized_grafts": [],
+            "post_op_sickness": {
+                "active": false,
+                "status_name": "Cellular Re-Knitting",
+                "graft_name": "",
+                "hours_remaining": 0,
+                "max_hp_penalty_pct": 0,
+                "dash_disabled": false,
+                "active_use_con_dc": 13
+            }
+        },
+        "grafts": {
+            "head": null,
+            "torso": null,
+            "left_arm": null,
+            "right_arm": null,
+            "lower_left_arm": null,
+            "lower_right_arm": null,
+            "legs": null,
+            "spine": null,
+            "tail": null
         }
     },
     "messages": [

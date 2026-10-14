@@ -38,16 +38,23 @@ class SkillMasteryUpdate(BaseModel):
     description: Optional[str] = Field(default="", description="Updated description or milestone perk")
 
 class GraftInstallation(BaseModel):
-    slot: str = Field(description="Anatomical slot: 'head', 'torso', 'left_arm', 'right_arm', 'legs', or 'spine'")
+    slot: str = Field(description="Anatomical slot: 'head', 'torso', 'left_arm', 'right_arm', 'lower_left_arm', 'lower_right_arm', 'legs', 'spine', 'wings', 'hind_legs', 'tail', or 'tentacles'")
     name: str = Field(description="Name of the graft installed")
     strain: int = Field(default=1, description="Strain cost of this graft (typically 1 to 3)")
     effect: Optional[str] = Field(default="", description="Mechanical perks and stat adjustments")
 
 class PlayerStateUpdates(BaseModel):
     xp_change: Optional[int] = Field(0, description="Amount of XP gained")
-    col_change: Optional[int] = Field(0, description="Amount of Col gained or lost")
-    inventory_add: Optional[List[str]] = Field([], description="Items to add to inventory")
-    inventory_remove: Optional[List[str]] = Field([], description="Items to remove from inventory")
+    col_change: Optional[int] = Field(0, description="Amount of Col gained (positive) or spent/lost (negative, exact single amount)")
+    inventory_add: Optional[List[str]] = Field([], description="Every item bought from a merchant/Quartermaster, looted, crafted, or received MUST be listed here by name so it is added to the player's inventory")
+    inventory_remove: Optional[List[str]] = Field([], description="Items sold, consumed, or removed from inventory")
+    equip_main_hand: Optional[str] = Field(default=None, description="If the player equips a new upper/primary main_hand weapon, specify its item name here")
+    equip_off_hand: Optional[str] = Field(default=None, description="If the player equips a new upper/primary off_hand weapon/shield, specify its item name here")
+    equip_lower_main_hand: Optional[str] = Field(default=None, description="For 4-armed characters: if equipping a weapon/item in the lower main hand, specify its item name here")
+    equip_lower_off_hand: Optional[str] = Field(default=None, description="For 4-armed characters: if equipping a weapon/shield/item in the lower off-hand, specify its item name here")
+    equip_head: Optional[str] = Field(default=None, description="If the player equips new head gear, specify its item name here")
+    equip_chest: Optional[str] = Field(default=None, description="If the player equips new chest armor, specify its item name here")
+    equip_accessory: Optional[str] = Field(default=None, description="If the player equips a new accessory, specify its item name here")
     location: Optional[str] = Field(None, description="New location name if moved")
     coord_x: Optional[int] = Field(None, description="New X coordinate (0-100) on Sector 1 map if position changed")
     coord_y: Optional[int] = Field(None, description="New Y coordinate (0-100) on Sector 1 map if position changed")

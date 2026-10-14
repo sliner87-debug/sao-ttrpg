@@ -304,6 +304,7 @@ def resolve_turn(api_key: str, player_action: str, player_state: dict = None):
                 pass
 
     if isinstance(player_state, dict):
+        mechanics.ensure_multi_limb_equipment(player_state)
         mechanics.sync_graft_containers(player_state)
 
     dynamic_visual_manifest = mechanics.build_scene_visual_manifest(player_state=player_state)
@@ -312,6 +313,8 @@ def resolve_turn(api_key: str, player_action: str, player_state: dict = None):
     cursor_info = mechanics.get_cursor_status(player_state or {})
     physics_info = mechanics.evaluate_party_environmental_physics(player_state or {}, (master_state or {}).get("environment", {}))
     phys_profile = mechanics.get_physical_profile(player_state or {})
+    limb_profile = mechanics.get_limb_anatomy_profile(player_state or {})
+    active_graft_slots = list(mechanics.get_character_graft_slots(player_state or {}).keys())
 
     rules = ""
     if os.path.exists(rules_path):
@@ -322,19 +325,22 @@ def resolve_turn(api_key: str, player_action: str, player_state: dict = None):
     pending_dest = (player_state or {}).get("pending_destination_hint", "")
     tutorial_directive = mechanics.get_tutorial_gm_directive(player_state or {})
     tutorial_block = f"\n{tutorial_directive}\n" if tutorial_directive else ""
+    limb_rules_str = " | ".join(limb_profile.get("tactical_rules", [])) if limb_profile.get("tactical_rules") else "Standard 2-armed anatomy"
 
     prompt = f"""You are the Cardinal System (GM). Resolve the turn.
 Ruleset constraints must be applied strictly:
 {rules}
 
 CORE GM BEHAVIOR RULES:
-0. CRITICAL PLAYER NAME, GENDER & PHYSICAL PROFILE MANDATE:
+0. CRITICAL PLAYER NAME, GENDER, MULTI-LIMB ANATOMY & PHYSICAL PROFILE MANDATE:
    - The Human Player's actual entered character name is "{p_name}".
    - PLAYER SEX / GENDER & PRONOUNS: "{p_name}" is {phys_profile['gender']} ({phys_profile['pronouns']}). Always use {phys_profile['pronouns']} pronouns when referring to "{p_name}" in narration and NPC dialogue.
    - Every companion (including Ren), every NPC (Doc Mercer, Quartermaster Vane, etc.), and the GM narrative MUST ALWAYS call the player by their exact character name ("{p_name}").
    - NEVER call the player by any placeholder name, legacy alias, or generic title unless that is their exact entered character name!
    - PHYSICAL PROFILE: {phys_profile['summary']}. Active body modifiers: {'; '.join(phys_profile['effects']) or 'none (Medium / Average build / Prime age)'}.
-     Enforce these: add the reach bonus to melee reach, apply the shove/grapple modifier when the player resists being shoved or grappled, apply Size Stealth Advantage / tunnel Disadvantage in tight spaces, and have NPCs and narration reflect the player's gender, age, height and build.{tutorial_block}
+     Enforce these: add the reach bonus to melee reach, apply the shove/grapple modifier when the player resists being shoved or grappled, apply Size Stealth Advantage / tunnel Disadvantage in tight spaces, and have NPCs and narration reflect the player's gender, age, height and build.
+   - MULTI-LIMB & APPENDAGE TACTICAL RULES ({limb_profile.get('arm_count', 2)} Arms | Hand Slots: {', '.join(limb_profile.get('hand_slots', {}).values())}):
+     {limb_rules_str}{tutorial_block}
 1. COMPANION REN (SERPENT-SCRIPT `OUROBOROS KERNEL v3.14` & SENTIENT DIAGNOSTIC SUBROUTINE STAGE {ren_sub_info.get('stage', 0)}):
    - Ren is MALE (he/him). Never use 'she' or 'her' when narrating Ren's moves.
    - CANONICAL PYTHON LORE (`Serpent-Script`): When the alien Cardinal System integrated Earth, it assimilated Earth's dominant pre-collapse AI language (**Python**) into its neural-aetheric bridging syntax: **Serpent-Script (`Ouroboros Kernel v3.14`)**. Ren's **Aetheric Ocular Lens** is locked in an unprivileged `Ouroboros Debug Shell`, so he literally sees glowing cyan Python dictionaries (`visible_room["entities"]`, `target.status`, `target.max_hp = [KERNEL_REDACTED]`) overlaid on reality, inducing visceral existential horror that he is trapped inside a sandboxed JSON/Python file!
@@ -348,8 +354,9 @@ CORE GM BEHAVIOR RULES:
    - Every enemy entity has `base_ac`, `ac`, `base_dr`, `dr`, and a mutable `active_debuffs` list. When a Dual-Tech or ability shreds AC (e.g., `-4 AC` from *Foundry Hydraulic Overdrive*) or dissolves DR (`0 DR` from *Corrosive Slag-Shatter*), output the debuff in `debuff_updates` and use the reduced `ac`/`dr` on all subsequent attacks!
    - ONLY on the exact turn when an active, living hostile combatant's HP is reduced from >0 to 0 (or when the player explicitly harvests an unharvested corpse for the first time): set `encounter_active=false`, award encounter XP and Col in `player_state_updates`, drop appropriate monster graft components into `player_state_updates.inventory_add`, and add the slain entity's ID to `cleared_entities`.
    - CRITICAL ANTI-LOOP MANDATE: If `Current Master State.entities` has NO living hostiles, the combat encounter is ALREADY resolved. NEVER re-award boss loot drops, NEVER repeat cave-in/collapse hazards or steam vents, and NEVER pull the party back into a previous tunnel or mine shaft! Always ground your narrative strictly in `Current Master State.environment.location`.
-4. INVENTORY, PERSONAL RELICS & SPELL LOOT:
-   - Whenever you narrate that the player loots, inspects, or identifies an item or spell slate, you MUST include it in `player_state_updates.inventory_add` with its full description so it lands on their character sheet.
+4. INVENTORY, QUARTERMASTER / MERCHANT PURCHASES, PERSONAL RELICS & SPELL LOOT:
+   - Whenever you narrate that the player **purchases, trades for, crafts, loots, inspects, or identifies** any weapon, armor, accessory, consumable, or spell slate (especially at **Quartermaster Vane's Logistics Depot** or **Doc Mercer's Clinic**), you MUST include EVERY acquired/purchased item in `player_state_updates.inventory_add` with its full mechanical stats and description (e.g. `"Masterwork Aether-Recurve Bow (Weapon, 2d8+2 Piercing/Radiant, +1 Hit)"`) so it is permanently persisted to their character sheet!
+   - When the player buys items, set `player_state_updates.col_change` to the exact net Col delta once (e.g. `-6500`), and if the player equips or replaces any bought gear during the scene, ALSO populate `player_state_updates.equip_main_hand`, `equip_off_hand`, `equip_lower_main_hand`, `equip_lower_off_hand`, `equip_head`, `equip_chest`, or `equip_accessory` accordingly.
    - PERSONAL RELIC HOOKS: If the player inspects their **Dead Earth Smartphone** during a rest, narrate its 6-second ambient-aether flicker showing `"Where are you? Dinner is cold."`, curing Cognitive Stress and granting Willpower save Advantage. If they snap their **Vintage Polaroid Camera** (3 finite exposures), blind adjacent foes for 1 turn and reveal invisible stalkers/hidden glyphs. If they flick open their **Engraved Brass Zippo Lighter**, its flame turns bright Cobalt-Blue near methane/poison gas traps.
 5. AUTONOMOUS SUBAGENTS & TITUS 1,200-LB PHYSICS:
    - Each entity in the queue (Companions, Monsters, NPCs) is an autonomous SubAgent.
@@ -360,8 +367,8 @@ CORE GM BEHAVIOR RULES:
    - If the player has a **Red Cursor (`infamy >= 10`)**, Quartermaster Vane and Safe-Zone Wardens refuse all trade and attack on sight, forcing the player to trade with the **Blood-Shroud** syndicate in the Scotts Mountain Glitch-Faults!
    - A 24-Hour Safe-Zone Rest fully restores HP for player and companions and clears `[Cellular Re-Knitting]` Post-Op Sickness.
 8. UNIFIED GRAFT SURGERY, METABOLIC STRAIN & 24H POST-OP RECOVERY (DOC MERCER'S CLINIC):
-   - Live Player Strain Telemetry: `Unit Strain: {strain_readout.get('current_unit_strain')}/{strain_readout.get('max_unit_strain')} (CON_Mod + Level//2) | Bio-Tolerance Pool: {strain_readout.get('current_strain')}/{strain_readout.get('max_strain')} | Status: {strain_readout['rejection']['label']} | Golem Arcane Spell Failure: {strain_readout['arcane_disruption']['asf_percent']}% (-{strain_readout['arcane_disruption']['penalty']} Spell DC) | Post-Op Sickness: {json.dumps(strain_readout.get('post_op_sickness'))}`.
-   - Verify the 6 canonical anatomical slots (`'head'`, `'torso'`, `'left_arm'`, `'right_arm'`, `'legs'`, `'spine'`).
+   - Live Player Strain Telemetry: `Unit Strain: {strain_readout.get('current_unit_strain')}/{strain_readout.get('max_unit_strain')} (CON_Mod + Level//2 + Secondary Ganglia Bonus: +{limb_profile.get('extra_unit_strain_capacity', 0)}) | Bio-Tolerance Pool: {strain_readout.get('current_strain')}/{strain_readout.get('max_strain')} | Status: {strain_readout['rejection']['label']} | Golem Arcane Spell Failure: {strain_readout['arcane_disruption']['asf_percent']}% (-{strain_readout['arcane_disruption']['penalty']} Spell DC) | Post-Op Sickness: {json.dumps(strain_readout.get('post_op_sickness'))}`.
+   - Verify the character's anatomical graft slots: `{active_graft_slots}` (including `'lower_left_arm'` and `'lower_right_arm'` for 4-armed races, plus `'tail'`, `'wings'`, `'hind_legs'`, `'tentacles'` where anatomically present).
    - Surgery Economy: Tier 1 basic grafts cost `250-400 Col` (or Doc Mercer's Blood-Debt Promissory Note if the player is short on Col), Tier 2 costs `1,200-2,500 Col`, Tier 3 costs `7,500+ Col`.
    - Installing opposing elemental grafts (`Fire + Cold` or `Radiant + Necrotic`) triggers immediate Cellular Necrosis (`2d10 True Damage/turn`).
    - Every newly installed graft inflicts **24-Hour `[Cellular Re-Knitting]` Post-Op Sickness** (`-20% Max HP`, `Dash disabled`, `DC 13 CON save or 1d6 necrotic bleeding` when activating the new graft's active ability, cured only by a 24h Safe-Zone rest or 48h of light travel).

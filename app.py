@@ -1327,6 +1327,36 @@ def apply_player_state_updates(state_updates):
                     st.session_state.player["inventory"].remove(existing_item)
                     break
 
+    # Apply equipment slot updates from schema (and ensure newly equipped items are in inventory)
+    equip_map = {}
+    if isinstance(state_updates.get("equip"), dict):
+        equip_map.update(state_updates["equip"])
+    for slot_key in ("main_hand", "off_hand", "lower_main_hand", "lower_off_hand", "head", "chest", "accessory"):
+        val = state_updates.get(f"equip_{slot_key}")
+        if val and isinstance(val, str) and val.strip():
+            equip_map[slot_key] = val.strip()
+    if equip_map:
+        valid_eq_slots = set(mechanics.get_character_equipment_slots(st.session_state.player).keys()) | {
+            "main_hand", "off_hand", "lower_main_hand", "lower_off_hand", "head", "chest", "accessory"
+        }
+        inv_list = st.session_state.player.setdefault("inventory", [])
+        existing_names_low = {
+            (it.get("name", "") if isinstance(it, dict) else str(it)).strip().lower()
+            for it in inv_list
+        }
+        for slot_key, item_name in equip_map.items():
+            if slot_key in valid_eq_slots and item_name:
+                if (
+                    item_name.strip().lower() not in ("none", "")
+                    and not mechanics.is_two_handed_grip_marker(item_name)
+                    and item_name.strip().lower() not in existing_names_low
+                ):
+                    enriched_eq = mechanics.enrich_item_dict({"name": item_name, "slot": slot_key}, inventory=inv_list)
+                    inv_list.append(enriched_eq)
+                    existing_names_low.add(item_name.strip().lower())
+                    st.toast(f"⚔️ Equipped & Added to Inventory: {enriched_eq['name']}!", icon="🛡️")
+                mechanics.equip_item_to_slot(st.session_state.player, item_name, slot_key)
+
     # Check if an Ability Fusion was initiated by the player this turn
     pending_fusion = st.session_state.pop("pending_fusion_components", None)
     consumed_this_turn_lows = set()
@@ -1666,6 +1696,8 @@ if "companions" in p and "Ren" in p["companions"]:
         r_sheet["inventory"] = ["Aether-Lock Carbine", "Runic Vanguard Blade", "Alchemical Haze Pellets"]
 
 # Initialize Phase 1-13 Systems
+if hasattr(mechanics, "ensure_multi_limb_equipment"):
+    mechanics.ensure_multi_limb_equipment(p)
 if hasattr(mechanics, "ensure_chrono_system"):
     mechanics.ensure_chrono_system(p)
 if hasattr(mechanics, "ensure_factions_system"):
@@ -1704,6 +1736,8 @@ if "messages" not in st.session_state:
 # --- SIDEBAR: HUD & INVENTORY ---
 def render_game_hud():
     player = st.session_state.player
+    if hasattr(mechanics, "ensure_multi_limb_equipment"):
+        mechanics.ensure_multi_limb_equipment(player)
     st.subheader(player["name"])
 
     if hasattr(mechanics, "get_locked_avatar_visual_directive"):
@@ -1793,7 +1827,8 @@ def render_game_hud():
     xp_percent = max(0.0, min(1.0, xp_current / xp_max))
     st.progress(xp_percent, text=f"XP: {xp_current} / {xp_max}")
     
-    st.write(f"**Level:** {player['level']} | **Col:** {player['col']} 🪙")
+    calc_ac_val = mechanics.calculate_ac(player) if hasattr(mechanics, "calculate_ac") else 10
+    st.write(f"**Level:** {player['level']} | **AC:** {calc_ac_val} 🛡️ | **Col:** {player['col']} 🪙")
     
     st.divider()
     
@@ -1801,6 +1836,7 @@ def render_game_hud():
     with st.expander("🧬 Character Build", expanded=False):
         cursor_data = mechanics.get_cursor_status(player) if hasattr(mechanics, "get_cursor_status") else {"badge": "🟢 Green"}
         hud_profile = mechanics.get_physical_profile(player)
+        limb_prof = mechanics.get_limb_anatomy_profile(player) if hasattr(mechanics, "get_limb_anatomy_profile") else {"arm_count": 2, "hand_slots": {}, "tactical_rules": []}
         st.write(f"**Sex / Gender:** {hud_profile['gender']} ({hud_profile['pronouns']})")
         st.write(f"**Race:** {player['race']}")
         st.write(f"**Class:** {player['class']}")
@@ -1811,6 +1847,10 @@ def render_game_hud():
             st.write("**Body:** not recorded (older save; treated as Medium / Average / Prime, no modifiers)")
         if hud_profile["effects"]:
             st.caption(" · ".join(hud_profile["effects"]))
+        if limb_prof.get("arm_count", 2) > 2 or len(limb_prof.get("hand_slots", {})) > 2:
+            st.markdown(f"**🦾 Multi-Limb Anatomy:** `{limb_prof['arm_count']} Functional Arms` (`{len(limb_prof.get('hand_slots', {}))} Hand Slots`)")
+            for tr in limb_prof.get("tactical_rules", []):
+                st.caption(f"• {tr}")
         st.write("**Core Stats:**")
         cols = st.columns(3)
         cols[0].write(f"STR: {player['stats']['STR']}")
@@ -1840,10 +1880,18 @@ def render_game_hud():
         if pens["broken_items"]:
             st.error(f"🚨 **Broken Gear:** {', '.join(pens['broken_items'])} (Ineffective!)")
 
-        for slot in ["head", "chest", "main_hand", "off_hand", "accessory"]:
-            item = player['equipped'].get(slot, "None")
-            slot_label = slot.replace('_', ' ').title()
+        char_eq_slots = mechanics.get_character_equipment_slots(player) if hasattr(mechanics, "get_character_equipment_slots") else {
+            "head": "Head", "chest": "Chest / Torso Armor", "main_hand": "Main Hand", "off_hand": "Off-Hand", "accessory": "Accessory / Relic"
+        }
+        for slot, slot_label in char_eq_slots.items():
+            item = player.get("equipped", {}).get(slot, "None")
             if item and item != "None":
+                if hasattr(mechanics, "is_two_handed_grip_marker") and mechanics.is_two_handed_grip_marker(item):
+                    parent_wep = mechanics.extract_two_handed_grip_weapon(item)
+                    st.markdown(f"**{slot_label}:** 🔗 `{item}`")
+                    st.caption(f"Two-Handed Grip paired with **{parent_wep}** (frees your other arm-pair for melee/shield/tools).")
+                    st.divider()
+                    continue
                 grade = mechanics.get_item_grade(item) if hasattr(mechanics, "get_item_grade") else 1
                 grade_badge = f"Grade {grade}"
                 d = gear_dur.get(slot, {"cur": 100, "max": 100})
@@ -1863,6 +1911,11 @@ def render_game_hud():
                     st.error("🛑 BROKEN: Weapon/Armor has fractured!")
                 elif state_info.get("is_dulled"):
                     st.warning("🟠 DULLED/CRACKED: Imposing -2 penalty to checks!")
+                if st.button(f"🔽 Unequip {slot_label}", key=f"btn_unequip_slot_{slot}", use_container_width=True):
+                    mechanics.equip_item_to_slot(player, "None", slot)
+                    save_game(player, st.session_state.messages)
+                    st.toast(f"Unequipped {slot_label}.", icon="🔽")
+                    st.rerun()
                 st.divider()
             else:
                 st.caption(f"- **{slot_label}:** None")
@@ -1871,7 +1924,7 @@ def render_game_hud():
         if total_dur_needed > 0:
             st.caption(f"Maintenance Required: **{total_dur_needed} pts** of wear | Cost: **{total_dur_needed} Col**")
             if st.button("🔨 Repair All Equipped Gear", key="btn_repair_all_gear_hud", use_container_width=True):
-                for slot_k in ["head", "chest", "main_hand", "off_hand", "accessory"]:
+                for slot_k in list(char_eq_slots.keys()):
                     if slot_k in gear_dur and hasattr(mechanics, "repair_item"):
                         mechanics.repair_item(player, slot_k)
                 save_game(player, st.session_state.messages)
@@ -1912,11 +1965,15 @@ def render_game_hud():
             debt_amt = player["graft_system"].get("blood_debt_col", 0)
             st.error(f"🩸 **Ripperdoc Promissory Blood-Debt:** `{debt_amt} Col` owed to Doc Mercer")
 
-        st.caption("Unit Cap = CON Mod + Floor(Level / 2) • Bio-Pool = (CON × 2) + (Level × 3). 1 Graft per slot.")
+        limb_p = mechanics.get_limb_anatomy_profile(player) if hasattr(mechanics, "get_limb_anatomy_profile") else {}
+        ganglia_note = " + 1 (Secondary Thoracic Ganglia)" if limb_p.get("extra_unit_strain_capacity", 0) > 0 else ""
+        st.caption(f"Unit Cap = CON Mod + Floor(Level / 2){ganglia_note} • Bio-Pool = (CON × 2) + (Level × 3). 1 Graft per slot.")
         
         grafts = player.get("grafts", {})
-        slots = [("head", "Head"), ("torso", "Torso"), ("left_arm", "Left Arm"), ("right_arm", "Right Arm"), ("legs", "Legs"), ("spine", "Spine / Internal")]
-        for s_key, s_label in slots:
+        graft_slot_map = mechanics.get_character_graft_slots(player) if hasattr(mechanics, "get_character_graft_slots") else {
+            "head": "Head", "torso": "Torso", "left_arm": "Left Arm", "right_arm": "Right Arm", "legs": "Legs", "spine": "Spine / Internal"
+        }
+        for s_key, s_label in graft_slot_map.items():
             g_val = grafts.get(s_key)
             if g_val:
                 g_name = g_val.get("name", str(g_val)) if isinstance(g_val, dict) else str(g_val)
@@ -2122,20 +2179,90 @@ def render_game_hud():
         rarity_colors = {"Common": "⚪", "Uncommon": "🟢", "Rare": "🔵", "Epic": "🟣", "Legendary": "🟠", "Mythic": "🔴", "Unique": "✨"}
         if hasattr(mechanics, "enrich_inventory_list"):
             player["inventory"] = mechanics.enrich_inventory_list(player.get("inventory", []))
+        char_eq_slots = mechanics.get_character_equipment_slots(player) if hasattr(mechanics, "get_character_equipment_slots") else {
+            "head": "Head", "chest": "Chest / Torso Armor", "main_hand": "Main Hand", "off_hand": "Off-Hand", "accessory": "Accessory / Relic"
+        }
+        hand_slots = mechanics.get_character_hand_slots(player) if hasattr(mechanics, "get_character_hand_slots") else {
+            "main_hand": "Main Hand", "off_hand": "Off-Hand"
+        }
+        eq_dict = player.setdefault("equipped", {})
         for idx, item in enumerate(player.get("inventory", [])):
             if isinstance(item, dict):
                 icon = rarity_colors.get(item.get("rarity", "Common"), "⚪")
                 i_name = item.get('name', 'Unknown')
                 i_slot = item.get('slot', 'item')
-                st.write(f"{icon} **{i_name}** (x{item.get('qty', 1)})")
+                equipped_in_labels = [
+                    char_eq_slots.get(sk, sk.replace("_", " ").title())
+                    for sk, sv in eq_dict.items()
+                    if sv == i_name
+                ]
+                eq_badge = f" • 🟢 *Equipped ({', '.join(equipped_in_labels)})*" if equipped_in_labels else ""
+                st.write(f"{icon} **{i_name}** (x{item.get('qty', 1)}){eq_badge}")
                 st.caption(f"Durability: {item.get('durability', 0)}/{item.get('max_durability', 0)} | {item.get('desc', '')}")
                 if item.get("visual_appearance"):
                     st.caption(f"🎨 *Visual:* {item['visual_appearance']}")
-                if i_slot in ["head", "chest", "main_hand", "off_hand", "accessory"] and player.get("equipped", {}).get(i_slot) != i_name:
-                    if st.button(f"⚔️ Equip to {i_slot.replace('_', ' ').title()}", key=f"btn_equip_inv_{idx}_{i_slot}"):
-                        player.setdefault("equipped", {})[i_slot] = i_name
+
+                is_handheld = mechanics.is_handheld_equip_item(item, player.get("inventory", [])) if hasattr(mechanics, "is_handheld_equip_item") else (i_slot in ["main_hand", "off_hand"])
+                is_2h = mechanics.is_two_handed_weapon(item, player.get("inventory", [])) if hasattr(mechanics, "is_two_handed_weapon") else False
+
+                if is_handheld:
+                    if is_2h:
+                        pair_options = [("main_hand", "Upper Arms (2H Pair)" if "lower_main_hand" in hand_slots else "Both Hands (2H)")]
+                        if "lower_main_hand" in hand_slots:
+                            pair_options.append(("lower_main_hand", "Lower Arms (2H Pair)"))
+                        if len(pair_options) > 1:
+                            ec1, ec2 = st.columns([3, 2])
+                            with ec1:
+                                sel_pair = st.selectbox(
+                                    "2H Arm Pair",
+                                    options=[po[0] for po in pair_options],
+                                    format_func=lambda k, _m=dict(pair_options): _m.get(k, k),
+                                    key=f"sel_2h_pair_{idx}",
+                                    label_visibility="collapsed",
+                                )
+                            with ec2:
+                                if st.button("⚔️ Equip 2H", key=f"btn_equip_2h_{idx}", use_container_width=True):
+                                    res = mechanics.equip_item_to_slot(player, i_name, sel_pair)
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(res.get("message", f"Equipped {i_name}!"), icon="⚔️")
+                                    st.rerun()
+                        elif eq_dict.get("main_hand") != i_name:
+                            if st.button("⚔️ Equip (2H Both Hands)", key=f"btn_equip_2h_single_{idx}"):
+                                res = mechanics.equip_item_to_slot(player, i_name, "main_hand")
+                                save_game(player, st.session_state.messages)
+                                st.toast(res.get("message", f"Equipped {i_name}!"), icon="⚔️")
+                                st.rerun()
+                    else:
+                        hand_keys = list(hand_slots.keys())
+                        default_h_idx = 0
+                        if i_slot in hand_keys:
+                            default_h_idx = hand_keys.index(i_slot)
+                        for hk_i, hk in enumerate(hand_keys):
+                            if not eq_dict.get(hk) or eq_dict.get(hk) == "None":
+                                default_h_idx = hk_i
+                                break
+                        ec1, ec2 = st.columns([3, 2])
+                        with ec1:
+                            sel_hand = st.selectbox(
+                                "Hand Slot",
+                                options=hand_keys,
+                                index=default_h_idx,
+                                format_func=lambda k, _hm=hand_slots, _eq=eq_dict: f"{_hm.get(k, k)} ({_eq.get(k, 'Empty') if _eq.get(k) not in (None, '', 'None') else 'Empty'})",
+                                key=f"sel_hand_slot_{idx}",
+                                label_visibility="collapsed",
+                            )
+                        with ec2:
+                            if st.button("⚔️ Equip", key=f"btn_equip_hand_{idx}", use_container_width=True):
+                                res = mechanics.equip_item_to_slot(player, i_name, sel_hand)
+                                save_game(player, st.session_state.messages)
+                                st.toast(res.get("message", f"Equipped {i_name}!"), icon="⚔️")
+                                st.rerun()
+                elif i_slot in char_eq_slots and eq_dict.get(i_slot) != i_name:
+                    slot_lbl = char_eq_slots.get(i_slot, i_slot.replace('_', ' ').title())
+                    if st.button(f"⚔️ Equip to {slot_lbl}", key=f"btn_equip_inv_{idx}_{i_slot}"):
+                        res = mechanics.equip_item_to_slot(player, i_name, i_slot)
                         save_game(player, st.session_state.messages)
-                        st.toast(f"Equipped {i_name} to {i_slot.replace('_', ' ').title()}! Visual profile updated.", icon="⚔️")
+                        st.toast(res.get("message", f"Equipped {i_name} to {slot_lbl}!"), icon="⚔️")
                         st.rerun()
             else:
                 st.write(f"- {item}")
@@ -2578,7 +2705,15 @@ def render_game_hud():
         with hm_tab1:
             st.markdown("##### 🔨 Master Artisan Smithing (`+1` to `+50`)")
             st.caption("Enhance equipped weapons & armor up to +50. Commissioning Master Smith safeguards +11 to +50 against downgrades!")
-            enh_slot = st.selectbox("Select Equipped Slot:", ["main_hand", "off_hand", "chest", "head", "accessory"], key="hud_smith_slot")
+            smith_eq_slots = mechanics.get_character_equipment_slots(player) if hasattr(mechanics, "get_character_equipment_slots") else {
+                "main_hand": "Main Hand", "off_hand": "Off-Hand", "chest": "Chest", "head": "Head", "accessory": "Accessory"
+            }
+            enh_slot = st.selectbox(
+                "Select Equipped Slot:",
+                list(smith_eq_slots.keys()),
+                format_func=lambda k, _sm=smith_eq_slots: f"{_sm.get(k, k)} ({player.get('equipped', {}).get(k, 'None')})",
+                key="hud_smith_slot",
+            )
             use_ms = st.checkbox("🛡️ Commission Master Smith Safeguard (+25% Success, Zero Downgrade)", value=True, key="hud_smith_safeguard")
             if st.button("🔨 Enhance Equipped Item (+1 Tier)", key="btn_enhance_item_hud", use_container_width=True):
                 e_res = mechanics.enhance_equipment(player, slot=enh_slot, use_master_smith=use_ms, target_levels=1)
@@ -2902,17 +3037,26 @@ def render_game_hud():
                 st.divider()
                 st.caption("💉 **Doc Mercer's Clinic: Canonical Tier-1 Surgical Graft Installation (250 Col / Promissory Blood-Debt)**")
                 sel_graft = st.selectbox("Select Component to Graft:", graft_candidates, key="hub_graft_candidate_select")
-                sel_slot = st.selectbox("Target Anatomical Slot:", ["Spine", "Torso", "Left Arm", "Right Arm", "Legs", "Head"], key="hub_graft_slot_select")
+                mercer_graft_slots = mechanics.get_character_graft_slots(st.session_state.player) if hasattr(mechanics, "get_character_graft_slots") else {
+                    "spine": "Spine / Internal", "torso": "Torso", "left_arm": "Left Arm", "right_arm": "Right Arm", "legs": "Legs", "head": "Head"
+                }
+                sel_slot_key = st.selectbox(
+                    "Target Anatomical Slot:",
+                    list(mercer_graft_slots.keys()),
+                    format_func=lambda k, _gm=mercer_graft_slots: _gm.get(k, k),
+                    key="hub_graft_slot_select",
+                )
+                sel_slot_label = mercer_graft_slots.get(sel_slot_key, sel_slot_key)
                 cur_col = st.session_state.player.get("col", 0)
                 btn_label = (
-                    f"🦾 Pay Doc Mercer (250 Col) to Install [{sel_graft}] into [{sel_slot}]"
+                    f"🦾 Pay Doc Mercer (250 Col) to Install [{sel_graft}] into [{sel_slot_label}]"
                     if cur_col >= 250
-                    else f"🩸 Sign Ripperdoc Blood-Debt (250 Col Owed) to Install [{sel_graft}] into [{sel_slot}]"
+                    else f"🩸 Sign Ripperdoc Blood-Debt (250 Col Owed) to Install [{sel_graft}] into [{sel_slot_label}]"
                 )
                 if st.button(btn_label, use_container_width=True):
                     st.session_state.player["location"] = "Doc Mercer's Underground Clinic (Washington Borough Catacombs)"
                     payment_phrase = "pay Doc Mercer the 250 Col Tier-1 surgical fee" if cur_col >= 250 else "sign Doc Mercer's Promissory Blood-Debt Note (250 Col deferred)"
-                    st.session_state.pending_dev_command = f"I {payment_phrase} to surgically install [{sel_graft}] into my [{sel_slot.lower().replace(' ', '_')}]. Verify my strain limit, check elemental compatibility, and begin the operation (applying 24h [Cellular Re-Knitting])."
+                    st.session_state.pending_dev_command = f"I {payment_phrase} to surgically install [{sel_graft}] into my [{sel_slot_key}]. Verify my strain limit, check elemental compatibility, and begin the operation (applying 24h [Cellular Re-Knitting])."
                     save_game(st.session_state.player, st.session_state.messages)
                     st.rerun()
 
@@ -3794,15 +3938,8 @@ if prompt := (dev_prompt or chat_prompt):
                     except Exception:
                         pass
 
-                    
-                col_change = state_updates.get("col_change")
-                if col_change:
-                    try:
-                        clean_col = str(col_change).replace(",", "").replace(" ", "")
-                        st.session_state.player["col"] += int(clean_col)
-                    except ValueError:
-                        pass
-                        
+                # Note: col_change and equip_* updates are applied inside apply_player_state_updates(state_updates) below.
+
                 discovered_nodes = state_updates.get("discovered_nodes", [])
                 node_updates = state_updates.get("node_updates", {})
                 

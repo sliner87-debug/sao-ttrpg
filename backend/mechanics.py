@@ -260,6 +260,426 @@ def get_physical_profile(player_state) -> dict:
     }
 
 
+# =====================================================================
+# MULTI-LIMB & NON-STANDARD ANATOMY ENGINE (4-ARMED, WINGED, TAURIC, ABERRANT)
+# =====================================================================
+
+TWO_HANDED_WEAPON_KEYWORDS = (
+    "bow", "longbow", "recurve", "greatbow", "shortbow", "crossbow", "arbalest",
+    "rifle", "carbine", "shotgun", "musket", "railgun", "sniper",
+    "greatsword", "greataxe", "maul", "halberd", "glaive", "pike", "polearm",
+    "zweihander", "odachi", "nodachi", "warhammer", "quarterstaff", "heavy staff",
+    "two-handed", "2-handed", "2h ", "(2h)"
+)
+
+ONE_HANDED_OVERRIDE_KEYWORDS = (
+    "hand crossbow", "pistol", "revolver", "sidearm", "one-handed", "1-handed", "1h ", "(1h)",
+    "hatchet", "wood-axe", "handaxe", "tomahawk", "dagger", "dirk", "shortsword", "shortblade",
+    "rapier", "scimitar", "buckler", "shield", "wand", "rangefinder", "lantern", "torch"
+)
+
+
+def is_two_handed_grip_marker(val) -> bool:
+    """Returns True if an equipped slot value is a '[2H Grip: ...]' companion marker for a two-handed weapon."""
+    if not isinstance(val, str):
+        return False
+    s = val.strip()
+    return s.startswith("[2H Grip:") and s.endswith("]")
+
+
+def extract_two_handed_grip_weapon(val) -> str:
+    """Extracts the primary weapon name from a '[2H Grip: <Weapon>]' marker."""
+    if not is_two_handed_grip_marker(val):
+        return ""
+    s = val.strip()
+    return s[len("[2H Grip:"):-1].strip()
+
+
+def is_two_handed_weapon(item_or_name, inventory: list = None) -> bool:
+    """Determines whether a weapon or item requires 2 hands (1 arm-pair) to wield."""
+    if not item_or_name or is_two_handed_grip_marker(item_or_name):
+        return False
+    if isinstance(item_or_name, dict):
+        if item_or_name.get("hands_required") == 2 or item_or_name.get("two_handed") is True:
+            return True
+        if item_or_name.get("hands_required") == 1 or item_or_name.get("two_handed") is False:
+            return False
+        raw_name = str(item_or_name.get("name", ""))
+        raw_desc = f"{item_or_name.get('desc', '')} {item_or_name.get('mechanics', '')}"
+    else:
+        raw_name = str(item_or_name)
+        raw_desc = ""
+        if isinstance(inventory, list):
+            for it in inventory:
+                if isinstance(it, dict) and str(it.get("name", "")).strip().lower() == raw_name.strip().lower():
+                    if it.get("hands_required") == 2 or it.get("two_handed") is True:
+                        return True
+                    if it.get("hands_required") == 1 or it.get("two_handed") is False:
+                        return False
+                    raw_desc = f"{it.get('desc', '')} {it.get('mechanics', '')}"
+                    break
+
+    name_low = raw_name.strip().lower()
+    if not name_low or name_low == "none":
+        return False
+    if any(k in name_low for k in ONE_HANDED_OVERRIDE_KEYWORDS):
+        return False
+    if any(k in name_low for k in TWO_HANDED_WEAPON_KEYWORDS):
+        return True
+    desc_low = raw_desc.lower()
+    if "two-handed" in desc_low or "requires two hands" in desc_low:
+        return True
+    return False
+
+
+def is_handheld_equip_item(item_or_name, inventory: list = None) -> bool:
+    """Returns True if an inventory item can be equipped into a hand / appendage slot."""
+    if isinstance(item_or_name, dict):
+        slot_val = str(item_or_name.get("slot", "")).lower()
+        name_val = str(item_or_name.get("name", "")).lower()
+    else:
+        name_val = str(item_or_name).lower()
+        slot_val = ""
+    if slot_val in ("main_hand", "off_hand", "lower_main_hand", "lower_off_hand", "weapon", "shield", "hand", "auxiliary_hand", "tentacle_grip", "talon_grip", "silk_spinneret_grip"):
+        return True
+    if slot_val in ("head", "chest", "consumable", "material", "graft", "equine_barding"):
+        return False
+    hand_kw = (
+        "sword", "blade", "axe", "hatchet", "bow", "crossbow", "rifle", "carbine", "pistol",
+        "dagger", "knife", "spear", "halberd", "hammer", "maul", "mace", "staff", "wand",
+        "shield", "buckler", "orb", "tome", "lantern", "torch", "whip", "scythe", "claws",
+        "rangefinder", "tuning fork", "grapnel"
+    )
+    return any(k in name_val for k in hand_kw)
+
+
+def get_limb_anatomy_profile(player_state: dict) -> dict:
+    """
+    Inspects the character's lineage (`race`), `racial_abilities`/`feats`, and installed `grafts`
+    to resolve their exact multi-limb anatomy, dynamic equipment slots, dynamic graft slots,
+    secondary ganglia strain bonus, and active tactical multi-limb rules.
+    """
+    if not isinstance(player_state, dict):
+        player_state = {}
+
+    race_low = str(player_state.get("race", "")).lower()
+    feats_list = (player_state.get("feats") or []) + (player_state.get("racial_abilities") or [])
+    feats_low = " ".join(str(f).lower() for f in feats_list)
+    combined = f"{race_low} {feats_low}"
+
+    is_four_armed = any(
+        kw in combined
+        for kw in (
+            "thri-kreen", "thrikreen", "kreen", "spliced apex chimera", "four-armed",
+            "secondary arms", "upper crusher-claws", "quad-scythe", "titan-grip secondary arms",
+            "four-armed guerrilla", "savage quad-rend", "quad-talon"
+        )
+    )
+    is_harpy = "harpy" in race_low
+    is_winged = is_harpy or any(kw in combined for kw in ("aarakocra", "strix", "gargoyle", "stone wings", "raptor flight", "winged aerial"))
+    is_illithid = any(kw in combined for kw in ("illithid", "ceremorph", "mind flayer", "facial tentacles", "tentacle grapple"))
+    is_centaur = "centaur" in race_low
+    is_arachnid = any(kw in race_low for kw in ("anadi", "arachne"))
+    is_tailed = any(
+        kw in combined
+        for kw in ("saurian", "lizardfolk", "draconic", "dragonborn", "tiefling", "fiendblood", "kitsune", "nine-tailed", "kobold", "chimera")
+    )
+
+    # Check if a 2-armed character installed an auxiliary limb / servo-arm graft in spine/torso
+    has_graft_extra_arm = False
+    raw_grafts = player_state.get("grafts", {})
+    sys_grafts = (player_state.get("graft_system") or {}).get("installed_grafts", {})
+    all_graft_entries = []
+    if isinstance(raw_grafts, dict):
+        all_graft_entries.extend(raw_grafts.items())
+    if isinstance(sys_grafts, dict):
+        all_graft_entries.extend(sys_grafts.items())
+    for g_slot, g_val in all_graft_entries:
+        if not g_val:
+            continue
+        g_text = (json.dumps(g_val) if isinstance(g_val, dict) else str(g_val)).lower()
+        if any(k in g_text for k in ("servo-arm", "servo arm", "mech-arm", "mantis-arm", "extra arm", "auxiliary arm", "arachnid harness", "feeler whip")) or (
+            str(g_slot).lower() in ("spine", "torso", "lower_left_arm", "lower_right_arm")
+            and any(k in g_text for k in ("hydraulic arm", "prosthetic arm", "crusher arm", "piston arm"))
+        ):
+            has_graft_extra_arm = True
+            break
+
+    # 1. Dynamic Hand / Appendage Equipment Slots
+    if is_four_armed:
+        hand_slots = [
+            ("main_hand", "Upper Main Hand"),
+            ("off_hand", "Upper Off-Hand"),
+            ("lower_main_hand", "Lower Main Hand"),
+            ("lower_off_hand", "Lower Off-Hand"),
+        ]
+        arm_count = 4
+    elif is_harpy:
+        hand_slots = [
+            ("main_hand", "Left Wing-Claw"),
+            ("off_hand", "Right Wing-Claw"),
+            ("talon_grip", "Prehensile Talon-Feet Grip"),
+        ]
+        arm_count = 2
+    else:
+        hand_slots = [
+            ("main_hand", "Main Hand"),
+            ("off_hand", "Off-Hand"),
+        ]
+        arm_count = 2
+
+    if has_graft_extra_arm and not is_four_armed:
+        hand_slots.append(("auxiliary_hand", "Auxiliary Servo-Hand (Graft)"))
+        arm_count += 1
+    if is_illithid:
+        hand_slots.append(("tentacle_grip", "Facial Tentacle Grip (Light/Focus)"))
+    if is_arachnid:
+        hand_slots.append(("silk_spinneret_grip", "Pedipalp / Star-Silk Grip"))
+
+    # 2. Complete Ordered Equipment Slots
+    equipment_slots = [("head", "Head"), ("chest", "Chest")]
+    if is_centaur:
+        equipment_slots.append(("equine_barding", "Equine Hind-Barding"))
+    equipment_slots.extend(hand_slots)
+    equipment_slots.append(("accessory", "Accessory"))
+
+    # 3. Complete Ordered Anatomical Graft Slots
+    graft_slots = [
+        ("head", "Head"),
+        ("torso", "Torso"),
+        ("left_arm", "Upper Left Arm" if is_four_armed else "Left Arm"),
+        ("right_arm", "Upper Right Arm" if is_four_armed else "Right Arm"),
+    ]
+    if is_four_armed:
+        graft_slots.append(("lower_left_arm", "Lower Left Arm"))
+        graft_slots.append(("lower_right_arm", "Lower Right Arm"))
+    graft_slots.extend([
+        ("legs", "Legs"),
+        ("spine", "Spine / Internal"),
+    ])
+    if is_winged:
+        graft_slots.append(("wings", "Wings / Flight Membrane"))
+    if is_centaur or is_arachnid:
+        graft_slots.append(("hind_legs", "Equine / Arachnid Hind Legs"))
+    if is_tailed:
+        graft_slots.append(("tail", "Prehensile / Armored Tail"))
+    if is_illithid:
+        graft_slots.append(("tentacles", "Facial Tentacles"))
+
+    # 4. Tactical Multi-Limb Rules & Modifiers
+    tactical_rules = []
+    grapple_climb_bonus = 0
+    secondary_ganglia_strain_bonus = 1 if is_four_armed else 0
+
+    if is_four_armed:
+        grapple_climb_bonus = 2
+        tactical_rules.extend([
+            "Four-Armed Upper/Lower Wielding: Upper Pair (`main_hand` + `off_hand`) and Lower Pair (`lower_main_hand` + `lower_off_hand`) operate simultaneously. A 2-Handed weapon (Bow, Greataxe, Rifle) occupies one pair while leaving the other pair free for 1H melee weapons, shields, or tools.",
+            "Hybrid Stance & Quad-Strike Economy: Make your Standard Action attacks with your active primary/2H weapon PLUS 1 Free Off-Hand Strike per turn with a secondary-arm weapon (or spend 1 Focus/Stamina for a 'Quad-Flurry' to strike with both secondary arms). Seamlessly fire a 2H ranged weapon and deliver melee Opportunity Attacks without weapon-swapping.",
+            "Shield Phalanx Cap: First equipped Shield grants its full +2 AC bonus; equipping a second Shield grants at most +1 AC ('Phalanx Ranged Cover') to prevent multi-shield turtle stacking.",
+            "Pin-and-Rend Grapple & Cliff-Hang (+2 & Advantage): Gain +2 (and Advantage when 2 hands are free) on Athletics checks to Grapple or Climb. Can grapple an enemy or cling to a vertical cliff/ladder with two arms while attacking or firing a 2H bow with the other two arms.",
+            "Unimpeded Somatic Casting & Item Use: Never penalized for 'hands full' when casting somatic spells, activating a Laser Rangefinder, or drinking potions while weapons are drawn.",
+            "Cardinal Auto-Seam Armor Fit & Secondary Ganglia (+1 Unit Strain): Merchant and Boss chest armor auto-adapts to 4 armholes; scavenged humanoid torso armor can be field-slit for free. Secondary thoracic ganglia grant +1 Max Unit Strain Capacity at Doc Mercer's Clinic."
+        ])
+    if is_harpy:
+        tactical_rules.append(
+            "Harpy Wing-Claw & Talon Physics: Can grip light 1H weapons in Wing-Claws or Prehensile Talon-Feet while flying, but wielding a Two-Handed Heavy Weapon grounds aerial flight."
+        )
+    if is_illithid:
+        tactical_rules.append(
+            "Facial Tentacle Grip: Can hold a light arcane/psionic focus, wand, or crystal in `tentacle_grip` and perform somatic casting or neural grapples even while both hands are occupied."
+        )
+    if is_centaur:
+        tactical_rules.append(
+            "Equine Quadruped Chassis: Can equip `equine_barding` for +1 to +3 Hind AC, double carry capacity (+80 lbs), and ignore humanoid foot-snare tripwires (suffer double movement cost on vertical ladders)."
+        )
+    if is_arachnid:
+        tactical_rules.append(
+            "Arachnid Pedipalp & 8-Legged Stability: Cannot be knocked Prone while on solid/webbed ground; `silk_spinneret_grip` holds tethers, traps, or light tools while climbing walls at full speed."
+        )
+    if has_graft_extra_arm and not is_four_armed:
+        tactical_rules.append(
+            "Auxiliary Servo-Hand Graft: Grants an extra `auxiliary_hand` slot capable of holding a light 1H weapon, shield, tool, or potion Injector, and grants +1 on Grapple/Repair checks."
+        )
+
+    hand_slots_dict = dict(hand_slots)
+    equipment_slots_dict = dict(equipment_slots)
+    graft_slots_dict = dict(graft_slots)
+
+    return {
+        "arm_count": arm_count,
+        "is_four_armed": is_four_armed,
+        "has_graft_extra_arm": has_graft_extra_arm,
+        "is_harpy": is_harpy,
+        "is_winged": is_winged,
+        "is_illithid": is_illithid,
+        "is_centaur": is_centaur,
+        "is_arachnid": is_arachnid,
+        "is_tailed": is_tailed,
+        "hand_slots": hand_slots_dict,
+        "hand_slot_keys": list(hand_slots_dict.keys()),
+        "equipment_slots": equipment_slots_dict,
+        "equipment_slot_keys": list(equipment_slots_dict.keys()),
+        "graft_slots": graft_slots_dict,
+        "graft_slot_keys": list(graft_slots_dict.keys()),
+        "secondary_ganglia_strain_bonus": secondary_ganglia_strain_bonus,
+        "extra_unit_strain_capacity": secondary_ganglia_strain_bonus,
+        "grapple_climb_bonus": grapple_climb_bonus,
+        "tactical_rules": tactical_rules,
+    }
+
+
+def get_character_equipment_slots(player_state: dict) -> dict:
+    """Returns ordered dict of {slot_key: slot_label} for the character's equipment HUD."""
+    return get_limb_anatomy_profile(player_state)["equipment_slots"]
+
+
+def get_character_hand_slots(player_state: dict) -> dict:
+    """Returns ordered dict of {slot_key: slot_label} for the character's weapon/hand slots."""
+    return get_limb_anatomy_profile(player_state)["hand_slots"]
+
+
+def get_character_graft_slots(player_state: dict) -> dict:
+    """Returns ordered dict of {slot_key: slot_label} for Doc Mercer's surgical graft slots."""
+    return get_limb_anatomy_profile(player_state)["graft_slots"]
+
+
+def ensure_multi_limb_equipment(player_state: dict) -> dict:
+    """
+    Ensures `player_state['equipped']` contains all anatomical equipment slots for the character's race/grafts,
+    and automatically migrates legacy 2-hand saves for 4-armed characters so a 2H weapon in `main_hand`
+    (e.g. Recurve Hunting Bow) pairs with `off_hand = '[2H Grip: ...]'` and moves any displaced 1H weapon
+    (e.g. Chipped Wood-Axe) into `lower_main_hand`.
+    """
+    if not isinstance(player_state, dict):
+        return {}
+    equipped = player_state.setdefault("equipped", {})
+    if not isinstance(equipped, dict):
+        equipped = {}
+        player_state["equipped"] = equipped
+
+    profile = get_limb_anatomy_profile(player_state)
+    inv = player_state.get("inventory", [])
+
+    # Check if this is a 4-armed character whose lower hand slots have never been initialized
+    had_lower_slots = ("lower_main_hand" in equipped) or ("lower_off_hand" in equipped)
+
+    for s_key in profile["equipment_slots"].keys():
+        equipped.setdefault(s_key, "None")
+
+    if profile["is_four_armed"]:
+        mh = str(equipped.get("main_hand", "None") or "None").strip()
+        oh = str(equipped.get("off_hand", "None") or "None").strip()
+        lmh = str(equipped.get("lower_main_hand", "None") or "None").strip()
+        loh = str(equipped.get("lower_off_hand", "None") or "None").strip()
+
+        # If main_hand holds a 2H weapon and off_hand holds a real 1H item (like Glenny's Bow + Wood-Axe),
+        # move the 1H item down to lower_main_hand (or lower_off_hand) and mark off_hand as [2H Grip]!
+        if is_two_handed_weapon(mh, inventory=inv):
+            grip_marker = f"[2H Grip: {mh}]"
+            if oh != "None" and not is_two_handed_grip_marker(oh):
+                if lmh == "None":
+                    equipped["lower_main_hand"] = oh
+                elif loh == "None":
+                    equipped["lower_off_hand"] = oh
+            equipped["off_hand"] = grip_marker
+        elif not had_lower_slots and is_two_handed_grip_marker(oh) and not is_two_handed_weapon(mh, inventory=inv):
+            equipped["off_hand"] = "None"
+
+        # Same check if lower_main_hand holds a 2H weapon
+        lmh_now = str(equipped.get("lower_main_hand", "None") or "None").strip()
+        if is_two_handed_weapon(lmh_now, inventory=inv):
+            equipped["lower_off_hand"] = f"[2H Grip: {lmh_now}]"
+    else:
+        # Even for 2-armed characters, if main_hand holds a 2H weapon and off_hand is empty, mark 2H grip
+        mh = str(equipped.get("main_hand", "None") or "None").strip()
+        oh = str(equipped.get("off_hand", "None") or "None").strip()
+        if is_two_handed_weapon(mh, inventory=inv) and oh == "None":
+            equipped["off_hand"] = f"[2H Grip: {mh}]"
+
+    return equipped
+
+
+def equip_item_to_slot(player_state: dict, item_name: str, target_slot: str) -> dict:
+    """
+    Equips `item_name` into `target_slot` on `player_state['equipped']`, enforcing
+    Upper Pair (`main_hand` + `off_hand`) and Lower Pair (`lower_main_hand` + `lower_off_hand`)
+    1H vs. 2H weapon occupancy rules, and syncs gear durability.
+    """
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+    ensure_multi_limb_equipment(player_state)
+    equipped = player_state["equipped"]
+    inv = player_state.get("inventory", [])
+    clean_item = str(item_name or "None").strip()
+    slot_key = str(target_slot or "main_hand").strip().lower()
+
+    pair_map = {
+        "main_hand": ("main_hand", "off_hand", "Upper Arms"),
+        "off_hand": ("main_hand", "off_hand", "Upper Arms"),
+        "lower_main_hand": ("lower_main_hand", "lower_off_hand", "Lower Arms"),
+        "lower_off_hand": ("lower_main_hand", "lower_off_hand", "Lower Arms"),
+    }
+
+    is_2h = is_two_handed_weapon(clean_item, inventory=inv)
+
+    if slot_key in pair_map:
+        primary_s, off_s, pair_label = pair_map[slot_key]
+        if is_2h:
+            # 2H weapon occupies both hands of the selected pair (Upper Pair or Lower Pair)
+            prev_off = str(equipped.get(off_s, "None") or "None").strip()
+            # If equipping to Upper Pair and there was a 1H item in off_hand, move it to a free Lower hand if 4-armed!
+            profile = get_limb_anatomy_profile(player_state)
+            if (
+                profile["is_four_armed"]
+                and primary_s == "main_hand"
+                and prev_off != "None"
+                and not is_two_handed_grip_marker(prev_off)
+            ):
+                if str(equipped.get("lower_main_hand", "None")) == "None":
+                    equipped["lower_main_hand"] = prev_off
+                elif str(equipped.get("lower_off_hand", "None")) == "None":
+                    equipped["lower_off_hand"] = prev_off
+            equipped[primary_s] = clean_item
+            equipped[off_s] = f"[2H Grip: {clean_item}]"
+            normalize_gear_durability(player_state)
+            return {
+                "success": True,
+                "slot": primary_s,
+                "paired_slot": off_s,
+                "is_two_handed": True,
+                "message": f"Equipped 2H weapon {clean_item} across {pair_label} ({primary_s.replace('_', ' ').title()} + {off_s.replace('_', ' ').title()})!"
+            }
+        else:
+            # 1H item equipped into primary_s or off_s
+            if slot_key == primary_s:
+                # If off_s had a [2H Grip] marker from the old primary weapon, clear it
+                if is_two_handed_grip_marker(equipped.get(off_s, "None")):
+                    equipped[off_s] = "None"
+                equipped[primary_s] = clean_item
+            else:
+                # Equipping a 1H item into off_s: if primary_s held a 2H weapon, unequip the 2H weapon first
+                if is_two_handed_grip_marker(equipped.get(off_s, "None")) or is_two_handed_weapon(equipped.get(primary_s, "None"), inventory=inv):
+                    equipped[primary_s] = "None"
+                equipped[off_s] = clean_item
+            normalize_gear_durability(player_state)
+            return {
+                "success": True,
+                "slot": slot_key,
+                "is_two_handed": False,
+                "message": f"Equipped {clean_item} to {slot_key.replace('_', ' ').title()}!"
+            }
+
+    equipped[slot_key] = clean_item
+    normalize_gear_durability(player_state)
+    return {
+        "success": True,
+        "slot": slot_key,
+        "is_two_handed": False,
+        "message": f"Equipped {clean_item} to {slot_key.replace('_', ' ').title()}!"
+    }
+
+
 def calculate_encumbrance(player_state):
     """
     Calculates total carrying weight, slot capacity, encumbrance tier, and modifiers.
@@ -269,12 +689,20 @@ def calculate_encumbrance(player_state):
     stats = player_state.get("stats", {})
     str_val = stats.get("STR", 10)
     
-    # Check for racial / feat carry capacity bonus (e.g. MageTech Cyborg Pneumatic Endoskeleton)
+    # Check for racial / feat carry capacity bonus (e.g. MageTech Cyborg, Hulking Marrow-Frame, Goliath, Centaur, Half-Ogre)
     bonus_capacity = 0.0
     race_str = str(player_state.get("race", "")).lower()
-    feats_str = " ".join([str(f).lower() for f in player_state.get("feats", [])])
+    feats_str = " ".join([str(f).lower() for f in (player_state.get("feats", []) + player_state.get("racial_abilities", []))])
     if "cyborg" in race_str or "pneumatic endoskeleton" in feats_str:
         bonus_capacity += 25.0
+    if "hulking marrow-frame" in feats_str:
+        bonus_capacity += 50.0
+    if "powerful build" in feats_str or "goliath" in race_str:
+        bonus_capacity += 60.0
+    if "centaur" in race_str or "galloping overland speed" in feats_str:
+        bonus_capacity += 80.0
+    if "hulking bulk" in feats_str or "half-ogre" in race_str:
+        bonus_capacity += 100.0
         
     carry_mult = get_physical_profile(player_state)["modifiers"]["carry_mult"]
     max_weight = round((str_val * 15.0 + bonus_capacity) * carry_mult, 1)
@@ -283,15 +711,24 @@ def calculate_encumbrance(player_state):
     current_weight = 0.0
     used_slots = 0
     
-    # Calculate weight of equipped gear
+    # Track inventory item names so equipped items already in inventory aren't double-counted
+    inventory = player_state.get("inventory", [])
+    inv_names_low = set()
+    for item in inventory:
+        if isinstance(item, dict) and item.get("name"):
+            inv_names_low.add(str(item["name"]).strip().lower())
+        elif isinstance(item, str):
+            inv_names_low.add(item.split(" x")[0].strip().lower())
+
+    # Calculate weight of equipped gear (skipping [2H Grip: ...] markers and items already counted in inventory)
     equipped = player_state.get("equipped", {})
     if isinstance(equipped, dict):
         for slot, item_name in equipped.items():
-            if item_name and item_name != "None":
-                current_weight += get_item_weight({"name": item_name, "qty": 1})
+            if item_name and item_name != "None" and not is_two_handed_grip_marker(item_name):
+                if str(item_name).strip().lower() not in inv_names_low:
+                    current_weight += get_item_weight({"name": item_name, "qty": 1})
                 
     # Calculate weight and slots of backpack inventory
-    inventory = player_state.get("inventory", [])
     for item in inventory:
         w = get_item_weight(item)
         current_weight += w
@@ -336,7 +773,7 @@ def calculate_encumbrance(player_state):
     }
 
 def calculate_ac(player_state, encumbrance=None):
-    """Calculates Armor Class based on DEX, equipped armor, durability state, natural armor, and encumbrance penalties."""
+    """Calculates Armor Class based on DEX, equipped armor, multi-hand shield cap, durability state, natural armor, and encumbrance penalties."""
     if encumbrance is None:
         encumbrance = calculate_encumbrance(player_state)
         
@@ -353,37 +790,64 @@ def calculate_ac(player_state, encumbrance=None):
     dur_pens = calculate_durability_penalties(player_state) if "gear_durability" in player_state else {}
     
     # Armor checks
-    equipped = player_state.get("equipped", {})
-    chest = equipped.get("chest", "").lower()
+    equipped = player_state.get("equipped", {}) if isinstance(player_state.get("equipped"), dict) else {}
+    chest = str(equipped.get("chest", "")).lower()
+    barding = str(equipped.get("equine_barding", "")).lower()
     
     armor_bonus = 0
     if dur_pens.get("chest_broken", False):
         armor_bonus = 0
     elif "einherjar" in chest or "plate" in chest or "gr. 5" in chest:
         armor_bonus = 8
-    elif "chain" in chest or "hauberk" in chest:
+    elif "chain" in chest or "hauberk" in chest or "scale" in chest or "carapace" in chest:
         armor_bonus = 5
-    elif "leather" in chest or "fur" in chest:
+    elif "leather" in chest or "fur" in chest or "brigandine" in chest or "vest" in chest:
         armor_bonus = 3
+    elif "tunic" in chest or "coat" in chest:
+        armor_bonus = 1
+
+    if barding and barding != "none":
+        armor_bonus += 2 if ("plate" in barding or "chain" in barding) else 1
         
-    # Off-hand shield checks
-    off_hand = equipped.get("off_hand", "").lower()
-    shield_bonus = 0
-    if "shield" in off_hand:
-        shield_bonus = 0 if dur_pens.get("shield_broken", False) else 2
+    # Multi-hand shield checks with Phalanx Cap:
+    # 1st active shield grants +2 AC; 2nd+ shield grants +1 AC ('Phalanx Ranged Cover')
+    shield_count = 0
+    for h_slot in ("off_hand", "main_hand", "lower_off_hand", "lower_main_hand", "auxiliary_hand", "talon_grip"):
+        h_val = str(equipped.get(h_slot, "")).lower()
+        if not h_val or is_two_handed_grip_marker(h_val):
+            continue
+        if "shield" in h_val or "buckler" in h_val or "aegis" in h_val:
+            slot_dur = (player_state.get("gear_durability") or {}).get(h_slot, {})
+            if isinstance(slot_dur, dict) and slot_dur.get("cur", 100) <= 0:
+                continue
+            if h_slot == "off_hand" and dur_pens.get("shield_broken", False):
+                continue
+            shield_count += 1
+    if shield_count == 1:
+        shield_bonus = 2
+    elif shield_count >= 2:
+        shield_bonus = 3  # +2 Primary Shield + +1 Secondary Shield Phalanx Cover Cap
+    else:
+        shield_bonus = 0
     
-    # Natural AC from Lineage Traits
+    # Natural AC from Lineage Traits (including Troll-Kreen Fibrous Rubbery Hide & Chitin Carapace)
     natural_ac = 0
     race_str = str(player_state.get("race", "")).lower()
-    feats_str = " ".join([str(f).lower() for f in player_state.get("feats", [])])
-    if any(k in race_str for k in ["golem reborn", "mantid"]):
+    feats_str = " ".join([str(f).lower() for f in (player_state.get("feats", []) + player_state.get("racial_abilities", []))])
+    if any(k in race_str for k in ["golem reborn", "mantid"]) or "fibrous rubbery hide" in feats_str or "chitin-armored cellular regeneration" in feats_str or "hulking bulk" in feats_str or "exoskeletal carapace" in feats_str:
         natural_ac += 2
     elif any(k in race_str for k in ["cyborg", "draconic", "dragonborn"]):
         natural_ac += 1
-    elif "pneumatic endoskeleton" in feats_str:
+    elif "pneumatic endoskeleton" in feats_str or "dragon-scale armor" in feats_str:
         natural_ac += 1
-    elif "dragon-scale armor" in feats_str:
-        natural_ac += 1
+
+    # Chameleon / Symbiotic Carapace unarmored/light AC floor (15 + min(DEX_mod, 3))
+    if ("chameleon chitin carapace" in feats_str or "symbiotic moss-knit carapace" in feats_str or "chameleon carapace" in feats_str) and "plate" not in chest:
+        carapace_base = 15 + min(3, max(0, dex_mod))
+        if carapace_base > (base_ac + armor_bonus + natural_ac):
+            base_ac = carapace_base
+            armor_bonus = 0
+            natural_ac = 0
         
     # Golem & Biological Grafts AC Bonus
     graft_ac_bonus = 0
@@ -1876,18 +2340,21 @@ def get_item_grade(item):
 
 def normalize_gear_durability(player_state):
     """
-    Ensures player_state['gear_durability'] is present and synced with equipped items.
+    Ensures player_state['gear_durability'] is present and synced with equipped items
+    across all dynamic multi-limb equipment slots.
     Initializes max durability according to item grade.
     """
     if "gear_durability" not in player_state or not isinstance(player_state["gear_durability"], dict):
         player_state["gear_durability"] = {}
 
     gear_dur = player_state["gear_durability"]
-    equipped = player_state.get("equipped", {})
+    equipped = player_state.get("equipped", {}) if isinstance(player_state.get("equipped"), dict) else {}
+    profile = get_limb_anatomy_profile(player_state)
+    all_slots = list(dict.fromkeys(profile["equipment_slot_keys"] + list(equipped.keys())))
 
-    for slot in ["head", "chest", "main_hand", "off_hand", "accessory"]:
+    for slot in all_slots:
         item_val = equipped.get(slot, "None")
-        if item_val and item_val != "None":
+        if item_val and item_val != "None" and not is_two_handed_grip_marker(item_val):
             grade = get_item_grade(item_val)
             default_max = ITEM_GRADE_SCALING[grade]["default_durability"]
             
@@ -1966,10 +2433,11 @@ def get_durability_state(cur, max_dur):
 
 def calculate_durability_penalties(player_state):
     """
-    Calculates total penalties applied from damaged/broken equipped gear.
+    Calculates total penalties applied from damaged/broken equipped gear across all active hand & armor slots.
     """
     gear_dur = player_state.get("gear_durability", {})
-    equipped = player_state.get("equipped", {})
+    equipped = player_state.get("equipped", {}) if isinstance(player_state.get("equipped"), dict) else {}
+    profile = get_limb_anatomy_profile(player_state)
 
     atk_penalty = 0
     ac_penalty = 0
@@ -1978,9 +2446,9 @@ def calculate_durability_penalties(player_state):
     broken_items = []
     dulled_items = []
 
-    for slot in ["main_hand", "off_hand"]:
+    for slot in profile["hand_slot_keys"]:
         item = equipped.get(slot, "None")
-        if item != "None" and slot in gear_dur:
+        if item and item != "None" and not is_two_handed_grip_marker(item) and slot in gear_dur:
             d = gear_dur[slot]
             state_info = get_durability_state(d.get("cur", 0), d.get("max", 100))
             if state_info["is_broken"]:
@@ -1997,9 +2465,9 @@ def calculate_durability_penalties(player_state):
                 dulled_items.append(f"{slot} ({item})")
 
     # Armor slots
-    for slot in ["chest", "head"]:
+    for slot in ["chest", "head", "equine_barding"]:
         item = equipped.get(slot, "None")
-        if item != "None" and slot in gear_dur:
+        if item and item != "None" and slot in gear_dur:
             d = gear_dur[slot]
             state_info = get_durability_state(d.get("cur", 0), d.get("max", 100))
             if state_info["is_broken"]:
@@ -2906,9 +3374,17 @@ CANONICAL_GRAFTS = {
 
 CANONICAL_ANATOMICAL_SLOTS = ["head", "torso", "left_arm", "right_arm", "legs", "spine"]
 
+EXTENDED_ANATOMICAL_SLOTS = [
+    "head", "torso", "left_arm", "right_arm",
+    "lower_left_arm", "lower_right_arm",
+    "legs", "spine", "wings", "hind_legs", "tail", "tentacles"
+]
+
 BODY_GRAFT_SLOTS = [
     "arm_left", "arm_right", "leg_left", "leg_right", "spine", "ocular", "dermal", "neural",
-    "head", "torso", "left_arm", "right_arm", "legs"
+    "head", "torso", "left_arm", "right_arm", "legs",
+    "lower_left_arm", "lower_right_arm", "arm_lower_left", "arm_lower_right",
+    "wings", "hind_legs", "tail", "tentacles"
 ]
 
 SLOT_ALIASES = {
@@ -2922,12 +3398,27 @@ SLOT_ALIASES = {
     "core": "torso",
     "left_arm": "left_arm",
     "arm_left": "left_arm",
+    "upper_left_arm": "left_arm",
     "right_arm": "right_arm",
     "arm_right": "right_arm",
+    "upper_right_arm": "right_arm",
+    "lower_left_arm": "lower_left_arm",
+    "arm_lower_left": "lower_left_arm",
+    "lower left arm": "lower_left_arm",
+    "lower_right_arm": "lower_right_arm",
+    "arm_lower_right": "lower_right_arm",
+    "lower right arm": "lower_right_arm",
     "legs": "legs",
     "leg_left": "legs",
     "leg_right": "legs",
-    "spine": "spine"
+    "spine": "spine",
+    "wings": "wings",
+    "wing": "wings",
+    "hind_legs": "hind_legs",
+    "hind legs": "hind_legs",
+    "tail": "tail",
+    "tentacles": "tentacles",
+    "facial_tentacles": "tentacles",
 }
 
 OPPOSING_GRAFT_ELEMENTS = {
@@ -3014,7 +3505,7 @@ def _infer_graft_element(graft_data):
 def get_max_unit_strain(player_state):
     """
     Canonical Unit Strain Capacity from cardinal_rules.md:
-    Max Strain Capacity = max(1, CON_Mod + Floor(Level / 2) + Feat Bonus)
+    Max Strain Capacity = max(1, CON_Mod + Floor(Level / 2) + Feat Bonus + Secondary Ganglia Bonus)
     """
     if not isinstance(player_state, dict):
         return 1
@@ -3024,9 +3515,14 @@ def get_max_unit_strain(player_state):
     level_val = int(player_state.get("level", 1))
     feat_bonus = 0
     race_str = str(player_state.get("race", "")).lower()
-    feats_str = " ".join([str(f).lower() for f in player_state.get("feats", [])])
+    feats_str = " ".join([str(f).lower() for f in (player_state.get("feats", []) + player_state.get("racial_abilities", []))])
     if "cyborg" in race_str or "graft harmonization" in feats_str or "innate graft-tolerance" in feats_str:
         feat_bonus += 1
+    # Multi-limb 4-armed Secondary Ganglia Bonus (+1 Max Unit Strain)
+    limb_prof = get_limb_anatomy_profile(player_state)
+    feat_bonus += int(limb_prof.get("secondary_ganglia_strain_bonus", 0))
+    if "splice rejection" in feats_str:
+        feat_bonus -= 1
     return max(1, con_mod + (level_val // 2) + feat_bonus)
 
 def get_current_unit_strain(player_state):
@@ -3074,9 +3570,9 @@ class _InstalledGraftsDict(dict):
 
 def sync_graft_containers(player_state):
     """
-    Two-way synchronization between `player_state['grafts']` (6-slot dict used by app.py & GM Engine)
+    Two-way synchronization between `player_state['grafts']` (anatomical slot dict used by app.py & GM Engine)
     and `player_state['graft_system']['installed_grafts']` (Bio-Tolerance engine in mechanics.py).
-    Guarantees Model A and Model B are 100% unified at all times and mutates `installed_grafts` in-place.
+    Supports both 6-slot standard humanoids and multi-limbed races (lower arms, wings, hind legs, tail, tentacles).
     """
     if not isinstance(player_state, dict):
         return {}
@@ -3155,13 +3651,15 @@ def sync_graft_containers(player_state):
                     }
 
     # 2. Normalize slots in installed_grafts IN-PLACE and mirror back to player_state["grafts"]
+    limb_prof = get_limb_anatomy_profile(player_state)
+    char_graft_slot_keys = limb_prof.get("graft_slot_keys", CANONICAL_ANATOMICAL_SLOTS)
     normalized_installed = {}
-    synced_ui_grafts = {slot: None for slot in CANONICAL_ANATOMICAL_SLOTS}
+    synced_ui_grafts = {slot: None for slot in char_graft_slot_keys}
     for slot_k, g_data in list(installed.items()):
         if not isinstance(g_data, dict) or not g_data.get("name"):
             continue
         c_slot = SLOT_ALIASES.get(str(slot_k).lower(), str(slot_k).lower())
-        if c_slot not in CANONICAL_ANATOMICAL_SLOTS:
+        if c_slot not in EXTENDED_ANATOMICAL_SLOTS:
             c_slot = "torso"
         g_data["slot"] = c_slot
         g_data["unit_strain"] = _infer_graft_unit_strain(g_data)
@@ -3366,8 +3864,9 @@ def install_graft(
     allow_blood_debt=False,
 ):
     """
-    Surgically installs a Golem or Biological Graft into one of the 6 canonical anatomical slots:
-    - Enforces 6-Slot Occupancy & Elemental Mutual Exclusivity (Fire vs Cold)
+    Surgically installs a Golem or Biological Graft into one of the character's anatomical slots
+    (6 standard slots or extended multi-limb slots like lower_left_arm, lower_right_arm, wings, hind_legs, tail, tentacles):
+    - Enforces Slot Occupancy & Elemental Mutual Exclusivity (Fire vs Cold)
     - Enforces Surgery Col Economy (or Ripperdoc Blood-Debt Promissory Note)
     - Applies 24-Hour [Cellular Re-Knitting] Post-Op Sickness (-20% Max HP, Dash disabled, DC 13 CON save on active use)
     - Synchronizes both player_state['grafts'] and player_state['graft_system']['installed_grafts']
@@ -3390,11 +3889,24 @@ def install_graft(
 
     sync_graft_containers(player_state)
 
+    allowed = [s.lower() for s in graft_def["allowed_slots"]]
+    allowed_canonical = [SLOT_ALIASES.get(s, s) for s in allowed]
+    # Multi-limb parity: any graft allowed on left_arm/right_arm is also compatible with lower_left_arm/lower_right_arm/tail/tentacles,
+    # and any graft allowed on legs is also compatible with hind_legs/wings.
+    if any(s in allowed_canonical for s in ("left_arm", "right_arm")):
+        for extra_arm_s in ("lower_left_arm", "lower_right_arm", "tail", "tentacles"):
+            if extra_arm_s not in allowed_canonical:
+                allowed_canonical.append(extra_arm_s)
+    if "legs" in allowed_canonical:
+        for extra_leg_s in ("hind_legs", "wings"):
+            if extra_leg_s not in allowed_canonical:
+                allowed_canonical.append(extra_leg_s)
+
     if not body_slot:
         # Auto-select first unoccupied allowed canonical slot
         installed_map = player_state["graft_system"].get("installed_grafts", {})
         chosen_slot = None
-        for cand_s in graft_def["allowed_slots"]:
+        for cand_s in allowed_canonical:
             c_norm = SLOT_ALIASES.get(cand_s.lower(), cand_s.lower())
             if c_norm not in installed_map or not installed_map[c_norm]:
                 chosen_slot = c_norm
@@ -3406,8 +3918,6 @@ def install_graft(
         msg = f"Invalid body slot '{body_slot}'."
         return {"success": False, "message": msg, "error": msg}
 
-    allowed = [s.lower() for s in graft_def["allowed_slots"]]
-    allowed_canonical = [SLOT_ALIASES.get(s, s) for s in allowed]
     if body_slot.lower() not in allowed and canonical_slot not in allowed and canonical_slot not in allowed_canonical:
         allowed_str = ", ".join(graft_def["allowed_slots"])
         msg = f"{graft_def['name']} can only be installed in: {allowed_str}."
@@ -10081,7 +10591,9 @@ BASE_CHARACTER_ANATOMY = {
             "head": "None",
             "chest": "Threadbare Scavenger Tunic",
             "main_hand": "Recurve Hunting Bow",
-            "off_hand": "Chipped Wood-Axe",
+            "off_hand": "[2H Grip: Recurve Hunting Bow]",
+            "lower_main_hand": "Chipped Wood-Axe",
+            "lower_off_hand": "None",
             "accessory": "Hunting Laser Rangefinder",
         },
         "base_anatomy": (
@@ -11154,10 +11666,11 @@ def ensure_character_avatar_lock(character_state: dict) -> dict:
     """
     Ensures characters with locked canonical avatars (such as Glenny) have their
     avatar_image_path, locked_avatar_anatomy, baseline_portrait_equipped, and
-    only_alter_by_equipment flags persisted in their save profile.
+    only_alter_by_equipment flags persisted in their save profile, plus multi-limb equipment slots synced.
     """
     if not isinstance(character_state, dict):
         return character_state
+    ensure_multi_limb_equipment(character_state)
     name_low = str(character_state.get("name", "")).strip().lower()
     if name_low in BASE_CHARACTER_ANATOMY:
         entry = BASE_CHARACTER_ANATOMY[name_low]
@@ -11166,16 +11679,21 @@ def ensure_character_avatar_lock(character_state: dict) -> dict:
             character_state["only_alter_by_equipment"] = True
             character_state.setdefault("avatar_image_path", entry.get("avatar_image_path", f"assets/avatars/{name_low}_avatar.png"))
             character_state.setdefault("locked_avatar_anatomy", entry.get("base_anatomy", ""))
-            if "baseline_portrait_equipped" in entry and "baseline_portrait_equipped" not in character_state:
-                character_state["baseline_portrait_equipped"] = dict(entry["baseline_portrait_equipped"])
+            if "baseline_portrait_equipped" in entry:
+                cur_base = character_state.get("baseline_portrait_equipped")
+                if not isinstance(cur_base, dict) or (
+                    "lower_main_hand" in entry["baseline_portrait_equipped"] and "lower_main_hand" not in cur_base
+                ):
+                    character_state["baseline_portrait_equipped"] = dict(entry["baseline_portrait_equipped"])
     return character_state
 
 
 def get_locked_avatar_visual_directive(character_state: dict, base_dir: str = None) -> dict:
     """
     Evaluates whether a character has a locked Avatar portrait and computes which
-    equipped gear slots (if any) differ from the locked baseline portrait so that
-    visual depictions ONLY alter the character based on currently Equipped Gear.
+    equipped gear slots (if any, across Upper/Lower arms and specialized appendages) differ
+    from the locked baseline portrait so that visual depictions ONLY alter the character
+    based on currently Equipped Gear.
     """
     import os
     if not isinstance(character_state, dict):
@@ -11211,21 +11729,21 @@ def get_locked_avatar_visual_directive(character_state: dict, base_dir: str = No
 
     inv = character_state.get("inventory", [])
     changed_slots = []
-    for slot in ["head", "chest", "main_hand", "off_hand", "accessory"]:
+    eq_slots = get_character_equipment_slots(character_state)
+    for slot, slot_label in eq_slots.items():
         cur_val = str(equipped.get(slot, "None") or "None").strip()
-        if slot in baseline_eq:
-            base_val = str(baseline_eq.get(slot, "None") or "None").strip()
-            if slot == "accessory" and cur_val.lower() in ("none", base_val.lower()):
-                continue
-            if cur_val.lower() != base_val.lower():
-                if cur_val.lower() == "none":
-                    changed_slots.append(f"{slot.upper()}: unequipped (was {base_val})")
-                else:
-                    det = get_item_details(cur_val, inventory=inv)
-                    changed_slots.append(f"{slot.upper()}: {det['name']} ({det.get('visual_appearance', cur_val)})")
-        elif slot == "accessory" and cur_val.lower() != "none":
-            det = get_item_details(cur_val, inventory=inv)
-            changed_slots.append(f"ACCESSORY: {det['name']} ({det.get('visual_appearance', cur_val)})")
+        base_val = str(baseline_eq.get(slot, "None") or "None").strip()
+        if slot == "accessory" and cur_val.lower() in ("none", base_val.lower()):
+            continue
+        if cur_val.lower() != base_val.lower():
+            if cur_val.lower() == "none":
+                changed_slots.append(f"{slot_label.upper()}: unequipped (was {base_val})")
+            elif is_two_handed_grip_marker(cur_val):
+                w_name = extract_two_handed_grip_weapon(cur_val)
+                changed_slots.append(f"{slot_label.upper()}: two-handed grip supporting {w_name}")
+            else:
+                det = get_item_details(cur_val, inventory=inv)
+                changed_slots.append(f"{slot_label.upper()}: {det['name']} ({det.get('visual_appearance', cur_val)})")
 
     # Also check if any surgical grafts were installed
     p_grafts = character_state.get("grafts", {})
@@ -11263,7 +11781,7 @@ def build_character_visual_profile(character_state: dict, entity_id: str = "play
     """
     Dynamically constructs a character's visual description for the Image Generator based on:
     1. Base Physical Anatomy (face, build, hair, eyes, lineage traits — strictly locked if avatar_locked=True)
-    2. Currently Equipped Gear (`head`, `chest`, `main_hand`, `off_hand`, `accessory`) + Durability Wear State
+    2. Currently Equipped Gear across all dynamic limb slots (`head`, `chest`, `main_hand`, `off_hand`, `lower_main_hand`, `lower_off_hand`, etc.) + Durability Wear State
     3. Installed Magitech & Bio-Grafts (`grafts`, `graft_system`, `active_grafts`)
     """
     if not isinstance(character_state, dict):
@@ -11294,7 +11812,7 @@ def build_character_visual_profile(character_state: dict, entity_id: str = "play
         gender_str = normalize_gender(character_state.get("gender") or (character_state.get("physical") or {}).get("gender"))
         base_anat = f"{gender_str} {race} {char_class} named {name}"
 
-    # 2. Resolve Currently Equipped Gear per slot
+    # 2. Resolve Currently Equipped Gear per slot (including Upper/Lower Arm Pairs & specialized appendages)
     equipped = character_state.get("equipped", {})
     gear_dur = character_state.get("gear_durability", {})
 
@@ -11311,18 +11829,24 @@ def build_character_visual_profile(character_state: dict, entity_id: str = "play
         equipped = inferred_eq
 
     slot_descriptions = []
-    for slot in ["head", "chest", "main_hand", "off_hand", "accessory"]:
+    eq_slots = get_character_equipment_slots(character_state)
+    for slot, slot_label_nice in eq_slots.items():
         item_val = equipped.get(slot, "None") if isinstance(equipped, dict) else "None"
-        slot_label = slot.replace("_", " ").upper()
+        slot_label = slot_label_nice.upper()
         if not item_val or str(item_val).strip().lower() == "none":
             if slot == "head":
                 slot_descriptions.append("HEAD: Bare-headed (no helmet; hair and face clearly visible)")
             elif slot == "chest":
                 slot_descriptions.append("CHEST: Simple survivor attire (no heavy armor equipped)")
-            elif slot == "main_hand":
-                slot_descriptions.append("MAIN HAND: Unarmed / empty-handed")
-            elif slot == "off_hand":
-                slot_descriptions.append("OFF HAND: Empty / free hand")
+            elif slot in ("main_hand", "lower_main_hand"):
+                slot_descriptions.append(f"{slot_label}: Unarmed / claw-ready")
+            elif slot in ("off_hand", "lower_off_hand"):
+                slot_descriptions.append(f"{slot_label}: Empty / free hand")
+            continue
+
+        if is_two_handed_grip_marker(item_val):
+            w_name = extract_two_handed_grip_weapon(item_val)
+            slot_descriptions.append(f"{slot_label}: Two-handed grip supporting {w_name}")
             continue
 
         det = get_item_details(item_val, inventory=inv)
@@ -15138,6 +15662,9 @@ def enhance_equipment(
 
     eq = player_state.setdefault("equipped", {})
     raw_name = str(eq.get(slot, "None")).strip()
+    if is_two_handed_grip_marker(raw_name):
+        slot = "main_hand" if slot == "off_hand" else ("lower_main_hand" if slot == "lower_off_hand" else slot)
+        raw_name = str(eq.get(slot, "None")).strip()
     if not raw_name or raw_name == "None":
         return {"success": False, "message": f"No item equipped in slot '{slot}'.", "log": ""}
 
@@ -15182,6 +15709,9 @@ def enhance_equipment(
     enh_map[slot] = cur_plus
     new_display_name = f"{base_name} +{cur_plus}" if cur_plus > 0 else base_name
     eq[slot] = new_display_name
+    paired_off = "off_hand" if slot == "main_hand" else ("lower_off_hand" if slot == "lower_main_hand" else None)
+    if paired_off and is_two_handed_grip_marker(eq.get(paired_off, "")):
+        eq[paired_off] = f"[2H Grip: {new_display_name}]"
 
     # Boost durability & stats metadata
     dur_map = normalize_gear_durability(player_state) if "normalize_gear_durability" in globals() else {}

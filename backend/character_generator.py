@@ -2727,7 +2727,13 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
         for s_name in list(skills_dict.keys()):
             _mech.update_skill_mastery(player_sheet, s_name, int(phys_mods["starting_mastery_bonus"]))
     
-    # Lock canonical avatar metadata if applicable (e.g. Glenny)
+    # Lock canonical avatar metadata & initialize multi-limb equipment/graft slots if applicable (e.g. Glenny / 4-armed races)
+    if hasattr(_mech, "ensure_multi_limb_equipment"):
+        _mech.ensure_multi_limb_equipment(player_sheet)
+    if hasattr(_mech, "normalize_gear_durability"):
+        _mech.normalize_gear_durability(player_sheet)
+    if hasattr(_mech, "ensure_graft_system"):
+        _mech.ensure_graft_system(player_sheet)
     if hasattr(_mech, "ensure_character_avatar_lock"):
         _mech.ensure_character_avatar_lock(player_sheet)
 
