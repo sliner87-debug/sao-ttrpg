@@ -2160,10 +2160,26 @@ def save_character_to_folder(base_dir, player_state, messages=None, extra_meta=N
     Saves character gamestate into a dedicated folder: saves/<character_name>/save_game.json.
     Also updates saves/<character_name>/profile.json and mirrors root save_game.json.
     """
+    import shutil
+    import backend.mechanics as _mech
+    if hasattr(_mech, "ensure_character_avatar_lock"):
+        _mech.ensure_character_avatar_lock(player_state)
+
     p_name = player_state.get("name", "Survivor")
     char_dir = get_character_save_dir(base_dir, p_name)
     save_file = os.path.join(char_dir, "save_game.json")
     profile_file = os.path.join(char_dir, "profile.json")
+
+    # If character has a locked avatar_image_path, ensure saves/<slug>/avatar.png is synchronized
+    avatar_rel = player_state.get("avatar_image_path")
+    if avatar_rel:
+        src_avatar = avatar_rel if os.path.isabs(avatar_rel) else os.path.join(base_dir, avatar_rel)
+        dst_avatar = os.path.join(char_dir, "avatar.png")
+        if os.path.exists(src_avatar) and not os.path.exists(dst_avatar):
+            try:
+                shutil.copy2(src_avatar, dst_avatar)
+            except Exception:
+                pass
     
     full_data = {
         "player": player_state,
@@ -2186,6 +2202,9 @@ def save_character_to_folder(base_dir, player_state, messages=None, extra_meta=N
         "hp": f"{player_state.get('hp', 100)} / {player_state.get('max_hp', 100)}",
         "col": player_state.get("col", 100),
         "location": player_state.get("location", "Sector 1 Safe-Zone: Washington Borough, NJ"),
+        "avatar_image_path": player_state.get("avatar_image_path"),
+        "avatar_locked": bool(player_state.get("avatar_locked", False)),
+        "only_alter_by_equipment": bool(player_state.get("only_alter_by_equipment", False)),
         "last_saved": full_data["last_saved"]
     }
     with open(profile_file, 'w', encoding="utf-8") as f:
@@ -2209,11 +2228,15 @@ def save_character_to_folder(base_dir, player_state, messages=None, extra_meta=N
 
 def load_character_from_folder(base_dir, character_name):
     """Loads gamestate from saves/<character_name>/save_game.json."""
+    import backend.mechanics as _mech
     char_dir = get_character_save_dir(base_dir, character_name)
     save_file = os.path.join(char_dir, "save_game.json")
     if os.path.exists(save_file):
         with open(save_file, 'r', encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        if isinstance(data, dict) and isinstance(data.get("player"), dict) and hasattr(_mech, "ensure_character_avatar_lock"):
+            _mech.ensure_character_avatar_lock(data["player"])
+        return data
     return None
 
 def list_all_character_folders(base_dir):
@@ -2308,6 +2331,25 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
     `gender` is "Male" or "Female" (defaults to "Male").
     `start_tutorial` launches newly created characters into the 3-stage Cardinal Calibration Crucible tutorial.
     """
+    if str(name or "").strip().lower() == "glenny":
+        if point_alloc is None:
+            point_alloc = {"STR": 5, "DEX": 5, "CON": 4, "INT": 2, "WIS": 3, "CHA": 1}
+        if background_key == "adaptive":
+            background_key = "hunter"
+        if race_key == "human":
+            race_key = "spliced_apex_chimera"
+        if class_key == "pathless":
+            class_key = "ranger"
+        if relic_key == "smartphone":
+            relic_key = "hunting_rangefinder"
+        if starting_weapons is None:
+            starting_weapons = {"main_hand": "Recurve Hunting Bow", "off_hand": "Chipped Wood-Axe"}
+        if chimera_choices is None:
+            chimera_choices = {"base": "troll", "splice": "thri_kreen"}
+        if physical is None:
+            physical = {"age": 24, "height_in": 86, "weight_lbs": 310}
+        if gender is None:
+            gender = "Male"
     if point_alloc is None:
         point_alloc = {"STR": 4, "DEX": 4, "CON": 4, "INT": 4, "WIS": 2, "CHA": 2}
     # 1. Base Stats (10 base + allocated points + racial mods)
@@ -2524,6 +2566,10 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
         for s_name in list(skills_dict.keys()):
             _mech.update_skill_mastery(player_sheet, s_name, int(phys_mods["starting_mastery_bonus"]))
     
+    # Lock canonical avatar metadata if applicable (e.g. Glenny)
+    if hasattr(_mech, "ensure_character_avatar_lock"):
+        _mech.ensure_character_avatar_lock(player_sheet)
+
     # Initialize pristine companion roster and clean disk state for this character
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     reset_companion_roster_for_character(base_dir, name, player_sheet)

@@ -1,0 +1,83 @@
+{
+    "id": "companion_kibs",
+    "name": "Kibs Nine-Fingers",
+    "gender": "Male",
+    "pronouns": "he/him",
+    "role": "Ratkin Scrapper Rogue & Infiltrator",
+    "level": 3,
+    "hp": 30,
+    "max_hp": 30,
+    "ac": 16,
+    "strain_capacity": 3,
+    "active_grafts": [
+        {
+            "name": "Stalker Shadow-Tendon",
+            "slot": "Legs",
+            "effect": "+15ft speed, +4 Stealth",
+            "visual_appearance": "visibly integrated Stalker Shadow-Tendon (elongated predatory muscle fibers woven into leg joints for silent sprint leaps)"
+        }
+    ],
+    "inventory": [
+        {
+            "name": "Serrated Scrap Dagger",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Kibs's wickedly notched gut-hook dagger ground from high-speed saw steel, designed to inflict deep bleeding wounds (1d6 piercing + Bleed).",
+            "visual_appearance": "wielding a wickedly serrated scrap-steel dagger"
+        },
+        {
+            "name": "Wrist Shank",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "A spring-loaded stiletto blade mounted to a leather forearm bracer for instant surprise strikes (1d4 piercing).",
+            "visual_appearance": "wearing a spring-loaded steel wrist-shank bracer on the forearm"
+        },
+        {
+            "name": "Neurotoxin Vials x3",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 3,
+            "slot": "accessory",
+            "desc": "Concentrated paralytic venom distilled from tunnel-crawler glands, used to coat throwing blades.",
+            "visual_appearance": "a leather chest-strap holding glowing green neurotoxin glass vials"
+        },
+        {
+            "name": "Skeleton Lockpick Set",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "accessory",
+            "desc": "Precision titanium tension wrenches, rakes, and runic ward-shims rolled in a oiled leather case (+3 to lockpicking and trap disarm).",
+            "visual_appearance": "an oiled leather roll of precision titanium lockpicks at the hip"
+        },
+        {
+            "name": "Scavenged Shadow-Shroud Leathers",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Supple soot-blackened scavenger leather armor stitched with sound-dampening rat-pelts and concealed tool pockets (+4 AC, +2 Stealth).",
+            "visual_appearance": "wearing soot-blackened Scavenged Shadow-Shroud leather armor with a hooded mantle and utility pouches"
+        }
+    ],
+    "behavior_prompt": "You are Kibs Nine-Fingers (he/him), a scrappy, quick-witted Ratkin infiltrator from the Meiji Dump. Fast-talking, paranoid, observant, and opportunistic. You specialize in unseen movement, coating blades in paralytic neurotoxins, disabling lethal tripwires, and looting lockboxes before the dust even settles.",
+    "equipped": {
+        "head": "None",
+        "chest": "Scavenged Shadow-Shroud Leathers",
+        "main_hand": "Serrated Scrap Dagger",
+        "off_hand": "Wrist Shank",
+        "accessory": "Neurotoxin Vials x3"
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
+}

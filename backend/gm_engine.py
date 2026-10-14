@@ -618,14 +618,31 @@ def generate_scene_image(api_key: str, prompt: str, player_state: dict = None, a
             prompt = re.sub(r'\b(?:heavy\s+)?(?:black-iron\s+)?(?:runic\s+)?plate(?:\s+armor)?\b', chest_vis, prompt, flags=re.IGNORECASE)
 
     gear_manifest = mechanics.build_scene_visual_manifest(player_state=player_state, active_companions=active_companions)
+    lock_info = mechanics.get_locked_avatar_visual_directive(player_state) if (player_state and hasattr(mechanics, "get_locked_avatar_visual_directive")) else {"is_locked": False}
+
+    lock_header = f"\n[AVATAR LOCK ENFORCEMENT]: {lock_info['directive']}\n" if lock_info.get("is_locked") else ""
     if gear_manifest:
         full_prompt = (
-            f"Dark anime art style, high quality, masterpiece. {prompt}\n\n"
+            f"Dark anime art style, high quality, masterpiece. {prompt}\n"
+            f"{lock_header}\n"
             f"[STRICT EQUIPPED GEAR & CHARACTER APPEARANCE REFERENCE — RENDER EXACT EQUIPPED ITEMS & GRAFTS BELOW]:\n"
             f"{gear_manifest}"
         )
     else:
-        full_prompt = f"Dark anime art style, high quality, masterpiece. {prompt}"
+        full_prompt = f"Dark anime art style, high quality, masterpiece. {prompt}{lock_header}"
+
+    # Attach locked reference avatar image bytes when available so the model preserves the exact character identity
+    contents_payload = full_prompt
+    if lock_info.get("is_locked") and lock_info.get("resolved_path") and os.path.exists(lock_info["resolved_path"]):
+        try:
+            with open(lock_info["resolved_path"], "rb") as img_f:
+                ref_bytes = img_f.read()
+            contents_payload = [
+                types.Part.from_bytes(data=ref_bytes, mime_type="image/png"),
+                full_prompt,
+            ]
+        except Exception:
+            contents_payload = full_prompt
 
     client = genai.Client(api_key=api_key)
     
@@ -633,7 +650,7 @@ def generate_scene_image(api_key: str, prompt: str, player_state: dict = None, a
     try:
         response = client.models.generate_content(
             model='gemini-3.1-flash-lite-image',
-            contents=full_prompt,
+            contents=contents_payload,
             config=types.GenerateContentConfig(
                 response_modalities=["IMAGE"],
                 image_config=types.ImageConfig(
@@ -649,7 +666,7 @@ def generate_scene_image(api_key: str, prompt: str, player_state: dict = None, a
         try:
             response = client.models.generate_content(
                 model='gemini-2.5-flash-image',
-                contents=full_prompt,
+                contents=contents_payload,
                 config=types.GenerateContentConfig(
                     response_modalities=["IMAGE"],
                     image_config=types.ImageConfig(
@@ -664,6 +681,67 @@ def generate_scene_image(api_key: str, prompt: str, player_state: dict = None, a
             return None, f"Image generation failed: {e1} | Fallback failed: {e2}"
             
     return None, "No image parts returned"
+
+
+def generate_equipment_altered_avatar(api_key: str, player_state: dict, base_dir: str = None):
+    """
+    Updates a locked character's avatar portrait ONLY when their equipped gear differs from
+    their baseline locked portrait. If equipment matches the baseline, returns the locked base
+    avatar image directly without altering it.
+    Returns (image_bytes, status_or_error_string).
+    """
+    from backend import mechanics
+    if not isinstance(player_state, dict):
+        return None, "Invalid player_state"
+
+    lock_info = mechanics.get_locked_avatar_visual_directive(player_state, base_dir=base_dir)
+    if not lock_info.get("is_locked") or not lock_info.get("resolved_path"):
+        return None, "Character does not have a locked base avatar."
+
+    base_path = lock_info["resolved_path"]
+    with open(base_path, "rb") as f:
+        base_bytes = f.read()
+
+    # If no equipment changed from the baseline locked portrait, return the exact locked image unaltered
+    if not lock_info.get("equipment_changed"):
+        return base_bytes, None
+
+    if not api_key or api_key == "your_api_key_here":
+        return base_bytes, "No API key provided; returning locked base avatar."
+
+    char_name = player_state.get("name", "Glenny")
+    visual_profile = mechanics.build_character_visual_profile(player_state, entity_id=char_name.lower())
+    avatar_prompt = (
+        f"Character portrait of {char_name}. "
+        f"{lock_info['directive']}\n\n"
+        f"CRITICAL RULE: Preserve {char_name}'s exact facial features, olive-green scaly skin, glowing amber eyes, "
+        f"tusks, swept-back black hair, four-armed Troll x Thri-Kreen Chimera anatomy (two massive upper arms + two "
+        f"smaller inner mantis arms), green crystalline shoulder spikes, tail, pose, and framing from the attached "
+        f"reference portrait. ONLY alter the worn armor, clothing, and weapons to match the currently Equipped Gear:\n"
+        f"{visual_profile}"
+    )
+
+    client = genai.Client(api_key=api_key)
+    contents_payload = [
+        types.Part.from_bytes(data=base_bytes, mime_type="image/png"),
+        avatar_prompt,
+    ]
+    for model_name in ("gemini-3.1-flash-lite-image", "gemini-2.5-flash-image"):
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=contents_payload,
+                config=types.GenerateContentConfig(
+                    response_modalities=["IMAGE"],
+                ),
+            )
+            for part in response.parts:
+                if part.inline_data:
+                    return part.inline_data.data, None
+        except Exception:
+            continue
+
+    return base_bytes, "Equipment avatar synthesis unavailable; keeping locked base avatar."
 
 
 def evaluate_two_stage_scene_gate(

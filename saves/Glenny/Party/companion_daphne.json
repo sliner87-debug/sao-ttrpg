@@ -1,0 +1,63 @@
+{
+    "id": "companion_daphne",
+    "name": "Daphne Leclair",
+    "gender": "Female",
+    "pronouns": "she/her",
+    "role": "Spellsinger / Skaldic Virtuoso",
+    "level": 3,
+    "hp": 32,
+    "max_hp": 32,
+    "ac": 14,
+    "strain_capacity": 3,
+    "active_grafts": [
+        {
+            "name": "Resonating Siren Vocal Cords",
+            "slot": "Head",
+            "effect": "Acoustic spells ignore physical cover, +2 to party morale saves",
+            "visual_appearance": "carrying Resonating Siren Vocal Cords"
+        }
+    ],
+    "inventory": [
+        {
+            "name": "Resonating Aether-Lute",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Daphne's masterwork acoustic-arcane lute fitted with a reinforced mithril neck that projects sonic shockwaves and inspiring battle-hymns.",
+            "visual_appearance": "strumming an ornate midnight-wood Aether-Lute glowing with vibrant violet harmonic strings"
+        },
+        {
+            "name": "Silvered Stiletto",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "A needle-thin silvered dueling rapier concealed within the neck of the lute or drawn in the off-hand (1d6 piercing, Finesse).",
+            "visual_appearance": "holding a gleaming silvered dueling stiletto"
+        },
+        {
+            "name": "Velvet Performer's Doublet",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "A flamboyant midnight-velvet skaldic coat lined with concealed mithril chain-links and a silver-threaded scarf (+4 AC, +2 CHA checks).",
+            "visual_appearance": "wearing a flamboyant midnight-velvet skaldic coat with silver brocade and a flowing silver-threaded scarf"
+        }
+    ],
+    "behavior_prompt": "You are Daphne Leclair, a Spellsinger and charismatic skald. You speak with sultry theatrical flair and witty banter. You weave vocal harmonies that supercharge Aria Valkyrie's fury, stagger enemy spellcasters, and slip into enemy blind spots.",
+    "equipped": {
+        "head": "None",
+        "chest": "Velvet Performer's Doublet",
+        "main_hand": "Resonating Aether-Lute",
+        "off_hand": "Silvered Stiletto",
+        "accessory": "None"
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
+}

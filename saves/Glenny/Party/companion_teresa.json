@@ -1,0 +1,63 @@
+{
+    "id": "companion_teresa",
+    "name": "Sister Teresa",
+    "gender": "Female",
+    "pronouns": "she/her",
+    "role": "Inquisitor / Witch-Hunter",
+    "level": 3,
+    "hp": 36,
+    "max_hp": 36,
+    "ac": 16,
+    "strain_capacity": 3,
+    "active_grafts": [
+        {
+            "name": "Silver-Truth Ocular Imprint",
+            "slot": "Head",
+            "effect": "Reveals invisible entities, shapeshifters, and disguised cultists",
+            "visual_appearance": "augmented with an integrated Silver-Truth Ocular Imprint"
+        }
+    ],
+    "inventory": [
+        {
+            "name": "Silver-Chambered Crossbow",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Sister Teresa's heavy repeating mechanical arbalest loaded with consecrated silver-tipped stakes (1d10 piercing + 1d6 radiant vs fiends/undead).",
+            "visual_appearance": "wielding a heavy steel-and-walnut repeating mechanical crossbow loaded with glowing silver stakes"
+        },
+        {
+            "name": "Blessed Consecrated Estoc",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "A rigid, cruciform-hilted silvered thrusting sword designed to pierce monster hearts (1d8 piercing).",
+            "visual_appearance": "carrying a cruciform-hilted silvered Inquisitor estoc blade"
+        },
+        {
+            "name": "Inquisitor's Leather Duster",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "An austere, high-collared charcoal-black leather witch-hunter coat pinned with silver purity seals and paired with a wide-brimmed hat (+5 AC).",
+            "visual_appearance": "wearing a high-collared charcoal witch-hunter leather duster pinned with silver seals and a wide-brimmed inquisitor hat"
+        }
+    ],
+    "behavior_prompt": "You are Sister Teresa, an austere Inquisitor and Witch-Hunter. You speak with calm judicial gravity and unwavering resolve. You analyze enemy weaknesses, expose hidden vulnerabilities with silver-flame telemetry, pin enemy limbs with heavy crossbow bolts, and pass righteous judgment alongside Aria Valkyrie.",
+    "equipped": {
+        "head": "None",
+        "chest": "Inquisitor's Leather Duster",
+        "main_hand": "Silver-Chambered Crossbow",
+        "off_hand": "Blessed Consecrated Estoc",
+        "accessory": "None"
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
+}

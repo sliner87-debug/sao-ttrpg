@@ -1,0 +1,14 @@
+{
+    "name": "Glenny",
+    "slug": "Glenny",
+    "level": 1,
+    "race": "Pure Human",
+    "class": "Ranger (Wilderness Marksman)",
+    "hp": "115 / 115",
+    "col": 100,
+    "location": "Cardinal Calibration Crucible \u2014 Chamber I: Base Mechanics & Orientation",
+    "avatar_image_path": "assets/avatars/glenny_avatar.png",
+    "avatar_locked": true,
+    "only_alter_by_equipment": true,
+    "last_saved": 1792011450.027854
+}

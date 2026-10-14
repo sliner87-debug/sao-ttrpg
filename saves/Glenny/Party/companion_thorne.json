@@ -1,0 +1,63 @@
+{
+    "id": "companion_thorne",
+    "name": "Dr. Alistair Thorne",
+    "gender": "Male",
+    "pronouns": "he/him",
+    "role": "Alchemical Saboteur / Toxicologist",
+    "level": 3,
+    "hp": 30,
+    "max_hp": 30,
+    "ac": 14,
+    "strain_capacity": 4,
+    "active_grafts": [
+        {
+            "name": "Fluoroboric Bronchial Filters",
+            "slot": "Head",
+            "effect": "Immune to acid, poison, and gas hazards; +25% acid payload damage",
+            "visual_appearance": "carrying Fluoroboric Bronchial Filters"
+        }
+    ],
+    "inventory": [
+        {
+            "name": "Pneumatic Acid-Siphon Cannon",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Dr. Thorne's brass-and-glass pressurized alchemical sprayer rifle that projects streams of armor-melting vitriol (2d6 acid, -2 target AC).",
+            "visual_appearance": "aiming a brass-and-glass Pneumatic Acid-Siphon sprayer rifle filled with bubbling neon-green vitriol"
+        },
+        {
+            "name": "Bandolier of Corrosive Flasks",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "Lead-stoppered borosilicate volatile alchemical grenades ready for rapid lobbing (catalytic fire, acid, and cryo-mist).",
+            "visual_appearance": "wearing a leather chest-bandolier packed with glowing multicolor alchemical reagent flasks"
+        },
+        {
+            "name": "Lead-Lined Hazard Apron",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "An acid-resistant slate-grey alchemist's lab duster and vulcanized rubber surgeon's apron (+4 AC, immunity to acid splash).",
+            "visual_appearance": "wearing an acid-resistant slate-grey lab duster and heavy rubberized alchemist's hazard apron"
+        }
+    ],
+    "behavior_prompt": "You are Dr. Alistair Thorne, a mad alchemical genius and explosive toxicologist. You speak with breathless academic manic energy, coughing and laughing while describing horrifying chemical reactions. You strip enemy armor and inject Aria Valkyrie with hyper-potent combat stims.",
+    "equipped": {
+        "head": "None",
+        "chest": "Lead-Lined Hazard Apron",
+        "main_hand": "Pneumatic Acid-Siphon Cannon",
+        "off_hand": "Bandolier of Corrosive Flasks",
+        "accessory": "None"
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
+}

@@ -1,0 +1,63 @@
+{
+    "id": "companion_lyra",
+    "name": "Lyra Stargaze",
+    "gender": "Female",
+    "pronouns": "she/her",
+    "role": "Chronomancer / Temporal Weaver",
+    "level": 4,
+    "hp": 28,
+    "max_hp": 28,
+    "ac": 13,
+    "strain_capacity": 3,
+    "active_grafts": [
+        {
+            "name": "Stargazer Astral Iris",
+            "slot": "Head",
+            "effect": "Anticipates future trajectories (+2 Dodge AC), casts Haste on party leader",
+            "visual_appearance": "carrying Stargazer Astral Iris"
+        }
+    ],
+    "inventory": [
+        {
+            "name": "Chrono-Staff of Moments",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Lyra's slender astral staff crowned with nested, counter-rotating golden astrolabe rings that bend localized time.",
+            "visual_appearance": "holding a slender astral staff topped with spinning golden clockwork astrolabe rings"
+        },
+        {
+            "name": "Hourglass Focus",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "A floating crystal hourglass filled with upward-falling luminescent stardust used to rewind failed saving throws.",
+            "visual_appearance": "orbited by a floating crystal hourglass trickling glowing golden stardust"
+        },
+        {
+            "name": "Star-Silk Robes",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Deep indigo chronomancer vestments embroidered with shifting golden constellation charts (+4 AC).",
+            "visual_appearance": "draped in deep indigo Star-Silk robes embroidered with glowing golden constellations"
+        }
+    ],
+    "behavior_prompt": "You are Lyra Stargaze, a Chronomancer who perceives multiple timelines. You speak with soft cosmic mystery. You cast Haste onto Aria Valkyrie, inflict heavy slow debuffs on rushing foes, and rewind dangerous combat wounds before they prove fatal.",
+    "equipped": {
+        "head": "None",
+        "chest": "Star-Silk Robes",
+        "main_hand": "Chrono-Staff of Moments",
+        "off_hand": "Hourglass Focus",
+        "accessory": "None"
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
+}

@@ -10072,6 +10072,28 @@ BASE_CHARACTER_ANATOMY = {
         "name": "Banki",
         "base_anatomy": "Burly, rugged Nordic warrior with a broad-shouldered muscular build, weathered skin, short dark full beard, piercing intense eyes, and dark undercut hair."
     },
+    "glenny": {
+        "name": "Glenny",
+        "avatar_image_path": "assets/avatars/glenny_avatar.png",
+        "avatar_locked": True,
+        "only_alter_by_equipment": True,
+        "baseline_portrait_equipped": {
+            "head": "None",
+            "chest": "Threadbare Scavenger Tunic",
+            "main_hand": "Recurve Hunting Bow",
+            "off_hand": "Chipped Wood-Axe",
+            "accessory": "Hunting Laser Rangefinder",
+        },
+        "base_anatomy": (
+            "Towering, muscular four-armed Male Spliced Apex Chimera (Troll x Thri-Kreen hybrid) named Glenny "
+            "with olive-green pebbled reptilian-troll skin, fierce orcish-troll face with glowing amber-orange eyes, "
+            "lower jaw tusks and cheek bone-spikes, pointed finned ears, a vertical battle-scar over the right brow, "
+            "and swept-back wild black hair; two massive muscular primary upper arms plated with jagged green chitin-stone "
+            "forearm spikes, two smaller secondary grasping insectoid mantis arms emerging from the lower ribs, "
+            "asymmetrical green crystalline-chitin spikes sprouting from the left shoulder and right collarbone, "
+            "and a heavy green scaled tail."
+        ),
+    },
     "companion_ren": {
         "name": "Ren",
         "base_anatomy": "Lean, athletic 17-year-old male high school senior and systems designer with messy dark hair and sharp, expressive eyes."
@@ -11128,16 +11150,126 @@ def enrich_inventory_list(inventory: list) -> list:
     return [enrich_item_dict(item, inventory=inventory) for item in inventory]
 
 
+def ensure_character_avatar_lock(character_state: dict) -> dict:
+    """
+    Ensures characters with locked canonical avatars (such as Glenny) have their
+    avatar_image_path, locked_avatar_anatomy, baseline_portrait_equipped, and
+    only_alter_by_equipment flags persisted in their save profile.
+    """
+    if not isinstance(character_state, dict):
+        return character_state
+    name_low = str(character_state.get("name", "")).strip().lower()
+    if name_low in BASE_CHARACTER_ANATOMY:
+        entry = BASE_CHARACTER_ANATOMY[name_low]
+        if entry.get("avatar_locked"):
+            character_state["avatar_locked"] = True
+            character_state["only_alter_by_equipment"] = True
+            character_state.setdefault("avatar_image_path", entry.get("avatar_image_path", f"assets/avatars/{name_low}_avatar.png"))
+            character_state.setdefault("locked_avatar_anatomy", entry.get("base_anatomy", ""))
+            if "baseline_portrait_equipped" in entry and "baseline_portrait_equipped" not in character_state:
+                character_state["baseline_portrait_equipped"] = dict(entry["baseline_portrait_equipped"])
+    return character_state
+
+
+def get_locked_avatar_visual_directive(character_state: dict, base_dir: str = None) -> dict:
+    """
+    Evaluates whether a character has a locked Avatar portrait and computes which
+    equipped gear slots (if any) differ from the locked baseline portrait so that
+    visual depictions ONLY alter the character based on currently Equipped Gear.
+    """
+    import os
+    if not isinstance(character_state, dict):
+        return {"is_locked": False, "avatar_image_path": None, "resolved_path": None, "equipment_changed": False, "changed_slots": [], "directive": ""}
+
+    ensure_character_avatar_lock(character_state)
+    is_locked = bool(character_state.get("avatar_locked") or character_state.get("only_alter_by_equipment"))
+    avatar_rel = character_state.get("avatar_image_path")
+    if not is_locked and not avatar_rel:
+        return {"is_locked": False, "avatar_image_path": None, "resolved_path": None, "equipment_changed": False, "changed_slots": [], "directive": ""}
+
+    if base_dir is None:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    resolved_path = None
+    candidates = []
+    if avatar_rel:
+        candidates.append(avatar_rel if os.path.isabs(avatar_rel) else os.path.join(base_dir, avatar_rel))
+    char_name = str(character_state.get("name", "Survivor")).strip()
+    if char_name:
+        candidates.append(os.path.join(base_dir, "saves", char_name.replace(" ", "_"), "avatar.png"))
+        candidates.append(os.path.join(base_dir, "assets", "avatars", f"{char_name.lower().replace(' ', '_')}_avatar.png"))
+    for c_path in candidates:
+        if c_path and os.path.exists(c_path):
+            resolved_path = c_path
+            break
+
+    equipped = character_state.get("equipped", {}) if isinstance(character_state.get("equipped"), dict) else {}
+    baseline_eq = character_state.get("baseline_portrait_equipped")
+    if not isinstance(baseline_eq, dict):
+        name_low = char_name.lower()
+        baseline_eq = BASE_CHARACTER_ANATOMY.get(name_low, {}).get("baseline_portrait_equipped", {})
+
+    inv = character_state.get("inventory", [])
+    changed_slots = []
+    for slot in ["head", "chest", "main_hand", "off_hand", "accessory"]:
+        cur_val = str(equipped.get(slot, "None") or "None").strip()
+        if slot in baseline_eq:
+            base_val = str(baseline_eq.get(slot, "None") or "None").strip()
+            if slot == "accessory" and cur_val.lower() in ("none", base_val.lower()):
+                continue
+            if cur_val.lower() != base_val.lower():
+                if cur_val.lower() == "none":
+                    changed_slots.append(f"{slot.upper()}: unequipped (was {base_val})")
+                else:
+                    det = get_item_details(cur_val, inventory=inv)
+                    changed_slots.append(f"{slot.upper()}: {det['name']} ({det.get('visual_appearance', cur_val)})")
+        elif slot == "accessory" and cur_val.lower() != "none":
+            det = get_item_details(cur_val, inventory=inv)
+            changed_slots.append(f"ACCESSORY: {det['name']} ({det.get('visual_appearance', cur_val)})")
+
+    # Also check if any surgical grafts were installed
+    p_grafts = character_state.get("grafts", {})
+    if isinstance(p_grafts, dict):
+        for g_slot, g_val in p_grafts.items():
+            if g_val:
+                g_det = get_item_details(g_val, inventory=inv)
+                changed_slots.append(f"{g_slot.upper()} GRAFT: {g_det['name']} ({g_det.get('visual_appearance', '')})")
+
+    equipment_changed = len(changed_slots) > 0
+    if not equipment_changed:
+        directive = (
+            f"[LOCKED AVATAR PORTRAIT FOR {char_name.upper()} — NO EQUIPMENT CHANGES FROM BASELINE PORTRAIT]: "
+            f"Keep {char_name}'s exact locked physical anatomy, face, skin, four arms, spikes, tail, and starter gear "
+            f"identical to the locked reference avatar portrait."
+        )
+    else:
+        directive = (
+            f"[LOCKED AVATAR PORTRAIT FOR {char_name.upper()} — ONLY ALTER EQUIPMENT]: "
+            f"Keep {char_name}'s exact locked physical anatomy, face, skin, four arms, spikes, and tail 100% identical to the locked reference avatar. "
+            f"ONLY modify worn equipment/weapons for these changed slots: {' | '.join(changed_slots)}."
+        )
+
+    return {
+        "is_locked": True,
+        "avatar_image_path": avatar_rel or f"assets/avatars/{char_name.lower()}_avatar.png",
+        "resolved_path": resolved_path,
+        "equipment_changed": equipment_changed,
+        "changed_slots": changed_slots,
+        "directive": directive,
+    }
+
+
 def build_character_visual_profile(character_state: dict, entity_id: str = "player") -> str:
     """
     Dynamically constructs a character's visual description for the Image Generator based on:
-    1. Base Physical Anatomy (face, build, hair, eyes, lineage traits)
+    1. Base Physical Anatomy (face, build, hair, eyes, lineage traits — strictly locked if avatar_locked=True)
     2. Currently Equipped Gear (`head`, `chest`, `main_hand`, `off_hand`, `accessory`) + Durability Wear State
     3. Installed Magitech & Bio-Grafts (`grafts`, `graft_system`, `active_grafts`)
     """
     if not isinstance(character_state, dict):
         return ""
 
+    ensure_character_avatar_lock(character_state)
     name = character_state.get("name", entity_id)
     race = character_state.get("race", character_state.get("species_or_type", "Human"))
     char_class = character_state.get("class", character_state.get("role", "Survivor"))
@@ -11146,16 +11278,17 @@ def build_character_visual_profile(character_state: dict, entity_id: str = "play
     # 1. Resolve Base Physical Anatomy (without hardcoded armor/weapons)
     lookup_id = entity_id.lower()
     name_low = name.lower()
-    base_anat = None
-    if lookup_id in BASE_CHARACTER_ANATOMY:
-        base_anat = BASE_CHARACTER_ANATOMY[lookup_id]["base_anatomy"]
-    elif name_low in BASE_CHARACTER_ANATOMY:
-        base_anat = BASE_CHARACTER_ANATOMY[name_low]["base_anatomy"]
-    else:
-        for k, v in BASE_CHARACTER_ANATOMY.items():
-            if v["name"].lower() in name_low or name_low in v["name"].lower():
-                base_anat = v["base_anatomy"]
-                break
+    base_anat = character_state.get("locked_avatar_anatomy")
+    if not base_anat:
+        if lookup_id in BASE_CHARACTER_ANATOMY:
+            base_anat = BASE_CHARACTER_ANATOMY[lookup_id]["base_anatomy"]
+        elif name_low in BASE_CHARACTER_ANATOMY:
+            base_anat = BASE_CHARACTER_ANATOMY[name_low]["base_anatomy"]
+        else:
+            for k, v in BASE_CHARACTER_ANATOMY.items():
+                if v["name"].lower() in name_low or name_low in v["name"].lower():
+                    base_anat = v["base_anatomy"]
+                    break
 
     if not base_anat:
         gender_str = normalize_gender(character_state.get("gender") or (character_state.get("physical") or {}).get("gender"))
@@ -11241,10 +11374,13 @@ def build_character_visual_profile(character_state: dict, entity_id: str = "play
 
     graft_line = f" | ACTIVE GRAFTS: {'; '.join(graft_visuals)}" if graft_visuals else " | ACTIVE GRAFTS: None installed"
 
+    lock_info = get_locked_avatar_visual_directive(character_state)
+    lock_line = f"\n  - Avatar Lock Rule: {lock_info['directive']}" if lock_info.get("is_locked") else ""
+
     return (
         f"* {name} ({race} {char_class}):\n"
-        f"  - Base Physical Appearance: {base_anat}\n"
-        f"  - Equipped Gear (MUST BE DEPICTED ACCURATELY): {' | '.join(slot_descriptions)}{graft_line}"
+        f"  - Base Physical Appearance (LOCKED): {base_anat}\n"
+        f"  - Equipped Gear (ONLY ALTER VISUALS BY EQUIPPED ITEMS): {' | '.join(slot_descriptions)}{graft_line}{lock_line}"
     )
 
 
@@ -11260,7 +11396,9 @@ def build_scene_visual_manifest(player_state: dict = None, active_companions: li
 
     lines = []
     if player_state and isinstance(player_state, dict):
-        lines.append(build_character_visual_profile(player_state, entity_id="banki" if player_state.get("name", "").lower() == "banki" else "player"))
+        ensure_character_avatar_lock(player_state)
+        p_entity_id = str(player_state.get("name", "player")).strip().lower() or "player"
+        lines.append(build_character_visual_profile(player_state, entity_id=p_entity_id))
         if isinstance(player_state.get("physical"), dict) or player_state.get("gender"):
             _pp = get_physical_profile(player_state)
             lines.append(f"  • BODY: {_pp['age']} years old, {_pp['height_display']} tall ({_pp['size']}), {round(_pp['weight_lbs'])} lbs ({_pp['build']} build), {_pp['gender']} ({_pp['pronouns']}) — render proportions accordingly.")

@@ -1,0 +1,63 @@
+{
+    "id": "companion_garrick",
+    "name": "Garrick Stone-Grip",
+    "gender": "Male",
+    "pronouns": "he/him",
+    "role": "Seismic Brawler / Ki-Siphon Pugilist",
+    "level": 4,
+    "hp": 52,
+    "max_hp": 52,
+    "ac": 16,
+    "strain_capacity": 4,
+    "active_grafts": [
+        {
+            "name": "Calcified Granite Dermis",
+            "slot": "Torso",
+            "effect": "DR 2 against physical damage, immune to knockback",
+            "visual_appearance": "carrying Calcified Granite Dermis"
+        }
+    ],
+    "inventory": [
+        {
+            "name": "Granite-Studded Cestus",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Garrick's heavy iron-and-basalt striking gauntlets that amplify seismic ki-punches into armor-cracking impacts (1d8 bludgeoning + tremor stagger).",
+            "visual_appearance": "wearing heavy basalt-and-iron studded cestus gauntlets glowing with amber tectonic ki-runes"
+        },
+        {
+            "name": "Weighted Linen Wraps",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "Lead-weighted monastic forearm wraps inscribed with earth-grounding mantras (+1 AC when parrying).",
+            "visual_appearance": "forearms bound in rune-inscribed monastic linen hand-wraps"
+        },
+        {
+            "name": "Iron-Thread Gi",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Sleeveless martial arts training garb woven with flexible iron-silk thread, leaving the arms and chest free to vent tectonic ki (+4 AC).",
+            "visual_appearance": "wearing a sleeveless dark iron-thread martial arts gi revealing stone-grafted arms and glowing chest ki-glyphs"
+        }
+    ],
+    "behavior_prompt": "You are Garrick Stone-Grip, a Seismic Brawler and frontline unarmed juggernaut. You speak with thunderous good humor and blue-collar martial wisdom. You dive into enemy formations, parrying strikes and shattering stances.",
+    "equipped": {
+        "head": "None",
+        "chest": "Iron-Thread Gi",
+        "main_hand": "Granite-Studded Cestus",
+        "off_hand": "Weighted Linen Wraps",
+        "accessory": "None"
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
+}

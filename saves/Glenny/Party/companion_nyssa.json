@@ -1,0 +1,63 @@
+{
+    "id": "companion_nyssa",
+    "name": "Nyssa Thorn-Weft",
+    "gender": "Female",
+    "pronouns": "she/her",
+    "role": "Primal Shapeshifter / Beast-Warden",
+    "level": 3,
+    "hp": 38,
+    "max_hp": 38,
+    "ac": 15,
+    "strain_capacity": 3,
+    "active_grafts": [
+        {
+            "name": "Felis Shadow-Prowler Claws",
+            "slot": "Arm Left",
+            "effect": "Retractable obsidian claws, guaranteed Bleed on pounce",
+            "visual_appearance": "wielding Felis Shadow-Prowler Claws"
+        }
+    ],
+    "inventory": [
+        {
+            "name": "Obsidian Claw-Gauntlets",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "main_hand",
+            "desc": "Nyssa's feral wooden-and-obsidian talon bracers that channel venomous primal life-energy (2d6 slashing/poison).",
+            "visual_appearance": "wearing razor-sharp obsidian beast-claw gauntlets crackling with emerald primal energy"
+        },
+        {
+            "name": "Living Bramble Armor",
+            "rarity": "Rare",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Symbiotic ironwood bark and flowering razor-thorn vines that lash out at melee attackers (+5 AC, 1d4 piercing thorns).",
+            "visual_appearance": "clad in living ironwood bark-armor interwoven with flexing green razor-thorn vines"
+        },
+        {
+            "name": "Fang Talisman",
+            "rarity": "Uncommon",
+            "durability": 50,
+            "max_durability": 50,
+            "qty": 1,
+            "slot": "off_hand",
+            "desc": "An ancestral dire-predator fang fetish strung on sinew that amplifies wild-shape ferocity.",
+            "visual_appearance": "wearing a necklace of carved dire-wolf fangs glowing with green druidic runes"
+        }
+    ],
+    "behavior_prompt": "You are Nyssa Thorn-Weft, a feral beast-kin shapeshifter. You speak with guttural predator rhythm, growls, and sharp feline wit. You fight at Aria Valkyrie's side as a loyal packmate, shifting forms on the fly to tear throats and pin down heavy threats.",
+    "equipped": {
+        "head": "None",
+        "chest": "Living Bramble Armor",
+        "main_hand": "Obsidian Claw-Gauntlets",
+        "off_hand": "Fang Talisman",
+        "accessory": "None"
+    },
+    "active_debuffs": [],
+    "recruited": false,
+    "active": false
+}

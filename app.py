@@ -240,6 +240,12 @@ def render_sidebar_calibration_preview():
         
     mock_enc = mechanics.calculate_encumbrance(mock_p) if hasattr(mechanics, "calculate_encumbrance") else {"label": "Unencumbered", "current_weight_lbs": 10, "max_weight_lbs": 150, "weight_percent": 0.1, "used_slots": 5, "max_slots": 20, "slots_percent": 0.25}
     mock_ac = mechanics.calculate_ac(mock_p, mock_enc) if hasattr(mechanics, "calculate_ac") else 10
+
+    if hasattr(mechanics, "get_locked_avatar_visual_directive"):
+        prev_lock = mechanics.get_locked_avatar_visual_directive(mock_p, base_dir=BASE_DIR)
+        if prev_lock.get("is_locked") and prev_lock.get("resolved_path"):
+            st.image(prev_lock["resolved_path"], use_container_width=True)
+            st.caption("🔒 **Locked Avatar:** Base appearance fixed; alters only by Equipped Gear.")
     
     st.progress(1.0, text=f"HP: {prev_hp} / {prev_hp}")
     st.progress(0.0, text="XP: 0 / 1000")
@@ -1423,6 +1429,8 @@ if hasattr(mechanics, "ensure_enclave_stewardship"):
     mechanics.ensure_enclave_stewardship(p)
 if hasattr(mechanics, "ensure_player_guild_system"):
     mechanics.ensure_player_guild_system(p)
+if hasattr(mechanics, "ensure_character_avatar_lock"):
+    mechanics.ensure_character_avatar_lock(p)
 
 if "messages" not in st.session_state:
     if saved_data:
@@ -1440,6 +1448,35 @@ if "messages" not in st.session_state:
 def render_game_hud():
     player = st.session_state.player
     st.subheader(player["name"])
+
+    if hasattr(mechanics, "get_locked_avatar_visual_directive"):
+        lock_info = mechanics.get_locked_avatar_visual_directive(player, base_dir=BASE_DIR)
+        if lock_info.get("is_locked") and lock_info.get("resolved_path"):
+            char_dir = cg.get_character_save_dir(BASE_DIR, player.get("name", "Survivor"))
+            eq_avatar_path = os.path.join(char_dir, "avatar_equipped.png")
+            eq_sig = json.dumps(player.get("equipped", {}), sort_keys=True) + "|" + json.dumps(player.get("grafts", {}), sort_keys=True)
+            display_avatar_path = lock_info["resolved_path"]
+            if lock_info.get("equipment_changed") and os.path.exists(eq_avatar_path) and player.get("avatar_equipped_signature") == eq_sig:
+                display_avatar_path = eq_avatar_path
+
+            st.image(display_avatar_path, use_container_width=True)
+            if not lock_info.get("equipment_changed"):
+                st.caption("🔒 **Avatar Locked** — Base portrait active (Alters only by Equipped Gear)")
+            else:
+                st.caption(f"🔒 **Avatar Locked** — Equipment delta: `{', '.join(lock_info['changed_slots'])}`")
+                if player.get("avatar_equipped_signature") != eq_sig:
+                    if st.button("🔄 Update Avatar for Equipped Gear", key="btn_sync_locked_avatar_eq", use_container_width=True):
+                        with st.spinner("Updating locked avatar with equipped gear..."):
+                            new_bytes, err = gm_engine.generate_equipment_altered_avatar(api_key, player, base_dir=BASE_DIR)
+                            if new_bytes and not err:
+                                with open(eq_avatar_path, "wb") as af:
+                                    af.write(new_bytes)
+                                player["avatar_equipped_signature"] = eq_sig
+                                save_game(player, st.session_state.messages)
+                                st.toast("Updated avatar for equipped gear!", icon="🛡️")
+                                st.rerun()
+                            elif err:
+                                st.warning(err)
     
     hp_percent = max(0.0, min(1.0, player["hp"] / max(1, player["max_hp"])))
     st.progress(hp_percent, text=f"HP: {player['hp']} / {player['max_hp']}")
