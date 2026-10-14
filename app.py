@@ -146,6 +146,18 @@ def get_cg_race_obj():
     return cg.resolve_racial_lineage(st.session_state.get("cg_race_key", "pure_human"), get_cg_chimera_choices())
 
 
+def get_cg_physical():
+    """Body stats entered in the wizard: {"age", "height_in", "weight_lbs"}."""
+    d = mechanics.DEFAULT_PHYSICAL
+    ft = st.session_state.get("cg_height_ft", d["height_in"] // 12)
+    inch = st.session_state.get("cg_height_inch", d["height_in"] % 12)
+    return {
+        "age": int(st.session_state.get("cg_age", d["age"])),
+        "height_in": int(ft) * 12 + int(inch),
+        "weight_lbs": int(st.session_state.get("cg_weight", d["weight_lbs"])),
+    }
+
+
 def render_sidebar_calibration_preview():
     char_name = st.session_state.get("cg_name", "Survivor")
     st.subheader(f"Avatar: {char_name}")
@@ -164,9 +176,7 @@ def render_sidebar_calibration_preview():
         s: 10 + pt_alloc.get(s, 0) + prev_race["stat_mods"].get(s, 0)
         for s in ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
     }
-    con_m = (prev_stats["CON"] - 10) // 2
-    base_hp_val = prev_class.get("base_hp", 100)
-    prev_hp = base_hp_val + (con_m * 10)
+    prev_hp = cg.compute_starting_max_hp(prev_race, prev_class, prev_stats, get_cg_physical())
     
     class_def_w = cg.CLASS_WEAPONS.get(st.session_state.get("cg_class_key", "pathless"), cg.CLASS_WEAPONS["pathless"])
     main_w = st.session_state.get("cg_main_hand", class_def_w["main_hand"]) if st.session_state.get("cg_custom_weapons", False) else class_def_w["main_hand"]
@@ -180,6 +190,7 @@ def render_sidebar_calibration_preview():
         "col": 100,
         "class": prev_class["title"],
         "stats": prev_stats,
+        "physical": get_cg_physical(),
         "equipped": {
             "head": "None", 
             "chest": "Threadbare Scavenger Tunic", 
@@ -313,6 +324,22 @@ def render_character_calibration_wizard():
             key="cg_name_input_field",
             placeholder="e.g. Banki, Vance, Kaito, Marcus..."
         ).strip()
+
+        # Physical profile: Age, Height, Weight
+        st.markdown("#### 🧍 Physical Profile")
+        d_phys = mechanics.DEFAULT_PHYSICAL
+        b_c1, b_c2, b_c3, b_c4 = st.columns(4)
+        b_c1.number_input("Age (years)", min_value=13, max_value=500, value=d_phys["age"], step=1, key="cg_age")
+        b_c2.number_input("Height (ft)", min_value=2, max_value=12, value=d_phys["height_in"] // 12, step=1, key="cg_height_ft")
+        b_c3.number_input("Height (in)", min_value=0, max_value=11, value=d_phys["height_in"] % 12, step=1, key="cg_height_inch")
+        b_c4.number_input("Weight (lbs)", min_value=30, max_value=3000, value=d_phys["weight_lbs"], step=5, key="cg_weight")
+        cg_profile = mechanics.get_physical_profile({"physical": get_cg_physical()})
+        st.info(f"**{cg_profile['summary']}**")
+        if cg_profile["effects"]:
+            st.caption("Body modifiers: " + " · ".join(cg_profile["effects"]))
+        else:
+            st.caption("Body modifiers: none (Medium size, Average build, Prime age).")
+        st.caption("Size from height: Small < 4'0\" · Medium 4'0\"–7'0\" · Large > 7'0\". Build from weight vs. height. Age: Youth < 20 · Prime 20–39 · Veteran 40–59 · Elder 60+.")
         
         total_allocated = sum(st.session_state.cg_points.values())
         pts_left = 20 - total_allocated
@@ -794,7 +821,7 @@ def render_character_calibration_wizard():
             s: 10 + st.session_state.cg_points.get(s, 0) + r_info["stat_mods"].get(s, 0)
             for s in ["STR", "DEX", "CON", "INT", "WIS", "CHA"]
         }
-        calc_hp = c_info.get("base_hp", 100) + ((final_scores["CON"] - 10) // 2) * 10 + int(r_info.get("max_hp_bonus", 0))
+        calc_hp = cg.compute_starting_max_hp(r_info, c_info, final_scores, get_cg_physical())
         
         st.markdown("### 📋 Final Calibration Review")
         rev_c1, rev_c2, rev_c3 = st.columns(3)
@@ -825,7 +852,8 @@ def render_character_calibration_wizard():
                     starting_weapons={"main_hand": st.session_state.cg_main_hand, "off_hand": st.session_state.cg_off_hand},
                     custom_relic_data=st.session_state.get("cg_custom_relic_data"),
                     custom_collaborated_data=st.session_state.get("cg_custom_collaborated"),
-                    chimera_choices=get_cg_chimera_choices()
+                    chimera_choices=get_cg_chimera_choices(),
+                    physical=get_cg_physical()
                 )
                 
                 opening_announcement = cg.build_system_initialization_welcome_message(new_avatar)
@@ -1371,6 +1399,13 @@ def render_game_hud():
         st.write(f"**Race:** {player['race']}")
         st.write(f"**Class:** {player['class']}")
         st.write(f"**SAO Status:** {cursor_data.get('badge', '🟢 Green')}")
+        hud_profile = mechanics.get_physical_profile(player)
+        if isinstance(player.get("physical"), dict):
+            st.write(f"**Body:** {hud_profile['summary']}")
+        else:
+            st.write("**Body:** not recorded (older save; treated as Medium / Average / Prime, no modifiers)")
+        if hud_profile["effects"]:
+            st.caption(" · ".join(hud_profile["effects"]))
         st.write("**Core Stats:**")
         cols = st.columns(3)
         cols[0].write(f"STR: {player['stats']['STR']}")

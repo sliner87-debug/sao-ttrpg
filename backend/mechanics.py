@@ -150,10 +150,106 @@ def get_item_weight(item):
 
     return 1.0
 
+# =====================================================================
+# PHYSICAL PROFILE: AGE, HEIGHT & WEIGHT
+# Height -> Size category, Weight vs Height (BMI) -> Build, Age -> Age bracket.
+# Missing values default to a Medium / Average / Prime profile (no modifiers),
+# so older save files behave exactly as before.
+# =====================================================================
+DEFAULT_PHYSICAL = {"age": 25, "height_in": 70, "weight_lbs": 185}
+
+
+def format_height(height_in) -> str:
+    try:
+        h = int(round(float(height_in)))
+    except (TypeError, ValueError):
+        h = DEFAULT_PHYSICAL["height_in"]
+    return f"{h // 12}'{h % 12}\""
+
+
+def get_physical_profile(player_state) -> dict:
+    """Derives Size, Build and Age bracket plus their gameplay modifiers from the player's body stats."""
+    phys = player_state.get("physical", {}) if isinstance(player_state, dict) else {}
+    if not isinstance(phys, dict):
+        phys = {}
+
+    def _num(key):
+        try:
+            v = float(phys.get(key))
+            return v if v > 0 else float(DEFAULT_PHYSICAL[key])
+        except (TypeError, ValueError):
+            return float(DEFAULT_PHYSICAL[key])
+
+    age, height_in, weight_lbs = int(_num("age")), _num("height_in"), _num("weight_lbs")
+
+    mods = {
+        "carry_mult": 1.0, "ac_mod": 0, "reach_bonus_ft": 0, "speed_mod_ft": 0,
+        "shove_resist_mod": 0, "max_hp_flat": 0, "max_hp_pct": 0,
+        "mastery_gain_mult": 1.0, "starting_mastery_bonus": 0,
+    }
+    effects = []
+
+    # Size (from height)
+    if height_in < 48:
+        size = "Small"
+        mods.update(carry_mult=0.75, ac_mod=1)
+        effects += ["Small: +1 AC", "Small: Advantage on Stealth in tight spaces", "Small: Carry capacity x0.75"]
+    elif height_in > 84:
+        size = "Large"
+        mods.update(carry_mult=1.5, ac_mod=-1, reach_bonus_ft=5)
+        effects += ["Large: Carry capacity x1.5", "Large: +5 ft melee reach", "Large: -1 AC",
+                    "Large: Disadvantage squeezing through tunnels and crawlspaces"]
+    else:
+        size = "Medium"
+
+    # Build (weight relative to height, BMI)
+    bmi = 703.0 * weight_lbs / (height_in ** 2)
+    if bmi < 18.5:
+        build = "Lean"
+        mods.update(speed_mod_ft=5, shove_resist_mod=-1)
+        effects += ["Lean: +5 ft speed", "Lean: -1 to resist shoves and grapples"]
+    elif bmi >= 30:
+        build = "Heavy"
+        mods.update(speed_mod_ft=-5, shove_resist_mod=2, max_hp_flat=10)
+        effects += ["Heavy: +2 to resist shoves and grapples", "Heavy: +10 Max HP", "Heavy: -5 ft speed"]
+    else:
+        build = "Average"
+
+    # Age bracket
+    if age < 20:
+        age_bracket = "Youth"
+        mods["mastery_gain_mult"] = 1.10
+        effects.append("Youth: +10% skill mastery gain")
+    elif age >= 60:
+        age_bracket = "Elder"
+        mods.update(starting_mastery_bonus=30, max_hp_pct=-10)
+        effects += ["Elder: +30 starting mastery on background skills", "Elder: -10% Max HP"]
+    elif age >= 40:
+        age_bracket = "Veteran"
+        mods.update(starting_mastery_bonus=15, max_hp_pct=-5)
+        effects += ["Veteran: +15 starting mastery on background skills", "Veteran: -5% Max HP"]
+    else:
+        age_bracket = "Prime"
+
+    return {
+        "age": age,
+        "height_in": round(height_in, 1),
+        "height_display": format_height(height_in),
+        "weight_lbs": round(weight_lbs, 1),
+        "bmi": round(bmi, 1),
+        "size": size,
+        "build": build,
+        "age_bracket": age_bracket,
+        "modifiers": mods,
+        "effects": effects,
+        "summary": f"Age {age} ({age_bracket}) | {format_height(height_in)} ({size}) | {round(weight_lbs)} lbs ({build} build)",
+    }
+
+
 def calculate_encumbrance(player_state):
     """
     Calculates total carrying weight, slot capacity, encumbrance tier, and modifiers.
-    Base STR * 15 = Max Carry Weight (lbs).
+    Base STR * 15 = Max Carry Weight (lbs), scaled by body Size (Small x0.75, Large x1.5).
     10 + (STR // 2) = Max Inventory Slots.
     """
     stats = player_state.get("stats", {})
@@ -166,7 +262,8 @@ def calculate_encumbrance(player_state):
     if "cyborg" in race_str or "pneumatic endoskeleton" in feats_str:
         bonus_capacity += 25.0
         
-    max_weight = round(str_val * 15.0 + bonus_capacity, 1)
+    carry_mult = get_physical_profile(player_state)["modifiers"]["carry_mult"]
+    max_weight = round((str_val * 15.0 + bonus_capacity) * carry_mult, 1)
     max_slots = 10 + (str_val // 2)
     
     current_weight = 0.0
@@ -285,7 +382,8 @@ def calculate_ac(player_state, encumbrance=None):
                     graft_ac_bonus += 2
             
     ac_pen = dur_pens.get("ac_penalty", 0)
-    return max(10, base_ac + armor_bonus + shield_bonus + natural_ac + graft_ac_bonus - ac_pen)
+    size_ac = get_physical_profile(player_state)["modifiers"]["ac_mod"]
+    return max(10, base_ac + armor_bonus + shield_bonus + natural_ac + graft_ac_bonus + size_ac - ac_pen)
 
 
 
@@ -897,6 +995,14 @@ def update_skill_mastery(player_state: dict, skill_name: str, gain_or_dc: int = 
         delta = calculate_mastery_gain(old_mastery, task_dc=gain_or_dc, success=True, critical=critical)
     else:
         delta = int(gain_or_dc)
+
+    # Youth age bracket: +10% mastery gain (fractional remainder carried between gains)
+    gain_mult = get_physical_profile(player_state)["modifiers"]["mastery_gain_mult"]
+    if delta > 0 and gain_mult > 1.0:
+        carry = float(player_state.get("_mastery_bonus_carry", 0.0) or 0.0) + delta * (gain_mult - 1.0)
+        bonus = int(carry)
+        player_state["_mastery_bonus_carry"] = round(carry - bonus, 4)
+        delta += bonus
 
     new_mastery = min(1000, max(1, old_mastery + delta))
     new_tier = get_mastery_tier(new_mastery)
@@ -11140,6 +11246,9 @@ def build_scene_visual_manifest(player_state: dict = None, active_companions: li
     lines = []
     if player_state and isinstance(player_state, dict):
         lines.append(build_character_visual_profile(player_state, entity_id="banki" if player_state.get("name", "").lower() == "banki" else "player"))
+        if isinstance(player_state.get("physical"), dict):
+            _pp = get_physical_profile(player_state)
+            lines.append(f"  • BODY: {_pp['age']} years old, {_pp['height_display']} tall ({_pp['size']}), {round(_pp['weight_lbs'])} lbs ({_pp['build']} build) — render proportions accordingly.")
 
     # Determine active companions
     comp_ids = []
@@ -11908,7 +12017,9 @@ def evaluate_party_environmental_physics(player_state, environment_dict=None, ro
         environment_dict = {"description": str(room_description or ""), "environmental_effects": []}
 
     active_party = get_active_party(player_state)
-    total_weight = 185.0 + float(calculate_encumbrance(player_state).get("total_weight", 0.0))
+    player_body_lbs = float(get_physical_profile(player_state)["weight_lbs"])
+    player_load_lbs = player_body_lbs + float(calculate_encumbrance(player_state).get("current_weight_lbs", 0.0))
+    total_weight = player_load_lbs
     stealth_penalty = 0
     heavy_companion_name = None
     titus_present = False
@@ -11946,6 +12057,16 @@ def evaluate_party_environmental_physics(player_state, environment_dict=None, ro
                 f"⚠️ [STRUCTURAL LOAD HAZARD: {heavy_companion_name}'s 1,200-lb iron frame groans violently against the "
                 f"fragile flooring! Stepping onto unreinforced timbers or catwalks risks immediate structural collapse (DC 15 DEX)!]"
             )
+
+    # The player's own body weight (plus carried gear) also loads fragile floors
+    if is_fragile_floor and not hazard_triggered and (player_load_lbs >= 800.0 or total_weight >= 1500.0):
+        hazard_triggered = True
+        who = "Your own" if player_load_lbs >= 800.0 else "The party's combined"
+        lbs = player_load_lbs if player_load_lbs >= 800.0 else total_weight
+        collapse_tag = f"CRITICAL FLOOR LOAD WARNING: {who} weight ({round(lbs):,} lbs incl. gear) exceeds structural timber/catwalk tolerance (Collapse DC 15 DEX/Athletics)!"
+        if collapse_tag not in effects:
+            effects.append(collapse_tag)
+        hazard_log = f"⚠️ [STRUCTURAL LOAD HAZARD: {who} weight of {round(lbs):,} lbs makes the fragile flooring groan; a collapse is imminent (DC 15 DEX)!]"
 
     environment_dict["environmental_effects"] = effects
     warnings = [w for w in ([hazard_log] if hazard_log else []) + effects if w]

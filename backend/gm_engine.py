@@ -296,6 +296,7 @@ def resolve_turn(api_key: str, player_action: str, player_state: dict = None):
     ren_sub_info = mechanics.get_ren_subroutine_directive(player_state or {})
     cursor_info = mechanics.get_cursor_status(player_state or {})
     physics_info = mechanics.evaluate_party_environmental_physics(player_state or {}, (master_state or {}).get("environment", {}))
+    phys_profile = mechanics.get_physical_profile(player_state or {})
 
     rules = ""
     if os.path.exists(rules_path):
@@ -314,6 +315,8 @@ CORE GM BEHAVIOR RULES:
    - The Human Player's actual entered character name is "{p_name}".
    - Every companion (including Ren), every NPC (Doc Mercer, Quartermaster Vane, etc.), and the GM narrative MUST ALWAYS call the player by their exact character name ("{p_name}").
    - NEVER call the player by any placeholder name, legacy alias, or generic title unless that is their exact entered character name!
+   - PHYSICAL PROFILE: {phys_profile['summary']}. Active body modifiers: {'; '.join(phys_profile['effects']) or 'none (Medium / Average build / Prime age)'}.
+     Enforce these: add the reach bonus to melee reach, apply the shove/grapple modifier when the player resists being shoved or grappled, apply Size Stealth Advantage / tunnel Disadvantage in tight spaces, and have NPCs and narration reflect the player's age, height and build.
 1. COMPANION REN (SERPENT-SCRIPT `OUROBOROS KERNEL v3.14` & SENTIENT DIAGNOSTIC SUBROUTINE STAGE {ren_sub_info.get('stage', 0)}):
    - Ren is MALE (he/him). Never use 'she' or 'her' when narrating Ren's moves.
    - CANONICAL PYTHON LORE (`Serpent-Script`): When the alien Cardinal System integrated Earth, it assimilated Earth's dominant pre-collapse AI language (**Python**) into its neural-aetheric bridging syntax: **Serpent-Script (`Ouroboros Kernel v3.14`)**. Ren's **Aetheric Ocular Lens** is locked in an unprivileged `Ouroboros Debug Shell`, so he literally sees glowing cyan Python dictionaries (`visible_room["entities"]`, `target.status`, `target.max_hp = [KERNEL_REDACTED]`) overlaid on reality, inducing visceral existential horror that he is trapped inside a sandboxed JSON/Python file!

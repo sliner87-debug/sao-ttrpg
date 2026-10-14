@@ -2281,15 +2281,28 @@ def list_all_character_folders(base_dir):
     return profiles
 
 # --- CHARACTER SHEET GENERATOR ---
+def compute_starting_max_hp(race, chosen_class, final_stats, physical=None):
+    """Starting Max HP = class base + CON mod x10 + lineage bonus + Heavy build bonus, then age % modifier."""
+    import backend.mechanics as _mech
+    con_mod = (int(final_stats.get("CON", 10)) - 10) // 2
+    hp = int(chosen_class.get("base_hp", 100)) + con_mod * 10 + int(race.get("max_hp_bonus", 0))
+    mods = _mech.get_physical_profile({"physical": physical or {}})["modifiers"]
+    hp += int(mods["max_hp_flat"])
+    if mods["max_hp_pct"]:
+        hp = int(round(hp * (1 + mods["max_hp_pct"] / 100.0)))
+    return hp
+
+
 def generate_starting_character(name, point_alloc, background_key, race_key, class_key, relic_key, 
                                 custom_background_text=None, starting_weapons=None,
                                 custom_relic_data=None, custom_collaborated_data=None,
-                                chimera_choices=None):
+                                chimera_choices=None, physical=None):
     """
     Constructs a complete, valid player character dictionary ready for save_game.json.
     Supports class-themed starter weapons with optional manual override,
     custom collaborative background skills, and custom personal relics.
     `chimera_choices` configures the modular Spliced Apex Chimera lineage.
+    `physical` is {"age": int, "height_in": float, "weight_lbs": float}.
     """
     # 1. Base Stats (10 base + allocated points + racial mods)
     race = resolve_racial_lineage(race_key, chimera_choices)
@@ -2309,6 +2322,13 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
     con_mod = (final_stats["CON"] - 10) // 2
     base_hp_val = chosen_class.get("base_hp", 100)
     max_hp = base_hp_val + (con_mod * 10) + int(race.get("max_hp_bonus", 0))
+
+    # Physical profile (age / height / weight) creation-time modifiers
+    import backend.mechanics as _mech
+    phys_in = physical if isinstance(physical, dict) else {}
+    physical_data = {k: phys_in.get(k, _mech.DEFAULT_PHYSICAL[k]) for k in ("age", "height_in", "weight_lbs")}
+    phys_mods = _mech.get_physical_profile({"physical": physical_data})["modifiers"]
+    max_hp = compute_starting_max_hp(race, chosen_class, final_stats, physical_data)
     
     # 3. Skills & Perks from Background (Preset, Custom Collaboration, or Heuristic)
     skills_dict = {}
@@ -2477,8 +2497,14 @@ def generate_starting_character(name, point_alloc, background_key, race_key, cla
         "quests": [],
         "location": "Sector 1 Safe-Zone: Washington Borough, NJ",
         "companions": {},
-        "is_paused": False
+        "is_paused": False,
+        "physical": physical_data
     }
+
+    # Veteran / Elder: bonus starting mastery on background skills (milestones unlock normally)
+    if phys_mods["starting_mastery_bonus"]:
+        for s_name in list(skills_dict.keys()):
+            _mech.update_skill_mastery(player_sheet, s_name, int(phys_mods["starting_mastery_bonus"]))
     
     # Initialize pristine companion roster and clean disk state for this character
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
