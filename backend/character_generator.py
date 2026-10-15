@@ -10,6 +10,8 @@ import json
 import os
 import time
 import re
+import base64
+import copy
 from backend.mechanics import calculate_encumbrance, calculate_ac, CANONICAL_MILESTONES
 
 # --- 18 QUICK-LIFESTYLE QUESTIONNAIRE PRESETS (Auto-Distribute 20 Points) ---
@@ -1273,19 +1275,55 @@ def get_character_save_dir(base_dir, character_name):
     os.makedirs(char_dir, exist_ok=True)
     return char_dir
 
+def extract_and_save_message_images(base_dir, character_name, messages):
+    """
+    Extracts inline base64 image_data from messages, writes them to
+    assets/generated_images/<character_slug>/turn_<idx>.png, and replaces
+    image_data with lightweight image_path. Returns the updated messages list.
+    """
+    if not messages:
+        return messages
+    slug = sanitize_character_slug(character_name)
+    img_dir = os.path.join(base_dir, 'assets', 'generated_images', slug)
+    os.makedirs(img_dir, exist_ok=True)
+    
+    cleaned_messages = []
+    for idx, msg in enumerate(messages):
+        m = copy.deepcopy(msg) if isinstance(msg, dict) else msg
+        if isinstance(m, dict):
+            img_data = m.get("image_data")
+            if img_data and isinstance(img_data, str) and ("base64," in img_data or len(img_data) > 500):
+                try:
+                    b64_str = img_data.split("base64,")[1] if "base64," in img_data else img_data
+                    raw_bytes = base64.b64decode(b64_str)
+                    img_filename = f"turn_{idx}.png"
+                    img_path = os.path.join(img_dir, img_filename)
+                    with open(img_path, "wb") as f_img:
+                        f_img.write(raw_bytes)
+                    rel_path = os.path.relpath(img_path, base_dir).replace("\\", "/")
+                    m["image_path"] = rel_path
+                    m["image_data"] = None
+                except Exception:
+                    pass
+        cleaned_messages.append(m)
+    return cleaned_messages
+
 def save_character_to_folder(base_dir, player_state, messages=None, extra_meta=None):
     """
     Saves character gamestate into a dedicated folder: saves/<character_name>/save_game.json.
     Also updates saves/<character_name>/profile.json and mirrors root save_game.json.
+    Extracts inline base64 image_data to disk assets so save files remain lightweight (< 100KB).
     """
     p_name = player_state.get("name", "Survivor")
     char_dir = get_character_save_dir(base_dir, p_name)
     save_file = os.path.join(char_dir, "save_game.json")
     profile_file = os.path.join(char_dir, "profile.json")
     
+    clean_messages = extract_and_save_message_images(base_dir, p_name, messages)
+    
     full_data = {
         "player": player_state,
-        "messages": messages or [],
+        "messages": clean_messages or [],
         "last_saved": time.time()
     }
     if extra_meta:
@@ -1318,6 +1356,60 @@ def save_character_to_folder(base_dir, player_state, messages=None, extra_meta=N
         pass
         
     return save_file
+
+def migrate_all_save_images(base_dir):
+    """
+    Scans root save_game.json and all folders in saves/ to extract
+    any inline base64 image_data to assets/generated_images/ and shrink save files.
+    """
+    migrated_count = 0
+    # 1. Root save_game.json
+    root_save = os.path.join(base_dir, "save_game.json")
+    if os.path.exists(root_save):
+        try:
+            with open(root_save, "r", encoding="utf-8") as f:
+                d = json.load(f)
+            if isinstance(d, dict) and "messages" in d:
+                char_name = d.get("player", {}).get("name", "Banki")
+                d["messages"] = extract_and_save_message_images(base_dir, char_name, d["messages"])
+                with open(root_save, "w", encoding="utf-8") as f:
+                    json.dump(d, f, indent=4)
+                migrated_count += 1
+        except Exception:
+            pass
+
+    # 2. Check saves/ directory
+    saves_root = os.path.join(base_dir, "saves")
+    if os.path.exists(saves_root):
+        for item in os.listdir(saves_root):
+            item_path = os.path.join(saves_root, item)
+            if os.path.isdir(item_path):
+                s_file = os.path.join(item_path, "save_game.json")
+                if os.path.exists(s_file):
+                    try:
+                        with open(s_file, "r", encoding="utf-8") as f:
+                            d = json.load(f)
+                        if isinstance(d, dict) and "messages" in d:
+                            char_name = d.get("player", {}).get("name", item)
+                            d["messages"] = extract_and_save_message_images(base_dir, char_name, d["messages"])
+                            with open(s_file, "w", encoding="utf-8") as f:
+                                json.dump(d, f, indent=4)
+                            migrated_count += 1
+                    except Exception:
+                        pass
+            elif os.path.isfile(item_path) and item.endswith(".json") and item != "profile.json":
+                try:
+                    with open(item_path, "r", encoding="utf-8") as f:
+                        d = json.load(f)
+                    if isinstance(d, dict) and "messages" in d:
+                        char_name = d.get("player", {}).get("name", os.path.splitext(item)[0])
+                        d["messages"] = extract_and_save_message_images(base_dir, char_name, d["messages"])
+                        with open(item_path, "w", encoding="utf-8") as f:
+                            json.dump(d, f, indent=4)
+                        migrated_count += 1
+                except Exception:
+                    pass
+    return migrated_count
 
 def load_character_from_folder(base_dir, character_name):
     """Loads gamestate from saves/<character_name>/save_game.json."""

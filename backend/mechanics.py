@@ -3054,40 +3054,40 @@ def is_ability_slotted(player_state, ability_name):
 COMPANION_TACTICAL_STANCES = {
     "overwatch_hacking": {
         "key": "overwatch_hacking",
-        "name": "Leyline Overwatch",
-        "label": "👁️ Leyline Overwatch",
+        "name": "Debug Mesh Overwatch",
+        "label": "👁️ Debug Mesh Overwatch",
         "icon": "👁️",
-        "short_desc": "Scans enemy mana-signatures and physical seams using runic lens.",
-        "tactical_effect": "Debuffs targeted enemy AC by -2 and reveals structural mana-fractures.",
+        "short_desc": "Squints through taped glasses at cracked cyan slate, shouting enemy hitbox leaks to Banki.",
+        "tactical_effect": "Debuffs targeted enemy AC by -2 via frantic collision weakpoint callouts.",
         "combat_log_tag": "[REN OVERWATCH]",
         "stat_bonus": {"target_ac_mod": -2, "crit_threat_bonus": 1}
     },
     "suppression_fire": {
         "key": "suppression_fire",
-        "name": "MageTech Arc Suppression",
-        "label": "⚡ MageTech Arc Suppression",
+        "name": "Panic Stunner Suppression",
+        "label": "⚡ Panic Stunner Suppression",
         "icon": "⚡",
-        "short_desc": "Fires crackling lightning-mana runes from his brass MageTech Caster firearm.",
+        "short_desc": "Peeks from behind cover, firing erratic electrical pulses from his taped scrap stunner with one eye shut.",
         "tactical_effect": "Enemies rushing into melee must make a DC 13 CON save or become Staggered.",
         "combat_log_tag": "[REN SUPPRESSION]",
         "stat_bonus": {"disruption_dc": 13, "condition": "Staggered"}
     },
     "full_evasion": {
         "key": "full_evasion",
-        "name": "Aetheric Phase-Veil",
-        "label": "🌫️ Aetheric Phase-Veil",
-        "icon": "🌫️",
-        "short_desc": "Weaves spatial camouflage and takes cover behind ancient stone masonry.",
+        "name": "Duck Behind Banki",
+        "label": "🛡️ Duck Behind Banki",
+        "icon": "🛡️",
+        "short_desc": "Shrinks low behind Banki's dire-wolf mantle or dives behind rubble, hugging his slate to evade targeting.",
         "tactical_effect": "Ren is immune to single-target attacks; +4 to all defensive saves.",
         "combat_log_tag": "[REN EVASION]",
         "stat_bonus": {"defense_save_bonus": 4, "untargetable": True}
     },
     "utility_rigging": {
         "key": "utility_rigging",
-        "name": "Arcane Artificing & Mending",
-        "label": "✨ Arcane Artificing & Mending",
-        "icon": "✨",
-        "short_desc": "Channels mending runes into gear, sets traps, or harvests crystallite scrap.",
+        "name": "Nervous Field Rigging",
+        "label": "🔧 Nervous Field Rigging",
+        "icon": "🔧",
+        "short_desc": "Pulls out electrical solder and spare wires, frantically patching frayed armor straps during combat.",
         "tactical_effect": "Restores +15 gear durability to worn weapon/armor or scavenges +1 extra crafting part.",
         "combat_log_tag": "[REN UTILITY]",
         "stat_bonus": {"durability_patch": 15, "salvage_bonus": 1}
@@ -3113,7 +3113,7 @@ COMPANION_LEVEL_PERKS = {
     5: {
         "name": "Overclocked Stun Burst",
         "type": "Active",
-        "desc": "MageTech caster discharge jumps to 2 additional adjacent targets with crackling aether."
+        "desc": "Overcharged pulse stunner discharge jumps to 2 additional adjacent targets with crackling energy."
     },
     6: {
         "name": "Geometry Desync Hack",
@@ -3125,10 +3125,14 @@ COMPANION_LEVEL_PERKS = {
 def get_default_ren_companion():
     """
     Returns the canonical companion profile for Ren Sasaki.
+    A scrawny, anxious 17-year-old environment QA intern who got trapped in the death-game.
+    He wears an oversized faded hoodie with a torn corporate lanyard and tape-mended glasses,
+    clutching a cracked cyan debug slate and a jury-rigged pulse stunner.
     """
     return {
         "name": "Ren Sasaki",
-        "title": "Aether-Scholar & MageTech Artificer",
+        "class": "Junior QA Intern",
+        "title": "Junior QA Intern (Trapped Developer)",
         "level": 3,
         "xp": 450,
         "next_level_xp": 900,
@@ -3136,45 +3140,50 @@ def get_default_ren_companion():
         "max_hp": 35,
         "stance": "overwatch_hacking",
         "morale": "Steady",
+        "affinity": 35,
+        "affinity_tier": "Ally",
+        "recruited": True,
+        "active": True,
+        "bio": "A scrawny, anxious 17-year-old environment QA intern who was trapped during the launch when the logout button vanished. Wears an oversized faded dark hoodie with a torn corporate lanyard ('Argus Intern #0492') and tape-mended wire-rim glasses. Clutches a battered cyan debug slate and a jury-rigged scrap stunner with trembling hands.",
         "loadout": {
-            "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
-            "tool": "Runic Scribe Slate (Aether-Grid Focus)",
-            "deck": "Runic Scribe Slate (Aether-Grid Focus)",
-            "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
-            "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
+            "main_hand": "Jury-Rigged Pulse Stunner (Flickering Pulse Taser)",
+            "tool": "Cracked Cyan Debug Slate (Intern Diagnostic Unit)",
+            "deck": "Cracked Cyan Debug Slate (Intern Diagnostic Unit)",
+            "armor": "Faded Intern Hoodie & Scavenged Denim (Worn Cloth, DR 0)",
+            "chest": "Faded Intern Hoodie & Scavenged Denim (Worn Cloth, DR 0)"
         },
         "equipped": {
-            "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
-            "tool": "Runic Scribe Slate (Aether-Grid Focus)",
-            "deck": "Runic Scribe Slate (Aether-Grid Focus)",
-            "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
-            "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
+            "main_hand": "Jury-Rigged Pulse Stunner (Flickering Pulse Taser)",
+            "tool": "Cracked Cyan Debug Slate (Intern Diagnostic Unit)",
+            "deck": "Cracked Cyan Debug Slate (Intern Diagnostic Unit)",
+            "armor": "Faded Intern Hoodie & Scavenged Denim (Worn Cloth, DR 0)",
+            "chest": "Faded Intern Hoodie & Scavenged Denim (Worn Cloth, DR 0)"
         },
         "skills": {
             "Mesh Exploitation": {
                 "mastery": 140,
                 "tier": "Journeyman",
-                "description": "Perceiving spatial seams, leylines, and architectural weaknesses.",
+                "description": "Spotting collision leaks, glitch seams, and broken pathing geometry.",
                 "milestones_unlocked": ["Logic Buffer Exploit"]
             },
             "Stun-Pistol Marksmanship": {
                 "mastery": 45,
                 "tier": "Novice",
-                "description": "Discharging focused mana-bolts and lightning runes from MageTech firearm.",
+                "description": "Nervous defensive discharge of a jury-rigged pulse stunner.",
                 "milestones_unlocked": []
             },
             "Diagnostic Triage": {
                 "mastery": 60,
                 "tier": "Apprentice",
-                "description": "Channelling healing runes and minor aether-salves.",
+                "description": "Applying emergency field patches and digital triage with shaking hands.",
                 "milestones_unlocked": ["Patch Script v1.0"]
             }
         },
         "abilities": [
-            "Aura Weakpoint Scan (-2 Enemy AC)",
-            "MageTech Stun-Arc Salvo (DC 13 CON save vs Stun)",
-            "Aetheric Phase-Veil (Untargetable 1 turn)",
-            "Aether-Scrap Extraction (+25% salvage yield)"
+            "Collision Leak Scan (-2 Enemy AC)",
+            "Panic Stunner Salvo (DC 13 CON save vs Stun)",
+            "Duck Behind Banki (Untargetable 1 turn)",
+            "Scrap & Salvage Scavenging (+25% salvage yield)"
         ]
     }
 
@@ -3200,7 +3209,11 @@ def ensure_companion_profile(player_state):
         companions["Ren"] = ren
 
     ren.setdefault("name", "Ren Sasaki")
-    ren.setdefault("title", "Aether-Scholar & MageTech Artificer")
+    ren.setdefault("class", "Junior QA Intern")
+    ren.setdefault("title", "Junior QA Intern (Trapped Developer)")
+    if ren.get("title") == "Aether-Scholar & MageTech Artificer":
+        ren["title"] = "Junior QA Intern (Trapped Developer)"
+        ren["class"] = "Junior QA Intern"
     ren.setdefault("level", 3)
     ren.setdefault("xp", 450)
     ren.setdefault("next_level_xp", ren.get("level", 3) * 300)
@@ -3208,33 +3221,32 @@ def ensure_companion_profile(player_state):
     ren.setdefault("max_hp", 35)
     ren.setdefault("stance", "overwatch_hacking")
     ren.setdefault("morale", "Steady")
-    ren.setdefault("loadout", {
-        "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
-        "tool": "Runic Scribe Slate (Aether-Grid Focus)",
-        "deck": "Runic Scribe Slate (Aether-Grid Focus)",
-        "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
-        "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
-    })
-    ren.setdefault("equipped", ren.get("loadout", {
-        "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
-        "tool": "Runic Scribe Slate (Aether-Grid Focus)",
-        "deck": "Runic Scribe Slate (Aether-Grid Focus)",
-        "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
-        "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
-    }))
+    default_starter_loadout = {
+        "main_hand": "Jury-Rigged Pulse Stunner (Flickering Pulse Taser)",
+        "tool": "Cracked Cyan Debug Slate (Intern Diagnostic Unit)",
+        "deck": "Cracked Cyan Debug Slate (Intern Diagnostic Unit)",
+        "armor": "Faded Intern Hoodie & Scavenged Denim (Worn Cloth, DR 0)",
+        "chest": "Faded Intern Hoodie & Scavenged Denim (Worn Cloth, DR 0)"
+    }
+    if ren.get("loadout", {}).get("armor") == "Woven Leyline Duster (Enchanted Cloth, DR 1)":
+        ren["loadout"] = copy.deepcopy(default_starter_loadout)
+        ren["equipped"] = copy.deepcopy(default_starter_loadout)
+    else:
+        ren.setdefault("loadout", default_starter_loadout)
+        ren.setdefault("equipped", ren.get("loadout", default_starter_loadout))
     if isinstance(ren.get("equipped"), dict):
-        ren["equipped"].setdefault("deck", ren["equipped"].get("tool", "Runic Scribe Slate (Aether-Grid Focus)"))
-        ren["equipped"].setdefault("chest", ren["equipped"].get("armor", "Woven Leyline Duster (Enchanted Cloth, DR 1)"))
+        ren["equipped"].setdefault("deck", ren["equipped"].get("tool", "Cracked Cyan Debug Slate (Intern Diagnostic Unit)"))
+        ren["equipped"].setdefault("chest", ren["equipped"].get("armor", "Faded Intern Hoodie & Scavenged Denim (Worn Cloth, DR 0)"))
     ren.setdefault("skills", {
-        "Mesh Exploitation": {"mastery": 140, "tier": "Journeyman", "description": "Perceiving spatial seams and leylines.", "milestones_unlocked": ["Logic Buffer Exploit"]},
-        "Stun-Pistol Marksmanship": {"mastery": 45, "tier": "Novice", "description": "Discharging lightning runes from MageTech firearm.", "milestones_unlocked": []},
-        "Diagnostic Triage": {"mastery": 60, "tier": "Apprentice", "description": "Channelling restorative aether-salves.", "milestones_unlocked": ["Patch Script v1.0"]}
+        "Mesh Exploitation": {"mastery": 140, "tier": "Journeyman", "description": "Spotting collision leaks, glitch seams, and broken pathing geometry.", "milestones_unlocked": ["Logic Buffer Exploit"]},
+        "Stun-Pistol Marksmanship": {"mastery": 45, "tier": "Novice", "description": "Nervous defensive discharge of a jury-rigged pulse stunner.", "milestones_unlocked": []},
+        "Diagnostic Triage": {"mastery": 60, "tier": "Apprentice", "description": "Applying emergency field patches and digital triage with shaking hands.", "milestones_unlocked": ["Patch Script v1.0"]}
     })
     ren.setdefault("abilities", [
-        "Aura Weakpoint Scan (-2 Enemy AC)",
-        "MageTech Stun-Arc Salvo (DC 13 CON save vs Stun)",
-        "Aetheric Phase-Veil (Untargetable 1 turn)",
-        "Aether-Scrap Extraction (+25% salvage yield)"
+        "Collision Leak Scan (-2 Enemy AC)",
+        "Panic Stunner Salvo (DC 13 CON save vs Stun)",
+        "Duck Behind Banki (Untargetable 1 turn)",
+        "Scrap & Salvage Scavenging (+25% salvage yield)"
     ])
 
     return companions
@@ -3425,7 +3437,7 @@ def get_companion_combat_action(player_state, companion_name="Ren"):
             "stance_key": stance_key,
             "target_ac_mod": -2,
             "tag": stance_info["combat_log_tag"],
-            "log": f"{stance_info['combat_log_tag']} Scans enemy aura & structural leylines: -2 AC debuff applied to primary target."
+            "log": f"{stance_info['combat_log_tag']} Frantically taps cracked slate, calling out mesh seams & hitbox leaks: -2 AC debuff applied to primary target."
         }
     elif stance_key == "suppression_fire":
         return {
@@ -3434,7 +3446,7 @@ def get_companion_combat_action(player_state, companion_name="Ren"):
             "dc": 13,
             "condition": "Staggered",
             "tag": stance_info["combat_log_tag"],
-            "log": f"{stance_info['combat_log_tag']} Discharges MageTech lightning-rune salvo! Target DC 13 CON save vs Staggered."
+            "log": f"{stance_info['combat_log_tag']} Fires panic burst from taped pulse stunner with one eye shut! Target DC 13 CON save vs Staggered."
         }
     elif stance_key == "full_evasion":
         return {
@@ -3442,7 +3454,7 @@ def get_companion_combat_action(player_state, companion_name="Ren"):
             "stance_key": stance_key,
             "untargetable": True,
             "tag": stance_info["combat_log_tag"],
-            "log": f"{stance_info['combat_log_tag']} Weaves an aetheric phase-veil into the ruins; immune to single-target attacks."
+            "log": f"{stance_info['combat_log_tag']} Shrinks low behind Banki's dire-wolf mantle, clutching his clipboard; immune to single-target attacks."
         }
     elif stance_key == "utility_rigging":
         # Check if Banki has worn gear
@@ -3458,7 +3470,7 @@ def get_companion_combat_action(player_state, companion_name="Ren"):
                     patch_item = item_data.get("item", slot)
                     patched = True
                     break
-        msg = f"{stance_info['combat_log_tag']} Channels mending runes into {patch_item} (+15 durability restored)." if patched else f"{stance_info['combat_log_tag']} Scavenges +1 extra aether-crystallite from combat debris."
+        msg = f"{stance_info['combat_log_tag']} Frantically patches frayed straps on {patch_item} with spare solder (+15 durability restored)." if patched else f"{stance_info['combat_log_tag']} Nervously scavenges +1 extra crafting scrap from combat debris."
         return {
             "stance": stance_key,
             "stance_key": stance_key,
@@ -4559,9 +4571,9 @@ RECRUITABLE_COMPANIONS = {
     "Ren": {
         "id": "ren_sasaki",
         "name": "Ren Sasaki",
-        "class": "Aether-Scholar & MageTech Artificer",
-        "title": "Aether-Scholar & MageTech Artificer",
-        "role": "Support, Aura Scanning, Lightning Stuns & Field Artificing",
+        "class": "Junior QA Intern",
+        "title": "Junior QA Intern (Trapped Developer)",
+        "role": "Support, Collision Leak Analysis, Stuns & Field Triage",
         "level": 3,
         "hp": 35,
         "max_hp": 35,
@@ -4573,60 +4585,60 @@ RECRUITABLE_COMPANIONS = {
         "affinity_tier": "Ally",
         "recruited": True,
         "active": True,
-        "bio": "A studious young survivor who fused his pre-Integration engineering background with esoteric aetheric rune-matrices. Wields a custom-etched brass-and-crystal MageTech caster firearm.",
+        "bio": "A scrawny, anxious 17-year-old environment QA intern who was trapped during the launch when the logout button vanished. Wears an oversized faded dark hoodie with a torn corporate lanyard ('Argus Intern #0492') and tape-mended wire-rim glasses. Clutches a battered cyan debug slate and a jury-rigged scrap stunner with trembling hands.",
         "loadout": {
-            "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
-            "tool": "Runic Scribe Slate (Aether-Grid Focus)",
-            "deck": "Runic Scribe Slate (Aether-Grid Focus)",
-            "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
-            "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
+            "main_hand": "Jury-Rigged Pulse Stunner (Flickering Pulse Taser)",
+            "tool": "Cracked Cyan Debug Slate (Intern Diagnostic Unit)",
+            "deck": "Cracked Cyan Debug Slate (Intern Diagnostic Unit)",
+            "armor": "Faded Intern Hoodie & Scavenged Denim (Worn Cloth, DR 0)",
+            "chest": "Faded Intern Hoodie & Scavenged Denim (Worn Cloth, DR 0)"
         },
         "equipped": {
-            "main_hand": "Aether-Etched MageTech Caster (Runic Firearm)",
-            "tool": "Runic Scribe Slate (Aether-Grid Focus)",
-            "deck": "Runic Scribe Slate (Aether-Grid Focus)",
-            "armor": "Woven Leyline Duster (Enchanted Cloth, DR 1)",
-            "chest": "Woven Leyline Duster (Enchanted Cloth, DR 1)"
+            "main_hand": "Jury-Rigged Pulse Stunner (Flickering Pulse Taser)",
+            "tool": "Cracked Cyan Debug Slate (Intern Diagnostic Unit)",
+            "deck": "Cracked Cyan Debug Slate (Intern Diagnostic Unit)",
+            "armor": "Faded Intern Hoodie & Scavenged Denim (Worn Cloth, DR 0)",
+            "chest": "Faded Intern Hoodie & Scavenged Denim (Worn Cloth, DR 0)"
         },
         "skills": {
-            "Mesh Exploitation": {"mastery": 190, "tier": "Journeyman", "description": "Perceiving spatial seams and leylines.", "milestones_unlocked": ["Logic Buffer Exploit"]},
-            "Stun-Pistol Marksmanship": {"mastery": 95, "tier": "Apprentice", "description": "Discharging lightning runes from MageTech firearm.", "milestones_unlocked": []},
-            "Diagnostic Triage": {"mastery": 110, "tier": "Journeyman", "description": "Channelling restorative aether-salves.", "milestones_unlocked": ["Patch Script v1.0"]}
+            "Mesh Exploitation": {"mastery": 140, "tier": "Journeyman", "description": "Spotting collision leaks, glitch seams, and broken pathing geometry.", "milestones_unlocked": ["Logic Buffer Exploit"]},
+            "Stun-Pistol Marksmanship": {"mastery": 45, "tier": "Novice", "description": "Nervous defensive discharge of a jury-rigged pulse stunner.", "milestones_unlocked": []},
+            "Diagnostic Triage": {"mastery": 60, "tier": "Apprentice", "description": "Applying emergency field patches and digital triage with shaking hands.", "milestones_unlocked": ["Patch Script v1.0"]}
         },
         "abilities": [
-            "Aura Weakpoint Scan (-2 Enemy AC)",
-            "MageTech Stun-Arc Salvo (DC 13 CON save vs Stun)",
-            "Aetheric Phase-Veil (Untargetable 1 turn)",
-            "Aether-Scrap Extraction (+25% salvage yield)"
+            "Collision Leak Scan (-2 Enemy AC)",
+            "Panic Stunner Salvo (DC 13 CON save vs Stun)",
+            "Duck Behind Banki (Untargetable 1 turn)",
+            "Scrap & Salvage Scavenging (+25% salvage yield)"
         ],
         "stances": {
             "overwatch_hacking": {
-                "name": "Leyline Overwatch",
-                "label": "👁️ Leyline Overwatch",
+                "name": "Debug Mesh Overwatch",
+                "label": "👁️ Debug Mesh Overwatch",
                 "tag": "[REN OVERWATCH]",
                 "tactical_effect": "-2 Enemy AC debuff to primary target via weakpoint telemetry.",
-                "desc": "Scans leylines and structural telemetry, debuffing target AC."
+                "desc": "Squints through taped glasses at cracked cyan slate, shouting enemy hitbox leaks to Banki."
             },
             "suppression_fire": {
-                "name": "MageTech Arc Suppression",
-                "label": "⚡ MageTech Arc Suppression",
+                "name": "Panic Stunner Suppression",
+                "label": "⚡ Panic Stunner Suppression",
                 "tag": "[REN SUPPRESSION]",
-                "tactical_effect": "Discharges lightning-mana salvos; forces DC 13 CON save vs Staggered.",
-                "desc": "Suppresses targets with crackling lightning bolts."
+                "tactical_effect": "Discharges jittery stunner pulses; forces DC 13 CON save vs Staggered.",
+                "desc": "Peeks from behind cover, firing erratic electrical pulses from his taped scrap stunner with one eye shut."
             },
             "full_evasion": {
-                "name": "Aetheric Phase-Veil",
-                "label": "🌫️ Aetheric Phase-Veil",
+                "name": "Duck Behind Banki",
+                "label": "🛡️ Duck Behind Banki",
                 "tag": "[REN EVASION]",
-                "tactical_effect": "Weaves spatial distortion cloak; completely immune to single-target attacks.",
-                "desc": "Blinks out of direct reality."
+                "tactical_effect": "Ducks low behind Banki's armor, untargetable for 1 turn.",
+                "desc": "Shrinks low behind Banki's dire-wolf mantle or dives behind rubble, hugging his slate to evade targeting."
             },
             "utility_rigging": {
-                "name": "Arcane Artificing & Mending",
-                "label": "✨ Arcane Artificing & Mending",
+                "name": "Nervous Field Rigging",
+                "label": "🔧 Nervous Field Rigging",
                 "tag": "[REN UTILITY]",
-                "tactical_effect": "Restores +15 durability to worn equipment or scavenges bonus crystallite.",
-                "desc": "Channels mending runes into ally equipment."
+                "tactical_effect": "Restores +15 durability to worn equipment using scrap wire and solder.",
+                "desc": "Pulls out electrical solder and spare wires, frantically patching frayed armor straps during combat."
             }
         },
         "dual_tech_id": "runic_axe_storm"

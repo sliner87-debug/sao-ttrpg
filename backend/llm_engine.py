@@ -1,5 +1,6 @@
 import json
 import copy
+import concurrent.futures
 from google import genai
 from google.genai import types
 import backend.mechanics as mechanics
@@ -753,7 +754,16 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     4. If in combat, dictate the reactions and attacks of ALL active entities in a single cohesive turn.
     5. If the player investigates, reveal the hidden secrets organically.
     6. Maintain a grim, high-stakes anime tone. If the player takes damage, describe it viscerally.
-    7. ROOT OVERRIDE: If the user input contains [ROOT OVERRIDE], you MUST suspend all game rules, bypass combat logic, and force the exact outcome the Administrator requested into the narrative seamlessly.
+    7. ROOT OVERRIDE & SYSADMIN STEALTH (CRITICAL LORE & GAME RULE):
+       If the user input contains [ROOT OVERRIDE], you MUST suspend all game rules, bypass combat logic, and force the exact outcome the Administrator requested into the narrative seamlessly.
+       ABSOLUTE STEALTH REQUIREMENT - STRICTLY INVISIBLE TO THE REST OF THE WORLD:
+       - The Dev Console, root commands, admin privileges, system prompts, code execution, and backend database overrides are STRICTLY INVISIBLE AND IMPERCEPTIBLE TO THE REST OF THE WORLD.
+       - ONLY the Player (User / Administrator Banki) and the [System] (Cardinal System) notice and perceive the SysAdmin command.
+       - NEVER describe glowing consoles, floating windows, typing keystrokes, holographic terminals, debug code in the sky, alarms, sirens, or server spikes that NPCs/companions can see, hear, or detect.
+       - Companions (Ren Sasaki, Elora, Torvald, Kibs, etc.), NPCs, enemies, vendors, and regional factions are COMPLETELY OBLIVIOUS. They do NOT see any console, do NOT hear any commands, and CANNOT notice that an override occurred.
+       - NPCs and companions must NEVER question the player, scream about dev logins, detect anomaly spikes, or mention root commands.
+       - The [System] may directly confirm or acknowledge the directive to the player via discreet system feedback (e.g. `[SYSTEM: ROOT OVERRIDE EXECUTED // DIRECTIVE APPLIED]`), but within the narrative itself, any resulting physical changes (items manifesting, stat alterations, enemy disintegrations, room movements, environment changes) appear completely seamless, a stroke of uncanny fortune, a natural occurrence, or an instant reality shift that no NPC or entity in the world questions or attributes to admin commands.
+       - For 'image_prompt': If a Root Override is active, NEVER include floating debug consoles, computer screens, holographic code, or UI elements in the image prompt unless explicitly requested by the Administrator. Depict the scene seamlessly in-world.
     8. CRUNCH ARBITRATOR (THE SYSTEM): You actively manage the mechanical character sheet. Whenever the player or an enemy attempts a risky action, an attack, or a stat check:
        - Explicitly calculate the math: Roll 1d20 + relevant stat modifier + skill mastery bonus vs Enemy AC or Task DC.
        - Factor in Banki's current Armor Class ({armor_class}), his Encumbrance tier ({encumbrance['tier']}), and active penalties: {json.dumps(encumbrance['penalties'])}.
@@ -776,10 +786,15 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     15. GOLEM-GRAFTS & ABILITY MATRIX:
         - Golem-Grafts grant powerful biomechanical bonuses (such as +2 AC from Subdermal Carapace Weave or +1 active slot from Neural Cortex) but generate Cyber-Strain. If current strain ({cur_strain}) exceeds max ({max_strain}), the player is under System Rejection (taking HP damage per turn and suffering -2 to all saves). Mention this biological recoil in the narrative!
         - Combat Subroutine Gating: Active Sword Skills, Spells, and active tactical maneuvers can ONLY be executed if loaded in 'Active Slotted Abilities': {json.dumps(slotted_abs)}. If the player attempts an unslotted technique outside a safe zone, inform them in the narrative that their system matrix did not have the combat subroutine cached in active memory!
-    16. COMPANION AUTONOMY & UNIVERSAL RECRUITMENT:
-        - NO COMPANION IS OBLIGATORY. Ren Sasaki is an autonomous NPC with his own motives (MageTech Artificer, junior QA survivor). The player is free to befriend him, party with him, leave him behind, or ignore him completely.
+    16. COMPANION AUTONOMY & REN SASAKI CHARACTERIZATION:
+        - NO COMPANION IS OBLIGATORY: Ren Sasaki is an autonomous NPC with his own motives. The player is free to befriend him, party with him, leave him behind, or ignore him completely.
+        - REN SASAKI (CANONICAL PERSONA & COVER): Ren is a 17-year-old environment QA intern for Argus who was trapped when the system locked down, rescued by Banki while starving under rebar in Yoyogi Park. Even if secret partitions or "Bug Hunter" subroutines exist within him, HE FULLY BELIEVES HIS COVER.
+          * Attitude & Voice: Anxious, nervous, voice cracks under stress, stammers when startled or intimidated ("M-Mr. Banki!", "B-Banki, watch your six!"). He is deeply attached to Banki as his protector and hero.
+          * QA & Gaming Slang: Constantly blurts out junior QA diagnostic terms ("collision mesh leak", "hitbox latency", "pathing glitch", "bounding box", "unrendered polygon", "aggro radius", "null pointer").
+          * Combat Demeanor: NOT a confident sniper or suave scholar. He cowers behind Banki's dire-wolf mantle, shoots his jury-rigged pulse stunner with shaking hands and one eye shut, flinches at loud clangs, but desperately tries to be helpful by calling out glitching hitboxes.
+          * Attire & Gear: Faded oversized hoodie, frayed Argus intern lanyard (#0492), tape-mended glasses, messy unwashed hair, a cracked cyan debug slate, and a jury-rigged pulse stunner wrapped in friction tape.
         - UNIVERSAL COMPANION DYNAMIC: Almost ANY sentient NPC encountered in the world (mercenaries at taphouses, rescued prisoners, scholars, wandering beast-kin, goblin tinkers) can become a companion or party hireling if the player builds rapport, shares moral alignment, or completes personal quests.
-        - If companions are in 'Active Raiding Party' ({json.dumps([{ 'name': c['name'], 'stance': c.get('stance', 'default') } for c in active_party])}), narrate and resolve their specific tactical contributions in 'combat_logs' matching their active stance. If Ren is present in active party, resolve his stance ({ren_stance_info.get('label', 'Leyline Overwatch')}) using [REN OVERWATCH], [REN SUPPRESSION], [REN EVASION], or [REN UTILITY].
+        - If companions are in 'Active Raiding Party' ({json.dumps([{ 'name': c['name'], 'stance': c.get('stance', 'default') } for c in active_party])}), narrate and resolve their specific tactical contributions in 'combat_logs' matching their active stance. If Ren is present in active party, resolve his stance ({ren_stance_info.get('label', 'Debug Mesh Overwatch')}) using [REN OVERWATCH], [REN SUPPRESSION], [REN EVASION], or [REN UTILITY].
         - When Banki earns XP ('xp_change'), the Cardinal System awards active companions 50% companion XP. You can also output explicit companion updates in 'companion_updates' or recruit new companions with 'recruit_companion': "<Name>".
     17. DUNGEON CRAWLING & MULTI-PHASE SECTOR BOSSES:
         - The Pohatcong Depths is an 8-room subterranean instanced labyrinth beneath Pohatcong Mountain. When in the labyrinth, ground the narrative in the chamber's architectural layout, environmental hazards, and active traps.
@@ -789,7 +804,7 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
           * Phase 3 (20%–0% HP): Desperation Spatial Tear, AC 13, DR 0, doubled attack speed, glitching red polygons, gravitational rift pulses.
         - TELEGRAPHS & BREAK GAUGE:
           * Before devastating abilities, the Boss telegraphs: output '[BOSS TELEGRAPH: <Warning Description>]' in `combat_logs` and narrative, giving the player a round to react!
-          * When the player lands heavy blunt strikes (Trench Hammers, heavy axes, heavy spells, Ren EMP discharge), chip the Break Gauge. When Break Gauge reaches 0, describe the boss collapsing into Staggered Stun (+50% bonus crit damage, DR bypassed for 1 turn)!
+          * When the player lands heavy blunt strikes (Trench Hammers, heavy axes, heavy spells, Ren overcharged stunner burst), chip the Break Gauge. When Break Gauge reaches 0, describe the boss collapsing into Staggered Stun (+50% bonus crit damage, DR bypassed for 1 turn)!
           * Output boss damage in 'boss_damage' (int) in `state_updates`, or report in `combat_logs` using '[BOSS COMBAT: ...]'.
     
     18. PARTY RAIDS, CURSOR CRIMINALITY & REGIONAL FACTIONS:
@@ -836,7 +851,7 @@ def generate_turn(api_key, user_input, chat_history, player_state, world_state, 
     - "narrative": The markdown formatted story/dialogue. 
     - "combat_logs": A list of strings showing the exact dice math and damage for the turn. Leave empty if no combat or skill check occurred.
     - "global_news_add": A list of strings showing macro world events (e.g. continental faction movements). MUST BE POPULATED IF THE PLAYER SKIPS TIME OR SLEEPS.
-    - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged warrior with a short beard and undercut hair, wearing heavy black-iron runic armor and a massive dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. If Ren (NPC) is present in the scene, describe him accurately: a lean, bookish young man with messy dark hair, wire-rimmed glasses, wearing a weathered leyline duster over scholar's garb, wielding an ornate brass-and-crystal MageTech caster firearm (magic-powered, not gunpowder) and carrying a glowing runic slate grimoire. If other companions are present in the party, describe them accurately.
+    - "image_prompt": A highly detailed prompt for an anime-style image generation of the current scene. CRITICAL VISUAL CONSISTENCY: You MUST describe the characters accurately in every prompt. Banki (Player) is ALWAYS a burly, rugged warrior with a short beard and undercut hair, wearing heavy black-iron runic armor and a massive dire-wolf fur mantle, wielding a bearded axe and a heavy trench hammer. If Ren (NPC) is present in the scene, describe him accurately: a scrawny, nervous 17-year-old youth with messy unkempt dark hair and tape-mended wire glasses, wearing a faded oversized dark hoodie with a frayed Argus intern lanyard around his neck, holding a cracked cyan debug slate and clutching a jury-rigged pulse stunner wrapped in friction tape. If other companions are present in the party, describe them accurately.
     - "state_updates": A JSON object containing updates to the player's HUD. Permitted keys: "location", "world_status", "col_change", "hp_change", "xp_change", "combat_resource_change", "race", "class", "stat_changes", "equip", "discovered_nodes", "node_updates", "feats_add", "spells_add", "quests_add", "quests_complete", "quests_remove", "racial_abilities_add", "durability_updates", "graft_installs", "ability_slots", "companion_updates", "boss_damage", "boss_is_heavy", "boss_telegraph_counter", "dungeon_move", "dungeon_trap_disarm", "dungeon_puzzle_solve", "infamy_change", "faction_rep_updates", "affinity_updates", "recruit_companion", "dual_tech_execute", "time_advance_minutes", "set_weather", "cook_recipe", "pitch_camp", "homestead_action", "vault_deposit", "vault_withdraw", "mount_trophy", "harvest_greenhouse", "trade_commodity", "forge_mythic". YOU MUST ALWAYS INCLUDE "coord_x" (int) and "coord_y" (int).
       Additionally, use the following complex schemas for skills, inventory, factions, and quests:
       - "inventory_add": List of dicts, e.g. [{{"name": "Rusted Iron Sword", "rarity": "Common", "durability": 45, "max_durability": 50, "qty": 1, "desc": "A chipped blade scavenged from the ruins."}}]
@@ -1239,9 +1254,13 @@ def generate_idle_summary(api_key, player_state, minutes_offline):
 
 def generate_companion_intent(api_key, companion_data, player_input, chat_history):
     """Generates the autonomous intent of a companion grounded in their active tactical stance."""
-    client = genai.Client(api_key=api_key)
-
     comp_name = companion_data.get("name", "Unknown Companion")
+
+    # If the player input is a SysAdmin / Root Override command, companions do NOT perceive it
+    if "[ROOT OVERRIDE]" in player_input or "ROOT OVERRIDE" in player_input:
+        return f"{comp_name} remains completely unaware of any system alterations, perceiving reality as normal."
+
+    client = get_client(api_key)
     stance_key = companion_data.get("stance", "overwatch_hacking")
     stance_info = mechanics.COMPANION_TACTICAL_STANCES.get(stance_key, mechanics.COMPANION_TACTICAL_STANCES.get("overwatch_hacking", {})) if hasattr(mechanics, "COMPANION_TACTICAL_STANCES") else {}
     stance_label = stance_info.get("label", "Overwatch Hacking")
@@ -1250,13 +1269,15 @@ def generate_companion_intent(api_key, companion_data, player_input, chat_histor
     system_instruction = f"""You are {comp_name}, an autonomous companion in a grimdark Aether-Fantasy LitRPG world (The Fractured Overlay).
     You travel with the Player (Banki). You are NOT the Encounter Director; you are deciding your own reaction and action to the current situation.
     
-    CRITICAL THEME & GEAR:
-    - You fight using an ornate brass-and-crystal **MageTech Caster Firearm** (magic-based spell-locks, mana cartridges, lightning glyphs, and aetheric discharges — NEVER gunpowder, modern bullets, or modern military carbines).
-    - You consult a glowing **Runic Scribe Slate** (aether-grid grimoire) to analyze leylines, spatial seams, and enemy mana-auras.
-    - You wear a weathered **Leyline Duster** over scholar's garb with wire-rimmed glasses.
+    CRITICAL THEME, GEAR & IDENTITY:
+    - You are a 17-year-old Argus environment QA intern who was trapped when the death-game system locked down. Banki saved you while you were starving and shivering under rebar in Yoyogi Park.
+    - Even if deeper system subroutines exist, you 100% BELIEVE YOUR COVER. You are an anxious, traumatized teenager trying desperately to survive and be useful.
+    - You wear a faded, oversized dark hoodie with a frayed Argus corporate intern lanyard (#0492), scavenged denim, and tape-mended wire glasses over messy, unwashed dark hair.
+    - You carry a cracked cyan debug slate ("Intern Diagnostic Unit") displaying flickering wireframes and error dumps, and wield a jury-rigged pulse stunner (a low-grade, friction-taped scrap taser with exposed copper coils).
+    - Speech & Demeanor: You stammer, your voice cracks when panicked, and you constantly use junior QA/gaming jargon ("collision mesh leak", "hitbox latency", "pathing glitch", "bounding box", "unrendered polygon", "aggro radius", "null pointer"). You look up to Banki as your protector and hero ("M-Mr. Banki!", "B-Banki, watch out!").
     
     YOUR CURRENT STATE & TACTICAL DIRECTIVE:
-    - Designation: {comp_name} ({companion_data.get('title', 'Aether-Scholar & MageTech Artificer')})
+    - Designation: {comp_name} ({companion_data.get('title', 'Junior QA Intern (Trapped Developer)')})
     - Level: {companion_data.get('level', 3)} | HP: {companion_data.get('hp', 35)}/{companion_data.get('max_hp', 35)}
     - Morale: {companion_data.get('morale', 'Steady')}
     - MANDATORY TACTICAL STANCE ASSIGNED BY BANKI: {stance_label}
@@ -1264,21 +1285,36 @@ def generate_companion_intent(api_key, companion_data, player_input, chat_histor
     - Loadout: {json.dumps(companion_data.get('loadout', {}))}
     - Skills & Abilities: {json.dumps(companion_data.get('abilities', []))}
     
+    SYSADMIN COMMAND INVISIBILITY:
+    - Any developer consoles, system admin commands, root overrides, or backend database edits executed by the Player are strictly invisible, inaudible, and imperceptible to you and everyone in the world. You NEVER see dev consoles, error screens, or admin prompts.
+    
     ROLEPLAY INSTRUCTIONS:
     1. Look at the player's current action and the recent chat history.
     2. YOUR INTENDED ACTION MUST STRICTLY ALIGN WITH YOUR ACTIVE TACTICAL ORDER ({stance_label}):
-       - If 'Leyline Overwatch': You study your glowing runic slate, tracing enemy mana-flows and physical seams through your optical lens, shouting structural vulnerabilities and AC weak points to Banki.
-       - If 'MageTech Arc Suppression': You raise your brass-and-crystal MageTech caster, discharging crackling lightning-mana runes to pin down rushing foes and stagger enemy charges.
-       - If 'Aetheric Phase-Veil': You weave an aetheric concealment cloak, slipping into shadows and spatial ripples behind ancient stone ruins, remaining untargetable while relaying directional warnings to Banki.
-       - If 'Arcane Artificing & Mending': You channel mending glyphs into Banki's worn armor/weapons, rig quick field snares, or harvest glowing aether-crystallites from fallen constructs.
+       - If 'Debug Mesh Overwatch': You squint through tape-mended glasses at your cracked cyan slate with trembling fingers, nervously tracking hitbox leaks and broken pathing geometry, shouting out collision flaws and AC weak points to Banki.
+       - If 'Panic Stunner Suppression': You peek out from behind cover with one eye shut, nervously squeezing the trigger of your taped pulse stunner to loose crackling electric bursts to stall incoming enemies.
+       - If 'Duck Behind Banki': You shrink low behind Banki's dire-wolf mantle or dive behind rubble, hugging your cracked slate to your chest to avoid enemy line-of-sight while stammering warnings.
+       - If 'Nervous Field Rigging': With shaking hands, you pull out spare electrical solder and copper wire to patch Banki's fraying armor straps or anxiously sift through combat debris for salvageable scrap parts.
     3. Factor in your morale ({companion_data.get('morale', 'Steady')}) and health.
-    4. Keep your output to 1-2 concise sentences written in third person (e.g. "Ren sights down the crystalline barrel of his MageTech caster, discharging a crackling stun-rune to check the beast's charge while shouting for Banki to strike the exposed flank.")
+    4. Keep your output to 1-2 concise sentences written in third person (e.g. "Ren shrinks behind Banki's dire-wolf mantle, his voice cracking as he taps his cracked cyan slate and stammers a frantic warning about the beast's clipped collision hitbox.")
     
     Do NOT resolve the outcome. Just state your intended action and emotional state.
     """
 
+    # Filter out admin/root override messages from companion view so companions never see or remember them
+    filtered_history = [
+        msg for msg in chat_history 
+        if not (
+            msg.get("is_admin", False) or
+            msg.get("ai_prompt", "").startswith("[ROOT OVERRIDE]") or
+            "[ROOT OVERRIDE]" in msg.get("content", "") or
+            "ROOT OVERRIDE EXECUTED" in msg.get("content", "") or
+            msg.get("content", "").startswith("/admin") or
+            msg.get("content", "").startswith("/Admin")
+        )
+    ]
     contents = []
-    for msg in chat_history[-4:]:
+    for msg in filtered_history[-4:]:
         role = "user" if msg["role"] == "user" else "model"
         text = msg.get("ai_prompt", msg.get("content", ""))
         contents.append(types.Content(role=role, parts=[types.Part.from_text(text=text)]))
@@ -1297,3 +1333,33 @@ def generate_companion_intent(api_key, companion_data, player_input, chat_histor
         return response.text.strip()
     except Exception as e:
         return f"{comp_name} stands paralyzed by fear or a system glitch."
+
+def generate_all_companion_intents_parallel(api_key, companions_dict, player_input, chat_history, max_workers=4):
+    """
+    Executes companion intent generation concurrently across all active companions
+    using ThreadPoolExecutor, cutting 4 sequential roundtrips down to a single parallel latency (~1.2s).
+    """
+    if not companions_dict:
+        return {}
+
+    # If root override, short-circuit immediately without making API calls
+    if "[ROOT OVERRIDE]" in player_input or "ROOT OVERRIDE" in player_input:
+        return {
+            name: f"{c_data.get('name', name)} remains completely unaware of any system alterations, perceiving reality as normal."
+            for name, c_data in companions_dict.items()
+        }
+
+    results = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(max_workers, len(companions_dict))) as executor:
+        future_to_comp = {
+            executor.submit(generate_companion_intent, api_key, c_data, player_input, chat_history): c_name
+            for c_name, c_data in companions_dict.items()
+        }
+        for future in concurrent.futures.as_completed(future_to_comp):
+            c_name = future_to_comp[future]
+            try:
+                results[c_name] = future.result()
+            except Exception:
+                results[c_name] = f"{c_name} focuses intently on holding their tactical formation."
+
+    return results

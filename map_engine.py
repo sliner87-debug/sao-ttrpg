@@ -52,7 +52,10 @@ def save_map_state(state):
     with open("map_state.json", "w") as f:
         json.dump(state, f)
 
-def generate_overlay(player_skills=None):
+_MAP_CACHE_KEY = None
+
+def generate_overlay(player_skills=None, force=False):
+    global _MAP_CACHE_KEY
     if player_skills is None:
         player_skills = []
         
@@ -60,6 +63,17 @@ def generate_overlay(player_skills=None):
         return None
         
     state = load_map_state()
+    sig = (
+        state.get("player_x"),
+        state.get("player_y"),
+        len(state.get("explored_tiles", [])),
+        tuple(sorted(list(player_skills))),
+        len(state.get("dynamic_nodes", [])),
+        state.get("macro_mode")
+    )
+    if not force and _MAP_CACHE_KEY == sig and os.path.exists("current_map.jpg"):
+        return "current_map.jpg"
+        
     base_img = Image.open("base_map.jpg").convert("RGBA")
     
     # 1. Fog of War Layer
@@ -186,6 +200,7 @@ def generate_overlay(player_skills=None):
     
     map_img = map_img.convert("RGB")
     map_img.save("current_map.jpg")
+    _MAP_CACHE_KEY = sig
     return "current_map.jpg"
 
 if __name__ == "__main__":

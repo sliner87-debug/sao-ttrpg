@@ -2,15 +2,13 @@ import streamlit as st
 import json
 import copy
 import os
+import re
 import time
 import importlib
 import base64
 import backend.llm_engine as llm_engine
-importlib.reload(llm_engine)
 import backend.mechanics as mechanics
-importlib.reload(mechanics)
 import backend.character_generator as cg
-importlib.reload(cg)
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="The Fractured Overlay", page_icon="🗡️", layout="wide")
@@ -87,7 +85,10 @@ def save_game(player_state, messages):
     return cg.save_character_to_folder(BASE_DIR, player_state, messages)
 
 # --- INITIALIZE SESSION STATE ---
-saved_data = load_game()
+if "player" not in st.session_state or "messages" not in st.session_state:
+    saved_data = load_game()
+else:
+    saved_data = None
 
 if "offline_processed" not in st.session_state:
     st.session_state.offline_processed = False
@@ -241,12 +242,12 @@ if hasattr(mechanics, "ensure_companion_profile"):
 else:
     p.setdefault("companions", {
         "Ren": {
-            "name": "Ren",
-            "archetype": "Corporate Hacker / Magi-tech Support",
-            "hp": 40,
-            "max_hp": 40,
+            "name": "Ren Sasaki",
+            "archetype": "Junior QA Intern (Trapped Developer)",
+            "hp": 35,
+            "max_hp": 35,
             "status": "Exhausted but loyal",
-            "inventory": ["Cyan Digital Clipboard (Hacking Deck)", "Corporate Stun-Pistol"]
+            "inventory": ["Cracked Cyan Debug Slate", "Jury-Rigged Pulse Stunner"]
         }
     })
 
@@ -873,1569 +874,638 @@ def render_character_calibration_wizard():
                 st.rerun()
 
 
-# --- SIDEBAR: HUD & INVENTORY ---
-with st.sidebar:
-    st.title("🛡️ Player HUD")
-    
-    # --- MULTI-CHARACTER PROFILE SLOT SELECTOR ---
-    profiles = get_available_profiles()
-    curr_name = st.session_state.player.get('name', 'Banki')
-    default_idx = profiles.index(curr_name) if curr_name in profiles else 0
-    
-    st.markdown('##### 👤 Character Slot')
-    sel_profile = st.selectbox(
-        'Active Profile',
-        options=profiles,
-        index=default_idx,
-        key='active_profile_select',
-        label_visibility='collapsed'
-    )
-    if sel_profile != curr_name and not st.session_state.get('character_creation_mode', False):
-        p_data = cg.load_character_from_folder(BASE_DIR, sel_profile)
-        if p_data:
-            st.session_state.player = p_data['player']
-            st.session_state.messages = p_data.get('messages', [])
-            st.session_state.active_profile = sel_profile
-            st.session_state.character_creation_mode = False
-            save_game(st.session_state.player, st.session_state.messages)
-            st.rerun()
-            
-    if not st.session_state.get('character_creation_mode', False):
-        if st.button('🧬 New Avatar Calibration', use_container_width=True):
-            st.session_state.character_creation_mode = True
-            st.rerun()
-    else:
-        st.warning('⚡ Calibration Mode Active')
-        if st.button('❌ Exit Calibration', use_container_width=True):
-            st.session_state.character_creation_mode = False
-            st.rerun()
-            
-    st.divider()
-    
-    if st.session_state.get('character_creation_mode', False):
-        render_sidebar_calibration_preview()
-    else:
-        player = st.session_state.player
-        st.subheader(player["name"])
-    
-        # Calculate live mechanics
-        encumbrance = mechanics.calculate_encumbrance(player)
-        armor_class = mechanics.calculate_ac(player, encumbrance)
-    
-        hp_percent = max(0.0, min(1.0, player["hp"] / player["max_hp"]))
-        st.progress(hp_percent, text=f"HP: {player['hp']} / {player['max_hp']}")
-    
-        xp_max = player.get("level", 1) * 1000
-        xp_current = player.get("xp", 0)
-        xp_percent = max(0.0, min(1.0, xp_current / xp_max))
-        st.progress(xp_percent, text=f"XP: {xp_current} / {xp_max}")
 
-        # Asymmetric Tactical Combat Resource Bar
-        if hasattr(mechanics, "get_combat_resource_display"):
-            res_disp = mechanics.get_combat_resource_display(player)
-            st.progress(res_disp["percentage"], text=f"⚡ {res_disp['name']}: {res_disp['display']}")
-    
-        st.write(f"**Level:** {player['level']} | **AC:** {armor_class} 🛡️ | **Col:** {player['col']} 🪙")
+# =============================================================================
+# MODULAR WORKSPACE TAB RENDERERS (Phase 3 UI Overhaul)
+# =============================================================================
 
-        # Chrono-Atmospheric Status Pill (Phase 8)
-        if hasattr(mechanics, "ensure_chrono_system"):
-            mechanics.ensure_chrono_system(player)
-            chrono_hud = mechanics.get_game_time(player)
-            w_hud = chrono_hud["weather_info"]
-            p_hud = chrono_hud["period_info"]
-            st.caption(f"⏱️ **{chrono_hud['time_str']}** ({p_hud['label']}) | 🌤️ **{w_hud['label']}**")
+def render_tab_character(player, encumbrance, armor_class):
+    """Renders comprehensive character attributes, build, gear, and progression."""
+    with st.expander("🧬 Character Build", expanded=False):
+        st.write(f"**Race:** {player['race']}")
+        tier_num = player.get("class_tier", 1)
+        tier_badge = "👑 Tier 2 (Evolved)" if tier_num >= 2 else "⚔️ Tier 1 (Anchor)"
+        st.write(f"**Class:** {player['class']} *({tier_badge})*")
+        if player.get("favored_skills"):
+            st.caption(f"**Favored Skills (+25% XP):** {', '.join(player['favored_skills'])}")
+        if player.get("native_armor"):
+            st.caption(f"**Native Armor Conditioning:** {', '.join(player['native_armor'])}")
+        st.write("**Core Stats:**")
+        cols = st.columns(3)
+        cols[0].write(f"STR: {player['stats']['STR']}")
+        cols[1].write(f"DEX: {player['stats']['DEX']}")
+        cols[2].write(f"CON: {player['stats']['CON']}")
+        cols = st.columns(3)
+        cols[0].write(f"INT: {player['stats']['INT']}")
+        cols[1].write(f"WIS: {player['stats']['WIS']}")
+        cols[2].write(f"CHA: {player['stats']['CHA']}")
 
-        free_pts = player.get("free_attribute_points", 0)
-        if free_pts > 0:
-            st.info(f"✨ **{free_pts} Free Attribute Points Available!** (Allocate in Character Build below)")
+        # Free Attribute Points Allocator
+        if player.get("free_attribute_points", 0) > 0:
+            st.markdown("---")
+            st.markdown(f"##### ✨ Spend Attribute Points ({player['free_attribute_points']} remaining)")
+            chosen_stat = st.selectbox("Stat to Increase (+1)", ["STR", "DEX", "CON", "INT", "WIS", "CHA"], key="sb_spend_stat_hud")
+            if st.button(f"Confirm +1 to {chosen_stat}", use_container_width=True, key="btn_confirm_stat_inc_hud"):
+                mechanics.allocate_attribute_points(player, {chosen_stat: 1})
+                save_game(player, st.session_state.messages)
+                st.success(f"+1 added to {chosen_stat}!")
+                st.rerun()
     
-        st.divider()
-    
-        with st.expander("🧬 Character Build", expanded=False):
-            st.write(f"**Race:** {player['race']}")
-            tier_num = player.get("class_tier", 1)
-            tier_badge = "👑 Tier 2 (Evolved)" if tier_num >= 2 else "⚔️ Tier 1 (Anchor)"
-            st.write(f"**Class:** {player['class']} *({tier_badge})*")
-            if player.get("favored_skills"):
-                st.caption(f"**Favored Skills (+25% XP):** {', '.join(player['favored_skills'])}")
-            if player.get("native_armor"):
-                st.caption(f"**Native Armor Conditioning:** {', '.join(player['native_armor'])}")
-            st.write("**Core Stats:**")
-            cols = st.columns(3)
-            cols[0].write(f"STR: {player['stats']['STR']}")
-            cols[1].write(f"DEX: {player['stats']['DEX']}")
-            cols[2].write(f"CON: {player['stats']['CON']}")
-            cols = st.columns(3)
-            cols[0].write(f"INT: {player['stats']['INT']}")
-            cols[1].write(f"WIS: {player['stats']['WIS']}")
-            cols[2].write(f"CHA: {player['stats']['CHA']}")
-
-            # Free Attribute Points Allocator
-            if player.get("free_attribute_points", 0) > 0:
-                st.markdown("---")
-                st.markdown(f"##### ✨ Spend Attribute Points ({player['free_attribute_points']} remaining)")
-                chosen_stat = st.selectbox("Stat to Increase (+1)", ["STR", "DEX", "CON", "INT", "WIS", "CHA"], key="sb_spend_stat_hud")
-                if st.button(f"Confirm +1 to {chosen_stat}", use_container_width=True, key="btn_confirm_stat_inc_hud"):
-                    mechanics.allocate_attribute_points(player, {chosen_stat: 1})
-                    save_game(player, st.session_state.messages)
-                    st.success(f"+1 added to {chosen_stat}!")
-                    st.rerun()
+    with st.expander("⚖️ Encumbrance & Carry Physics", expanded=False):
+        st.write(f"**Status:** {encumbrance['label']}")
+        st.progress(encumbrance['weight_percent'], text=f"Weight: {encumbrance['current_weight_lbs']} / {encumbrance['max_weight_lbs']} lbs")
+        st.progress(encumbrance['slots_percent'], text=f"Slots: {encumbrance['used_slots']} / {encumbrance['max_slots']} slots")
+        pen = encumbrance['penalties']
+        if pen['dex_mod'] != 0 or pen['disadvantage_stealth']:
+            st.warning(f"⚠️ **Penalties:** DEX {pen['dex_mod']} | Speed: {pen['speed_pct']}% | Disadvantage on Stealth")
+        else:
+            st.success("✅ **Unburdened:** Full agility and movement speed.")
         
-        with st.expander("⚖️ Encumbrance & Carry Physics", expanded=False):
-            st.write(f"**Status:** {encumbrance['label']}")
-            st.progress(encumbrance['weight_percent'], text=f"Weight: {encumbrance['current_weight_lbs']} / {encumbrance['max_weight_lbs']} lbs")
-            st.progress(encumbrance['slots_percent'], text=f"Slots: {encumbrance['used_slots']} / {encumbrance['max_slots']} slots")
-            pen = encumbrance['penalties']
-            if pen['dex_mod'] != 0 or pen['disadvantage_stealth']:
-                st.warning(f"⚠️ **Penalties:** DEX {pen['dex_mod']} | Speed: {pen['speed_pct']}% | Disadvantage on Stealth")
-            else:
-                st.success("✅ **Unburdened:** Full agility and movement speed.")
-            
-        with st.expander("⚔️ Equipped Gear & Durability", expanded=False):
-            if hasattr(mechanics, "normalize_gear_durability"):
-                gear_dur = mechanics.normalize_gear_durability(player)
-            else:
-                gear_dur = player.get("gear_durability", {})
+    with st.expander("⚔️ Equipped Gear & Durability", expanded=False):
+        if hasattr(mechanics, "normalize_gear_durability"):
+            gear_dur = mechanics.normalize_gear_durability(player)
+        else:
+            gear_dur = player.get("gear_durability", {})
 
-            # Summary of active durability penalties
-            if hasattr(mechanics, "calculate_durability_penalties"):
-                pens = mechanics.calculate_durability_penalties(player)
-                if pens["atk_penalty"] > 0 or pens["ac_penalty"] > 0:
-                    st.warning(f"⚠️ **Wear Penalties Active:** ATK -{pens['atk_penalty']} | AC -{pens['ac_penalty']}")
-                if pens["broken_items"]:
-                    st.error(f"🚨 **Broken Gear:** {', '.join(pens['broken_items'])} (Ineffective!)")
+        # Summary of active durability penalties
+        if hasattr(mechanics, "calculate_durability_penalties"):
+            pens = mechanics.calculate_durability_penalties(player)
+            if pens["atk_penalty"] > 0 or pens["ac_penalty"] > 0:
+                st.warning(f"⚠️ **Wear Penalties Active:** ATK -{pens['atk_penalty']} | AC -{pens['ac_penalty']}")
+            if pens["broken_items"]:
+                st.error(f"🚨 **Broken Gear:** {', '.join(pens['broken_items'])} (Ineffective!)")
 
-            for slot in ["head", "chest", "main_hand", "off_hand", "accessory"]:
-                item = player['equipped'].get(slot, "None")
-                slot_label = slot.replace('_', ' ').title()
-                if item and item != "None":
-                    grade = mechanics.get_item_grade(item) if hasattr(mechanics, "get_item_grade") else 1
-                    grade_badge = mechanics.ITEM_GRADE_SCALING.get(grade, {}).get("badge", f"Grade {grade}") if hasattr(mechanics, "ITEM_GRADE_SCALING") else f"Grade {grade}"
-                    
-                    d = gear_dur.get(slot, {"cur": 100, "max": 100})
-                    cur_d = d.get("cur", 100)
-                    max_d = d.get("max", 100)
-                    
-                    state_info = mechanics.get_durability_state(cur_d, max_d) if hasattr(mechanics, "get_durability_state") else {"label": f"{cur_d}/{max_d}", "pct": cur_d / max_d if max_d > 0 else 1.0, "is_broken": cur_d <= 0, "is_dulled": cur_d < max_d * 0.25}
-                    
-                    st.markdown(f"**{slot_label}:** {item}")
-                    st.caption(f"{grade_badge} | {state_info['label']}")
-                    
-                    pct_val = max(0.0, min(1.0, float(state_info.get("pct", cur_d / max_d if max_d > 0 else 1.0))))
-                    st.progress(pct_val, text=f"{cur_d} / {max_d} Durability ({int(pct_val * 100)}%)")
-                    
-                    if state_info.get("is_broken"):
-                        st.error("🛑 BROKEN: Weapon/Armor has fractured and lost its effectiveness!")
-                    elif state_info.get("is_dulled"):
-                        st.warning("🟠 DULLED/CRACKED: Imposing -2 penalty to checks!")
-                    st.divider()
-                else:
-                    st.caption(f"- **{slot_label}:** None")
-
-            # Safe Zone Forge Repair: The Scrap-Yard Anvil
-            loc_str = str(player.get("location", "")).lower()
-            is_safe_settlement = any(w in loc_str for w in ["borough", "safe", "town", "taphouse", "anvil", "forge", "haven", "settlement"])
-            
-            st.markdown("##### 🔨 The Scrap-Yard Anvil (Forge Repairs)")
-            total_dur_needed = sum(max(0, d.get("max", 100) - d.get("cur", 100)) for d in gear_dur.values())
-            
-            if total_dur_needed > 0:
-                cost_estimate = total_dur_needed  # 1 Col per durability point
-                st.caption(f"Maintenance Required: **{total_dur_needed} pts** of wear | Cost: **{cost_estimate} Col** (Current Col: {player.get('col', 0):,})")
-                if st.button("🔨 Repair All Equipped Gear", key="btn_repair_all_gear_hud", use_container_width=True):
-                    for slot_k in ["head", "chest", "main_hand", "off_hand", "accessory"]:
-                        if slot_k in gear_dur and hasattr(mechanics, "repair_item"):
-                            mechanics.repair_item(player, slot_k)
-                    save_game(player, st.session_state.messages)
-                    st.toast("🔨 All equipped gear fully repaired at the Scrap-Yard Anvil!", icon="✨")
-                    st.success("All equipped gear restored to pristine condition!")
-                    st.rerun()
-            else:
-                st.success("✅ All equipped gear is in pristine condition.")
-        
-        with st.expander("✨ Skills, Spells & Feats", expanded=False):
-            # 1. Racial Traits
-            if player.get('racial_abilities'):
-                st.markdown("#### 🧬 Racial Traits")
-                for r in player['racial_abilities']:
-                    st.markdown(f"- {r}")
+        for slot in ["head", "chest", "main_hand", "off_hand", "accessory"]:
+            item = player['equipped'].get(slot, "None")
+            slot_label = slot.replace('_', ' ').title()
+            if item and item != "None":
+                grade = mechanics.get_item_grade(item) if hasattr(mechanics, "get_item_grade") else 1
+                grade_badge = mechanics.ITEM_GRADE_SCALING.get(grade, {}).get("badge", f"Grade {grade}") if hasattr(mechanics, "ITEM_GRADE_SCALING") else f"Grade {grade}"
+                
+                d = gear_dur.get(slot, {"cur": 100, "max": 100})
+                cur_d = d.get("cur", 100)
+                max_d = d.get("max", 100)
+                
+                state_info = mechanics.get_durability_state(cur_d, max_d) if hasattr(mechanics, "get_durability_state") else {"label": f"{cur_d}/{max_d}", "pct": cur_d / max_d if max_d > 0 else 1.0, "is_broken": cur_d <= 0, "is_dulled": cur_d < max_d * 0.25}
+                
+                st.markdown(f"**{slot_label}:** {item}")
+                st.caption(f"{grade_badge} | {state_info['label']}")
+                
+                pct_val = max(0.0, min(1.0, float(state_info.get("pct", cur_d / max_d if max_d > 0 else 1.0))))
+                st.progress(pct_val, text=f"{cur_d} / {max_d} Durability ({int(pct_val * 100)}%)")
+                
+                if state_info.get("is_broken"):
+                    st.error("🛑 BROKEN: Weapon/Armor has fractured and lost its effectiveness!")
+                elif state_info.get("is_dulled"):
+                    st.warning("🟠 DULLED/CRACKED: Imposing -2 penalty to checks!")
                 st.divider()
-
-            # 2. Weapon & Field Skills Mastery (1-1000 System)
-            st.markdown("#### ⚔️ Weapon & Field Skills")
-            skills = player.get('skills', {})
-            if not skills:
-                st.caption("No registered skills. Perform actions or combat checks to unlock skills!")
             else:
-                TIER_BADGES = {
-                    "Novice": ":gray[[Novice]]",
-                    "Apprentice": ":green[[Apprentice]]",
-                    "Journeyman": ":blue[[Journeyman]]",
-                    "Adept": ":violet[[Adept]]",
-                    "Master": ":orange[[Master]]",
-                    "Grandmaster": ":red[[Grandmaster]]",
-                    "Transcendence": ":rainbow[[Transcendence]]"
-                }
-                THRESHOLDS = [50, 100, 250, 500, 750, 1000]
-                THRESHOLD_TIERS = {
-                    50: "Apprentice",
-                    100: "Journeyman",
-                    250: "Adept",
-                    500: "Master",
-                    750: "Grandmaster",
-                    1000: "Transcendence"
-                }
+                st.caption(f"- **{slot_label}:** None")
 
-                for s_name, s_data in skills.items():
-                    if isinstance(s_data, dict):
-                        mastery = max(1, min(1000, int(s_data.get('mastery', 1))))
-                        tier = s_data.get('tier', 'Novice')
-                        desc = s_data.get('description', '')
-                        unlocked_milestones = s_data.get('milestones_unlocked', [])
-                    else:
-                        mastery = 1
-                        tier = "Novice"
-                        desc = str(s_data)
-                        unlocked_milestones = []
+        # Safe Zone Forge Repair: The Scrap-Yard Anvil
+        loc_str = str(player.get("location", "")).lower()
+        is_safe_settlement = any(w in loc_str for w in ["borough", "safe", "town", "taphouse", "anvil", "forge", "haven", "settlement"])
+        
+        st.markdown("##### 🔨 The Scrap-Yard Anvil (Forge Repairs)")
+        total_dur_needed = sum(max(0, d.get("max", 100) - d.get("cur", 100)) for d in gear_dur.values())
+        
+        if total_dur_needed > 0:
+            cost_estimate = total_dur_needed  # 1 Col per durability point
+            st.caption(f"Maintenance Required: **{total_dur_needed} pts** of wear | Cost: **{cost_estimate} Col** (Current Col: {player.get('col', 0):,})")
+            if st.button("🔨 Repair All Equipped Gear", key="btn_repair_all_gear_hud", use_container_width=True):
+                for slot_k in ["head", "chest", "main_hand", "off_hand", "accessory"]:
+                    if slot_k in gear_dur and hasattr(mechanics, "repair_item"):
+                        mechanics.repair_item(player, slot_k)
+                save_game(player, st.session_state.messages)
+                st.toast("🔨 All equipped gear fully repaired at the Scrap-Yard Anvil!", icon="✨")
+                st.success("All equipped gear restored to pristine condition!")
+                st.rerun()
+        else:
+            st.success("✅ All equipped gear is in pristine condition.")
+    
+    with st.expander("✨ Skills, Spells & Feats", expanded=False):
+        # 1. Racial Traits
+        if player.get('racial_abilities'):
+            st.markdown("#### 🧬 Racial Traits")
+            for r in player['racial_abilities']:
+                st.markdown(f"- {r}")
+            st.divider()
 
-                    badge = TIER_BADGES.get(tier, f"[{tier}]")
+        # 2. Weapon & Field Skills Mastery (1-1000 System)
+        st.markdown("#### ⚔️ Weapon & Field Skills")
+        skills = player.get('skills', {})
+        if not skills:
+            st.caption("No registered skills. Perform actions or combat checks to unlock skills!")
+        else:
+            TIER_BADGES = {
+                "Novice": ":gray[[Novice]]",
+                "Apprentice": ":green[[Apprentice]]",
+                "Journeyman": ":blue[[Journeyman]]",
+                "Adept": ":violet[[Adept]]",
+                "Master": ":orange[[Master]]",
+                "Grandmaster": ":red[[Grandmaster]]",
+                "Transcendence": ":rainbow[[Transcendence]]"
+            }
+            THRESHOLDS = [50, 100, 250, 500, 750, 1000]
+            THRESHOLD_TIERS = {
+                50: "Apprentice",
+                100: "Journeyman",
+                250: "Adept",
+                500: "Master",
+                750: "Grandmaster",
+                1000: "Transcendence"
+            }
 
-                    # Find next milestone threshold
-                    next_thresh = next((t for t in THRESHOLDS if t > mastery), None)
-                    next_tier_name = THRESHOLD_TIERS.get(next_thresh) if next_thresh else None
+            for s_name, s_data in skills.items():
+                if isinstance(s_data, dict):
+                    mastery = max(1, min(1000, int(s_data.get('mastery', 1))))
+                    tier = s_data.get('tier', 'Novice')
+                    desc = s_data.get('description', '')
+                    unlocked_milestones = s_data.get('milestones_unlocked', [])
+                else:
+                    mastery = 1
+                    tier = "Novice"
+                    desc = str(s_data)
+                    unlocked_milestones = []
 
-                    # Header with Tier Badge and exact numerical gauge
-                    st.markdown(f"**{s_name}** {badge} `[{mastery} / 1000]`")
+                badge = TIER_BADGES.get(tier, f"[{tier}]")
 
-                    # Smooth Progress Bar with Next Milestone Text
-                    prog_val = min(1.0, max(0.0, mastery / 1000.0))
-                    if next_thresh:
-                        remaining = next_thresh - mastery
-                        prog_text = f"{mastery}/1000 | Next: {next_tier_name} @ {next_thresh} (+{remaining} pts)"
-                    else:
-                        prog_text = "1000/1000 | 👑 Maximum Mastery Transcended"
-                    st.progress(prog_val, text=prog_text)
+                # Find next milestone threshold
+                next_thresh = next((t for t in THRESHOLDS if t > mastery), None)
+                next_tier_name = THRESHOLD_TIERS.get(next_thresh) if next_thresh else None
 
-                    if desc:
-                        st.caption(desc)
+                # Header with Tier Badge and exact numerical gauge
+                st.markdown(f"**{s_name}** {badge} `[{mastery} / 1000]`")
 
-                    # Render Unlocked Milestone Perks Under Parent Skill
-                    if unlocked_milestones:
-                        st.markdown("**Unlocked Milestone Perks:**")
-                        for perk in unlocked_milestones:
-                            if isinstance(perk, dict):
-                                p_name = perk.get("name", "Unknown Perk")
-                                p_tier = perk.get("tier", "Milestone")
-                                p_thresh = perk.get("threshold", "")
-                                p_type = perk.get("type", perk.get("perk_type", "Perk"))
-                                p_desc = perk.get("description", perk.get("desc", perk.get("effect", "")))
+                # Smooth Progress Bar with Next Milestone Text
+                prog_val = min(1.0, max(0.0, mastery / 1000.0))
+                if next_thresh:
+                    remaining = next_thresh - mastery
+                    prog_text = f"{mastery}/1000 | Next: {next_tier_name} @ {next_thresh} (+{remaining} pts)"
+                else:
+                    prog_text = "1000/1000 | 👑 Maximum Mastery Transcended"
+                st.progress(prog_val, text=prog_text)
+
+                if desc:
+                    st.caption(desc)
+
+                # Render Unlocked Milestone Perks Under Parent Skill
+                if unlocked_milestones:
+                    st.markdown("**Unlocked Milestone Perks:**")
+                    for perk in unlocked_milestones:
+                        if isinstance(perk, dict):
+                            p_name = perk.get("name", "Unknown Perk")
+                            p_tier = perk.get("tier", "Milestone")
+                            p_thresh = perk.get("threshold", "")
+                            p_type = perk.get("type", perk.get("perk_type", "Perk"))
+                            p_desc = perk.get("description", perk.get("desc", perk.get("effect", "")))
+                            header_label = f"[{p_tier} {p_thresh}]" if p_thresh else f"[{p_tier}]"
+                            st.markdown(f"  🔹 **{header_label} {p_name}** *({p_type})*")
+                            if p_desc:
+                                st.caption(f"  ↳ {p_desc}")
+                        else:
+                            # String perk name - attempt canonical lookup for rich details
+                            perk_str = str(perk)
+                            p_dict = None
+                            if hasattr(mechanics, "get_canonical_milestone"):
+                                for th_test in THRESHOLDS:
+                                    c_p = mechanics.get_canonical_milestone(s_name, th_test)
+                                    if c_p and c_p.get("name", "").lower() == perk_str.lower():
+                                        p_dict = c_p
+                                        break
+                            if p_dict:
+                                p_tier = p_dict.get("tier", "Milestone")
+                                p_thresh = p_dict.get("threshold", "")
+                                p_type = p_dict.get("type", "Perk")
+                                p_desc = p_dict.get("effect") or p_dict.get("description", "")
                                 header_label = f"[{p_tier} {p_thresh}]" if p_thresh else f"[{p_tier}]"
-                                st.markdown(f"  🔹 **{header_label} {p_name}** *({p_type})*")
+                                st.markdown(f"  🔹 **{header_label} {p_dict['name']}** *({p_type})*")
                                 if p_desc:
                                     st.caption(f"  ↳ {p_desc}")
                             else:
-                                # String perk name - attempt canonical lookup for rich details
-                                perk_str = str(perk)
-                                p_dict = None
-                                if hasattr(mechanics, "get_canonical_milestone"):
-                                    for th_test in THRESHOLDS:
-                                        c_p = mechanics.get_canonical_milestone(s_name, th_test)
-                                        if c_p and c_p.get("name", "").lower() == perk_str.lower():
-                                            p_dict = c_p
-                                            break
-                                if p_dict:
-                                    p_tier = p_dict.get("tier", "Milestone")
-                                    p_thresh = p_dict.get("threshold", "")
-                                    p_type = p_dict.get("type", "Perk")
-                                    p_desc = p_dict.get("effect") or p_dict.get("description", "")
-                                    header_label = f"[{p_tier} {p_thresh}]" if p_thresh else f"[{p_tier}]"
-                                    st.markdown(f"  🔹 **{header_label} {p_dict['name']}** *({p_type})*")
-                                    if p_desc:
-                                        st.caption(f"  ↳ {p_desc}")
-                                else:
-                                    st.markdown(f"  🔹 **[Milestone Perk]** {perk_str}")
-                    else:
-                        if next_thresh:
-                            st.caption(f"🔒 *No milestone perks unlocked yet. Reach {next_thresh} to unlock {next_tier_name} perk.*")
-
-                    # Preview Upcoming Locked Milestone
+                                st.markdown(f"  🔹 **[Milestone Perk]** {perk_str}")
+                else:
                     if next_thresh:
-                        st.caption(f"🎯 *Target Milestone: [{next_tier_name}] at {next_thresh} Mastery*")
+                        st.caption(f"🔒 *No milestone perks unlocked yet. Reach {next_thresh} to unlock {next_tier_name} perk.*")
 
-                    st.divider()
+                # Preview Upcoming Locked Milestone
+                if next_thresh:
+                    st.caption(f"🎯 *Target Milestone: [{next_tier_name}] at {next_thresh} Mastery*")
 
-            # 3. Active Feats & Techniques
-            feats = player.get('feats', [])
-            if feats:
-                st.markdown("#### 🎖️ Feats & Techniques")
-                for f in feats:
-                    st.markdown(f"- {f}")
                 st.divider()
 
-            # 4. Spells & Arcana
-            spells = player.get('spells', [])
-            if spells:
-                st.markdown("#### 🔮 Spells & Arcana")
-                for sp in spells:
-                    st.markdown(f"- {sp}")
-            
-        with st.expander("🔮 Slotted Ability Matrix", expanded=False):
-            max_slots = mechanics.get_max_ability_slots(player) if hasattr(mechanics, "get_max_ability_slots") else 5
-            slotted = mechanics.get_slotted_abilities(player) if hasattr(mechanics, "get_slotted_abilities") else []
-            used_slots = len(slotted)
-            
-            st.markdown(f"##### 🧠 Active Memory Matrix `[{used_slots} / {max_slots} Slots]`")
-            st.progress(min(1.0, used_slots / max_slots) if max_slots > 0 else 0.0, text=f"{used_slots} / {max_slots} Active Slots Used")
-            
-            # Slotted abilities list
-            if slotted:
-                st.markdown("**Currently Slotted Techniques & Spells:**")
-                for s_idx, ab_name in enumerate(slotted):
-                    col_ab, col_btn = st.columns([3, 1])
-                    col_ab.markdown(f"🔹 **{ab_name}**")
-                    if col_btn.button("Unslot", key=f"btn_unslot_hud_{s_idx}"):
-                        mechanics.unslot_ability(player, ab_name)
-                        save_game(player, st.session_state.messages)
-                        st.toast(f"Unslotted '{ab_name}' from Matrix Memory.")
-                        st.rerun()
-            else:
-                st.caption("No abilities slotted in active memory. Slot techniques below to use in combat!")
-
+        # 3. Active Feats & Techniques
+        feats = player.get('feats', [])
+        if feats:
+            st.markdown("#### 🎖️ Feats & Techniques")
+            for f in feats:
+                st.markdown(f"- {f}")
             st.divider()
-            
-            # Safe Zone Slotting Reconfiguration
-            loc_str = str(player.get("location", "")).lower()
-            is_safe = any(w in loc_str for w in ["borough", "safe", "town", "taphouse", "anvil", "haven", "outpost", "clinic"])
-            
-            if is_safe:
-                st.markdown("##### ⚡ Reconfigure Active Memory:")
-                avail_pool = mechanics.get_available_abilities(player) if hasattr(mechanics, "get_available_abilities") else []
-                unslotted_pool = [a for a in avail_pool if not mechanics.is_ability_slotted(player, a["name"])]
-                
-                if unslotted_pool:
-                    for a_idx, ab_item in enumerate(unslotted_pool):
-                        col_a, col_b = st.columns([3, 1])
-                        col_a.markdown(f"**{ab_item['name']}** *({ab_item['source']})*")
-                        if used_slots < max_slots:
-                            if col_b.button("Slot", key=f"btn_slot_hud_{a_idx}"):
-                                mechanics.slot_ability(player, ab_item["name"])
-                                save_game(player, st.session_state.messages)
-                                st.toast(f"Slotted '{ab_item['name']}' into Active Memory!", icon="⚡")
-                                st.rerun()
-                        else:
-                            col_b.caption("Full")
-                else:
-                    st.caption("All unlocked abilities are currently slotted.")
-            else:
-                st.caption("🔒 *Active Memory is locked during wilderness exploration/combat. Rest in a Safe Zone to reconfigure.*")
 
-        with st.expander("🦾 Golem-Grafts & Cyber-Strain", expanded=False):
-            max_strain = mechanics.get_max_graft_strain(player) if hasattr(mechanics, "get_max_graft_strain") else 86
-            cur_strain = mechanics.get_current_graft_strain(player) if hasattr(mechanics, "get_current_graft_strain") else 0
-            rejection = mechanics.get_graft_rejection_status(player) if hasattr(mechanics, "get_graft_rejection_status") else {"status": "Stable", "label": "🟢 Stable", "is_rejecting": False}
-            
-            st.markdown(f"##### 🧬 Cyber-Biological Strain Gauge `[{cur_strain} / {max_strain}]`")
-            prog_strain = min(1.0, cur_strain / max_strain) if max_strain > 0 else 0.0
-            st.progress(prog_strain, text=f"{cur_strain} / {max_strain} Strain ({rejection['label']})")
-            
-            if rejection.get("is_rejecting"):
-                st.error(f"🚨 **SYSTEM REJECTION ACTIVE:** {rejection['description']}")
-            else:
-                st.success(f"{rejection['label']} — Organic flesh harmonized with cybernetics.")
-                
-            # Spellcaster graft penalty notice if applicable
-            if hasattr(mechanics, "calculate_spellcasting_graft_penalty"):
-                c_pen = mechanics.calculate_spellcasting_graft_penalty(player)
-                if c_pen["penalty"] > 0:
-                    st.warning(f"⚠️ **Mana Interference:** -{c_pen['penalty']} to Arcane DC / Spell Attack due to unharmonized metal.")
-
-            st.divider()
-            st.markdown("##### 🦾 Installed Golem-Grafts:")
-            installed_grafts = player.get("graft_system", {}).get("installed_grafts", {})
-            if hasattr(mechanics, "BODY_GRAFT_SLOTS"):
-                for b_slot in mechanics.BODY_GRAFT_SLOTS:
-                    slot_title = b_slot.replace("_", " ").title()
-                    if b_slot in installed_grafts and installed_grafts[b_slot]:
-                        g_obj = installed_grafts[b_slot]
-                        col_g1, col_g2 = st.columns([3, 1])
-                        col_g1.markdown(f"🔹 **{slot_title}:** {g_obj.get('name')} `[+{g_obj.get('strain', 0)} Strain]`")
-                        col_g1.caption(f"↳ *{g_obj.get('effect')}*")
-                        if col_g2.button("Extract", key=f"btn_extract_graft_{b_slot}"):
-                            ext_res = mechanics.remove_graft(player, b_slot)
-                            if ext_res["success"]:
-                                save_game(player, st.session_state.messages)
-                                st.toast(f"Surgically extracted {g_obj.get('name')}!", icon="🔧")
-                                st.rerun()
-                            else:
-                                st.error(ext_res["message"])
-                    else:
-                        st.caption(f"- **{slot_title}:** Organic flesh (Empty)")
-
-            # Safe Zone Cyber-Clinic
-            loc_str = str(player.get("location", "")).lower()
-            is_safe = any(w in loc_str for w in ["borough", "safe", "town", "taphouse", "anvil", "haven", "outpost", "clinic"])
-            if is_safe and hasattr(mechanics, "CANONICAL_GRAFTS"):
-                st.divider()
-                st.markdown("##### 🏥 Cyber-Clinic: Deepforger Artificer")
-                st.caption(f"Available Col: **{player.get('col', 0):,} Col**")
-                
-                g_keys = list(mechanics.CANONICAL_GRAFTS.keys())
-                sel_g_key = st.selectbox("Select Golem-Graft to Install:", g_keys, format_func=lambda k: f"{mechanics.CANONICAL_GRAFTS[k]['name']} ({mechanics.CANONICAL_GRAFTS[k]['col_cost']:,} Col, +{mechanics.CANONICAL_GRAFTS[k]['strain']} Strain)", key="sb_clinic_graft_sel")
-                
-                g_selected = mechanics.CANONICAL_GRAFTS[sel_g_key]
-                st.write(f"**Description:** {g_selected['description']}")
-                st.info(f"**Mechanical Effect:** {g_selected['effect']}")
-                
-                avail_target_slots = g_selected["allowed_slots"]
-                sel_target_slot = st.selectbox("Select Installation Body Slot:", avail_target_slots, key="sb_clinic_slot_sel")
-                
-                if st.button(f"Surgically Install {g_selected['name']} ({g_selected['col_cost']:,} Col)", key="btn_install_graft_clinic", use_container_width=True):
-                    s_res = mechanics.install_graft(player, sel_g_key, sel_target_slot)
-                    if s_res["success"]:
-                        save_game(player, st.session_state.messages)
-                        st.toast(f"Successfully installed {g_selected['name']} into {sel_target_slot.title()}!", icon="🦾")
-                        st.success(s_res["log"])
-                        st.rerun()
-                    else:
-                        st.error(s_res["message"])
-
-        with st.expander("🎒 Backpack Inventory", expanded=False):
-            rarity_colors = {"Common": "⚪", "Uncommon": "🟢", "Rare": "🔵", "Epic": "🟣", "Legendary": "🟠", "Mythic": "🔴", "Unique": "✨"}
-            for item in player.get("inventory", []):
-                if isinstance(item, dict):
-                    icon = rarity_colors.get(item.get("rarity", "Common"), "⚪")
-                    st.write(f"{icon} **{item.get('name', 'Unknown')}** (x{item.get('qty', 1)})")
-                    st.caption(f"Durability: {item.get('durability', 0)}/{item.get('max_durability', 0)} | {item.get('desc', '')}")
-                else:
-                    st.write(f"- {item}")
-
-        # 🛡️ Raiding Party Hub (4-Member Party Matrix)
-        comps = mechanics.ensure_party_system(player) if hasattr(mechanics, "ensure_party_system") else {}
-        active_comps = mechanics.get_active_party(player) if hasattr(mechanics, "get_active_party") else []
+        # 4. Spells & Arcana
+        spells = player.get('spells', [])
+        if spells:
+            st.markdown("#### 🔮 Spells & Arcana")
+            for sp in spells:
+                st.markdown(f"- {sp}")
         
-        with st.expander(f"🛡️ Raiding Party Hub ({len(active_comps) + 1}/4 Vanguard)", expanded=False):
-            st.markdown(f"**Party Leader:** 👑 **Banki** `[Lv. {player.get('level', 1)} {player.get('class', 'Warrior')}]`")
-            st.caption(f"Active Party: Banki + {len(active_comps)}/3 Companions | XP Sharing: Active (50% Combat Share)")
+    with st.expander("🔮 Slotted Ability Matrix", expanded=False):
+        max_slots = mechanics.get_max_ability_slots(player) if hasattr(mechanics, "get_max_ability_slots") else 5
+        slotted = mechanics.get_slotted_abilities(player) if hasattr(mechanics, "get_slotted_abilities") else []
+        used_slots = len(slotted)
+        
+        st.markdown(f"##### 🧠 Active Memory Matrix `[{used_slots} / {max_slots} Slots]`")
+        st.progress(min(1.0, used_slots / max_slots) if max_slots > 0 else 0.0, text=f"{used_slots} / {max_slots} Active Slots Used")
+        
+        # Slotted abilities list
+        if slotted:
+            st.markdown("**Currently Slotted Techniques & Spells:**")
+            for s_idx, ab_name in enumerate(slotted):
+                col_ab, col_btn = st.columns([3, 1])
+                col_ab.markdown(f"🔹 **{ab_name}**")
+                if col_btn.button("Unslot", key=f"btn_unslot_hud_{s_idx}"):
+                    mechanics.unslot_ability(player, ab_name)
+                    save_game(player, st.session_state.messages)
+                    st.toast(f"Unslotted '{ab_name}' from Matrix Memory.")
+                    st.rerun()
+        else:
+            st.caption("No abilities slotted in active memory. Slot techniques below to use in combat!")
 
-            tab_active_party, tab_benched_party, tab_recruit_pool = st.tabs([
-                f"⚔️ Active ({len(active_comps)}/3)",
-                f"🛋️ Reserve Roster",
-                f"🤝 Recruit Candidates"
-            ])
-
-            with tab_active_party:
-                if not active_comps:
-                    st.info("No active companions deployed alongside Banki. Check the Reserve or Recruit tabs!")
-                else:
-                    for comp in active_comps:
-                        c_name = comp["name"]
-                        c_lvl = comp.get("level", 1)
-                        c_class = comp.get("class", "Specialist")
-                        c_hp = comp.get("hp", 35)
-                        c_max_hp = comp.get("max_hp", 35)
-                        c_xp = comp.get("xp", 0)
-                        c_next_xp = comp.get("next_level_xp", 300)
-                        c_morale = comp.get("morale", "Steady")
-                        c_stance = comp.get("stance", "default")
-                        c_aff = comp.get("affinity", 0)
-                        c_tier = comp.get("affinity_tier", "Acquaintance")
-
-                        st.markdown(f"#### 👤 {c_name} `[Lv. {c_lvl} {c_class}]`")
-                        
-                        # Morale badge
-                        morale_badges = {
-                            "Panicked": "🔴 **Panicked** (-20% accuracy, prone to flee)",
-                            "Shaken": "🟡 **Shaken** (-10% accuracy)",
-                            "Steady": "⚪ **Steady** (Normal operational baseline)",
-                            "Confident": "🟢 **Confident** (+10% accuracy, +1 tactical DC)",
-                            "Inspired": "🟣 **Inspired** (+20% accuracy, double tactical perks)"
-                        }
-                        st.markdown(f"**Morale:** {morale_badges.get(c_morale, f'⚪ **{c_morale}**')}")
-
-                        # Vitals Progress Bar
-                        hp_pct = min(1.0, max(0.0, c_hp / c_max_hp)) if c_max_hp > 0 else 0.0
-                        st.markdown(f"**Vitals:** `{c_hp} / {c_max_hp} HP`")
-                        st.progress(hp_pct, text=f"{c_name} HP: {c_hp} / {c_max_hp}")
-
-                        # XP Progress Bar
-                        xp_pct = min(1.0, max(0.0, c_xp / c_next_xp)) if c_next_xp > 0 else 0.0
-                        st.markdown(f"**Progression:** `{c_xp} / {c_next_xp} XP` *(Shares 50% XP)*")
-                        st.progress(xp_pct, text=f"XP to Level {c_lvl + 1}")
-
-                        # Affinity Meter
-                        aff_pct = min(1.0, max(0.0, c_aff / 100.0))
-                        st.markdown(f"**Affinity Meter:** `{c_aff} / 100` `[{c_tier}]`")
-                        st.progress(aff_pct, text=f"Affinity: {c_aff}/100 [{c_tier}]")
-                        
-                        # Shared Meal / Gift to boost affinity
-                        col_aff1, col_aff2 = st.columns([2, 1])
-                        with col_aff1:
-                            if c_aff >= 50:
-                                st.success(f"✨ **Dual-Tech Unlocked:** {comp.get('dual_tech_name', 'Signature Combo')}!")
-                            else:
-                                st.caption(f"Reach Affinity 50 to unlock signature Dual-Tech combo with Banki.")
-                        with col_aff2:
-                            if st.button(f"Share Rations (50 Col)", key=f"btn_share_meal_{c_name}"):
-                                if player.get("col", 0) >= 50:
-                                    player["col"] -= 50
-                                    aff_res = mechanics.increase_companion_affinity(player, c_name, 10, reason="Shared taphouse rations")
-                                    save_game(player, st.session_state.messages)
-                                    st.toast(aff_res["message"], icon="🍲")
-                                    st.rerun()
-                                else:
-                                    st.error("Insufficient Col (50 Col required).")
-
-                        # Dual Tech Attack Trigger
-                        if c_aff >= 50:
-                            combo_id = comp.get("dual_tech_id")
-                            if st.button(f"⚡ Execute Dual-Tech Combo: {comp.get('dual_tech_name', 'Combo')}", key=f"btn_exec_dt_{c_name}", use_container_width=True):
-                                if hasattr(mechanics, "execute_dual_tech"):
-                                    dt_res = mechanics.execute_dual_tech(player, combo_id)
-                                    if dt_res["success"]:
-                                        save_game(player, st.session_state.messages)
-                                        st.toast(dt_res["message"], icon="⚡")
-                                        st.success(dt_res["log"])
-                                        st.rerun()
-                                    else:
-                                        st.error(dt_res["message"])
-
-                        # Tactical Stance Selector
-                        stances = comp.get("stances", {})
-                        if stances:
-                            st.markdown("##### 🎯 Tactical Stance Directive")
-                            stance_keys = list(stances.keys())
-                            curr_idx = stance_keys.index(c_stance) if c_stance in stance_keys else 0
-                            new_st = st.selectbox(
-                                f"Active Stance for {c_name}:",
-                                options=stance_keys,
-                                index=curr_idx,
-                                format_func=lambda k: stances.get(k, {}).get("label", k),
-                                key=f"sb_stance_{c_name}"
-                            )
-                            if new_st != c_stance:
-                                if hasattr(mechanics, "set_party_member_stance"):
-                                    mechanics.set_party_member_stance(player, c_name, new_st)
-                                    save_game(player, st.session_state.messages)
-                                    st.toast(f"{c_name}'s stance set to {stances[new_st].get('label', new_st)}!", icon="🎯")
-                                    st.rerun()
-                            st.caption(f"↳ **Tactical Effect:** {stances.get(c_stance, {}).get('tactical_effect', '')}")
-
-                        # Loadout summary
-                        loadout = comp.get("loadout", {})
-                        st.caption(f"🎒 **Equipped:** {loadout.get('main_hand', 'None')} | {loadout.get('armor', 'None')}")
-
-                        # Bench button
-                        if st.button(f"Bench {c_name} (Send to Reserve)", key=f"btn_bench_{c_name}"):
-                            comp["active"] = False
-                            save_game(player, st.session_state.messages)
-                            st.toast(f"{c_name} moved to Reserve Roster.", icon="🛋️")
-                            st.rerun()
-
-                        st.divider()
-
-            with tab_benched_party:
-                benched_comps = [c for c in comps.values() if c.get("recruited", False) and not c.get("active", False)]
-                if not benched_comps:
-                    st.caption("No companions currently in the Reserve Benched Roster.")
-                else:
-                    for b_comp in benched_comps:
-                        st.markdown(f"**👤 {b_comp['name']}** `[Lv. {b_comp.get('level', 1)} {b_comp.get('class', '')}]`")
-                        st.caption(f"HP: {b_comp.get('hp', 30)}/{b_comp.get('max_hp', 30)} | Affinity: {b_comp.get('affinity', 0)}/100 `[{b_comp.get('affinity_tier', 'Acquaintance')}]`")
-                        if len(active_comps) < 3:
-                            if st.button(f"Activate {b_comp['name']} to Vanguard", key=f"btn_activate_{b_comp['name']}"):
-                                b_comp["active"] = True
-                                save_game(player, st.session_state.messages)
-                                st.toast(f"{b_comp['name']} is now in the active raiding party!", icon="⚔️")
-                                st.rerun()
-                        else:
-                            st.caption("⚠️ *Active party is full (3 companions maximum alongside Banki). Bench an active companion first.*")
-                        st.divider()
-
-            with tab_recruit_pool:
-                unrecruited = [c for c in comps.values() if not c.get("recruited", False)]
-                if not unrecruited:
-                    st.success("All known Sector 1 companions have been recruited into your vanguard!")
-                else:
-                    st.caption("Recruit skilled companions encountered across Washington Borough and Warren County.")
-                    for u_comp in unrecruited:
-                        st.markdown(f"##### 👤 {u_comp['name']} — `{u_comp.get('title', u_comp.get('class', 'Warrior'))}`")
-                        st.caption(f"**Class:** {u_comp.get('class', '')} | **Lineage:** {u_comp.get('race', 'Human')} | **Starting Level:** {u_comp.get('level', 1)}")
-                        st.write(u_comp.get("background", ""))
-                        st.caption(f"**Starting Stances:** {', '.join([s.get('label', k) for k, s in u_comp.get('stances', {}).items()])}")
-                        st.caption(f"**Signature Dual-Tech:** {u_comp.get('dual_tech_name', 'None')}")
-                        if st.button(f"Recruit {u_comp['name']} into Vanguard", key=f"btn_recruit_{u_comp['name']}"):
-                            rec_res = mechanics.recruit_companion(player, u_comp["name"])
-                            if rec_res["success"]:
-                                save_game(player, st.session_state.messages)
-                                st.balloons()
-                                st.toast(rec_res["message"], icon="🤝")
-                                st.success(rec_res["log"])
-                                st.rerun()
-                            else:
-                                st.error(rec_res["message"])
-                        st.divider()
-
-        # 🟢 Cursor Criminality & SAO Status Expander
-        cursor_data = mechanics.get_cursor_status(player) if hasattr(mechanics, "get_cursor_status") else {"status": "green", "label": "🟢 Lawful (Green)", "badge": "🟢 Green", "current_infamy": 0, "merchant_surcharge": 0.0, "safe_zone_clearance": True, "description": "Lawful citizen."}
-        with st.expander(f"⚖️ SAO Status: {cursor_data['badge']}", expanded=False):
-            st.markdown(f"#### {cursor_data['label']}")
-            st.write(cursor_data.get("description", ""))
-
-            col_cur1, col_cur2 = st.columns(2)
-            col_cur1.metric("Infamy Rating", f"{cursor_data['current_infamy']} pts")
-            col_cur2.metric("Merchant Surcharge", f"+{int(cursor_data['merchant_surcharge']*100)}%")
-
-            if cursor_data["safe_zone_clearance"]:
-                st.success("✅ **Safe-Zone Clearance Granted:** Barrier wards recognize lawful or minor misdemeanor status.")
-            else:
-                st.error("🚨 **SAFE-ZONE WARD LOCKDOWN:** Lethal anti-PK ward turrets will vaporize avatar on boundary breach!")
-
-            # Criminal Atonement for Orange Status
-            if cursor_data["status"] == "orange":
-                inf = cursor_data["current_infamy"]
-                atone_cost = inf * 500
-                st.warning(f"⚠️ **Municipal Misdemeanor:** Pay reparations at Washington Council ({atone_cost:,} Col) to restore Green Cursor.")
-                if st.button(f"Pay Municipal Atonement ({atone_cost:,} Col)", key="btn_pay_atone_sb", use_container_width=True):
-                    if hasattr(mechanics, "pay_criminal_atonement"):
-                        at_res = mechanics.pay_criminal_atonement(player)
-                        if at_res["success"]:
-                            save_game(player, st.session_state.messages)
-                            st.toast(at_res["message"], icon="🟢")
-                            st.success(at_res["log"])
-                            st.rerun()
-                        else:
-                            st.error(at_res["message"])
-
-        # 🚩 Regional Factions & Guild Politics Expander
-        factions_list = mechanics.get_all_faction_standings(player) if hasattr(mechanics, "get_all_faction_standings") else []
-        with st.expander("🚩 Regional Factions & Guild Alliances", expanded=False):
-            st.caption("Reputation standings across regional coalitions, crafting cartels, and underground syndicates.")
-            for fac in factions_list:
-                f_def = mechanics.REGIONAL_FACTIONS.get(fac["faction_id"], {})
-                st.markdown(f"##### {f_def.get('icon', '🚩')} {fac['name']}")
-                st.caption(f"**Leader:** {f_def.get('leader', 'Unknown')} | **HQ:** {f_def.get('headquarters', 'Unknown')}")
-                st.write(f_def.get("description", ""))
-
-                # Reputation score & progress bar
-                score = fac["score"]
-                st.markdown(f"**Standing:** {fac['badge']} `({score:+d} Rep)`")
-                norm_progress = min(1.0, max(0.0, (score + 100) / 200.0))
-                st.progress(norm_progress, text=f"Reputation: {score}/100 [{fac['label']}]")
-
-                # Active Perks
-                active_perks = fac.get("perks_active", [])
-                if active_perks:
-                    st.markdown("✨ **Active Faction Perks:**")
-                    for perk_desc in active_perks:
-                        st.markdown(f"- 🔸 {perk_desc}")
-                else:
-                    st.caption("🔒 *No perks unlocked yet (Unlocks at Friendly 25+ / Honored 50+).*")
-                st.divider()
-                
-        with st.expander("🪤 Field Prep & Tactical Trap-Rigging", expanded=False):
-            st.write("Deploy specialized combat snares, tripwires, and scent corridors using scavenged materials and your **Field Trapping** mastery.")
-            
-            # Show Active Traps Deployed
-            active_traps = player.get("active_traps", [])
-            if active_traps:
-                st.markdown("##### 🚩 Currently Deployed Traps:")
-                for t_idx, t_data in enumerate(active_traps):
-                    st.info(f"🔹 **{t_data.get('name')}** (Stealth DC: {t_data.get('stealth_dc')}) — *{t_data.get('condition')}* | Dmg: {t_data.get('damage_dice')}")
-                st.divider()
-                
-            st.markdown("##### ⚙️ Available Field Rigging Schematics:")
-            if hasattr(mechanics, "CANONICAL_TRAPS"):
-                for t_key, t_info in mechanics.CANONICAL_TRAPS.items():
-                    can_craft, msg, avail = mechanics.can_craft_trap(player, t_key)
-                    st.markdown(f"**{t_info['name']}** `[DC {t_info['base_dc']}]`")
-                    st.caption(f"↳ {t_info['description']}")
-                    
-                    mat_str_list = []
-                    for m_name, m_req in t_info["materials"].items():
-                        m_have = avail.get(m_name, 0)
-                        icon = "✅" if m_have >= m_req else "❌"
-                        mat_str_list.append(f"{icon} {m_name} ({m_have}/{m_req})")
-                    st.caption("Materials: " + " | ".join(mat_str_list))
-                    
-                    if can_craft:
-                        if st.button(f"Rig & Conceal: {t_info['name']}", key=f"btn_rig_trap_hud_{t_key}"):
-                            res = mechanics.rig_field_trap(player, t_key)
-                            save_game(player, st.session_state.messages)
-                            st.toast(f"🪤 Deployed {t_info['name']}! (Concealment DC: {res['stealth_dc']})", icon="🪤")
-                            st.success(res["log"])
-                            st.rerun()
-                    else:
-                        st.caption(f"🔒 *{msg}*")
-                    st.markdown("---")
-
-        # ⛺ Wilderness Survival & Chrono-Atmospheric Engine (Phase 8)
-        if hasattr(mechanics, "ensure_chrono_system"):
-            chrono_data = mechanics.ensure_chrono_system(player)
-            time_info = mechanics.get_game_time(player)
-            cur_weather = mechanics.get_current_weather(player)
-            frost_check = mechanics.check_frostbite_protection(player)
-
-            with st.expander("⛺ Wilderness Survival & Chrono-Atmosphere", expanded=False):
-                # 1. Dynamic Clock & Atmosphere Overview
-                p_info = time_info["period_info"]
-                st.markdown(f"### ⏱️ {time_info['time_str']}")
-                st.caption(f"**Period:** {p_info['label']} | **Lighting & Field Effects:** {p_info['desc']}")
-                
-                # Weather Card
-                st.markdown(f"#### {cur_weather.get('icon', '🌤️')} {cur_weather['label']}")
-                st.caption(f"*{cur_weather['desc']}*")
-                st.info(f"**Atmospheric Modifier:** {cur_weather['effect']}")
-                if cur_weather.get("key") == "glitch_freeze" or "glitch freeze" in cur_weather["label"].lower():
-                    if frost_check["protected"]:
-                        st.success(f"🛡️ **Cold Insulation Active:** {frost_check['message']}")
-                    else:
-                        st.error(f"❄️ **FROSTBITE HAZARD:** {frost_check['message']}")
-
-                # Active Survival Buffs
-                active_buffs = chrono_data.get("active_buffs", [])
-                if active_buffs:
-                    st.markdown("##### 🍖 Active Culinary & Survival Buffs:")
-                    for b in active_buffs:
-                        if isinstance(b, dict):
-                            st.success(f"✨ **{b.get('name')}**: {b.get('desc')} *({b.get('duration', 1)} duration remaining)*")
-                        else:
-                            st.success(f"✨ **{b}**")
-                    st.divider()
-
-                # Quick Time Actions
-                tc1, tc2, tc3 = st.columns(3)
-                with tc1:
-                    if st.button("⏳ Wait 1h", key="btn_wait_1_hour", use_container_width=True):
-                        w_res = mechanics.advance_game_time(player, minutes=60)
-                        save_game(player, st.session_state.messages)
-                        st.toast(f"Waited 1 Hour. Time is now {w_res['time_str']}.", icon="⏳")
-                        st.rerun()
-                with tc2:
-                    if st.button("🌅 Rest to Dawn", key="btn_rest_until_dawn", use_container_width=True):
-                        cur_hour = chrono_data.get("hour", 6)
-                        cur_min = chrono_data.get("minute", 0)
-                        mins_to_dawn = ((6 - cur_hour) % 24) * 60 - cur_min
-                        if mins_to_dawn <= 0:
-                            mins_to_dawn += 24 * 60
-                        w_res = mechanics.advance_game_time(player, minutes=mins_to_dawn)
-                        save_game(player, st.session_state.messages)
-                        st.toast(f"Rested until Dawn. Time is now {w_res['time_str']}.", icon="🌅")
-                        st.rerun()
-                with tc3:
-                    if st.button("🎲 Attune Sky", key="btn_roll_weather", use_container_width=True):
-                        rw_res = mechanics.roll_random_weather(player)
-                        save_game(player, st.session_state.messages)
-                        st.toast(f"Atmospheric shift: {rw_res['weather_info']['label']}!", icon="🌪️")
-                        st.rerun()
-
-                st.divider()
-
-                # Tabs for Kitchen & Camp Pitching
-                tab_kitchen, tab_camp = st.tabs(["🍳 Campfire Kitchen", "🏕️ Pitch Camp"])
-
-                # Tab 1: Campfire Kitchen
-                with tab_kitchen:
-                    st.markdown("##### 🍲 Campfire Culinary Crafting")
-                    st.caption("Prepare hot meals over the camp coals to restore HP and gain combat buffs.")
-                    inv = player.get("inventory", [])
-                    inv_map = {}
-                    for item in inv:
-                        if isinstance(item, dict):
-                            iname = item.get("name", "").strip().lower()
-                            inv_map[iname] = inv_map.get(iname, 0) + item.get("qty", 1)
-                        elif isinstance(item, str):
-                            iname = item.strip().lower()
-                            inv_map[iname] = inv_map.get(iname, 0) + 1
-
-                    for r_key, r_data in mechanics.CAMPFIRE_RECIPES.items():
-                        st.markdown(f"**{r_data['name']}**")
-                        st.caption(f"*{r_data.get('desc', '')}*")
-                        buff_info = r_data["buff"]
-                        st.markdown(f"✨ **Buff:** `{buff_info['name']}` ({buff_info['desc']})")
-
-                        all_have = True
-                        ing_labels = []
-                        for ing_name, req_qty in r_data["ingredients"].items():
-                            ing_lower = ing_name.lower()
-                            have_qty = sum(qty for k, qty in inv_map.items() if ing_lower in k or k in ing_lower)
-                            if have_qty >= req_qty:
-                                ing_labels.append(f"✅ {ing_name} ({have_qty}/{req_qty})")
-                            else:
-                                ing_labels.append(f"❌ {ing_name} ({have_qty}/{req_qty})")
-                                all_have = False
-                        st.caption("Ingredients: " + " | ".join(ing_labels))
-
-                        if all_have:
-                            if st.button(f"Cook {r_data['name']}", key=f"btn_cook_{r_key}", use_container_width=True):
-                                c_res = mechanics.cook_campfire_meal(player, r_key)
-                                save_game(player, st.session_state.messages)
-                                if c_res["success"]:
-                                    st.toast(c_res["message"], icon="🍲")
-                                    st.success(c_res["log"])
-                                else:
-                                    st.error(c_res["message"])
-                                st.rerun()
-                        else:
-                            st.caption("🔒 *Missing required forage / hunt ingredients.*")
-                        st.markdown("---")
-
-                # Tab 2: Pitch Camp
-                with tab_camp:
-                    st.markdown("##### ⛺ 8-Hour Wilderness Rest & Perimeter Watch")
-                    st.caption("Set up camp to restore +50 HP (+100% in safe zones) and advance time by 8 hours. Assign a companion to perimeter watch to prevent midnight ambushes and gain tactical perks.")
-
-                    active_comps = list(mechanics.get_active_party(player)) if hasattr(mechanics, "get_active_party") else []
-                    comp_choices = [c["name"] for c in active_comps]
-                    if "Solo / No Watch" not in comp_choices:
-                        comp_choices.append("Solo / No Watch")
-
-                    watch_choice = st.selectbox("Assign Watch Guard", comp_choices, key="sb_watch_companion")
-                    
-                    if "Ren" in watch_choice:
-                        st.info("🔭 **Ren (Leyline Telemetry):** Scans aether rifts to detect ambushes early. Party gains **+2 Initiative** in next encounter.")
-                    elif "Torvald" in watch_choice:
-                        st.info("🛡️ **Torvald (Bulwark Barricade):** Erects heavy shield barricades. Foes start next combat **Staggered**.")
-                    elif "Kibs" in watch_choice:
-                        st.info("🪤 **Kibs (Perimeter Snare Web):** Conceals razor-wire and noise-makers. Ambushers take **2d8 damage** on contact.")
-                    elif "Elora" in watch_choice:
-                        st.info("✨ **Elora (Warded Perimeter):** Inscribes starlight perimeter glyphs. Banki gains **+2 AC** for next combat.")
-                    else:
-                        st.warning("⚠️ **Solo / Unprotected Rest:** Sleep with one eye open. No watch perk awarded.")
-
-                    if st.button("⛺ Pitch Camp & Rest (8 Hours)", key="btn_pitch_camp_action", use_container_width=True):
-                        selected_guard = None if watch_choice == "Solo / No Watch" else watch_choice
-                        camp_res = mechanics.pitch_wilderness_camp(player, watch_companion=selected_guard)
-                        save_game(player, st.session_state.messages)
-                        st.toast(camp_res["message"], icon="⛺")
-                        st.success(camp_res["log"])
-                        st.rerun()
-
-        # 🏰 Labyrinth Dungeon: The Pohatcong Depths
-        if hasattr(mechanics, "POHATCONG_LABYRINTH"):
-            d_state = player.get("dungeon_state")
-            in_dungeon = d_state is not None and "pohatcong" in str(d_state.get("dungeon_id", "")).lower()
-            
-            with st.expander("🏰 Labyrinth Dungeon: The Pohatcong Depths", expanded=in_dungeon):
-                if not in_dungeon:
-                    st.caption("⛰️ *Sector 1 Instanced Labyrinth located beneath Pohatcong Mountain.*")
-                    st.write(mechanics.POHATCONG_LABYRINTH["description"])
-                    if st.button("⚔️ Enter The Pohatcong Depths", key="btn_enter_pohatcong_labyrinth", use_container_width=True):
-                        mechanics.initialize_dungeon_state(player)
-                        player["location"] = "The Pohatcong Depths: Subsurface Ingress"
-                        save_game(player, st.session_state.messages)
-                        st.toast("Entered The Pohatcong Depths!", icon="🏰")
-                        st.rerun()
-                else:
-                    cur_room = mechanics.get_current_dungeon_room(player)
-                    st.markdown(f"#### {cur_room.get('badge', 'Chamber')} {cur_room['name']}")
-                    st.caption(f"**Room ID:** `{cur_room['id']}` | **Status:** {'✅ Cleared' if cur_room.get('cleared') else '⚠️ Uncleared'}")
-                    st.write(cur_room.get("description", ""))
-                    
-                    # Room Actions
-                    r_type = cur_room.get("type")
-                    if r_type == "trapped_corridor" and "trap" in cur_room:
-                        trap = cur_room["trap"]
-                        if not trap.get("disarmed", False):
-                            st.warning(f"🚨 **ACTIVE TRAP:** {trap['name']} (Disarm DC: {trap['disarm_dc']})\n\n*{trap.get('description', '')}*")
-                            if st.button(f"🪤 Disarm Trap ({trap.get('disarm_skill', 'Field Trapping')})", key="btn_disarm_trap_hud", use_container_width=True):
-                                d_res = mechanics.disarm_dungeon_trap(player)
-                                save_game(player, st.session_state.messages)
-                                if d_res["success"]:
-                                    st.toast(d_res["message"], icon="✨")
-                                    st.success(d_res["log"])
-                                else:
-                                    st.toast(d_res["message"], icon="💥")
-                                    st.error(d_res["log"])
-                                st.rerun()
-                        else:
-                            st.success(f"✅ **Trap Neutralized:** {trap['name']}")
-                            
-                    elif r_type == "puzzle_chamber" and "puzzle" in cur_room:
-                        puzzle = cur_room["puzzle"]
-                        if not puzzle.get("solved", False):
-                            st.info(f"🧩 **PUZZLE VAULT:** {puzzle['name']}\n\n*{puzzle.get('description', '')}*")
-                            p_col1, p_col2 = st.columns(2)
-                            with p_col1:
-                                if st.button("Harmonize Dial [3 - 1 - 4]", key="btn_solve_puzzle_seq", use_container_width=True):
-                                    pz_res = mechanics.solve_dungeon_puzzle(player, sequence=[3, 1, 4])
-                                    save_game(player, st.session_state.messages)
-                                    st.toast(pz_res["message"], icon="🔓")
-                                    st.success(pz_res["log"])
-                                    st.rerun()
-                            with p_col2:
-                                if st.button("🧠 Auto-Solve (INT / Ren Slate)", key="btn_solve_puzzle_auto", use_container_width=True):
-                                    pz_res = mechanics.solve_dungeon_puzzle(player)
-                                    save_game(player, st.session_state.messages)
-                                    if pz_res["success"]:
-                                        st.toast(pz_res["message"], icon="🔓")
-                                        st.success(pz_res["log"])
-                                    else:
-                                        st.toast(pz_res["message"], icon="⚠️")
-                                        st.error(pz_res["log"])
-                                    st.rerun()
-                        else:
-                            st.success("✅ **Harmonic Resonance Achieved:** The Boss Gate is unsealed!")
-                            
-                    elif r_type == "sanctuary":
-                        st.info("🏕️ **Sanctuary Haven:** Leyline dampening matrix active. You are safe from roaming monsters.")
-                        if st.button("🏕️ Rest & Field Repair (+50% HP, +10 Durability, Ren Morale)", key="btn_sanctuary_rest", use_container_width=True):
-                            r_res = mechanics.rest_in_sanctuary(player)
-                            save_game(player, st.session_state.messages)
-                            st.toast(r_res["message"], icon="✨")
-                            st.success(r_res["log"])
-                            st.rerun()
-                            
-                    elif r_type == "monster_den" and cur_room.get("monsters"):
-                        st.markdown("##### 👾 Hostile Entities Present:")
-                        for mob in cur_room["monsters"]:
-                            st.warning(f"⚔️ **{mob['name']}** (HP: {mob.get('hp')}/{mob.get('max_hp', mob.get('hp'))} | AC: {mob.get('ac')} | ATK: +{mob.get('atk')})")
-                    
-                    st.divider()
-                    st.markdown("##### 🚪 Passages & Archways:")
-                    conns = cur_room.get("connections", [])
-                    all_rooms = d_state.get("rooms", {})
-                    for conn_id in conns:
-                        dest_room = all_rooms.get(conn_id, {})
-                        dest_name = dest_room.get("name", conn_id)
-                        dest_badge = dest_room.get("badge", "Door")
-                        is_cleared = "✅" if dest_room.get("cleared") else "🔹"
-                        
-                        btn_label = f"{is_cleared} {dest_badge}: {dest_name}"
-                        if st.button(btn_label, key=f"btn_move_room_{conn_id}", use_container_width=True):
-                            mv_res = mechanics.move_dungeon_room(player, conn_id)
-                            if mv_res["success"]:
-                                player["location"] = f"The Pohatcong Depths: {dest_name}"
-                                save_game(player, st.session_state.messages)
-                                st.toast(mv_res["message"], icon="🚪")
-                                st.rerun()
-                            else:
-                                st.error(mv_res["message"])
-                                
-                    if st.button("⬅️ Exit Labyrinth (Return to Surface)", key="btn_exit_labyrinth", use_container_width=True):
-                        player["location"] = "Washington Borough, NJ (Sector 1 Safe Zone)"
-                        save_game(player, st.session_state.messages)
-                        st.toast("Returned to the surface!", icon="🌄")
-                        st.rerun()
-
-        # 👑 Sector Boss Encounter: The Gilded Spire Overlord
-        if hasattr(mechanics, "SECTOR_BOSSES"):
-            boss_enc = player.get("boss_encounter")
-            has_boss = boss_enc is not None
-            cur_r_type = mechanics.get_current_dungeon_room(player).get("type") if hasattr(mechanics, "get_current_dungeon_room") else ""
-            in_arena = cur_r_type == "boss_arena"
-            
-            if has_boss or in_arena:
-                with st.expander("👑 Sector Boss: The Gilded Spire Overlord", expanded=True):
-                    if not has_boss and in_arena:
-                        boss_enc = mechanics.initialize_boss_encounter(player)
-                        
-                    boss_name = boss_enc.get("name", "The Gilded Spire Overlord")
-                    b_hp = boss_enc.get("current_hp", 0)
-                    b_max_hp = boss_enc.get("max_hp", 300)
-                    b_phase = boss_enc.get("phase", 1)
-                    p_info = boss_enc.get("phases", {}).get(b_phase, {})
-                    p_name = p_info.get("name", f"Phase {b_phase}")
-                    
-                    st.markdown(f"### {boss_name}")
-                    st.caption(f"**{boss_enc.get('title', 'Sector 1 Apex Construct')}**")
-                    st.markdown(f"🏷️ **Active Phase:** `{p_name}` *(AC: {p_info.get('ac', 18)}, DR: {p_info.get('dr', 3)})*")
-                    st.caption(f"*{p_info.get('description', '')}*")
-                    
-                    # HP Bar
-                    hp_pct = max(0.0, min(1.0, b_hp / b_max_hp)) if b_max_hp > 0 else 0.0
-                    st.write(f"❤️ **Boss Health:** `{b_hp} / {b_max_hp} HP` ({int(hp_pct*100)}%)")
-                    st.progress(hp_pct)
-                    
-                    # Break Gauge
-                    b_break = boss_enc.get("current_break", 100)
-                    b_max_break = boss_enc.get("max_break", 100)
-                    break_pct = max(0.0, min(1.0, b_break / b_max_break)) if b_max_break > 0 else 0.0
-                    st.write(f"🛡️ **Stance Break Gauge:** `{b_break} / {b_max_break}`")
-                    st.progress(break_pct)
-                    
-                    if boss_enc.get("is_staggered"):
-                        st.error("💥 **BOSS STAGGERED!** System recoil active! DR bypassed & takes +50% Critical Damage for 1 round!")
-                    
-                    # Active Telegraph Warning
-                    telegraph = boss_enc.get("active_telegraph")
-                    if telegraph and b_hp > 0:
-                        st.warning(f"⚠️ **TELEGRAPH INCOMING:** {telegraph.get('warning', telegraph.get('name'))}\n\n*Save DC {telegraph.get('dc', 15)} {telegraph.get('stat', 'DEX')} or take {telegraph.get('damage', 'Force Dmg')}!*")
-                        st.markdown("##### 🛡️ Counter-Tactics:")
-                        c_col1, c_col2 = st.columns(2)
-                        with c_col1:
-                            if st.button("🏃 Evasive Dive (DEX)", key="btn_tele_dodge", use_container_width=True):
-                                tc = mechanics.counter_boss_telegraph(player, "dodge")
-                                save_game(player, st.session_state.messages)
-                                if tc["success"]: st.toast(tc["message"], icon="💨"); st.success(tc["log"])
-                                else: st.toast(tc["message"], icon="💥"); st.error(tc["log"])
-                                st.rerun()
-                            if st.button("🛡️ Shield Block (CON)", key="btn_tele_block", use_container_width=True):
-                                tc = mechanics.counter_boss_telegraph(player, "shield_block")
-                                save_game(player, st.session_state.messages)
-                                st.toast(tc["message"], icon="🛡️")
-                                st.info(tc["log"])
-                                st.rerun()
-                        with c_col2:
-                            if st.button("🌫️ Ren: Phase-Veil", key="btn_tele_ren", use_container_width=True):
-                                tc = mechanics.counter_boss_telegraph(player, "ren_phase_veil")
-                                save_game(player, st.session_state.messages)
-                                st.toast(tc["message"], icon="🌫️")
-                                st.success(tc["log"])
-                                st.rerun()
-                            if st.button("🔨 Stagger Interrupt", key="btn_tele_interrupt", use_container_width=True):
-                                tc = mechanics.counter_boss_telegraph(player, "stagger_interrupt")
-                                save_game(player, st.session_state.messages)
-                                st.toast(tc["message"], icon="🔨")
-                                st.success(tc["log"])
-                                st.rerun()
-                    
-                    # Attack Boss Direct Controls
-                    if b_hp > 0:
-                        st.divider()
-                        st.markdown("##### ⚔️ Strike Sector Boss:")
-                        atk_col1, atk_col2, atk_col3 = st.columns(3)
-                        with atk_col1:
-                            if st.button("⚔️ Axe Cleave (Normal)", key="btn_atk_boss_normal", use_container_width=True):
-                                dmg_roll = 18
-                                res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=False)
-                                boss_action = mechanics.get_boss_turn_action(player)
-                                save_game(player, st.session_state.messages)
-                                st.toast(f"Struck {boss_name} for {res_dmg['damage_dealt']} DMG!", icon="⚔️")
-                                st.info(res_dmg["log"])
-                                if boss_action.get("log"): st.warning(boss_action["log"])
-                                st.rerun()
-                        with atk_col2:
-                            if st.button("🔨 Hammer Smash (Heavy)", key="btn_atk_boss_heavy", use_container_width=True):
-                                dmg_roll = 26
-                                res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=True, is_stagger_hit=True)
-                                boss_action = mechanics.get_boss_turn_action(player)
-                                save_game(player, st.session_state.messages)
-                                st.toast(f"Heavy Hammer Smash -> {res_dmg['damage_dealt']} DMG!", icon="🔨")
-                                st.info(res_dmg["log"])
-                                if boss_action.get("log"): st.warning(boss_action["log"])
-                                st.rerun()
-                        with atk_col3:
-                            if st.button("⚡ Ren: EMP Salvo", key="btn_atk_boss_ren", use_container_width=True):
-                                dmg_roll = 22
-                                res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=True, is_stagger_hit=True)
-                                boss_action = mechanics.get_boss_turn_action(player)
-                                save_game(player, st.session_state.messages)
-                                st.toast(f"Ren fired MageTech EMP Salvo -> {res_dmg['damage_dealt']} DMG!", icon="⚡")
-                                st.info(res_dmg["log"])
-                                if boss_action.get("log"): st.warning(boss_action["log"])
-                                st.rerun()
-                    else:
-                        st.balloons()
-                        st.success(f"👑 **{boss_name} HAS BEEN DEFEATED!**")
-                        if st.button("🏆 Claim Sector 1 Victory & Unseal Teleport Gate!", key="btn_claim_boss_victory", use_container_width=True):
-                            v_res = mechanics.claim_boss_victory(player)
-                            save_game(player, st.session_state.messages)
-                            st.toast("Sector 1 Cleared! Sector 2 Teleport Gate Activated!", icon="👑")
-                            st.success(v_res["log"])
-                            st.rerun()
-
-        # 🏛️ Safe-Zone Settlement: Washington Borough
+        st.divider()
+        
+        # Safe Zone Slotting Reconfiguration
         loc_str = str(player.get("location", "")).lower()
-        is_safe_zone = any(w in loc_str for w in ["borough", "safe", "town", "taphouse", "anvil", "haven", "outpost", "clinic", "washington"])
-        if is_safe_zone and hasattr(mechanics, "WASHINGTON_FACILITIES"):
-            with st.expander("🏛️ Safe-Zone Settlement: Washington Borough", expanded=True):
-                st.caption("📍 *You are currently within the fortified perimeter of Washington Borough Safe-Zone. Weapon locks active; civilian and mercantile trade permitted.*")
-                
-                tab_taphouse, tab_medbay, tab_dump, tab_bounties, tab_council = st.tabs([
-                    "🍺 Iron Spoke", 
-                    "🏥 Arcane Med-Bay", 
-                    "🛒 Scavenger Dump", 
-                    "📜 Bounty Board",
-                    "⚖️ Municipal Council"
-                ])
-                
-                with tab_taphouse:
-                    tf = mechanics.WASHINGTON_FACILITIES.get("iron_spoke_taphouse", {})
-                    st.markdown(f"#### {tf.get('name', 'The Iron Spoke Taphouse')}")
-                    st.caption(f"**Proprietor:** {tf.get('proprietor', 'Torvald Iron-Vein')}")
-                    st.write(tf.get("description", ""))
-                    st.info("🍲 **Specialty:** Hearty Marrow Stew & Roasted Grain Draught (150 Col)\n\n*Heals +50 HP to Banki, cleanses fatigue, restores Ren's morale to Confident (+10% accuracy), and grants the [Well-Fed] buff.*")
-                    
-                    if st.button("Order Stew & Rest (150 Col)", key="btn_taphouse_rest", use_container_width=True):
-                        res_tap = mechanics.use_taphouse_stew_and_rest(player)
-                        if res_tap["success"]:
+        is_safe = any(w in loc_str for w in ["borough", "safe", "town", "taphouse", "anvil", "haven", "outpost", "clinic"])
+        
+        if is_safe:
+            st.markdown("##### ⚡ Reconfigure Active Memory:")
+            avail_pool = mechanics.get_available_abilities(player) if hasattr(mechanics, "get_available_abilities") else []
+            unslotted_pool = [a for a in avail_pool if not mechanics.is_ability_slotted(player, a["name"])]
+            
+            if unslotted_pool:
+                for a_idx, ab_item in enumerate(unslotted_pool):
+                    col_a, col_b = st.columns([3, 1])
+                    col_a.markdown(f"**{ab_item['name']}** *({ab_item['source']})*")
+                    if used_slots < max_slots:
+                        if col_b.button("Slot", key=f"btn_slot_hud_{a_idx}"):
+                            mechanics.slot_ability(player, ab_item["name"])
                             save_game(player, st.session_state.messages)
-                            st.toast(res_tap["message"], icon="🍲")
-                            st.success(res_tap["log"])
+                            st.toast(f"Slotted '{ab_item['name']}' into Active Memory!", icon="⚡")
+                            st.rerun()
+                    else:
+                        col_b.caption("Full")
+            else:
+                st.caption("All unlocked abilities are currently slotted.")
+        else:
+            st.caption("🔒 *Active Memory is locked during wilderness exploration/combat. Rest in a Safe Zone to reconfigure.*")
+
+    with st.expander("🦾 Golem-Grafts & Cyber-Strain", expanded=False):
+        max_strain = mechanics.get_max_graft_strain(player) if hasattr(mechanics, "get_max_graft_strain") else 86
+        cur_strain = mechanics.get_current_graft_strain(player) if hasattr(mechanics, "get_current_graft_strain") else 0
+        rejection = mechanics.get_graft_rejection_status(player) if hasattr(mechanics, "get_graft_rejection_status") else {"status": "Stable", "label": "🟢 Stable", "is_rejecting": False}
+        
+        st.markdown(f"##### 🧬 Cyber-Biological Strain Gauge `[{cur_strain} / {max_strain}]`")
+        prog_strain = min(1.0, cur_strain / max_strain) if max_strain > 0 else 0.0
+        st.progress(prog_strain, text=f"{cur_strain} / {max_strain} Strain ({rejection['label']})")
+        
+        if rejection.get("is_rejecting"):
+            st.error(f"🚨 **SYSTEM REJECTION ACTIVE:** {rejection['description']}")
+        else:
+            st.success(f"{rejection['label']} — Organic flesh harmonized with cybernetics.")
+            
+        # Spellcaster graft penalty notice if applicable
+        if hasattr(mechanics, "calculate_spellcasting_graft_penalty"):
+            c_pen = mechanics.calculate_spellcasting_graft_penalty(player)
+            if c_pen["penalty"] > 0:
+                st.warning(f"⚠️ **Mana Interference:** -{c_pen['penalty']} to Arcane DC / Spell Attack due to unharmonized metal.")
+
+        st.divider()
+        st.markdown("##### 🦾 Installed Golem-Grafts:")
+        installed_grafts = player.get("graft_system", {}).get("installed_grafts", {})
+        if hasattr(mechanics, "BODY_GRAFT_SLOTS"):
+            for b_slot in mechanics.BODY_GRAFT_SLOTS:
+                slot_title = b_slot.replace("_", " ").title()
+                if b_slot in installed_grafts and installed_grafts[b_slot]:
+                    g_obj = installed_grafts[b_slot]
+                    col_g1, col_g2 = st.columns([3, 1])
+                    col_g1.markdown(f"🔹 **{slot_title}:** {g_obj.get('name')} `[+{g_obj.get('strain', 0)} Strain]`")
+                    col_g1.caption(f"↳ *{g_obj.get('effect')}*")
+                    if col_g2.button("Extract", key=f"btn_extract_graft_{b_slot}"):
+                        ext_res = mechanics.remove_graft(player, b_slot)
+                        if ext_res["success"]:
+                            save_game(player, st.session_state.messages)
+                            st.toast(f"Surgically extracted {g_obj.get('name')}!", icon="🔧")
                             st.rerun()
                         else:
-                            st.error(res_tap["message"])
+                            st.error(ext_res["message"])
+                else:
+                    st.caption(f"- **{slot_title}:** Organic flesh (Empty)")
 
-                with tab_medbay:
-                    mb = mechanics.WASHINGTON_FACILITIES.get("arcane_med_bay", {})
-                    st.markdown(f"#### {mb.get('name', 'The Arcane Med-Bay')}")
-                    st.caption(f"**Chief Surgeon:** {mb.get('proprietor', 'Dr. Varek Thorne')}")
-                    st.write(mb.get("description", ""))
-                    st.info("💉 **Bio-Purification & Flesh Trauma Suture** (250 Col)\n\n*Fully restores HP to maximum, removes Bleed/Poison conditions, and stabilizes cyber-strain.*")
+        # Safe Zone Cyber-Clinic
+        loc_str = str(player.get("location", "")).lower()
+        is_safe = any(w in loc_str for w in ["borough", "safe", "town", "taphouse", "anvil", "haven", "outpost", "clinic"])
+        if is_safe and hasattr(mechanics, "CANONICAL_GRAFTS"):
+            st.divider()
+            st.markdown("##### 🏥 Cyber-Clinic: Deepforger Artificer")
+            st.caption(f"Available Col: **{player.get('col', 0):,} Col**")
+            
+            g_keys = list(mechanics.CANONICAL_GRAFTS.keys())
+            sel_g_key = st.selectbox("Select Golem-Graft to Install:", g_keys, format_func=lambda k: f"{mechanics.CANONICAL_GRAFTS[k]['name']} ({mechanics.CANONICAL_GRAFTS[k]['col_cost']:,} Col, +{mechanics.CANONICAL_GRAFTS[k]['strain']} Strain)", key="sb_clinic_graft_sel")
+            
+            g_selected = mechanics.CANONICAL_GRAFTS[sel_g_key]
+            st.write(f"**Description:** {g_selected['description']}")
+            st.info(f"**Mechanical Effect:** {g_selected['effect']}")
+            
+            avail_target_slots = g_selected["allowed_slots"]
+            sel_target_slot = st.selectbox("Select Installation Body Slot:", avail_target_slots, key="sb_clinic_slot_sel")
+            
+            if st.button(f"Surgically Install {g_selected['name']} ({g_selected['col_cost']:,} Col)", key="btn_install_graft_clinic", use_container_width=True):
+                s_res = mechanics.install_graft(player, sel_g_key, sel_target_slot)
+                if s_res["success"]:
+                    save_game(player, st.session_state.messages)
+                    st.toast(f"Successfully installed {g_selected['name']} into {sel_target_slot.title()}!", icon="🦾")
+                    st.success(s_res["log"])
+                    st.rerun()
+                else:
+                    st.error(s_res["message"])
+
+    with st.expander("🎒 Backpack Inventory", expanded=False):
+        rarity_colors = {"Common": "⚪", "Uncommon": "🟢", "Rare": "🔵", "Epic": "🟣", "Legendary": "🟠", "Mythic": "🔴", "Unique": "✨"}
+        for item in player.get("inventory", []):
+            if isinstance(item, dict):
+                icon = rarity_colors.get(item.get("rarity", "Common"), "⚪")
+                st.write(f"{icon} **{item.get('name', 'Unknown')}** (x{item.get('qty', 1)})")
+                st.caption(f"Durability: {item.get('durability', 0)}/{item.get('max_durability', 0)} | {item.get('desc', '')}")
+            else:
+                st.write(f"- {item}")
+
+
+
+def render_tab_raiding_party(player, comps, active_comps, cursor_data):
+    """Renders 4-member raiding vanguard, tactical stances, affinity, and guild factions."""
+    with st.expander(f"🛡️ Raiding Party Hub ({len(active_comps) + 1}/4 Vanguard)", expanded=False):
+        st.markdown(f"**Party Leader:** 👑 **Banki** `[Lv. {player.get('level', 1)} {player.get('class', 'Warrior')}]`")
+        st.caption(f"Active Party: Banki + {len(active_comps)}/3 Companions | XP Sharing: Active (50% Combat Share)")
+
+        party_view = st.radio(
+            "Party Roster Section",
+            [f"⚔️ Active ({len(active_comps)}/3)", "🛋️ Reserve Roster", "🤝 Recruit Candidates"],
+            horizontal=True,
+            label_visibility="collapsed"
+        )
+
+        if party_view.startswith("⚔️ Active"):
+            if not active_comps:
+                st.info("No active companions deployed alongside Banki. Check the Reserve or Recruit tabs!")
+            else:
+                for comp in active_comps:
+                    c_name = comp["name"]
+                    c_lvl = comp.get("level", 1)
+                    c_class = comp.get("class", "Specialist")
+                    c_hp = comp.get("hp", 35)
+                    c_max_hp = comp.get("max_hp", 35)
+                    c_xp = comp.get("xp", 0)
+                    c_next_xp = comp.get("next_level_xp", 300)
+                    c_morale = comp.get("morale", "Steady")
+                    c_stance = comp.get("stance", "default")
+                    c_aff = comp.get("affinity", 0)
+                    c_tier = comp.get("affinity_tier", "Acquaintance")
+
+                    st.markdown(f"#### 👤 {c_name} `[Lv. {c_lvl} {c_class}]`")
                     
-                    if st.button("Undergo Bio-Purification (250 Col)", key="btn_medbay_heal", use_container_width=True):
-                        res_med = mechanics.use_med_bay_purification(player)
-                        if res_med["success"]:
-                            save_game(player, st.session_state.messages)
-                            st.toast(res_med["message"], icon="🏥")
-                            st.success(res_med["log"])
-                            st.rerun()
+                    # Morale badge
+                    morale_badges = {
+                        "Panicked": "🔴 **Panicked** (-20% accuracy, prone to flee)",
+                        "Shaken": "🟡 **Shaken** (-10% accuracy)",
+                        "Steady": "⚪ **Steady** (Normal operational baseline)",
+                        "Confident": "🟢 **Confident** (+10% accuracy, +1 tactical DC)",
+                        "Inspired": "🟣 **Inspired** (+20% accuracy, double tactical perks)"
+                    }
+                    st.markdown(f"**Morale:** {morale_badges.get(c_morale, f'⚪ **{c_morale}**')}")
+
+                    # Vitals Progress Bar
+                    hp_pct = min(1.0, max(0.0, c_hp / c_max_hp)) if c_max_hp > 0 else 0.0
+                    st.markdown(f"**Vitals:** `{c_hp} / {c_max_hp} HP`")
+                    st.progress(hp_pct, text=f"{c_name} HP: {c_hp} / {c_max_hp}")
+
+                    # XP Progress Bar
+                    xp_pct = min(1.0, max(0.0, c_xp / c_next_xp)) if c_next_xp > 0 else 0.0
+                    st.markdown(f"**Progression:** `{c_xp} / {c_next_xp} XP` *(Shares 50% XP)*")
+                    st.progress(xp_pct, text=f"XP to Level {c_lvl + 1}")
+
+                    # Affinity Meter
+                    aff_pct = min(1.0, max(0.0, c_aff / 100.0))
+                    st.markdown(f"**Affinity Meter:** `{c_aff} / 100` `[{c_tier}]`")
+                    st.progress(aff_pct, text=f"Affinity: {c_aff}/100 [{c_tier}]")
+                    
+                    # Shared Meal / Gift to boost affinity
+                    col_aff1, col_aff2 = st.columns([2, 1])
+                    with col_aff1:
+                        if c_aff >= 50:
+                            st.success(f"✨ **Dual-Tech Unlocked:** {comp.get('dual_tech_name', 'Signature Combo')}!")
                         else:
-                            st.error(res_med["message"])
-                    st.caption("ℹ️ *For Golem-Graft surgical installation, access the Golem-Graft Biomechanical Augmentation clinic above.*")
-
-                with tab_dump:
-                    kd = mechanics.WASHINGTON_FACILITIES.get("meiji_scavenger_dump", {})
-                    st.markdown(f"#### {kd.get('name', 'The Meiji Scavenger Dump')}")
-                    st.caption(f"**Scrap Broker:** {kd.get('proprietor', 'Kibs Nine-Fingers')}")
-                    st.write(kd.get("description", ""))
-                    st.markdown(f"**Available Col:** `{player.get('col', 0):,} Col`")
-                    
-                    inv_items = kd.get("inventory", [])
-                    for idx, item in enumerate(inv_items):
-                        col_i1, col_i2 = st.columns([3, 1])
-                        col_i1.markdown(f"🔹 **{item['name']}** — `{item['cost_col']} Col`")
-                        col_i1.caption(f"{item['desc']}")
-                        if col_i2.button(f"Buy 1x", key=f"btn_buy_dump_{idx}"):
-                            res_buy = mechanics.buy_scavenger_material(player, item["name"], qty=1)
-                            if res_buy["success"]:
+                            st.caption(f"Reach Affinity 50 to unlock signature Dual-Tech combo with Banki.")
+                    with col_aff2:
+                        if st.button(f"Share Rations (50 Col)", key=f"btn_share_meal_{c_name}"):
+                            if player.get("col", 0) >= 50:
+                                player["col"] -= 50
+                                aff_res = mechanics.increase_companion_affinity(player, c_name, 10, reason="Shared taphouse rations")
                                 save_game(player, st.session_state.messages)
-                                st.toast(res_buy["message"], icon="🛒")
-                                st.success(res_buy["log"])
+                                st.toast(aff_res["message"], icon="🍲")
                                 st.rerun()
                             else:
-                                st.error(res_buy["message"])
-                        st.divider()
+                                st.error("Insufficient Col (50 Col required).")
 
-                with tab_bounties:
-                    st.markdown("#### 📜 Warren County Regional Bounty Board")
-                    st.caption("Official emergency contracts posted by the Washington Settlement Council and regional traders.")
-                    
-                    bounties = mechanics.WARREN_COUNTY_BOUNTIES if hasattr(mechanics, "WARREN_COUNTY_BOUNTIES") else []
-                    active_q_titles = [q.get("title", "") if isinstance(q, dict) else str(q) for q in player.get("quests", [])]
-                    
-                    for b_idx, b_info in enumerate(bounties):
-                        st.markdown(f"##### 🎯 {b_info['title']}")
-                        st.caption(f"**Target:** {b_info['target']} | **Location:** {b_info['location']}")
-                        st.write(b_info['desc'])
-                        st.markdown(f"🎁 **Reward:** `{b_info['reward']}`")
-                        
-                        is_active = any(b_info['title'].lower() in at.lower() for at in active_q_titles)
-                        if is_active:
-                            st.success("✅ **Directive Active in Quest Log**")
-                        else:
-                            if st.button(f"Accept Contract: {b_info['title']}", key=f"btn_accept_bounty_{b_idx}"):
-                                res_b = mechanics.accept_bounty_directive(player, b_info["id"])
-                                if res_b["success"]:
+                    # Dual Tech Attack Trigger
+                    if c_aff >= 50:
+                        combo_id = comp.get("dual_tech_id")
+                        if st.button(f"⚡ Execute Dual-Tech Combo: {comp.get('dual_tech_name', 'Combo')}", key=f"btn_exec_dt_{c_name}", use_container_width=True):
+                            if hasattr(mechanics, "execute_dual_tech"):
+                                dt_res = mechanics.execute_dual_tech(player, combo_id)
+                                if dt_res["success"]:
                                     save_game(player, st.session_state.messages)
-                                    st.toast(f"Accepted {b_info['title']}!", icon="📜")
-                                    st.success(res_b["log"])
+                                    st.toast(dt_res["message"], icon="⚡")
+                                    st.success(dt_res["log"])
                                     st.rerun()
                                 else:
-                                    st.error(res_b["message"])
-                        st.divider()
+                                    st.error(dt_res["message"])
 
-                with tab_council:
-                    st.markdown("#### ⚖️ Washington Settlement Council & Wardens")
-                    st.caption("Municipal authority governing safe-zone law enforcement, barrier matrices, and guild registrations.")
-                    
-                    c_status = mechanics.get_cursor_status(player) if hasattr(mechanics, "get_cursor_status") else {"status": "green", "label": "🟢 Green", "current_infamy": 0, "merchant_surcharge": 0.0}
-                    st.markdown(f"**Your Cursor Status:** {c_status['label']}")
-                    st.caption(f"Recorded Infamy: **{c_status['current_infamy']} points** | Active Safe-Zone Surcharge: **+{int(c_status['merchant_surcharge']*100)}%**")
-                    
-                    if c_status["status"] == "green":
-                        st.success("🛡️ **Clean Standing:** You have no municipal penalties or infamy records.")
-                    elif c_status["status"] == "orange":
-                        cost = c_status["current_infamy"] * 500
-                        st.warning(f"⚠️ **Municipal Misdemeanor Fine:** You owe {cost:,} Col in public restitution to clear your criminal status.")
-                        if st.button(f"Pay Restitution ({cost:,} Col)", key="btn_pay_atone_council", use_container_width=True):
-                            at_res = mechanics.pay_criminal_atonement(player)
-                            if at_res["success"]:
+                    # Tactical Stance Selector
+                    stances = comp.get("stances", {})
+                    if stances:
+                        st.markdown("##### 🎯 Tactical Stance Directive")
+                        stance_keys = list(stances.keys())
+                        curr_idx = stance_keys.index(c_stance) if c_stance in stance_keys else 0
+                        new_st = st.selectbox(
+                            f"Active Stance for {c_name}:",
+                            options=stance_keys,
+                            index=curr_idx,
+                            format_func=lambda k: stances.get(k, {}).get("label", k),
+                            key=f"sb_stance_{c_name}"
+                        )
+                        if new_st != c_stance:
+                            if hasattr(mechanics, "set_party_member_stance"):
+                                mechanics.set_party_member_stance(player, c_name, new_st)
                                 save_game(player, st.session_state.messages)
-                                st.balloons()
-                                st.toast(at_res["message"], icon="🟢")
-                                st.success(at_res["log"])
+                                st.toast(f"{c_name}'s stance set to {stances[new_st].get('label', new_st)}!", icon="🎯")
                                 st.rerun()
-                            else:
-                                st.error(at_res["message"])
-                    else:
-                        st.error("🚨 **OUTLAW PK RECORD:** You are branded a murderer! Safe-zone defense turrets will engage on approach.")
+                        st.caption(f"↳ **Tactical Effect:** {stances.get(c_stance, {}).get('tactical_effect', '')}")
+
+                    # Loadout summary
+                    loadout = comp.get("loadout", {})
+                    st.caption(f"🎒 **Equipped:** {loadout.get('main_hand', 'None')} | {loadout.get('armor', 'None')}")
+
+                    # Bench button
+                    if st.button(f"Bench {c_name} (Send to Reserve)", key=f"btn_bench_{c_name}"):
+                        comp["active"] = False
+                        save_game(player, st.session_state.messages)
+                        st.toast(f"{c_name} moved to Reserve Roster.", icon="🛋️")
+                        st.rerun()
 
                     st.divider()
-                    st.markdown("##### ⚔️ The Vanguard Coalition Liaison")
-                    v_standing = mechanics.get_faction_standing(player, "vanguard_coalition") if hasattr(mechanics, "get_faction_standing") else {"badge": "⚖️ Neutral", "score": 0}
-                    st.write(f"Frontline liaison **Commander Vance's Aide** monitors regional labyrinth expeditions. Current Standing: **{v_standing['badge']} ({v_standing['score']} Rep)**")
 
-        # 🏰 Sovereign Homestead, Subsurface Vault & Mythic Forge
-        if hasattr(mechanics, "ensure_homestead_system"):
-            mechanics.ensure_homestead_system(player)
-            h_data = player.get("homestead", {})
-            h_owned = h_data.get("owned", False)
-
-            with st.expander("🏰 Sovereign Homestead, Vault & Mythic Forge", expanded=h_owned):
-                if not h_owned:
-                    st.caption("📍 *Washington Borough Crossroads, Sector 1 Safe Zone*")
-                    st.markdown("#### 🏰 Washington Borough Estate")
-                    st.write(
-                        "A fortified stone-and-steel compound anchored at Washington Borough's historic crossroads. "
-                        "Built atop decommissioned colonial rail tunnels, offering impenetrable subsurface vault storage, "
-                        "botanical aether-greenhouses, a trophy hall for boss relics, and space for a deepforged master-anvil."
-                    )
-                    st.info("💰 **Purchase Price:** 3,500 Col | **Unlocks:** Subsurface Vault, Trophy Hall, Alchemical Greenhouse, Deepforged Master-Forge")
-                    cur_col = player.get("col", 0)
-                    if cur_col >= 3500:
-                        if st.button("🏰 Purchase Washington Borough Estate (3,500 Col)", key="btn_buy_estate_hud", use_container_width=True):
-                            b_res = mechanics.purchase_homestead(player)
-                            if b_res["success"]:
-                                save_game(player, st.session_state.messages)
-                                st.balloons()
-                                st.toast(b_res["message"], icon="🏰")
-                                st.success(b_res["log"])
-                                st.rerun()
-                            else:
-                                st.error(b_res["message"])
-                    else:
-                        st.warning(f"🔒 Requires 3,500 Col to purchase (You have {cur_col:,} Col).")
-                else:
-                    v_cap = mechanics.get_vault_capacity(player)
-                    st.markdown(f"### 🏰 {h_data.get('name', 'Washington Borough Manor')}")
-                    st.caption(
-                        f"**Vault:** Tier {h_data.get('vault_tier', 1)} ({v_cap['max_slots']} slots, {v_cap['max_lbs']:,} lbs) | "
-                        f"**Greenhouse:** Tier {h_data.get('greenhouse_tier', 1)} | "
-                        f"**Master Anvil:** {'✅ Active' if h_data.get('has_master_anvil') else '❌ Unbuilt'}"
-                    )
-
-                    t_vault, t_trophy, t_green, t_forge, t_market = st.tabs([
-                        "📦 Subsurface Vault",
-                        "🏆 Trophy Hall",
-                        "🌿 Alchemical Greenhouse",
-                        "⚡ Master-Forge",
-                        "⚖️ Commodity Market"
-                    ])
-
-                    # 1. Subsurface Vault
-                    with t_vault:
-                        st.markdown("##### 📦 Fortified Subsurface Vault")
-                        st.caption("Secure depository unencumbered by personal inventory weight limits.")
-                        v_col = h_data.get("vault_col", 0)
-                        v_items = h_data.get("vault_items", [])
-                        st.write(f"💰 **Stored Vault Col:** `{v_col:,} Col` | 📦 **Vault Slots:** `{len(v_items)} / {v_cap['max_slots']}`")
-
-                        # Col Management
-                        vc_col1, vc_col2 = st.columns(2)
-                        with vc_col1:
-                            dep_col_amt = st.number_input("Col to Deposit", min_value=1, max_value=max(1, player.get("col", 0)), value=min(500, max(1, player.get("col", 0))), step=100, key="num_vault_col_dep")
-                            if st.button("📥 Deposit Col", key="btn_vault_dep_col", use_container_width=True):
-                                d_c_res = mechanics.deposit_to_vault(player, "", col_amount=int(dep_col_amt))
-                                if d_c_res["success"]:
-                                    save_game(player, st.session_state.messages)
-                                    st.toast(d_c_res["message"], icon="💰")
-                                    st.rerun()
-                                else:
-                                    st.error(d_c_res["message"])
-                        with vc_col2:
-                            wdr_col_amt = st.number_input("Col to Withdraw", min_value=1, max_value=max(1, v_col), value=min(500, max(1, v_col)), step=100, key="num_vault_col_wdr")
-                            if st.button("📤 Withdraw Col", key="btn_vault_wdr_col", use_container_width=True):
-                                w_c_res = mechanics.withdraw_from_vault(player, "", col_amount=int(wdr_col_amt))
-                                if w_c_res["success"]:
-                                    save_game(player, st.session_state.messages)
-                                    st.toast(w_c_res["message"], icon="💰")
-                                    st.rerun()
-                                else:
-                                    st.error(w_c_res["message"])
-
-                        st.divider()
-                        st.markdown("##### 📥 Deposit Item to Vault")
-                        p_inv = player.get("inventory", [])
-                        if p_inv:
-                            inv_choices = [it.get("name", str(it)) if isinstance(it, dict) else str(it) for it in p_inv]
-                            selected_dep_item = st.selectbox("Select Personal Item", inv_choices, key="sb_dep_item_vault")
-                            if st.button(f"📥 Deposit '{selected_dep_item}'", key="btn_deposit_item_action", use_container_width=True):
-                                d_i_res = mechanics.deposit_to_vault(player, selected_dep_item)
-                                if d_i_res["success"]:
-                                    save_game(player, st.session_state.messages)
-                                    st.toast(d_i_res["message"], icon="📦")
-                                    st.rerun()
-                                else:
-                                    st.error(d_i_res["message"])
-                        else:
-                            st.caption("Personal inventory is empty.")
-
-                        st.markdown("##### 📤 Stored Vault Relics & Gear")
-                        if v_items:
-                            for idx, vi in enumerate(v_items):
-                                vi_name = vi.get("name", str(vi)) if isinstance(vi, dict) else str(vi)
-                                vi_qty = vi.get("qty", 1) if isinstance(vi, dict) else 1
-                                vi_rar = vi.get("rarity", "Common") if isinstance(vi, dict) else "Common"
-                                col_vi1, col_vi2 = st.columns([3, 1])
-                                with col_vi1:
-                                    st.markdown(f"📦 **{vi_name}** x{vi_qty} *({vi_rar})*")
-                                with col_vi2:
-                                    if st.button(f"Withdraw", key=f"btn_wdr_vi_{idx}", use_container_width=True):
-                                        w_i_res = mechanics.withdraw_from_vault(player, vi_name)
-                                        if w_i_res["success"]:
-                                            save_game(player, st.session_state.messages)
-                                            st.toast(w_i_res["message"], icon="📤")
-                                            st.rerun()
-                                        else:
-                                            st.error(w_i_res["message"])
-                        else:
-                            st.caption("Vault contains no stored items.")
-
-                        # Vault Upgrades
-                        cur_v_tier = h_data.get("vault_tier", 1)
-                        if cur_v_tier < 3:
-                            st.divider()
-                            next_vt = cur_v_tier + 1
-                            v_cost = mechanics.VAULT_TIERS[next_vt]["upgrade_cost"]
-                            st.markdown(f"⚙️ **Vault Upgrade:** Tier {next_vt} ({mechanics.VAULT_TIERS[next_vt]['slots']} slots, {mechanics.VAULT_TIERS[next_vt]['capacity_lbs']:,} lbs)")
-                            if st.button(f"Upgrade Vault to Tier {next_vt} ({v_cost:,} Col)", key="btn_upgrade_vault_action", use_container_width=True):
-                                u_v_res = mechanics.upgrade_homestead_facility(player, "vault")
-                                if u_v_res["success"]:
-                                    save_game(player, st.session_state.messages)
-                                    st.toast(u_v_res["message"], icon="✨")
-                                    st.rerun()
-                                else:
-                                    st.error(u_v_res["message"])
-
-                    # 2. Trophy Hall
-                    with t_trophy:
-                        st.markdown("##### 🏆 Great Trophy Hall")
-                        st.caption("Mount slain Sector Boss cores and alpha beast remains on display pedestals to grant passive party-wide combat boons.")
-                        mounted = h_data.get("mounted_trophies", [])
-                        st.write(f"🏛️ **Occupied Pedestals:** `{len(mounted)} / 5`")
-
-                        if mounted:
-                            st.markdown("###### 👑 Active Trophy Perks:")
-                            for idx, tr in enumerate(mounted):
-                                tr_name = tr.get("name", "Trophy")
-                                tr_buff = tr.get("buff_name", "")
-                                tr_desc = tr.get("desc", "")
-                                col_t1, col_t2 = st.columns([3, 1])
-                                with col_t1:
-                                    st.markdown(f"🏆 **{tr_name}** — `{tr_buff}`\n\n*{tr_desc}*")
-                                with col_t2:
-                                    if st.button("Unmount", key=f"btn_unmount_tr_{idx}", use_container_width=True):
-                                        unm_res = mechanics.unmount_boss_trophy(player, tr.get("key", tr_name))
-                                        if unm_res["success"]:
-                                            save_game(player, st.session_state.messages)
-                                            st.toast(unm_res["message"], icon="🔄")
-                                            st.rerun()
-                                        else:
-                                            st.error(unm_res["message"])
-                        else:
-                            st.caption("No trophies currently mounted. Pedestals are waiting for Sector Boss relics.")
-
-                        st.divider()
-                        st.markdown("###### 🛡️ Mount Relic from Inventory:")
-                        inv_trophy_candidates = []
-                        for it in player.get("inventory", []):
-                            iname = it.get("name", str(it)) if isinstance(it, dict) else str(it)
-                            for tk, td in mechanics.HOMESTEAD_TROPHIES.items():
-                                if tk in iname.lower() or td["name"].lower() in iname.lower() or ("overlord" in iname.lower() and "core" in iname.lower()):
-                                    if iname not in inv_trophy_candidates:
-                                        inv_trophy_candidates.append(iname)
-
-                        if inv_trophy_candidates and len(mounted) < 5:
-                            sel_trophy = st.selectbox("Select Boss Relic", inv_trophy_candidates, key="sb_mount_trophy_choice")
-                            if st.button(f"🏆 Mount '{sel_trophy}' on Pedestal", key="btn_mount_trophy_action", use_container_width=True):
-                                m_res = mechanics.mount_boss_trophy(player, sel_trophy)
-                                if m_res["success"]:
-                                    save_game(player, st.session_state.messages)
-                                    st.balloons()
-                                    st.toast(m_res["message"], icon="🏆")
-                                    st.rerun()
-                                else:
-                                    st.error(m_res["message"])
-                        elif len(mounted) >= 5:
-                            st.warning("All 5 pedestals are currently occupied. Unmount an existing trophy to make room.")
-                        else:
-                            st.caption("No mountable boss relics found in personal inventory (Slay Sector Bosses to claim relics).")
-
-                    # 3. Alchemical Greenhouse
-                    with t_green:
-                        st.markdown("##### 🌿 Hydroponic Alchemical Greenhouse")
-                        st.caption("Automated cultivation chambers growing rare aether-infused flora and harvestable reagent fungi once per game day.")
-                        g_tier = h_data.get("greenhouse_tier", 1)
-                        g_info = mechanics.GREENHOUSE_TIERS.get(g_tier, mechanics.GREENHOUSE_TIERS[1])
-                        st.markdown(f"🌱 **Cultivation Tier:** `Tier {g_tier} ({g_info['name']})`")
-                        yield_str = ", ".join([f"{q}x {n}" for n, q in g_info["yield"].items()])
-                        st.caption(f"**Daily Botanical Yield:** {yield_str}")
-
-                        chrono_info = mechanics.get_game_time(player) if hasattr(mechanics, "get_game_time") else {}
-                        cur_day = chrono_info.get("day", 1)
-                        last_h = h_data.get("last_harvest_day", 0)
-                        can_harvest = cur_day > last_h
-
-                        if can_harvest:
-                            st.success(f"🌿 **Crops are in full bloom for Day {cur_day}!**")
-                            if st.button("🌿 Harvest Daily Botanical Yield", key="btn_harvest_greenhouse_action", use_container_width=True):
-                                h_res = mechanics.harvest_alchemical_garden(player)
-                                if h_res["success"]:
-                                    save_game(player, st.session_state.messages)
-                                    st.toast(h_res["message"], icon="🌿")
-                                    st.success(h_res["log"])
-                                    st.rerun()
-                                else:
-                                    st.error(h_res["message"])
-                        else:
-                            st.info(f"⏳ **Flora Regenerating:** Harvested on Day {last_h}. Next bloom at sunrise on Day {last_h + 1}.")
-
-                        # Upgrade Greenhouse
-                        if g_tier < 3:
-                            st.divider()
-                            next_gt = g_tier + 1
-                            g_cost = mechanics.GREENHOUSE_TIERS[next_gt]["upgrade_cost"]
-                            st.markdown(f"⚙️ **Greenhouse Upgrade:** Tier {next_gt} ({mechanics.GREENHOUSE_TIERS[next_gt]['name']})")
-                            if st.button(f"Upgrade Greenhouse to Tier {next_gt} ({g_cost:,} Col)", key="btn_upgrade_greenhouse_action", use_container_width=True):
-                                u_g_res = mechanics.upgrade_homestead_facility(player, "greenhouse")
-                                if u_g_res["success"]:
-                                    save_game(player, st.session_state.messages)
-                                    st.toast(u_g_res["message"], icon="🌿")
-                                    st.rerun()
-                                else:
-                                    st.error(u_g_res["message"])
-
-                    # 4. Master-Forge
-                    with t_forge:
-                        st.markdown("##### ⚡ Deepforged Master-Anvil")
-                        st.caption("Ancient runic forge utilizing geothermal leyline taps to fuse Grade 5 armaments with Sector Boss Cores into Grade 6 Mythic weapons.")
-
-                        if not h_data.get("has_master_anvil"):
-                            st.warning("⚠️ **Master-Anvil Not Installed:** Requires runic anvil installation to unlock Grade 6/7 Mythic weapon forging.")
-                            st.info("🔨 **Construction Cost:** 3,000 Col")
-                            if st.button("🔨 Construct Deepforged Master-Anvil (3,000 Col)", key="btn_build_master_anvil", use_container_width=True):
-                                b_a_res = mechanics.upgrade_homestead_facility(player, "master_anvil")
-                                if b_a_res["success"]:
-                                    save_game(player, st.session_state.messages)
-                                    st.balloons()
-                                    st.toast("Master-Anvil constructed!", icon="⚡")
-                                    st.success(b_a_res["log"])
-                                    st.rerun()
-                                else:
-                                    st.error(b_a_res["message"])
-                        else:
-                            st.success("⚡ **Deepforged Master-Anvil Active:** Geothermal magma flow nominal. Ready for mythic transmutation.")
-                            st.divider()
-
-                            # Recipes
-                            for r_key, r_data in mechanics.MYTHIC_RECIPES.items():
-                                st.markdown(f"#### ⚡ {r_data['name']} *(Grade 6 Mythic)*")
-                                st.caption(r_data.get("description", ""))
-                                tech = r_data["active_technique"]
-                                st.markdown(f"✨ **Granted Sword Skill:** `{tech['name']}` ({tech['type']}) — *{tech['desc']}*")
-                                st.caption(f"🛡️ **Base Durability:** `{r_data['durability']}/{r_data['durability']}` | **Forge Fee:** `{r_data['fee_col']:,} Col`")
-                                st.caption(f"🔩 **Required Base Gear:** `{r_data['base_item_query']}` | **Boss Catalyst:** `{r_data['boss_core_query']}`")
-                                mat_str = ", ".join([f"{q}x {m}" for m, q in r_data["materials"].items()])
-                                st.caption(f"💎 **Reagents:** {mat_str}")
-
-                                if st.button(f"⚡ Deepforge {r_data['name']}", key=f"btn_forge_{r_key}", use_container_width=True):
-                                    f_res = mechanics.forge_mythic_equipment(player, r_key)
-                                    if f_res["success"]:
-                                        save_game(player, st.session_state.messages)
-                                        st.balloons()
-                                        st.toast(f_res["message"], icon="⚡")
-                                        st.success(f_res["log"])
-                                        st.rerun()
-                                    else:
-                                        st.error(f_res["message"])
-                                st.markdown("---")
-
-                    # 5. Commodity Market
-                    with t_market:
-                        st.markdown("##### ⚖️ Regional Mercantile Exchange")
-                        st.caption("Trade raw aether-alloys, scrap, and alchemical catalysts at dynamic commodity market rates.")
-                        com_prices = mechanics.get_commodity_prices(player)
-                        reps = player.get("factions", {})
-                        iron_rep = reps.get("iron_syndicate", 0) if isinstance(reps, dict) else 0
-                        disc_str = "15% Trade Discount" if iron_rep >= 50 else ("10% Trade Discount" if iron_rep >= 25 else "Standard Rates")
-                        st.write(f"🤝 **Iron Syndicate Standing:** `{iron_rep} Rep ({disc_str})`")
-
-                        # Display Price Table
-                        p_table = []
-                        for ck, cv in com_prices.items():
-                            p_table.append({
-                                "Commodity": cv["name"],
-                                "Category": cv["category"],
-                                "Buy Price": f"{cv['buy_price']:,} Col",
-                                "Sell Price": f"{cv['sell_price']:,} Col"
-                            })
-                        st.table(p_table)
-
-                        # Trade Actions
-                        m_col1, m_col2 = st.columns(2)
-                        with m_col1:
-                            st.markdown("###### 🛒 Purchase Commodities")
-                            c_buy_choice = st.selectbox("Select Commodity to Buy", list(com_prices.keys()), format_func=lambda k: com_prices[k]["name"], key="sb_com_buy")
-                            b_qty = st.number_input("Purchase Quantity", min_value=1, max_value=20, value=1, step=1, key="num_com_buy_qty")
-                            total_b_cost = com_prices[c_buy_choice]["buy_price"] * b_qty
-                            st.caption(f"Total Cost: **{total_b_cost:,} Col**")
-                            if st.button("🛒 Buy Commodity", key="btn_trade_buy_action", use_container_width=True):
-                                tc_res = mechanics.trade_commodity(player, c_buy_choice, action="buy", qty=int(b_qty))
-                                if tc_res["success"]:
-                                    save_game(player, st.session_state.messages)
-                                    st.toast(tc_res["message"], icon="⚖️")
-                                    st.rerun()
-                                else:
-                                    st.error(tc_res["message"])
-
-                        with m_col2:
-                            st.markdown("###### 💰 Sell Commodities")
-                            c_sell_choice = st.selectbox("Select Commodity to Sell", list(com_prices.keys()), format_func=lambda k: com_prices[k]["name"], key="sb_com_sell")
-                            s_qty = st.number_input("Sell Quantity", min_value=1, max_value=20, value=1, step=1, key="num_com_sell_qty")
-                            total_s_gain = com_prices[c_sell_choice]["sell_price"] * s_qty
-                            st.caption(f"Estimated Payout: **+{total_s_gain:,} Col**")
-                            if st.button("💰 Sell Commodity", key="btn_trade_sell_action", use_container_width=True):
-                                tc_res = mechanics.trade_commodity(player, c_sell_choice, action="sell", qty=int(s_qty))
-                                if tc_res["success"]:
-                                    save_game(player, st.session_state.messages)
-                                    st.toast(tc_res["message"], icon="💰")
-                                    st.rerun()
-                                else:
-                                    st.error(tc_res["message"])
-
-        with st.expander("📜 Active Quests & Bounties", expanded=True):
-            if not player.get("quests"):
-                st.caption("No active directives.")
+        elif party_view == "🛋️ Reserve Roster":
+            benched_comps = [c for c in comps.values() if c.get("recruited", False) and not c.get("active", False)]
+            if not benched_comps:
+                st.caption("No companions currently in the Reserve Benched Roster.")
             else:
-                for q in player["quests"]:
-                    if isinstance(q, dict):
-                        title = q.get('title', q.get('name', 'Unknown Quest'))
-                        desc = q.get('desc', q.get('description', ''))
-                        reward = q.get('reward', '')
-                        st.markdown(f"🔸 **{title}**")
-                        if desc: st.caption(desc)
-                        if reward: st.markdown(f"🎁 *Reward:* {reward}")
-                        st.divider()
+                for b_comp in benched_comps:
+                    st.markdown(f"**👤 {b_comp['name']}** `[Lv. {b_comp.get('level', 1)} {b_comp.get('class', '')}]`")
+                    st.caption(f"HP: {b_comp.get('hp', 30)}/{b_comp.get('max_hp', 30)} | Affinity: {b_comp.get('affinity', 0)}/100 `[{b_comp.get('affinity_tier', 'Acquaintance')}]`")
+                    if len(active_comps) < 3:
+                        if st.button(f"Activate {b_comp['name']} to Vanguard", key=f"btn_activate_{b_comp['name']}"):
+                            b_comp["active"] = True
+                            save_game(player, st.session_state.messages)
+                            st.toast(f"{b_comp['name']} is now in the active raiding party!", icon="⚔️")
+                            st.rerun()
                     else:
-                        st.markdown(f"🔸 {q}")
-                        st.divider()
-                
-        with st.expander("🌍 Global Threat Intelligence", expanded=False):
-            global_news = world_state.get("global_news", [])
-            if not global_news:
-                st.caption("No global uplinks established yet...")
+                        st.caption("⚠️ *Active party is full (3 companions maximum alongside Banki). Bench an active companion first.*")
+                    st.divider()
+
+        else:
+            unrecruited = [c for c in comps.values() if not c.get("recruited", False)]
+            if not unrecruited:
+                st.success("All known Sector 1 companions have been recruited into your vanguard!")
             else:
-                for news in reversed(global_news[-15:]):
-                    st.info(f"📡 {news}")
+                st.caption("Recruit skilled companions encountered across Washington Borough and Warren County.")
+                for u_comp in unrecruited:
+                    st.markdown(f"##### 👤 {u_comp['name']} — `{u_comp.get('title', u_comp.get('class', 'Warrior'))}`")
+                    st.caption(f"**Class:** {u_comp.get('class', '')} | **Lineage:** {u_comp.get('race', 'Human')} | **Starting Level:** {u_comp.get('level', 1)}")
+                    st.write(u_comp.get("background", ""))
+                    st.caption(f"**Starting Stances:** {', '.join([s.get('label', k) for k, s in u_comp.get('stances', {}).items()])}")
+                    st.caption(f"**Signature Dual-Tech:** {u_comp.get('dual_tech_name', 'None')}")
+                    if st.button(f"Recruit {u_comp['name']} into Vanguard", key=f"btn_recruit_{u_comp['name']}"):
+                        rec_res = mechanics.recruit_companion(player, u_comp["name"])
+                        if rec_res["success"]:
+                            save_game(player, st.session_state.messages)
+                            st.balloons()
+                            st.toast(rec_res["message"], icon="🤝")
+                            st.success(rec_res["log"])
+                            st.rerun()
+                        else:
+                            st.error(rec_res["message"])
+                    st.divider()
+
+    # 🟢 Cursor Criminality & SAO Status Expander
+    cursor_data = mechanics.get_cursor_status(player) if hasattr(mechanics, "get_cursor_status") else {"status": "green", "label": "🟢 Lawful (Green)", "badge": "🟢 Green", "current_infamy": 0, "merchant_surcharge": 0.0, "safe_zone_clearance": True, "description": "Lawful citizen."}
+    with st.expander(f"⚖️ SAO Status: {cursor_data['badge']}", expanded=False):
+        st.markdown(f"#### {cursor_data['label']}")
+        st.write(cursor_data.get("description", ""))
+
+        col_cur1, col_cur2 = st.columns(2)
+        col_cur1.metric("Infamy Rating", f"{cursor_data['current_infamy']} pts")
+        col_cur2.metric("Merchant Surcharge", f"+{int(cursor_data['merchant_surcharge']*100)}%")
+
+        if cursor_data["safe_zone_clearance"]:
+            st.success("✅ **Safe-Zone Clearance Granted:** Barrier wards recognize lawful or minor misdemeanor status.")
+        else:
+            st.error("🚨 **SAFE-ZONE WARD LOCKDOWN:** Lethal anti-PK ward turrets will vaporize avatar on boundary breach!")
+
+        # Criminal Atonement for Orange Status
+        if cursor_data["status"] == "orange":
+            inf = cursor_data["current_infamy"]
+            atone_cost = inf * 500
+            st.warning(f"⚠️ **Municipal Misdemeanor:** Pay reparations at Washington Council ({atone_cost:,} Col) to restore Green Cursor.")
+            if st.button(f"Pay Municipal Atonement ({atone_cost:,} Col)", key="btn_pay_atone_sb", use_container_width=True):
+                if hasattr(mechanics, "pay_criminal_atonement"):
+                    at_res = mechanics.pay_criminal_atonement(player)
+                    if at_res["success"]:
+                        save_game(player, st.session_state.messages)
+                        st.toast(at_res["message"], icon="🟢")
+                        st.success(at_res["log"])
+                        st.rerun()
+                    else:
+                        st.error(at_res["message"])
+
+    # 🚩 Regional Factions & Guild Politics Expander
+    factions_list = mechanics.get_all_faction_standings(player) if hasattr(mechanics, "get_all_faction_standings") else []
+    with st.expander("🚩 Regional Factions & Guild Alliances", expanded=False):
+        st.caption("Reputation standings across regional coalitions, crafting cartels, and underground syndicates.")
+        for fac in factions_list:
+            f_def = mechanics.REGIONAL_FACTIONS.get(fac["faction_id"], {})
+            st.markdown(f"##### {f_def.get('icon', '🚩')} {fac['name']}")
+            st.caption(f"**Leader:** {f_def.get('leader', 'Unknown')} | **HQ:** {f_def.get('headquarters', 'Unknown')}")
+            st.write(f_def.get("description", ""))
+
+            # Reputation score & progress bar
+            score = fac["score"]
+            st.markdown(f"**Standing:** {fac['badge']} `({score:+d} Rep)`")
+            norm_progress = min(1.0, max(0.0, (score + 100) / 200.0))
+            st.progress(norm_progress, text=f"Reputation: {score}/100 [{fac['label']}]")
+
+            # Active Perks
+            active_perks = fac.get("perks_active", [])
+            if active_perks:
+                st.markdown("✨ **Active Faction Perks:**")
+                for perk_desc in active_perks:
+                    st.markdown(f"- 🔸 {perk_desc}")
+            else:
+                st.caption("🔒 *No perks unlocked yet (Unlocks at Friendly 25+ / Honored 50+).*")
+            st.divider()
+            
+    with st.expander("🪤 Field Prep & Tactical Trap-Rigging", expanded=False):
+        st.write("Deploy specialized combat snares, tripwires, and scent corridors using scavenged materials and your **Field Trapping** mastery.")
         
-    st.divider()
-    st.subheader("🗺️ Sector 1 Map")
+        # Show Active Traps Deployed
+        active_traps = player.get("active_traps", [])
+        if active_traps:
+            st.markdown("##### 🚩 Currently Deployed Traps:")
+            for t_idx, t_data in enumerate(active_traps):
+                st.info(f"🔹 **{t_data.get('name')}** (Stealth DC: {t_data.get('stealth_dc')}) — *{t_data.get('condition')}* | Dmg: {t_data.get('damage_dice')}")
+            st.divider()
+            
+        st.markdown("##### ⚙️ Available Field Rigging Schematics:")
+        if hasattr(mechanics, "CANONICAL_TRAPS"):
+            for t_key, t_info in mechanics.CANONICAL_TRAPS.items():
+                can_craft, msg, avail = mechanics.can_craft_trap(player, t_key)
+                st.markdown(f"**{t_info['name']}** `[DC {t_info['base_dc']}]`")
+                st.caption(f"↳ {t_info['description']}")
+                
+                mat_str_list = []
+                for m_name, m_req in t_info["materials"].items():
+                    m_have = avail.get(m_name, 0)
+                    icon = "✅" if m_have >= m_req else "❌"
+                    mat_str_list.append(f"{icon} {m_name} ({m_have}/{m_req})")
+                st.caption("Materials: " + " | ".join(mat_str_list))
+                
+                if can_craft:
+                    if st.button(f"Rig & Conceal: {t_info['name']}", key=f"btn_rig_trap_hud_{t_key}"):
+                        res = mechanics.rig_field_trap(player, t_key)
+                        save_game(player, st.session_state.messages)
+                        st.toast(f"🪤 Deployed {t_info['name']}! (Concealment DC: {res['stealth_dc']})", icon="🪤")
+                        st.success(res["log"])
+                        st.rerun()
+                else:
+                    st.caption(f"🔒 *{msg}*")
+                st.markdown("---")
+
+
+
+def render_tab_world(player, world_state, in_dungeon, player_skill_tokens):
+    """Renders the expansive tactical Panzoom map, safe zone facilities, wilderness survival, and dungeon chambers."""
+    st.markdown("### 🗺️ Sector 1 Tactical Map & Reconnaissance")
     import map_engine
     map_state = map_engine.load_map_state()
-    # Pass consolidated skill and milestone tokens to map engine
-    p_skills_dict = st.session_state.player.get("skills", {})
-    player_skill_tokens = list(p_skills_dict.keys()) if isinstance(p_skills_dict, dict) else list(p_skills_dict)
-    if isinstance(p_skills_dict, dict):
-        for s_entry in p_skills_dict.values():
-            if isinstance(s_entry, dict):
-                for m in s_entry.get("milestones_unlocked", []):
-                    if isinstance(m, dict) and "name" in m:
-                        player_skill_tokens.append(m["name"])
-                    elif isinstance(m, str):
-                        player_skill_tokens.append(m)
-    player_skill_tokens.extend(st.session_state.player.get("feats", []))
-    player_skill_tokens.extend(st.session_state.player.get("spells", []))
     map_path = map_engine.generate_overlay(player_skills=player_skill_tokens)
     if map_path and os.path.exists(map_path):
         import base64
@@ -2473,13 +1543,882 @@ with st.sidebar:
         </body>
         </html>
         """
-        components.html(html_code, height=350)
+        components.html(html_code, height=500)
         
-    st.write(f"**GPS Coordinates:** X: {map_state['player_x']}, Y: {map_state['player_y']}")
-    st.write(f"**Status:** {world_state['world_status']}")
-
+    col_m1, col_m2 = st.columns(2)
+    col_m1.write(f"**GPS Coordinates:** X: `{map_state['player_x']}`, Y: `{map_state['player_y']}`")
+    col_m2.write(f"**World Matrix Status:** `{world_state.get('world_status', 'ONLINE')}`")
     st.divider()
-    with st.expander("💻 Root Dev Console"):
+    with st.expander("📜 Active Quests & Bounties", expanded=True):
+        if not player.get("quests"):
+            st.caption("No active directives.")
+        else:
+            for q in player["quests"]:
+                if isinstance(q, dict):
+                    title = q.get('title', q.get('name', 'Unknown Quest'))
+                    desc = q.get('desc', q.get('description', ''))
+                    reward = q.get('reward', '')
+                    st.markdown(f"🔸 **{title}**")
+                    if desc: st.caption(desc)
+                    if reward: st.markdown(f"🎁 *Reward:* {reward}")
+                    st.divider()
+                else:
+                    st.markdown(f"🔸 {q}")
+                    st.divider()
+            
+    loc_str = str(player.get("location", "")).lower()
+    is_safe_zone = any(w in loc_str for w in ["borough", "safe", "town", "taphouse", "anvil", "haven", "outpost", "clinic", "washington"])
+    if is_safe_zone and hasattr(mechanics, "WASHINGTON_FACILITIES"):
+        with st.expander("🏛️ Safe-Zone Settlement: Washington Borough", expanded=True):
+            st.caption("📍 *You are currently within the fortified perimeter of Washington Borough Safe-Zone. Weapon locks active; civilian and mercantile trade permitted.*")
+            
+            town_mode = st.radio(
+                "Borough District",
+                [
+                    "🍺 Iron Spoke", 
+                    "🏥 Arcane Med-Bay", 
+                    "🛒 Scavenger Dump", 
+                    "📜 Bounty Board",
+                    "⚖️ Municipal Council"
+                ],
+                horizontal=True,
+                label_visibility="collapsed"
+            )
+            
+            if town_mode == "🍺 Iron Spoke":
+                tf = mechanics.WASHINGTON_FACILITIES.get("iron_spoke_taphouse", {})
+                st.markdown(f"#### {tf.get('name', 'The Iron Spoke Taphouse')}")
+                st.caption(f"**Proprietor:** {tf.get('proprietor', 'Torvald Iron-Vein')}")
+                st.write(tf.get("description", ""))
+                st.info("🍲 **Specialty:** Hearty Marrow Stew & Roasted Grain Draught (150 Col)\n\n*Heals +50 HP to Banki, cleanses fatigue, restores Ren's morale to Confident (+10% accuracy), and grants the [Well-Fed] buff.*")
+                
+                if st.button("Order Stew & Rest (150 Col)", key="btn_taphouse_rest", use_container_width=True):
+                    res_tap = mechanics.use_taphouse_stew_and_rest(player)
+                    if res_tap["success"]:
+                        save_game(player, st.session_state.messages)
+                        st.toast(res_tap["message"], icon="🍲")
+                        st.success(res_tap["log"])
+                        st.rerun()
+                    else:
+                        st.error(res_tap["message"])
+
+            elif town_mode == "🏥 Arcane Med-Bay":
+                mb = mechanics.WASHINGTON_FACILITIES.get("arcane_med_bay", {})
+                st.markdown(f"#### {mb.get('name', 'The Arcane Med-Bay')}")
+                st.caption(f"**Chief Surgeon:** {mb.get('proprietor', 'Dr. Varek Thorne')}")
+                st.write(mb.get("description", ""))
+                st.info("💉 **Bio-Purification & Flesh Trauma Suture** (250 Col)\n\n*Fully restores HP to maximum, removes Bleed/Poison conditions, and stabilizes cyber-strain.*")
+                
+                if st.button("Undergo Bio-Purification (250 Col)", key="btn_medbay_heal", use_container_width=True):
+                    res_med = mechanics.use_med_bay_purification(player)
+                    if res_med["success"]:
+                        save_game(player, st.session_state.messages)
+                        st.toast(res_med["message"], icon="🏥")
+                        st.success(res_med["log"])
+                        st.rerun()
+                    else:
+                        st.error(res_med["message"])
+                st.caption("ℹ️ *For Golem-Graft surgical installation, access the Golem-Graft Biomechanical Augmentation clinic above.*")
+
+            elif town_mode == "🛒 Scavenger Dump":
+                kd = mechanics.WASHINGTON_FACILITIES.get("meiji_scavenger_dump", {})
+                st.markdown(f"#### {kd.get('name', 'The Meiji Scavenger Dump')}")
+                st.caption(f"**Scrap Broker:** {kd.get('proprietor', 'Kibs Nine-Fingers')}")
+                st.write(kd.get("description", ""))
+                st.markdown(f"**Available Col:** `{player.get('col', 0):,} Col`")
+                
+                inv_items = kd.get("inventory", [])
+                for idx, item in enumerate(inv_items):
+                    col_i1, col_i2 = st.columns([3, 1])
+                    col_i1.markdown(f"🔹 **{item['name']}** — `{item['cost_col']} Col`")
+                    col_i1.caption(f"{item['desc']}")
+                    if col_i2.button(f"Buy 1x", key=f"btn_buy_dump_{idx}"):
+                        res_buy = mechanics.buy_scavenger_material(player, item["name"], qty=1)
+                        if res_buy["success"]:
+                            save_game(player, st.session_state.messages)
+                            st.toast(res_buy["message"], icon="🛒")
+                            st.success(res_buy["log"])
+                            st.rerun()
+                        else:
+                            st.error(res_buy["message"])
+                    st.divider()
+
+            elif town_mode == "📜 Bounty Board":
+                st.markdown("#### 📜 Warren County Regional Bounty Board")
+                st.caption("Official emergency contracts posted by the Washington Settlement Council and regional traders.")
+                
+                bounties = mechanics.WARREN_COUNTY_BOUNTIES if hasattr(mechanics, "WARREN_COUNTY_BOUNTIES") else []
+                active_q_titles = [q.get("title", "") if isinstance(q, dict) else str(q) for q in player.get("quests", [])]
+                
+                for b_idx, b_info in enumerate(bounties):
+                    st.markdown(f"##### 🎯 {b_info['title']}")
+                    st.caption(f"**Target:** {b_info['target']} | **Location:** {b_info['location']}")
+                    st.write(b_info['desc'])
+                    st.markdown(f"🎁 **Reward:** `{b_info['reward']}`")
+                    
+                    is_active = any(b_info['title'].lower() in at.lower() for at in active_q_titles)
+                    if is_active:
+                        st.success("✅ **Directive Active in Quest Log**")
+                    else:
+                        if st.button(f"Accept Contract: {b_info['title']}", key=f"btn_accept_bounty_{b_idx}"):
+                            res_b = mechanics.accept_bounty_directive(player, b_info["id"])
+                            if res_b["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.toast(f"Accepted {b_info['title']}!", icon="📜")
+                                st.success(res_b["log"])
+                                st.rerun()
+                            else:
+                                st.error(res_b["message"])
+                    st.divider()
+
+            else:
+                st.markdown("#### ⚖️ Washington Settlement Council & Wardens")
+                st.caption("Municipal authority governing safe-zone law enforcement, barrier matrices, and guild registrations.")
+                
+                c_status = mechanics.get_cursor_status(player) if hasattr(mechanics, "get_cursor_status") else {"status": "green", "label": "🟢 Green", "current_infamy": 0, "merchant_surcharge": 0.0}
+                st.markdown(f"**Your Cursor Status:** {c_status['label']}")
+                st.caption(f"Recorded Infamy: **{c_status['current_infamy']} points** | Active Safe-Zone Surcharge: **+{int(c_status['merchant_surcharge']*100)}%**")
+                
+                if c_status["status"] == "green":
+                    st.success("🛡️ **Clean Standing:** You have no municipal penalties or infamy records.")
+                elif c_status["status"] == "orange":
+                    cost = c_status["current_infamy"] * 500
+                    st.warning(f"⚠️ **Municipal Misdemeanor Fine:** You owe {cost:,} Col in public restitution to clear your criminal status.")
+                    if st.button(f"Pay Restitution ({cost:,} Col)", key="btn_pay_atone_council", use_container_width=True):
+                        at_res = mechanics.pay_criminal_atonement(player)
+                        if at_res["success"]:
+                            save_game(player, st.session_state.messages)
+                            st.balloons()
+                            st.toast(at_res["message"], icon="🟢")
+                            st.success(at_res["log"])
+                            st.rerun()
+                        else:
+                            st.error(at_res["message"])
+                else:
+                    st.error("🚨 **OUTLAW PK RECORD:** You are branded a murderer! Safe-zone defense turrets will engage on approach.")
+
+                st.divider()
+                st.markdown("##### ⚔️ The Vanguard Coalition Liaison")
+                v_standing = mechanics.get_faction_standing(player, "vanguard_coalition") if hasattr(mechanics, "get_faction_standing") else {"badge": "⚖️ Neutral", "score": 0}
+                st.write(f"Frontline liaison **Commander Vance's Aide** monitors regional labyrinth expeditions. Current Standing: **{v_standing['badge']} ({v_standing['score']} Rep)**")
+
+    if hasattr(mechanics, "ensure_chrono_system"):
+        chrono_data = mechanics.ensure_chrono_system(player)
+        time_info = mechanics.get_game_time(player)
+        cur_weather = mechanics.get_current_weather(player)
+        frost_check = mechanics.check_frostbite_protection(player)
+
+        with st.expander("⛺ Wilderness Survival & Chrono-Atmosphere", expanded=False):
+            # 1. Dynamic Clock & Atmosphere Overview
+            p_info = time_info["period_info"]
+            st.markdown(f"### ⏱️ {time_info['time_str']}")
+            st.caption(f"**Period:** {p_info['label']} | **Lighting & Field Effects:** {p_info['desc']}")
+            
+            # Weather Card
+            st.markdown(f"#### {cur_weather.get('icon', '🌤️')} {cur_weather['label']}")
+            st.caption(f"*{cur_weather['desc']}*")
+            st.info(f"**Atmospheric Modifier:** {cur_weather['effect']}")
+            if cur_weather.get("key") == "glitch_freeze" or "glitch freeze" in cur_weather["label"].lower():
+                if frost_check["protected"]:
+                    st.success(f"🛡️ **Cold Insulation Active:** {frost_check['message']}")
+                else:
+                    st.error(f"❄️ **FROSTBITE HAZARD:** {frost_check['message']}")
+
+            # Active Survival Buffs
+            active_buffs = chrono_data.get("active_buffs", [])
+            if active_buffs:
+                st.markdown("##### 🍖 Active Culinary & Survival Buffs:")
+                for b in active_buffs:
+                    if isinstance(b, dict):
+                        st.success(f"✨ **{b.get('name')}**: {b.get('desc')} *({b.get('duration', 1)} duration remaining)*")
+                    else:
+                        st.success(f"✨ **{b}**")
+                st.divider()
+
+            # Quick Time Actions
+            tc1, tc2, tc3 = st.columns(3)
+            with tc1:
+                if st.button("⏳ Wait 1h", key="btn_wait_1_hour", use_container_width=True):
+                    w_res = mechanics.advance_game_time(player, minutes=60)
+                    save_game(player, st.session_state.messages)
+                    st.toast(f"Waited 1 Hour. Time is now {w_res['time_str']}.", icon="⏳")
+                    st.rerun()
+            with tc2:
+                if st.button("🌅 Rest to Dawn", key="btn_rest_until_dawn", use_container_width=True):
+                    cur_hour = chrono_data.get("hour", 6)
+                    cur_min = chrono_data.get("minute", 0)
+                    mins_to_dawn = ((6 - cur_hour) % 24) * 60 - cur_min
+                    if mins_to_dawn <= 0:
+                        mins_to_dawn += 24 * 60
+                    w_res = mechanics.advance_game_time(player, minutes=mins_to_dawn)
+                    save_game(player, st.session_state.messages)
+                    st.toast(f"Rested until Dawn. Time is now {w_res['time_str']}.", icon="🌅")
+                    st.rerun()
+            with tc3:
+                if st.button("🎲 Attune Sky", key="btn_roll_weather", use_container_width=True):
+                    rw_res = mechanics.roll_random_weather(player)
+                    save_game(player, st.session_state.messages)
+                    st.toast(f"Atmospheric shift: {rw_res['weather_info']['label']}!", icon="🌪️")
+                    st.rerun()
+
+            st.divider()
+
+            # Tabs for Kitchen & Camp Pitching
+            camp_mode = st.radio(
+                "Wilderness Activity",
+                ["🍳 Campfire Kitchen", "🏕️ Pitch Camp & Watch"],
+                horizontal=True,
+                label_visibility="collapsed"
+            )
+
+            # Station 1: Campfire Kitchen
+            if camp_mode == "🍳 Campfire Kitchen":
+                st.markdown("##### 🍲 Campfire Culinary Crafting")
+                st.caption("Prepare hot meals over the camp coals to restore HP and gain combat buffs.")
+                inv = player.get("inventory", [])
+                inv_map = {}
+                for item in inv:
+                    if isinstance(item, dict):
+                        iname = item.get("name", "").strip().lower()
+                        inv_map[iname] = inv_map.get(iname, 0) + item.get("qty", 1)
+                    elif isinstance(item, str):
+                        iname = item.strip().lower()
+                        inv_map[iname] = inv_map.get(iname, 0) + 1
+
+                for r_key, r_data in mechanics.CAMPFIRE_RECIPES.items():
+                    st.markdown(f"**{r_data['name']}**")
+                    st.caption(f"*{r_data.get('desc', '')}*")
+                    buff_info = r_data["buff"]
+                    st.markdown(f"✨ **Buff:** `{buff_info['name']}` ({buff_info['desc']})")
+
+                    all_have = True
+                    ing_labels = []
+                    for ing_name, req_qty in r_data["ingredients"].items():
+                        ing_lower = ing_name.lower()
+                        have_qty = sum(qty for k, qty in inv_map.items() if ing_lower in k or k in ing_lower)
+                        if have_qty >= req_qty:
+                            ing_labels.append(f"✅ {ing_name} ({have_qty}/{req_qty})")
+                        else:
+                            ing_labels.append(f"❌ {ing_name} ({have_qty}/{req_qty})")
+                            all_have = False
+                    st.caption("Ingredients: " + " | ".join(ing_labels))
+
+                    if all_have:
+                        if st.button(f"Cook {r_data['name']}", key=f"btn_cook_{r_key}", use_container_width=True):
+                            c_res = mechanics.cook_campfire_meal(player, r_key)
+                            save_game(player, st.session_state.messages)
+                            if c_res["success"]:
+                                st.toast(c_res["message"], icon="🍲")
+                                st.success(c_res["log"])
+                            else:
+                                st.error(c_res["message"])
+                            st.rerun()
+                    else:
+                        st.caption("🔒 *Missing required forage / hunt ingredients.*")
+                    st.markdown("---")
+
+            # Station 2: Pitch Camp
+            else:
+                st.markdown("##### ⛺ 8-Hour Wilderness Rest & Perimeter Watch")
+                st.caption("Set up camp to restore +50 HP (+100% in safe zones) and advance time by 8 hours. Assign a companion to perimeter watch to prevent midnight ambushes and gain tactical perks.")
+
+                active_comps = list(mechanics.get_active_party(player)) if hasattr(mechanics, "get_active_party") else []
+                comp_choices = [c["name"] for c in active_comps]
+                if "Solo / No Watch" not in comp_choices:
+                    comp_choices.append("Solo / No Watch")
+
+                watch_choice = st.selectbox("Assign Watch Guard", comp_choices, key="sb_watch_companion")
+                
+                if "Ren" in watch_choice:
+                    st.info("🔭 **Ren (Leyline Telemetry):** Scans aether rifts to detect ambushes early. Party gains **+2 Initiative** in next encounter.")
+                elif "Torvald" in watch_choice:
+                    st.info("🛡️ **Torvald (Bulwark Barricade):** Erects heavy shield barricades. Foes start next combat **Staggered**.")
+                elif "Kibs" in watch_choice:
+                    st.info("🪤 **Kibs (Perimeter Snare Web):** Conceals razor-wire and noise-makers. Ambushers take **2d8 damage** on contact.")
+                elif "Elora" in watch_choice:
+                    st.info("✨ **Elora (Warded Perimeter):** Inscribes starlight perimeter glyphs. Banki gains **+2 AC** for next combat.")
+                else:
+                    st.warning("⚠️ **Solo / Unprotected Rest:** Sleep with one eye open. No watch perk awarded.")
+
+                if st.button("⛺ Pitch Camp & Rest (8 Hours)", key="btn_pitch_camp_action", use_container_width=True):
+                    selected_guard = None if watch_choice == "Solo / No Watch" else watch_choice
+                    camp_res = mechanics.pitch_wilderness_camp(player, watch_companion=selected_guard)
+                    save_game(player, st.session_state.messages)
+                    st.toast(camp_res["message"], icon="⛺")
+                    st.success(camp_res["log"])
+                    st.rerun()
+
+    if hasattr(mechanics, "POHATCONG_LABYRINTH"):
+        d_state = player.get("dungeon_state")
+        in_dungeon = d_state is not None and "pohatcong" in str(d_state.get("dungeon_id", "")).lower()
+        
+        with st.expander("🏰 Labyrinth Dungeon: The Pohatcong Depths", expanded=in_dungeon):
+            if not in_dungeon:
+                st.caption("⛰️ *Sector 1 Instanced Labyrinth located beneath Pohatcong Mountain.*")
+                st.write(mechanics.POHATCONG_LABYRINTH["description"])
+                if st.button("⚔️ Enter The Pohatcong Depths", key="btn_enter_pohatcong_labyrinth", use_container_width=True):
+                    mechanics.initialize_dungeon_state(player)
+                    player["location"] = "The Pohatcong Depths: Subsurface Ingress"
+                    save_game(player, st.session_state.messages)
+                    st.toast("Entered The Pohatcong Depths!", icon="🏰")
+                    st.rerun()
+            else:
+                cur_room = mechanics.get_current_dungeon_room(player)
+                st.markdown(f"#### {cur_room.get('badge', 'Chamber')} {cur_room['name']}")
+                st.caption(f"**Room ID:** `{cur_room['id']}` | **Status:** {'✅ Cleared' if cur_room.get('cleared') else '⚠️ Uncleared'}")
+                st.write(cur_room.get("description", ""))
+                
+                # Room Actions
+                r_type = cur_room.get("type")
+                if r_type == "trapped_corridor" and "trap" in cur_room:
+                    trap = cur_room["trap"]
+                    if not trap.get("disarmed", False):
+                        st.warning(f"🚨 **ACTIVE TRAP:** {trap['name']} (Disarm DC: {trap['disarm_dc']})\n\n*{trap.get('description', '')}*")
+                        if st.button(f"🪤 Disarm Trap ({trap.get('disarm_skill', 'Field Trapping')})", key="btn_disarm_trap_hud", use_container_width=True):
+                            d_res = mechanics.disarm_dungeon_trap(player)
+                            save_game(player, st.session_state.messages)
+                            if d_res["success"]:
+                                st.toast(d_res["message"], icon="✨")
+                                st.success(d_res["log"])
+                            else:
+                                st.toast(d_res["message"], icon="💥")
+                                st.error(d_res["log"])
+                            st.rerun()
+                    else:
+                        st.success(f"✅ **Trap Neutralized:** {trap['name']}")
+                        
+                elif r_type == "puzzle_chamber" and "puzzle" in cur_room:
+                    puzzle = cur_room["puzzle"]
+                    if not puzzle.get("solved", False):
+                        st.info(f"🧩 **PUZZLE VAULT:** {puzzle['name']}\n\n*{puzzle.get('description', '')}*")
+                        p_col1, p_col2 = st.columns(2)
+                        with p_col1:
+                            if st.button("Harmonize Dial [3 - 1 - 4]", key="btn_solve_puzzle_seq", use_container_width=True):
+                                pz_res = mechanics.solve_dungeon_puzzle(player, sequence=[3, 1, 4])
+                                save_game(player, st.session_state.messages)
+                                st.toast(pz_res["message"], icon="🔓")
+                                st.success(pz_res["log"])
+                                st.rerun()
+                        with p_col2:
+                            if st.button("🧠 Auto-Solve (INT / Ren Slate)", key="btn_solve_puzzle_auto", use_container_width=True):
+                                pz_res = mechanics.solve_dungeon_puzzle(player)
+                                save_game(player, st.session_state.messages)
+                                if pz_res["success"]:
+                                    st.toast(pz_res["message"], icon="🔓")
+                                    st.success(pz_res["log"])
+                                else:
+                                    st.toast(pz_res["message"], icon="⚠️")
+                                    st.error(pz_res["log"])
+                                st.rerun()
+                    else:
+                        st.success("✅ **Harmonic Resonance Achieved:** The Boss Gate is unsealed!")
+                        
+                elif r_type == "sanctuary":
+                    st.info("🏕️ **Sanctuary Haven:** Leyline dampening matrix active. You are safe from roaming monsters.")
+                    if st.button("🏕️ Rest & Field Repair (+50% HP, +10 Durability, Ren Morale)", key="btn_sanctuary_rest", use_container_width=True):
+                        r_res = mechanics.rest_in_sanctuary(player)
+                        save_game(player, st.session_state.messages)
+                        st.toast(r_res["message"], icon="✨")
+                        st.success(r_res["log"])
+                        st.rerun()
+                        
+                elif r_type == "monster_den" and cur_room.get("monsters"):
+                    st.markdown("##### 👾 Hostile Entities Present:")
+                    for mob in cur_room["monsters"]:
+                        st.warning(f"⚔️ **{mob['name']}** (HP: {mob.get('hp')}/{mob.get('max_hp', mob.get('hp'))} | AC: {mob.get('ac')} | ATK: +{mob.get('atk')})")
+                
+                st.divider()
+                st.markdown("##### 🚪 Passages & Archways:")
+                conns = cur_room.get("connections", [])
+                all_rooms = d_state.get("rooms", {})
+                for conn_id in conns:
+                    dest_room = all_rooms.get(conn_id, {})
+                    dest_name = dest_room.get("name", conn_id)
+                    dest_badge = dest_room.get("badge", "Door")
+                    is_cleared = "✅" if dest_room.get("cleared") else "🔹"
+                    
+                    btn_label = f"{is_cleared} {dest_badge}: {dest_name}"
+                    if st.button(btn_label, key=f"btn_move_room_{conn_id}", use_container_width=True):
+                        mv_res = mechanics.move_dungeon_room(player, conn_id)
+                        if mv_res["success"]:
+                            player["location"] = f"The Pohatcong Depths: {dest_name}"
+                            save_game(player, st.session_state.messages)
+                            st.toast(mv_res["message"], icon="🚪")
+                            st.rerun()
+                        else:
+                            st.error(mv_res["message"])
+                            
+                if st.button("⬅️ Exit Labyrinth (Return to Surface)", key="btn_exit_labyrinth", use_container_width=True):
+                    player["location"] = "Washington Borough, NJ (Sector 1 Safe Zone)"
+                    save_game(player, st.session_state.messages)
+                    st.toast("Returned to the surface!", icon="🌄")
+                    st.rerun()
+
+    if hasattr(mechanics, "SECTOR_BOSSES"):
+        boss_enc = player.get("boss_encounter")
+        has_boss = boss_enc is not None
+        cur_r_type = mechanics.get_current_dungeon_room(player).get("type") if hasattr(mechanics, "get_current_dungeon_room") else ""
+        in_arena = cur_r_type == "boss_arena"
+        
+        if has_boss or in_arena:
+            with st.expander("👑 Sector Boss: The Gilded Spire Overlord", expanded=True):
+                if not has_boss and in_arena:
+                    boss_enc = mechanics.initialize_boss_encounter(player)
+                    
+                boss_name = boss_enc.get("name", "The Gilded Spire Overlord")
+                b_hp = boss_enc.get("current_hp", 0)
+                b_max_hp = boss_enc.get("max_hp", 300)
+                b_phase = boss_enc.get("phase", 1)
+                p_info = boss_enc.get("phases", {}).get(b_phase, {})
+                p_name = p_info.get("name", f"Phase {b_phase}")
+                
+                st.markdown(f"### {boss_name}")
+                st.caption(f"**{boss_enc.get('title', 'Sector 1 Apex Construct')}**")
+                st.markdown(f"🏷️ **Active Phase:** `{p_name}` *(AC: {p_info.get('ac', 18)}, DR: {p_info.get('dr', 3)})*")
+                st.caption(f"*{p_info.get('description', '')}*")
+                
+                # HP Bar
+                hp_pct = max(0.0, min(1.0, b_hp / b_max_hp)) if b_max_hp > 0 else 0.0
+                st.write(f"❤️ **Boss Health:** `{b_hp} / {b_max_hp} HP` ({int(hp_pct*100)}%)")
+                st.progress(hp_pct)
+                
+                # Break Gauge
+                b_break = boss_enc.get("current_break", 100)
+                b_max_break = boss_enc.get("max_break", 100)
+                break_pct = max(0.0, min(1.0, b_break / b_max_break)) if b_max_break > 0 else 0.0
+                st.write(f"🛡️ **Stance Break Gauge:** `{b_break} / {b_max_break}`")
+                st.progress(break_pct)
+                
+                if boss_enc.get("is_staggered"):
+                    st.error("💥 **BOSS STAGGERED!** System recoil active! DR bypassed & takes +50% Critical Damage for 1 round!")
+                
+                # Active Telegraph Warning
+                telegraph = boss_enc.get("active_telegraph")
+                if telegraph and b_hp > 0:
+                    st.warning(f"⚠️ **TELEGRAPH INCOMING:** {telegraph.get('warning', telegraph.get('name'))}\n\n*Save DC {telegraph.get('dc', 15)} {telegraph.get('stat', 'DEX')} or take {telegraph.get('damage', 'Force Dmg')}!*")
+                    st.markdown("##### 🛡️ Counter-Tactics:")
+                    c_col1, c_col2 = st.columns(2)
+                    with c_col1:
+                        if st.button("🏃 Evasive Dive (DEX)", key="btn_tele_dodge", use_container_width=True):
+                            tc = mechanics.counter_boss_telegraph(player, "dodge")
+                            save_game(player, st.session_state.messages)
+                            if tc["success"]: st.toast(tc["message"], icon="💨"); st.success(tc["log"])
+                            else: st.toast(tc["message"], icon="💥"); st.error(tc["log"])
+                            st.rerun()
+                        if st.button("🛡️ Shield Block (CON)", key="btn_tele_block", use_container_width=True):
+                            tc = mechanics.counter_boss_telegraph(player, "shield_block")
+                            save_game(player, st.session_state.messages)
+                            st.toast(tc["message"], icon="🛡️")
+                            st.info(tc["log"])
+                            st.rerun()
+                    with c_col2:
+                        if st.button("🌫️ Ren: Phase-Veil", key="btn_tele_ren", use_container_width=True):
+                            tc = mechanics.counter_boss_telegraph(player, "ren_phase_veil")
+                            save_game(player, st.session_state.messages)
+                            st.toast(tc["message"], icon="🌫️")
+                            st.success(tc["log"])
+                            st.rerun()
+                        if st.button("🔨 Stagger Interrupt", key="btn_tele_interrupt", use_container_width=True):
+                            tc = mechanics.counter_boss_telegraph(player, "stagger_interrupt")
+                            save_game(player, st.session_state.messages)
+                            st.toast(tc["message"], icon="🔨")
+                            st.success(tc["log"])
+                            st.rerun()
+                
+                # Attack Boss Direct Controls
+                if b_hp > 0:
+                    st.divider()
+                    st.markdown("##### ⚔️ Strike Sector Boss:")
+                    atk_col1, atk_col2, atk_col3 = st.columns(3)
+                    with atk_col1:
+                        if st.button("⚔️ Axe Cleave (Normal)", key="btn_atk_boss_normal", use_container_width=True):
+                            dmg_roll = 18
+                            res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=False)
+                            boss_action = mechanics.get_boss_turn_action(player)
+                            save_game(player, st.session_state.messages)
+                            st.toast(f"Struck {boss_name} for {res_dmg['damage_dealt']} DMG!", icon="⚔️")
+                            st.info(res_dmg["log"])
+                            if boss_action.get("log"): st.warning(boss_action["log"])
+                            st.rerun()
+                    with atk_col2:
+                        if st.button("🔨 Hammer Smash (Heavy)", key="btn_atk_boss_heavy", use_container_width=True):
+                            dmg_roll = 26
+                            res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=True, is_stagger_hit=True)
+                            boss_action = mechanics.get_boss_turn_action(player)
+                            save_game(player, st.session_state.messages)
+                            st.toast(f"Heavy Hammer Smash -> {res_dmg['damage_dealt']} DMG!", icon="🔨")
+                            st.info(res_dmg["log"])
+                            if boss_action.get("log"): st.warning(boss_action["log"])
+                            st.rerun()
+                    with atk_col3:
+                        if st.button("⚡ Ren: Overcharge Stunner", key="btn_atk_boss_ren", use_container_width=True):
+                            dmg_roll = 22
+                            res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=True, is_stagger_hit=True)
+                            boss_action = mechanics.get_boss_turn_action(player)
+                            save_game(player, st.session_state.messages)
+                            st.toast(f"Ren fired Overcharged Stunner -> {res_dmg['damage_dealt']} DMG!", icon="⚡")
+                            st.info(res_dmg["log"])
+                            if boss_action.get("log"): st.warning(boss_action["log"])
+                            st.rerun()
+                else:
+                    st.balloons()
+                    st.success(f"👑 **{boss_name} HAS BEEN DEFEATED!**")
+                    if st.button("🏆 Claim Sector 1 Victory & Unseal Teleport Gate!", key="btn_claim_boss_victory", use_container_width=True):
+                        v_res = mechanics.claim_boss_victory(player)
+                        save_game(player, st.session_state.messages)
+                        st.toast("Sector 1 Cleared! Sector 2 Teleport Gate Activated!", icon="👑")
+                        st.success(v_res["log"])
+                        st.rerun()
+
+    with st.expander("🌍 Global Threat Intelligence", expanded=False):
+        global_news = world_state.get("global_news", [])
+        if not global_news:
+            st.caption("No global uplinks established yet...")
+        else:
+            for news in reversed(global_news[-15:]):
+                st.info(f"📡 {news}")
+    
+
+
+def render_tab_homestead(player, h_owned):
+    """Renders sovereign estate management, subsurface vault, alchemical greenhouse, and commodity trading."""
+    if hasattr(mechanics, "ensure_homestead_system"):
+        mechanics.ensure_homestead_system(player)
+        h_data = player.get("homestead", {})
+        h_owned = h_data.get("owned", False)
+
+        with st.expander("🏰 Sovereign Homestead, Vault & Mythic Forge", expanded=h_owned):
+            if not h_owned:
+                st.caption("📍 *Washington Borough Crossroads, Sector 1 Safe Zone*")
+                st.markdown("#### 🏰 Washington Borough Estate")
+                st.write(
+                    "A fortified stone-and-steel compound anchored at Washington Borough's historic crossroads. "
+                    "Built atop decommissioned colonial rail tunnels, offering impenetrable subsurface vault storage, "
+                    "botanical aether-greenhouses, a trophy hall for boss relics, and space for a deepforged master-anvil."
+                )
+                st.info("💰 **Purchase Price:** 3,500 Col | **Unlocks:** Subsurface Vault, Trophy Hall, Alchemical Greenhouse, Deepforged Master-Forge")
+                cur_col = player.get("col", 0)
+                if cur_col >= 3500:
+                    if st.button("🏰 Purchase Washington Borough Estate (3,500 Col)", key="btn_buy_estate_hud", use_container_width=True):
+                        b_res = mechanics.purchase_homestead(player)
+                        if b_res["success"]:
+                            save_game(player, st.session_state.messages)
+                            st.balloons()
+                            st.toast(b_res["message"], icon="🏰")
+                            st.success(b_res["log"])
+                            st.rerun()
+                        else:
+                            st.error(b_res["message"])
+                else:
+                    st.warning(f"🔒 Requires 3,500 Col to purchase (You have {cur_col:,} Col).")
+            else:
+                v_cap = mechanics.get_vault_capacity(player)
+                st.markdown(f"### 🏰 {h_data.get('name', 'Washington Borough Manor')}")
+                st.caption(
+                    f"**Vault:** Tier {h_data.get('vault_tier', 1)} ({v_cap['max_slots']} slots, {v_cap['max_lbs']:,} lbs) | "
+                    f"**Greenhouse:** Tier {h_data.get('greenhouse_tier', 1)} | "
+                    f"**Master Anvil:** {'✅ Active' if h_data.get('has_master_anvil') else '❌ Unbuilt'}"
+                )
+
+                home_mode = st.radio(
+                    "Homestead Wing",
+                    [
+                        "📦 Subsurface Vault",
+                        "🏆 Trophy Hall",
+                        "🌿 Alchemical Greenhouse",
+                        "⚡ Master-Forge",
+                        "⚖️ Commodity Market"
+                    ],
+                    horizontal=True,
+                    label_visibility="collapsed"
+                )
+
+                # 1. Subsurface Vault
+                if home_mode == "📦 Subsurface Vault":
+                    st.markdown("##### 📦 Fortified Subsurface Vault")
+                    st.caption("Secure depository unencumbered by personal inventory weight limits.")
+                    v_col = h_data.get("vault_col", 0)
+                    v_items = h_data.get("vault_items", [])
+                    st.write(f"💰 **Stored Vault Col:** `{v_col:,} Col` | 📦 **Vault Slots:** `{len(v_items)} / {v_cap['max_slots']}`")
+
+                    # Col Management
+                    vc_col1, vc_col2 = st.columns(2)
+                    with vc_col1:
+                        dep_col_amt = st.number_input("Col to Deposit", min_value=1, max_value=max(1, player.get("col", 0)), value=min(500, max(1, player.get("col", 0))), step=100, key="num_vault_col_dep")
+                        if st.button("📥 Deposit Col", key="btn_vault_dep_col", use_container_width=True):
+                            d_c_res = mechanics.deposit_to_vault(player, "", col_amount=int(dep_col_amt))
+                            if d_c_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.toast(d_c_res["message"], icon="💰")
+                                st.rerun()
+                            else:
+                                st.error(d_c_res["message"])
+                    with vc_col2:
+                        wdr_col_amt = st.number_input("Col to Withdraw", min_value=1, max_value=max(1, v_col), value=min(500, max(1, v_col)), step=100, key="num_vault_col_wdr")
+                        if st.button("📤 Withdraw Col", key="btn_vault_wdr_col", use_container_width=True):
+                            w_c_res = mechanics.withdraw_from_vault(player, "", col_amount=int(wdr_col_amt))
+                            if w_c_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.toast(w_c_res["message"], icon="💰")
+                                st.rerun()
+                            else:
+                                st.error(w_c_res["message"])
+
+                    st.divider()
+                    st.markdown("##### 📥 Deposit Item to Vault")
+                    p_inv = player.get("inventory", [])
+                    if p_inv:
+                        inv_choices = [it.get("name", str(it)) if isinstance(it, dict) else str(it) for it in p_inv]
+                        selected_dep_item = st.selectbox("Select Personal Item", inv_choices, key="sb_dep_item_vault")
+                        if st.button(f"📥 Deposit '{selected_dep_item}'", key="btn_deposit_item_action", use_container_width=True):
+                            d_i_res = mechanics.deposit_to_vault(player, selected_dep_item)
+                            if d_i_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.toast(d_i_res["message"], icon="📦")
+                                st.rerun()
+                            else:
+                                st.error(d_i_res["message"])
+                    else:
+                        st.caption("Personal inventory is empty.")
+
+                    st.markdown("##### 📤 Stored Vault Relics & Gear")
+                    if v_items:
+                        for idx, vi in enumerate(v_items):
+                            vi_name = vi.get("name", str(vi)) if isinstance(vi, dict) else str(vi)
+                            vi_qty = vi.get("qty", 1) if isinstance(vi, dict) else 1
+                            vi_rar = vi.get("rarity", "Common") if isinstance(vi, dict) else "Common"
+                            col_vi1, col_vi2 = st.columns([3, 1])
+                            with col_vi1:
+                                st.markdown(f"📦 **{vi_name}** x{vi_qty} *({vi_rar})*")
+                            with col_vi2:
+                                if st.button(f"Withdraw", key=f"btn_wdr_vi_{idx}", use_container_width=True):
+                                    w_i_res = mechanics.withdraw_from_vault(player, vi_name)
+                                    if w_i_res["success"]:
+                                        save_game(player, st.session_state.messages)
+                                        st.toast(w_i_res["message"], icon="📤")
+                                        st.rerun()
+                                    else:
+                                        st.error(w_i_res["message"])
+                    else:
+                        st.caption("Vault contains no stored items.")
+
+                    # Vault Upgrades
+                    cur_v_tier = h_data.get("vault_tier", 1)
+                    if cur_v_tier < 3:
+                        st.divider()
+                        next_vt = cur_v_tier + 1
+                        v_cost = mechanics.VAULT_TIERS[next_vt]["upgrade_cost"]
+                        st.markdown(f"⚙️ **Vault Upgrade:** Tier {next_vt} ({mechanics.VAULT_TIERS[next_vt]['slots']} slots, {mechanics.VAULT_TIERS[next_vt]['capacity_lbs']:,} lbs)")
+                        if st.button(f"Upgrade Vault to Tier {next_vt} ({v_cost:,} Col)", key="btn_upgrade_vault_action", use_container_width=True):
+                            u_v_res = mechanics.upgrade_homestead_facility(player, "vault")
+                            if u_v_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.toast(u_v_res["message"], icon="✨")
+                                st.rerun()
+                            else:
+                                st.error(u_v_res["message"])
+
+                # 2. Trophy Hall
+                elif home_mode == "🏆 Trophy Hall":
+                    st.markdown("##### 🏆 Great Trophy Hall")
+                    st.caption("Mount slain Sector Boss cores and alpha beast remains on display pedestals to grant passive party-wide combat boons.")
+                    mounted = h_data.get("mounted_trophies", [])
+                    st.write(f"🏛️ **Occupied Pedestals:** `{len(mounted)} / 5`")
+
+                    if mounted:
+                        st.markdown("###### 👑 Active Trophy Perks:")
+                        for idx, tr in enumerate(mounted):
+                            tr_name = tr.get("name", "Trophy")
+                            tr_buff = tr.get("buff_name", "")
+                            tr_desc = tr.get("desc", "")
+                            col_t1, col_t2 = st.columns([3, 1])
+                            with col_t1:
+                                st.markdown(f"🏆 **{tr_name}** — `{tr_buff}`\n\n*{tr_desc}*")
+                            with col_t2:
+                                if st.button("Unmount", key=f"btn_unmount_tr_{idx}", use_container_width=True):
+                                    unm_res = mechanics.unmount_boss_trophy(player, tr.get("key", tr_name))
+                                    if unm_res["success"]:
+                                        save_game(player, st.session_state.messages)
+                                        st.toast(unm_res["message"], icon="🔄")
+                                        st.rerun()
+                                    else:
+                                        st.error(unm_res["message"])
+                    else:
+                        st.caption("No trophies currently mounted. Pedestals are waiting for Sector Boss relics.")
+
+                    st.divider()
+                    st.markdown("###### 🛡️ Mount Relic from Inventory:")
+                    inv_trophy_candidates = []
+                    for it in player.get("inventory", []):
+                        iname = it.get("name", str(it)) if isinstance(it, dict) else str(it)
+                        for tk, td in mechanics.HOMESTEAD_TROPHIES.items():
+                            if tk in iname.lower() or td["name"].lower() in iname.lower() or ("overlord" in iname.lower() and "core" in iname.lower()):
+                                if iname not in inv_trophy_candidates:
+                                    inv_trophy_candidates.append(iname)
+
+                    if inv_trophy_candidates and len(mounted) < 5:
+                        sel_trophy = st.selectbox("Select Boss Relic", inv_trophy_candidates, key="sb_mount_trophy_choice")
+                        if st.button(f"🏆 Mount '{sel_trophy}' on Pedestal", key="btn_mount_trophy_action", use_container_width=True):
+                            m_res = mechanics.mount_boss_trophy(player, sel_trophy)
+                            if m_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.balloons()
+                                st.toast(m_res["message"], icon="🏆")
+                                st.rerun()
+                            else:
+                                st.error(m_res["message"])
+                    elif len(mounted) >= 5:
+                        st.warning("All 5 pedestals are currently occupied. Unmount an existing trophy to make room.")
+                    else:
+                        st.caption("No mountable boss relics found in personal inventory (Slay Sector Bosses to claim relics).")
+
+                # 3. Alchemical Greenhouse
+                elif home_mode == "🌿 Alchemical Greenhouse":
+                    st.markdown("##### 🌿 Hydroponic Alchemical Greenhouse")
+                    st.caption("Automated cultivation chambers growing rare aether-infused flora and harvestable reagent fungi once per game day.")
+                    g_tier = h_data.get("greenhouse_tier", 1)
+                    g_info = mechanics.GREENHOUSE_TIERS.get(g_tier, mechanics.GREENHOUSE_TIERS[1])
+                    st.markdown(f"🌱 **Cultivation Tier:** `Tier {g_tier} ({g_info['name']})`")
+                    yield_str = ", ".join([f"{q}x {n}" for n, q in g_info["yield"].items()])
+                    st.caption(f"**Daily Botanical Yield:** {yield_str}")
+
+                    chrono_info = mechanics.get_game_time(player) if hasattr(mechanics, "get_game_time") else {}
+                    cur_day = chrono_info.get("day", 1)
+                    last_h = h_data.get("last_harvest_day", 0)
+                    can_harvest = cur_day > last_h
+
+                    if can_harvest:
+                        st.success(f"🌿 **Crops are in full bloom for Day {cur_day}!**")
+                        if st.button("🌿 Harvest Daily Botanical Yield", key="btn_harvest_greenhouse_action", use_container_width=True):
+                            h_res = mechanics.harvest_alchemical_garden(player)
+                            if h_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.toast(h_res["message"], icon="🌿")
+                                st.success(h_res["log"])
+                                st.rerun()
+                            else:
+                                st.error(h_res["message"])
+                    else:
+                        st.info(f"⏳ **Flora Regenerating:** Harvested on Day {last_h}. Next bloom at sunrise on Day {last_h + 1}.")
+
+                    # Upgrade Greenhouse
+                    if g_tier < 3:
+                        st.divider()
+                        next_gt = g_tier + 1
+                        g_cost = mechanics.GREENHOUSE_TIERS[next_gt]["upgrade_cost"]
+                        st.markdown(f"⚙️ **Greenhouse Upgrade:** Tier {next_gt} ({mechanics.GREENHOUSE_TIERS[next_gt]['name']})")
+                        if st.button(f"Upgrade Greenhouse to Tier {next_gt} ({g_cost:,} Col)", key="btn_upgrade_greenhouse_action", use_container_width=True):
+                            u_g_res = mechanics.upgrade_homestead_facility(player, "greenhouse")
+                            if u_g_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.toast(u_g_res["message"], icon="🌿")
+                                st.rerun()
+                            else:
+                                st.error(u_g_res["message"])
+
+                # 4. Master-Forge
+                elif home_mode == "⚡ Master-Forge":
+                    st.markdown("##### ⚡ Deepforged Master-Anvil")
+                    st.caption("Ancient runic forge utilizing geothermal leyline taps to fuse Grade 5 armaments with Sector Boss Cores into Grade 6 Mythic weapons.")
+
+                    if not h_data.get("has_master_anvil"):
+                        st.warning("⚠️ **Master-Anvil Not Installed:** Requires runic anvil installation to unlock Grade 6/7 Mythic weapon forging.")
+                        st.info("🔨 **Construction Cost:** 3,000 Col")
+                        if st.button("🔨 Construct Deepforged Master-Anvil (3,000 Col)", key="btn_build_master_anvil", use_container_width=True):
+                            b_a_res = mechanics.upgrade_homestead_facility(player, "master_anvil")
+                            if b_a_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.balloons()
+                                st.toast("Master-Anvil constructed!", icon="⚡")
+                                st.success(b_a_res["log"])
+                                st.rerun()
+                            else:
+                                st.error(b_a_res["message"])
+                    else:
+                        st.success("⚡ **Deepforged Master-Anvil Active:** Geothermal magma flow nominal. Ready for mythic transmutation.")
+                        st.divider()
+
+                        # Recipes
+                        for r_key, r_data in mechanics.MYTHIC_RECIPES.items():
+                            st.markdown(f"#### ⚡ {r_data['name']} *(Grade 6 Mythic)*")
+                            st.caption(r_data.get("description", ""))
+                            tech = r_data["active_technique"]
+                            st.markdown(f"✨ **Granted Sword Skill:** `{tech['name']}` ({tech['type']}) — *{tech['desc']}*")
+                            st.caption(f"🛡️ **Base Durability:** `{r_data['durability']}/{r_data['durability']}` | **Forge Fee:** `{r_data['fee_col']:,} Col`")
+                            st.caption(f"🔩 **Required Base Gear:** `{r_data['base_item_query']}` | **Boss Catalyst:** `{r_data['boss_core_query']}`")
+                            mat_str = ", ".join([f"{q}x {m}" for m, q in r_data["materials"].items()])
+                            st.caption(f"💎 **Reagents:** {mat_str}")
+
+                            if st.button(f"⚡ Deepforge {r_data['name']}", key=f"btn_forge_{r_key}", use_container_width=True):
+                                f_res = mechanics.forge_mythic_equipment(player, r_key)
+                                if f_res["success"]:
+                                    save_game(player, st.session_state.messages)
+                                    st.balloons()
+                                    st.toast(f_res["message"], icon="⚡")
+                                    st.success(f_res["log"])
+                                    st.rerun()
+                                else:
+                                    st.error(f_res["message"])
+                            st.markdown("---")
+
+                # 5. Commodity Market
+                else:
+                    st.markdown("##### ⚖️ Regional Mercantile Exchange")
+                    st.caption("Trade raw aether-alloys, scrap, and alchemical catalysts at dynamic commodity market rates.")
+                    com_prices = mechanics.get_commodity_prices(player)
+                    reps = player.get("factions", {})
+                    iron_rep = reps.get("iron_syndicate", 0) if isinstance(reps, dict) else 0
+                    disc_str = "15% Trade Discount" if iron_rep >= 50 else ("10% Trade Discount" if iron_rep >= 25 else "Standard Rates")
+                    st.write(f"🤝 **Iron Syndicate Standing:** `{iron_rep} Rep ({disc_str})`")
+
+                    # Display Price Table
+                    p_table = []
+                    for ck, cv in com_prices.items():
+                        p_table.append({
+                            "Commodity": cv["name"],
+                            "Category": cv["category"],
+                            "Buy Price": f"{cv['buy_price']:,} Col",
+                            "Sell Price": f"{cv['sell_price']:,} Col"
+                        })
+                    st.table(p_table)
+
+                    # Trade Actions
+                    m_col1, m_col2 = st.columns(2)
+                    with m_col1:
+                        st.markdown("###### 🛒 Purchase Commodities")
+                        c_buy_choice = st.selectbox("Select Commodity to Buy", list(com_prices.keys()), format_func=lambda k: com_prices[k]["name"], key="sb_com_buy")
+                        b_qty = st.number_input("Purchase Quantity", min_value=1, max_value=20, value=1, step=1, key="num_com_buy_qty")
+                        total_b_cost = com_prices[c_buy_choice]["buy_price"] * b_qty
+                        st.caption(f"Total Cost: **{total_b_cost:,} Col**")
+                        if st.button("🛒 Buy Commodity", key="btn_trade_buy_action", use_container_width=True):
+                            tc_res = mechanics.trade_commodity(player, c_buy_choice, action="buy", qty=int(b_qty))
+                            if tc_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.toast(tc_res["message"], icon="⚖️")
+                                st.rerun()
+                            else:
+                                st.error(tc_res["message"])
+
+                    with m_col2:
+                        st.markdown("###### 💰 Sell Commodities")
+                        c_sell_choice = st.selectbox("Select Commodity to Sell", list(com_prices.keys()), format_func=lambda k: com_prices[k]["name"], key="sb_com_sell")
+                        s_qty = st.number_input("Sell Quantity", min_value=1, max_value=20, value=1, step=1, key="num_com_sell_qty")
+                        total_s_gain = com_prices[c_sell_choice]["sell_price"] * s_qty
+                        st.caption(f"Estimated Payout: **+{total_s_gain:,} Col**")
+                        if st.button("💰 Sell Commodity", key="btn_trade_sell_action", use_container_width=True):
+                            tc_res = mechanics.trade_commodity(player, c_sell_choice, action="sell", qty=int(s_qty))
+                            if tc_res["success"]:
+                                save_game(player, st.session_state.messages)
+                                st.toast(tc_res["message"], icon="💰")
+                                st.rerun()
+                            else:
+                                st.error(tc_res["message"])
+
+
+
+def render_tab_dev_console(player, world_state):
+    """Renders Cardinal root console, test benches, time skip debug, and save management."""
+    with st.expander("💻 Root Dev Console", expanded=False):
         st.caption("Bypass the AI and edit the database directly.")
         st.session_state.player['hp'] = st.number_input("Set HP", value=player['hp'], step=10)
         st.session_state.player['max_hp'] = st.number_input("Set Max HP", value=player['max_hp'], step=10)
@@ -2742,672 +2681,883 @@ with st.sidebar:
                 except Exception as e:
                     st.error(f"Failed to load save: {e}")
 
-# --- MAIN UI: THE CHAT WINDOW OR CALIBRATION WIZARD ---
+
+
+# =============================================================================
+# SIDEBAR: COMPACT CARDINAL HUD (Phase 3 UI Overhaul)
+# =============================================================================
+with st.sidebar:
+    st.title("🛡️ Cardinal HUD")
+    
+    # --- MULTI-CHARACTER PROFILE SLOT SELECTOR ---
+    profiles = get_available_profiles()
+    curr_name = st.session_state.player.get('name', 'Banki')
+    default_idx = profiles.index(curr_name) if curr_name in profiles else 0
+    
+    st.markdown('##### 👤 Character Slot')
+    sel_profile = st.selectbox(
+        'Active Profile',
+        options=profiles,
+        index=default_idx,
+        key='active_profile_select',
+        label_visibility='collapsed'
+    )
+    if sel_profile != curr_name and not st.session_state.get('character_creation_mode', False):
+        p_data = cg.load_character_from_folder(BASE_DIR, sel_profile)
+        if p_data:
+            st.session_state.player = p_data['player']
+            st.session_state.messages = p_data.get('messages', [])
+            st.session_state.active_profile = sel_profile
+            st.session_state.character_creation_mode = False
+            save_game(st.session_state.player, st.session_state.messages)
+            st.rerun()
+            
+    if not st.session_state.get('character_creation_mode', False):
+        if st.button('🧬 New Avatar Calibration', use_container_width=True):
+            st.session_state.character_creation_mode = True
+            st.rerun()
+    else:
+        st.warning('⚡ Calibration Mode Active')
+        if st.button('❌ Exit Calibration', use_container_width=True):
+            st.session_state.character_creation_mode = False
+            st.rerun()
+            
+    st.divider()
+    
+    with st.expander("⚡ AI Speed & Scene Art Settings", expanded=False):
+        st.selectbox(
+            "🎨 Scene Visual Generation",
+            options=["On Demand (Instant, ~2s)", "Major Events & Bosses", "Always Generate Scene (~8s)"],
+            index=0,
+            key="pref_scene_art_mode",
+            help="'On Demand' makes AI turns respond in under 2.5s and lets you click 'Visualize Scene' on any turn you want to see."
+        )
+    
+    if st.session_state.get('character_creation_mode', False):
+        render_sidebar_calibration_preview()
+    else:
+        player = st.session_state.player
+        st.subheader(f"👤 {player['name']}")
+    
+        # Calculate live mechanics
+        encumbrance = mechanics.calculate_encumbrance(player)
+        armor_class = mechanics.calculate_ac(player, encumbrance)
+    
+        hp_percent = max(0.0, min(1.0, player["hp"] / player["max_hp"]))
+        st.progress(hp_percent, text=f"HP: {player['hp']} / {player['max_hp']}")
+    
+        xp_max = player.get("level", 1) * 1000
+        xp_current = player.get("xp", 0)
+        xp_percent = max(0.0, min(1.0, xp_current / xp_max))
+        st.progress(xp_percent, text=f"XP: {xp_current} / {xp_max}")
+
+        # Asymmetric Tactical Combat Resource Bar
+        if hasattr(mechanics, "get_combat_resource_display"):
+            res_disp = mechanics.get_combat_resource_display(player)
+            st.progress(res_disp["percentage"], text=f"⚡ {res_disp['name']}: {res_disp['display']}")
+    
+        st.write(f"**Level:** {player['level']} | **AC:** {armor_class} 🛡️ | **Col:** {player['col']} 🪙")
+
+        # SAO Cursor Status
+        if hasattr(mechanics, "get_cursor_status"):
+            cursor_hud = mechanics.get_cursor_status(player)
+            st.caption(f"⚖️ **SAO Cursor:** {cursor_hud.get('badge', '🟢 Green')}")
+
+        # Chrono-Atmospheric Status Pill (Phase 8)
+        if hasattr(mechanics, "ensure_chrono_system"):
+            mechanics.ensure_chrono_system(player)
+            chrono_hud = mechanics.get_game_time(player)
+            w_hud = chrono_hud["weather_info"]
+            p_hud = chrono_hud["period_info"]
+            st.caption(f"⏱️ **{chrono_hud['time_str']}** ({p_hud['label']}) | 🌤️ **{w_hud['label']}**")
+
+        st.caption(f"📍 **Location:** {player.get('location', 'Sector 1')}")
+
+        free_pts = player.get("free_attribute_points", 0)
+        if free_pts > 0:
+            st.info(f"✨ **{free_pts} Free Attribute Points Available!** (Allocate in Character tab)")
+
+        st.divider()
+        if st.button("💾 Quick Save Game", use_container_width=True):
+            save_game(st.session_state.player, st.session_state.messages)
+            st.toast("Cardinal State Synchronized!", icon="💾")
+
+
+# =============================================================================
+# MAIN UI: THE TABBED WORKSPACE & ADVENTURE LOG (Phase 3 UI Overhaul)
+# =============================================================================
 if st.session_state.get("character_creation_mode", False):
     render_character_calibration_wizard()
     st.stop()
 
-st.title("🗡️ The Fractured Overlay")
-st.caption("A Death-Game TTRPG powered by the Cardinal System AI.")
+# Live mechanics calculation for views
+player = st.session_state.player
+encumbrance = mechanics.calculate_encumbrance(player)
+armor_class = mechanics.calculate_ac(player, encumbrance)
 
-# --- CLASS EVOLUTION MODAL / BANNER (Harmonized Dual-Gate) ---
-if hasattr(mechanics, "check_evolution_eligibility"):
-    evo_status = mechanics.check_evolution_eligibility(player)
-    if evo_status.get("eligible"):
-        with st.container():
-            st.success(f"👑 **CARDINAL SYSTEM ANNOUNCEMENT: CLASS EVOLUTION UNLOCKED!** (Tier {evo_status['target_tier']})")
-            st.markdown("You have satisfied the Harmonized Dual-Gate requirements: Level reached, Boss vanquished, and Skill Mastery proven.")
-            with st.expander(f"✨ Calibrate Tier {evo_status['target_tier']} Evolution Pathways", expanded=True):
-                st.write("The Cardinal System has evaluated your behavioral combat telemetry and forged 3 tailored evolutions:")
-                curated_paths = mechanics.generate_curated_evolutions(player)
-                cols = st.columns(3)
-                for idx, p_opt in enumerate(curated_paths):
-                    with cols[idx]:
-                        st.markdown(f"**{p_opt['category']}**")
-                        st.subheader(p_opt['title'])
-                        st.caption(p_opt['desc'])
-                        if st.button(f"Awaken as {p_opt['title']}", key=f"btn_awaken_evo_{idx}", use_container_width=True):
-                            res = mechanics.apply_class_evolution(player, p_opt)
-                            announcement = f"### 👑 CLASS EVOLUTION AWAKENED!\n\n**{player['name']}** has evolved into **{res['new_class']}** (Tier {res['new_tier']})!\n\n- Combat Resource pool increased to {res['evolved_resource']['max']} (+25%)\n- Unlocked Master Feat: *{res['unlocked_feat']}*"
-                            st.session_state.messages.append({"role": "system", "content": announcement, "image_path": None})
-                            save_game(player, st.session_state.messages)
-                            st.balloons()
-                            st.rerun()
+# Top-Level Tabbed Workspace
+tab_adv, tab_char, tab_party, tab_world, tab_home, tab_dev = st.tabs([
+    "⚔️ Adventure",
+    "🧬 Character & Skills",
+    "🛡️ Raiding Party & Factions",
+    "🗺️ World & Exploration",
+    "🏰 Homestead & Crafting",
+    "💻 System & Dev Console"
+])
 
-# --- LEVEL-UP CLASS FEAT SELECTION (Levels 3, 6, 10) ---
-if hasattr(mechanics, "CLASS_FEATS_TREE"):
-    p_lvl = player.get("level", 1)
-    c_key = mechanics.normalize_class_key(player.get("class", "warrior"))
-    c_tree = mechanics.CLASS_FEATS_TREE.get(c_key, mechanics.CLASS_FEATS_TREE["pathless"])
-    
-    for milestone_lvl in [3, 6, 10]:
-        if p_lvl >= milestone_lvl:
-            lvl_k = f"level_{milestone_lvl}"
-            tier_feats = c_tree.get(lvl_k, [])
-            feat_names = [f["name"].lower() for f in tier_feats if isinstance(f, dict)]
-            has_chosen = any(any(fn in str(pf).lower() for fn in feat_names) for pf in player.get("feats", []))
-            
-            if not has_chosen and tier_feats:
-                with st.container():
-                    st.info(f"✨ **LEVEL {milestone_lvl} CLASS DOCTRINE FEAT CHOICE AVAILABLE!**")
-                    with st.expander(f"Select 1 of 3 Specialized Feats (Level {milestone_lvl})", expanded=True):
-                        st.write("Sculpt your archetype path by selecting one specialized doctrine technique:")
-                        f_cols = st.columns(3)
-                        for f_idx, f_opt in enumerate(tier_feats):
-                            with f_cols[f_idx]:
-                                st.markdown(f"**Option {f_opt['id']}: {f_opt['name']}**")
-                                st.caption(f"*{f_opt['type']}* — {f_opt['desc']}")
-                                if st.button(f"Adopt {f_opt['name']}", key=f"btn_pick_feat_{milestone_lvl}_{f_idx}", use_container_width=True):
-                                    feat_str = f"{f_opt['name']} ({f_opt['type']}): {f_opt['desc']}"
-                                    if "feats" not in player: player["feats"] = []
-                                    player["feats"].append(feat_str)
-                                    msg = f"### ✨ CLASS FEAT UNLOCKED: {f_opt['name']}\n\n**{player['name']}** adopted the **{f_opt['name']}** doctrine (*{f_opt['type']}*).\n\n*{f_opt['desc']}*"
-                                    st.session_state.messages.append({"role": "system", "content": msg, "image_path": None})
-                                    save_game(player, st.session_state.messages)
-                                    st.success(f"Unlocked {f_opt['name']}!")
-                                    st.rerun()
+with tab_char:
+    render_tab_character(player, encumbrance, armor_class)
 
-# Render Chat History
-for msg in st.session_state.messages:
-    avatar = "👾" if msg["role"] == "system" else "👤"
-    with st.chat_message(msg["role"], avatar=avatar):
-        st.markdown(msg["content"])
-        if msg.get("image_data"):
-            st.image(msg["image_data"], use_container_width=True)
-        elif msg.get("image_path") and os.path.exists(msg["image_path"]):
-            st.image(msg["image_path"], use_container_width=True)
+with tab_party:
+    comps = mechanics.ensure_party_system(player) if hasattr(mechanics, "ensure_party_system") else {}
+    active_comps = mechanics.get_active_party(player) if hasattr(mechanics, "get_active_party") else []
+    cursor_data = mechanics.get_cursor_status(player) if hasattr(mechanics, "get_cursor_status") else {"status": "green", "label": "🟢 Lawful (Green)", "badge": "🟢 Green", "current_infamy": 0, "merchant_surcharge": 0.0, "safe_zone_clearance": True, "description": "Lawful citizen."}
+    render_tab_raiding_party(player, comps, active_comps, cursor_data)
 
-# User Input
-chat_prompt = st.chat_input("Action... (Type /admin to force an AI outcome)")
-dev_prompt = st.session_state.pop("pending_dev_command", None)
+with tab_world:
+    d_state = player.get("dungeon_state")
+    in_dungeon = d_state is not None and "pohatcong" in str(d_state.get("dungeon_id", "")).lower()
+    p_skills_dict = player.get("skills", {})
+    player_skill_tokens = list(p_skills_dict.keys()) if isinstance(p_skills_dict, dict) else list(p_skills_dict)
+    if isinstance(p_skills_dict, dict):
+        for s_entry in p_skills_dict.values():
+            if isinstance(s_entry, dict):
+                for m in s_entry.get("milestones_unlocked", []):
+                    if isinstance(m, dict) and "name" in m:
+                        player_skill_tokens.append(m["name"])
+                    elif isinstance(m, str):
+                        player_skill_tokens.append(m)
+    player_skill_tokens.extend(player.get("feats", []))
+    player_skill_tokens.extend(player.get("spells", []))
+    render_tab_world(player, world_state, in_dungeon, player_skill_tokens)
 
-if prompt := (dev_prompt or chat_prompt):
-    
-    # Intercept Admin Commands
-    is_admin = prompt.startswith("/admin ") or dev_prompt is not None
-    if is_admin:
-        command = prompt.replace("/admin ", "")
-        ui_text = f"💻 **ROOT OVERRIDE EXECUTED:** {command}"
-        ai_prompt = f"[ROOT OVERRIDE] {command}"
+with tab_home:
+    if hasattr(mechanics, "ensure_homestead_system"):
+        mechanics.ensure_homestead_system(player)
+        h_data = player.get("homestead", {})
+        h_owned = h_data.get("owned", False)
     else:
-        ui_text = prompt
-        ai_prompt = prompt
-        
-    st.session_state.messages.append({"role": "user", "content": ui_text, "ai_prompt": ai_prompt})
-    with st.chat_message("user", avatar="👤"):
-        st.markdown(ui_text)
-        
-    with st.chat_message("system", avatar="👾"):
-        
-        # 1. Multi-Agent Companion Logic
-        companion_intents_str = "None"
-        companions = st.session_state.player.get("companions", {})
-        if companions:
-            with st.spinner("Synchronizing companion sub-routines..."):
-                intents = []
-                for comp_name, comp_data in companions.items():
-                    intent = llm_engine.generate_companion_intent(
+        h_owned = False
+    render_tab_homestead(player, h_owned)
+
+with tab_dev:
+    render_tab_dev_console(player, world_state)
+
+with tab_adv:
+    st.title("🗡️ The Fractured Overlay")
+    st.caption("A Death-Game TTRPG powered by the Cardinal System AI.")
+
+    # --- CLASS EVOLUTION MODAL / BANNER (Harmonized Dual-Gate) ---
+    if hasattr(mechanics, "check_evolution_eligibility"):
+        evo_status = mechanics.check_evolution_eligibility(player)
+        if evo_status.get("eligible"):
+            with st.container():
+                st.success(f"👑 **CARDINAL SYSTEM ANNOUNCEMENT: CLASS EVOLUTION UNLOCKED!** (Tier {evo_status['target_tier']})")
+                st.markdown("You have satisfied the Harmonized Dual-Gate requirements: Level reached, Boss vanquished, and Skill Mastery proven.")
+                with st.expander(f"✨ Calibrate Tier {evo_status['target_tier']} Evolution Pathways", expanded=True):
+                    st.write("The Cardinal System has evaluated your behavioral combat telemetry and forged 3 tailored evolutions:")
+                    curated_paths = mechanics.generate_curated_evolutions(player)
+                    cols = st.columns(3)
+                    for idx, p_opt in enumerate(curated_paths):
+                        with cols[idx]:
+                            st.markdown(f"**{p_opt['category']}**")
+                            st.subheader(p_opt['title'])
+                            st.caption(p_opt['desc'])
+                            if st.button(f"Awaken as {p_opt['title']}", key=f"btn_awaken_evo_{idx}", use_container_width=True):
+                                res = mechanics.apply_class_evolution(player, p_opt)
+                                announcement = f"### 👑 CLASS EVOLUTION AWAKENED!\n\n**{player['name']}** has evolved into **{res['new_class']}** (Tier {res['new_tier']})!\n\n- Combat Resource pool increased to {res['evolved_resource']['max']} (+25%)\n- Unlocked Master Feat: *{res['unlocked_feat']}*"
+                                st.session_state.messages.append({"role": "system", "content": announcement, "image_path": None})
+                                save_game(player, st.session_state.messages)
+                                st.balloons()
+                                st.rerun()
+
+    # --- LEVEL-UP CLASS FEAT SELECTION (Levels 3, 6, 10) ---
+    if hasattr(mechanics, "CLASS_FEATS_TREE"):
+        p_lvl = player.get("level", 1)
+        c_key = mechanics.normalize_class_key(player.get("class", "warrior"))
+        c_tree = mechanics.CLASS_FEATS_TREE.get(c_key, mechanics.CLASS_FEATS_TREE["pathless"])
+
+        for milestone_lvl in [3, 6, 10]:
+            if p_lvl >= milestone_lvl:
+                lvl_k = f"level_{milestone_lvl}"
+                tier_feats = c_tree.get(lvl_k, [])
+                feat_names = [f["name"].lower() for f in tier_feats if isinstance(f, dict)]
+                has_chosen = any(any(fn in str(pf).lower() for fn in feat_names) for pf in player.get("feats", []))
+
+                if not has_chosen and tier_feats:
+                    with st.container():
+                        st.info(f"✨ **LEVEL {milestone_lvl} CLASS DOCTRINE FEAT CHOICE AVAILABLE!**")
+                        with st.expander(f"Select 1 of 3 Specialized Feats (Level {milestone_lvl})", expanded=True):
+                            st.write("Sculpt your archetype path by selecting one specialized doctrine technique:")
+                            f_cols = st.columns(3)
+                            for f_idx, f_opt in enumerate(tier_feats):
+                                with f_cols[f_idx]:
+                                    st.markdown(f"**Option {f_opt['id']}: {f_opt['name']}**")
+                                    st.caption(f"*{f_opt['type']}* — {f_opt['desc']}")
+                                    if st.button(f"Adopt {f_opt['name']}", key=f"btn_pick_feat_{milestone_lvl}_{f_idx}", use_container_width=True):
+                                        feat_str = f"{f_opt['name']} ({f_opt['type']}): {f_opt['desc']}"
+                                        if "feats" not in player: player["feats"] = []
+                                        player["feats"].append(feat_str)
+                                        msg = f"### ✨ CLASS FEAT UNLOCKED: {f_opt['name']}\n\n**{player['name']}** adopted the **{f_opt['name']}** doctrine (*{f_opt['type']}*).\n\n*{f_opt['desc']}*"
+                                        st.session_state.messages.append({"role": "system", "content": msg, "image_path": None})
+                                        save_game(player, st.session_state.messages)
+                                        st.success(f"Unlocked {f_opt['name']}!")
+                                        st.rerun()
+
+    # Render Chat History
+    for idx, msg in enumerate(st.session_state.messages):
+        avatar = "👾" if msg["role"] == "system" else "👤"
+        with st.chat_message(msg["role"], avatar=avatar):
+            st.markdown(msg["content"])
+            if msg.get("image_path") and os.path.exists(msg["image_path"]):
+                st.image(msg["image_path"], use_container_width=True)
+            elif msg.get("image_data"):
+                st.image(msg["image_data"], use_container_width=True)
+            elif msg.get("image_prompt") and not msg.get("is_admin") and msg.get("role") == "system":
+                col_vis, _ = st.columns([1, 4])
+                with col_vis:
+                    if st.button("🎨 Visualize Scene", key=f"btn_vis_scene_{idx}"):
+                        with st.spinner("Synthesizing scene visual via Cardinal System..."):
+                            img_bytes, err = llm_engine.generate_scene_image(api_key, msg["image_prompt"])
+                            if img_bytes:
+                                slug = cg.sanitize_character_slug(st.session_state.player.get("name", "Survivor"))
+                                img_dir = os.path.join(BASE_DIR, 'assets', 'generated_images', slug)
+                                os.makedirs(img_dir, exist_ok=True)
+                                img_filename = f"turn_{idx}_{int(time.time())}.png"
+                                full_img_path = os.path.join(img_dir, img_filename)
+                                with open(full_img_path, "wb") as f_img:
+                                    f_img.write(img_bytes)
+                                msg["image_path"] = os.path.relpath(full_img_path, BASE_DIR).replace("\\", "/")
+                                save_game(st.session_state.player, st.session_state.messages)
+                                st.rerun()
+
+    # User Input
+    chat_prompt = st.chat_input("Action...")
+    dev_prompt = st.session_state.pop("pending_dev_command", None)
+
+    if prompt := (dev_prompt or chat_prompt):
+
+        # Intercept Admin Commands (Supports /admin, /Admin, /sysadmin, /root, or Dev Console override)
+        raw_prompt = prompt.strip()
+        is_admin = bool(
+            dev_prompt is not None
+            or re.match(r"^/(admin|sysadmin|root)\b", raw_prompt, re.IGNORECASE)
+        )
+        if is_admin:
+            if dev_prompt is not None:
+                command = dev_prompt.strip()
+            else:
+                command = re.sub(r"^/(admin|sysadmin|root)\s*", "", raw_prompt, flags=re.IGNORECASE).strip()
+            ui_text = f"💻 **ROOT OVERRIDE EXECUTED:** {command}"
+            ai_prompt = (
+                f"[ROOT OVERRIDE // STEALTH SYSADMIN DIRECTIVE: Executed privately by Root Administrator. "
+                f"Strictly INVISIBLE and IMPERCEPTIBLE to the rest of the world, companions, NPCs, and bystanders. "
+                f"Only Banki and the [System] notice and perceive this command. "
+                f"Companions and NPCs remain completely oblivious. Do not narrate visible consoles, debug code in the sky, sirens, or NPC awareness.] "
+                f"{command}"
+            )
+        else:
+            ui_text = prompt
+            ai_prompt = prompt
+
+        st.session_state.messages.append({"role": "user", "content": ui_text, "ai_prompt": ai_prompt, "is_admin": is_admin})
+        with st.chat_message("user", avatar="👤"):
+            st.markdown(ui_text)
+
+        with st.chat_message("system", avatar="👾"):
+
+            # 1. Multi-Agent Companion Logic (Bypassed for SysAdmin commands - only Player and [System] notice)
+            companion_intents_str = "None"
+            companions = st.session_state.player.get("companions", {})
+            if is_admin:
+                companion_intents_str = "None (SysAdmin Stealth: All companions, NPCs, and the rest of the world are completely oblivious to this command)"
+            elif companions:
+                with st.spinner("Synchronizing companion sub-routines (parallel)..."):
+                    intents_dict = llm_engine.generate_all_companion_intents_parallel(
                         api_key=api_key,
-                        companion_data=comp_data,
+                        companions_dict=companions,
                         player_input=ai_prompt,
                         chat_history=st.session_state.messages
                     )
-                    intents.append(f"{comp_name}: {intent}")
-                    st.info(f"**[{comp_name}]** {intent}")
-                companion_intents_str = " | ".join(intents)
-                
-        with st.spinner("The Cardinal System is generating the world..."):
-            
-            import map_engine
-            current_ms = map_engine.load_map_state()
-            
-            # 2. Generate Narrative Text
-            turn_data = llm_engine.generate_turn(
-                api_key=api_key,
-                user_input=ai_prompt,
-                chat_history=st.session_state.messages,
-                player_state=copy.deepcopy(st.session_state.player),
-                world_state=world_state,
-                map_state=current_ms,
-                companion_intents=companion_intents_str
-            )
-            
-            narrative = turn_data.get("narrative", "Error parsing narrative.")
-            image_prompt = turn_data.get("image_prompt", "")
-            state_updates = turn_data.get("state_updates", {})
-            
-            # Apply State Updates
-            if state_updates and isinstance(state_updates, dict):
-                loc = state_updates.get("location")
-                if loc and isinstance(loc, str):
-                    st.session_state.player["location"] = loc
-                    
-                w_status = state_updates.get("world_status")
-                news_add = state_updates.get("global_news_add", [])
-                if not news_add:
-                    news_add = turn_data.get("global_news_add", [])
-                
-                if w_status or news_add:
-                    if w_status and isinstance(w_status, str):
-                        world_state["world_status"] = w_status
-                    if news_add and isinstance(news_add, list):
-                        if "global_news" not in world_state: world_state["global_news"] = []
-                        world_state["global_news"].extend(news_add)
-                        
-                    with open("world_state.json", "w") as f:
-                        json.dump(world_state, f)
-                    
-                col_change = state_updates.get("col_change")
-                if col_change:
-                    try:
-                        # Handle strings like "-426,200" or ints
-                        clean_col = str(col_change).replace(",", "").replace(" ", "")
-                        st.session_state.player["col"] += int(clean_col)
-                    except ValueError:
-                        pass
-                        
-                # Handle Procedural Nodes and Faction Overrides
-                discovered_nodes = state_updates.get("discovered_nodes", [])
-                node_updates = state_updates.get("node_updates", {})
-                
-                coord_x = state_updates.get("coord_x")
-                coord_y = state_updates.get("coord_y")
-                
-                if coord_x is not None or coord_y is not None or discovered_nodes or node_updates:
-                    ms = map_engine.load_map_state()
-                    if "dynamic_nodes" not in ms: ms["dynamic_nodes"] = []
-                    if "node_overrides" not in ms: ms["node_overrides"] = {}
-                    
-                    if coord_x is not None: ms["player_x"] = int(coord_x)
-                    if coord_y is not None: ms["player_y"] = int(coord_y)
-                    if [ms["player_x"], ms["player_y"]] not in ms["explored_tiles"]:
-                        ms["explored_tiles"].append([ms["player_x"], ms["player_y"]])
-                        
-                    if discovered_nodes:
-                        for n in discovered_nodes:
-                            if "name" in n and "x" in n and "y" in n:
-                                ms["dynamic_nodes"].append(n)
-                                
-                    if node_updates and isinstance(node_updates, dict):
-                        for n_key, color in node_updates.items():
-                            ms["node_overrides"][n_key] = color
-                                
-                    map_engine.save_map_state(ms)
+                    intents = []
+                    for comp_name, intent in intents_dict.items():
+                        intents.append(f"{comp_name}: {intent}")
+                        st.info(f"**[{comp_name}]** {intent}")
+                    companion_intents_str = " | ".join(intents)
 
-                hp_change = state_updates.get("hp_change")
-                if hp_change:
-                    try:
-                        clean_hp = str(hp_change).replace(",", "").replace(" ", "")
-                        st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + int(clean_hp)))
-                    except ValueError:
-                        pass
+            with st.spinner("The Cardinal System is generating the world..."):
 
-                # Combat Resource Updates
-                res_change = state_updates.get("combat_resource_change")
-                if res_change:
-                    try:
-                        clean_rc = int(str(res_change).replace(",", "").replace(" ", ""))
-                        if hasattr(mechanics, "update_combat_resource"):
-                            mechanics.update_combat_resource(st.session_state.player, clean_rc)
-                    except ValueError:
-                        pass
-                        
-                xp_change = state_updates.get("xp_change")
-                if xp_change:
-                    try:
-                        clean_xp = int(str(xp_change).replace(",", "").replace(" ", ""))
-                        if clean_xp > 0:
-                            st.session_state.player["xp"] += clean_xp
-                            st.toast(f"✨ Gained {clean_xp} XP!")
-                            
-                            # Companion 50% XP Sharing
-                            if hasattr(mechanics, "award_companion_xp"):
-                                comp_xp = max(1, clean_xp // 2)
-                                comp_res = mechanics.award_companion_xp(st.session_state.player, "Ren", comp_xp)
-                                if comp_res.get("leveled_up"):
-                                    st.balloons()
-                                    st.success(f"🤝 **COMPANION LEVEL UP!** Ren Sasaki reached Level {comp_res['new_level']}! (+{comp_res['hp_gain']} Max HP, Perks: {', '.join(comp_res.get('unlocked_perks', []))})")
+                import map_engine
+                current_ms = map_engine.load_map_state()
 
-                            # Level up loop (Archetype Scaling + Free Attribute Points)
-                            while st.session_state.player["xp"] >= st.session_state.player["level"] * 1000:
-                                st.session_state.player["xp"] -= st.session_state.player["level"] * 1000
-                                if hasattr(mechanics, "apply_level_up"):
-                                    lvl_info = mechanics.apply_level_up(st.session_state.player)
-                                    st.balloons()
-                                    st.success(f"🎉 **LEVEL UP!** You are now Level {lvl_info['new_level']}! (+{lvl_info['hp_gain']} Max HP, +2 Free Attribute Points)")
-                                else:
-                                    st.session_state.player["level"] += 1
-                                    st.session_state.player["max_hp"] += 25
-                                    st.session_state.player["hp"] = st.session_state.player["max_hp"]
-                                    st.balloons()
-                                    st.success(f"🎉 **LEVEL UP!** You are now Level {st.session_state.player['level']}!")
-                    except ValueError:
-                        pass
-                
-                inv_add = state_updates.get("inventory_add") or []
-                if isinstance(inv_add, list):
-                    for item in inv_add:
-                        if isinstance(item, dict) and "name" in item:
-                            st.session_state.player["inventory"].append(item)
-                        elif isinstance(item, str):
-                            st.session_state.player["inventory"].append({"name": item, "rarity": "Common", "durability": 100, "max_durability": 100, "qty": 1, "desc": ""})
-                            
-                inv_remove = state_updates.get("inventory_remove") or []
-                if isinstance(inv_remove, list):
-                    for item_to_remove in inv_remove:
-                        name_to_remove = item_to_remove.get("name", "").lower() if isinstance(item_to_remove, dict) else str(item_to_remove).lower()
-                        for existing_item in st.session_state.player["inventory"][:]:
-                            if isinstance(existing_item, dict) and name_to_remove in existing_item.get("name", "").lower():
-                                st.session_state.player["inventory"].remove(existing_item)
-                                break
-                            elif isinstance(existing_item, str) and name_to_remove in existing_item.lower():
-                                st.session_state.player["inventory"].remove(existing_item)
-                                break
-                                
-                # Extended Character Sheet Crunch Updates
-                if state_updates.get("race"): st.session_state.player["race"] = state_updates["race"]
-                if state_updates.get("class"): st.session_state.player["class"] = state_updates["class"]
-                
-                stat_changes = state_updates.get("stat_changes") or {}
-                if isinstance(stat_changes, dict):
-                    for stat, change in stat_changes.items():
-                        if stat in st.session_state.player["stats"]:
-                            st.session_state.player["stats"][stat] += int(change)
-                            
-                equip = state_updates.get("equip") or {}
-                if isinstance(equip, dict):
-                    for slot, item in equip.items():
-                        if slot in st.session_state.player["equipped"]:
-                            st.session_state.player["equipped"][slot] = item
-                            if hasattr(mechanics, "normalize_gear_durability"):
-                                mechanics.normalize_gear_durability(st.session_state.player)
+                # 2. Generate Narrative Text
+                turn_data = llm_engine.generate_turn(
+                    api_key=api_key,
+                    user_input=ai_prompt,
+                    chat_history=st.session_state.messages,
+                    player_state=copy.deepcopy(st.session_state.player),
+                    world_state=world_state,
+                    map_state=current_ms,
+                    companion_intents=companion_intents_str
+                )
 
-                # Durability Updates
-                dur_updates = state_updates.get("durability_updates") or {}
-                if isinstance(dur_updates, dict):
-                    for item_or_slot, val in dur_updates.items():
+                narrative = turn_data.get("narrative", "Error parsing narrative.")
+                image_prompt = turn_data.get("image_prompt", "")
+                state_updates = turn_data.get("state_updates", {})
+
+                # Apply State Updates
+                if state_updates and isinstance(state_updates, dict):
+                    loc = state_updates.get("location")
+                    if loc and isinstance(loc, str):
+                        st.session_state.player["location"] = loc
+
+                    w_status = state_updates.get("world_status")
+                    news_add = state_updates.get("global_news_add", [])
+                    if not news_add:
+                        news_add = turn_data.get("global_news_add", [])
+
+                    if w_status or news_add:
+                        if w_status and isinstance(w_status, str):
+                            world_state["world_status"] = w_status
+                        if news_add and isinstance(news_add, list):
+                            if "global_news" not in world_state: world_state["global_news"] = []
+                            world_state["global_news"].extend(news_add)
+
+                        with open("world_state.json", "w") as f:
+                            json.dump(world_state, f)
+
+                    col_change = state_updates.get("col_change")
+                    if col_change:
                         try:
-                            loss_amt = abs(int(str(val).replace(",", "").replace(" ", "")))
-                            if hasattr(mechanics, "apply_durability_damage"):
-                                dur_res = mechanics.apply_durability_damage(st.session_state.player, item_or_slot, loss_amt)
-                                if dur_res.get("is_broken"):
-                                    st.error(f"🚨 **GEAR CRITICAL:** {dur_res['item']} has fractured and is now BROKEN!")
-                                elif dur_res.get("is_dulled"):
-                                    st.warning(f"⚠️ **GEAR WEAR:** {dur_res['item']} is dulled/cracked (-2 penalty)!")
+                            # Handle strings like "-426,200" or ints
+                            clean_col = str(col_change).replace(",", "").replace(" ", "")
+                            st.session_state.player["col"] += int(clean_col)
+                        except ValueError:
+                            pass
+
+                    # Handle Procedural Nodes and Faction Overrides
+                    discovered_nodes = state_updates.get("discovered_nodes", [])
+                    node_updates = state_updates.get("node_updates", {})
+
+                    coord_x = state_updates.get("coord_x")
+                    coord_y = state_updates.get("coord_y")
+
+                    if coord_x is not None or coord_y is not None or discovered_nodes or node_updates:
+                        ms = map_engine.load_map_state()
+                        if "dynamic_nodes" not in ms: ms["dynamic_nodes"] = []
+                        if "node_overrides" not in ms: ms["node_overrides"] = {}
+
+                        if coord_x is not None: ms["player_x"] = int(coord_x)
+                        if coord_y is not None: ms["player_y"] = int(coord_y)
+                        if [ms["player_x"], ms["player_y"]] not in ms["explored_tiles"]:
+                            ms["explored_tiles"].append([ms["player_x"], ms["player_y"]])
+
+                        if discovered_nodes:
+                            for n in discovered_nodes:
+                                if "name" in n and "x" in n and "y" in n:
+                                    ms["dynamic_nodes"].append(n)
+
+                        if node_updates and isinstance(node_updates, dict):
+                            for n_key, color in node_updates.items():
+                                ms["node_overrides"][n_key] = color
+
+                        map_engine.save_map_state(ms)
+
+                    hp_change = state_updates.get("hp_change")
+                    if hp_change:
+                        try:
+                            clean_hp = str(hp_change).replace(",", "").replace(" ", "")
+                            st.session_state.player["hp"] = max(0, min(st.session_state.player["max_hp"], st.session_state.player["hp"] + int(clean_hp)))
+                        except ValueError:
+                            pass
+
+                    # Combat Resource Updates
+                    res_change = state_updates.get("combat_resource_change")
+                    if res_change:
+                        try:
+                            clean_rc = int(str(res_change).replace(",", "").replace(" ", ""))
+                            if hasattr(mechanics, "update_combat_resource"):
+                                mechanics.update_combat_resource(st.session_state.player, clean_rc)
+                        except ValueError:
+                            pass
+
+                    xp_change = state_updates.get("xp_change")
+                    if xp_change:
+                        try:
+                            clean_xp = int(str(xp_change).replace(",", "").replace(" ", ""))
+                            if clean_xp > 0:
+                                st.session_state.player["xp"] += clean_xp
+                                st.toast(f"✨ Gained {clean_xp} XP!")
+
+                                # Companion 50% XP Sharing
+                                if hasattr(mechanics, "award_companion_xp"):
+                                    comp_xp = max(1, clean_xp // 2)
+                                    comp_res = mechanics.award_companion_xp(st.session_state.player, "Ren", comp_xp)
+                                    if comp_res.get("leveled_up"):
+                                        st.balloons()
+                                        st.success(f"🤝 **COMPANION LEVEL UP!** Ren Sasaki reached Level {comp_res['new_level']}! (+{comp_res['hp_gain']} Max HP, Perks: {', '.join(comp_res.get('unlocked_perks', []))})")
+
+                                # Level up loop (Archetype Scaling + Free Attribute Points)
+                                while st.session_state.player["xp"] >= st.session_state.player["level"] * 1000:
+                                    st.session_state.player["xp"] -= st.session_state.player["level"] * 1000
+                                    if hasattr(mechanics, "apply_level_up"):
+                                        lvl_info = mechanics.apply_level_up(st.session_state.player)
+                                        st.balloons()
+                                        st.success(f"🎉 **LEVEL UP!** You are now Level {lvl_info['new_level']}! (+{lvl_info['hp_gain']} Max HP, +2 Free Attribute Points)")
+                                    else:
+                                        st.session_state.player["level"] += 1
+                                        st.session_state.player["max_hp"] += 25
+                                        st.session_state.player["hp"] = st.session_state.player["max_hp"]
+                                        st.balloons()
+                                        st.success(f"🎉 **LEVEL UP!** You are now Level {st.session_state.player['level']}!")
+                        except ValueError:
+                            pass
+
+                    inv_add = state_updates.get("inventory_add") or []
+                    if isinstance(inv_add, list):
+                        for item in inv_add:
+                            if isinstance(item, dict) and "name" in item:
+                                st.session_state.player["inventory"].append(item)
+                            elif isinstance(item, str):
+                                st.session_state.player["inventory"].append({"name": item, "rarity": "Common", "durability": 100, "max_durability": 100, "qty": 1, "desc": ""})
+
+                    inv_remove = state_updates.get("inventory_remove") or []
+                    if isinstance(inv_remove, list):
+                        for item_to_remove in inv_remove:
+                            name_to_remove = item_to_remove.get("name", "").lower() if isinstance(item_to_remove, dict) else str(item_to_remove).lower()
+                            for existing_item in st.session_state.player["inventory"][:]:
+                                if isinstance(existing_item, dict) and name_to_remove in existing_item.get("name", "").lower():
+                                    st.session_state.player["inventory"].remove(existing_item)
+                                    break
+                                elif isinstance(existing_item, str) and name_to_remove in existing_item.lower():
+                                    st.session_state.player["inventory"].remove(existing_item)
+                                    break
+
+                    # Extended Character Sheet Crunch Updates
+                    if state_updates.get("race"): st.session_state.player["race"] = state_updates["race"]
+                    if state_updates.get("class"): st.session_state.player["class"] = state_updates["class"]
+
+                    stat_changes = state_updates.get("stat_changes") or {}
+                    if isinstance(stat_changes, dict):
+                        for stat, change in stat_changes.items():
+                            if stat in st.session_state.player["stats"]:
+                                st.session_state.player["stats"][stat] += int(change)
+
+                    equip = state_updates.get("equip") or {}
+                    if isinstance(equip, dict):
+                        for slot, item in equip.items():
+                            if slot in st.session_state.player["equipped"]:
+                                st.session_state.player["equipped"][slot] = item
+                                if hasattr(mechanics, "normalize_gear_durability"):
+                                    mechanics.normalize_gear_durability(st.session_state.player)
+
+                    # Durability Updates
+                    dur_updates = state_updates.get("durability_updates") or {}
+                    if isinstance(dur_updates, dict):
+                        for item_or_slot, val in dur_updates.items():
+                            try:
+                                loss_amt = abs(int(str(val).replace(",", "").replace(" ", "")))
+                                if hasattr(mechanics, "apply_durability_damage"):
+                                    dur_res = mechanics.apply_durability_damage(st.session_state.player, item_or_slot, loss_amt)
+                                    if dur_res.get("is_broken"):
+                                        st.error(f"🚨 **GEAR CRITICAL:** {dur_res['item']} has fractured and is now BROKEN!")
+                                    elif dur_res.get("is_dulled"):
+                                        st.warning(f"⚠️ **GEAR WEAR:** {dur_res['item']} is dulled/cracked (-2 penalty)!")
+                            except (ValueError, TypeError):
+                                pass
+
+                    # Field Traps Triggered by Enemies
+                    triggered_traps = state_updates.get("triggered_traps") or []
+                    if isinstance(triggered_traps, list):
+                        for t_ref in triggered_traps:
+                            if hasattr(mechanics, "trigger_field_trap"):
+                                mechanics.trigger_field_trap(st.session_state.player, t_ref)
+
+                    # Golem-Grafts & Ability Slotting State Updates
+                    graft_installs = state_updates.get("graft_installs") or []
+                    if isinstance(graft_installs, list):
+                        for gi in graft_installs:
+                            if isinstance(gi, dict) and "graft_key" in gi and "slot" in gi:
+                                if hasattr(mechanics, "install_graft"):
+                                    mechanics.install_graft(st.session_state.player, gi["graft_key"], gi["slot"], surgeon_fee_col=0)
+
+                    ability_slots = state_updates.get("ability_slots") or []
+                    if isinstance(ability_slots, list):
+                        for ab in ability_slots:
+                            if hasattr(mechanics, "slot_ability"):
+                                mechanics.slot_ability(st.session_state.player, str(ab))
+
+                    # Companion Tactical & State Updates
+                    comp_updates = state_updates.get("companion_updates")
+                    if isinstance(comp_updates, dict):
+                        for c_name, c_data in comp_updates.items():
+                            if isinstance(c_data, dict):
+                                if hasattr(mechanics, "ensure_companion_profile"):
+                                    mechanics.ensure_companion_profile(st.session_state.player)
+                                if "stance" in c_data and hasattr(mechanics, "set_companion_stance"):
+                                    mechanics.set_companion_stance(st.session_state.player, c_name, c_data["stance"])
+                                if "morale" in c_data and hasattr(mechanics, "update_companion_morale"):
+                                    mechanics.update_companion_morale(st.session_state.player, c_name, c_data["morale"])
+                                if "xp_change" in c_data and hasattr(mechanics, "award_companion_xp"):
+                                    try:
+                                        cxp_direct = int(str(c_data["xp_change"]).replace(",", "").replace(" ", ""))
+                                        if cxp_direct > 0:
+                                            c_res = mechanics.award_companion_xp(st.session_state.player, c_name, cxp_direct)
+                                            if c_res.get("leveled_up"):
+                                                st.balloons()
+                                                st.success(f"🤝 **COMPANION LEVEL UP!** {c_name} reached Level {c_res['new_level']}! (+{c_res['hp_gain']} Max HP)")
+                                    except (ValueError, TypeError):
+                                        pass
+                                if "hp_change" in c_data and hasattr(mechanics, "get_companion"):
+                                    c_obj = mechanics.get_companion(st.session_state.player, c_name)
+                                    try:
+                                        chp_delta = int(str(c_data["hp_change"]).replace(",", "").replace(" ", ""))
+                                        c_obj["hp"] = max(0, min(c_obj.get("max_hp", 35), c_obj.get("hp", 35) + chp_delta))
+                                    except (ValueError, TypeError):
+                                        pass
+
+                    # Boss Damage processing
+                    boss_dmg = state_updates.get("boss_damage")
+                    if boss_dmg is not None:
+                        try:
+                            bd_int = int(str(boss_dmg).replace(",", "").replace(" ", ""))
+                            is_h = bool(state_updates.get("boss_is_heavy", False))
+                            if hasattr(mechanics, "apply_damage_to_boss") and bd_int > 0:
+                                b_res = mechanics.apply_damage_to_boss(st.session_state.player, bd_int, is_heavy=is_h)
+                                if b_res.get("stagger_triggered"):
+                                    st.warning("💥 **BOSS STAGGERED!** System recoil active! DR bypassed!")
+                                if b_res.get("phase_transition"):
+                                    st.error(f"🚨 **BOSS PHASE TRANSITION!** Overlord has entered Phase {b_res['phase']}!")
+                                if b_res.get("boss_hp", 1) <= 0 and hasattr(mechanics, "claim_boss_victory"):
+                                    st.balloons()
+                                    mechanics.claim_boss_victory(st.session_state.player)
                         except (ValueError, TypeError):
                             pass
 
-                # Field Traps Triggered by Enemies
-                triggered_traps = state_updates.get("triggered_traps") or []
-                if isinstance(triggered_traps, list):
-                    for t_ref in triggered_traps:
-                        if hasattr(mechanics, "trigger_field_trap"):
-                            mechanics.trigger_field_trap(st.session_state.player, t_ref)
+                    # Boss Telegraph Counter processing
+                    tele_counter = state_updates.get("boss_telegraph_counter")
+                    if tele_counter and hasattr(mechanics, "counter_boss_telegraph"):
+                        mechanics.counter_boss_telegraph(st.session_state.player, str(tele_counter))
 
-                # Golem-Grafts & Ability Slotting State Updates
-                graft_installs = state_updates.get("graft_installs") or []
-                if isinstance(graft_installs, list):
-                    for gi in graft_installs:
-                        if isinstance(gi, dict) and "graft_key" in gi and "slot" in gi:
-                            if hasattr(mechanics, "install_graft"):
-                                mechanics.install_graft(st.session_state.player, gi["graft_key"], gi["slot"], surgeon_fee_col=0)
-                                
-                ability_slots = state_updates.get("ability_slots") or []
-                if isinstance(ability_slots, list):
-                    for ab in ability_slots:
-                        if hasattr(mechanics, "slot_ability"):
-                            mechanics.slot_ability(st.session_state.player, str(ab))
+                    # Dungeon Movement
+                    d_move = state_updates.get("dungeon_move")
+                    if d_move and hasattr(mechanics, "move_dungeon_room"):
+                        mechanics.move_dungeon_room(st.session_state.player, str(d_move))
 
-                # Companion Tactical & State Updates
-                comp_updates = state_updates.get("companion_updates")
-                if isinstance(comp_updates, dict):
-                    for c_name, c_data in comp_updates.items():
-                        if isinstance(c_data, dict):
-                            if hasattr(mechanics, "ensure_companion_profile"):
-                                mechanics.ensure_companion_profile(st.session_state.player)
-                            if "stance" in c_data and hasattr(mechanics, "set_companion_stance"):
-                                mechanics.set_companion_stance(st.session_state.player, c_name, c_data["stance"])
-                            if "morale" in c_data and hasattr(mechanics, "update_companion_morale"):
-                                mechanics.update_companion_morale(st.session_state.player, c_name, c_data["morale"])
-                            if "xp_change" in c_data and hasattr(mechanics, "award_companion_xp"):
-                                try:
-                                    cxp_direct = int(str(c_data["xp_change"]).replace(",", "").replace(" ", ""))
-                                    if cxp_direct > 0:
-                                        c_res = mechanics.award_companion_xp(st.session_state.player, c_name, cxp_direct)
-                                        if c_res.get("leveled_up"):
-                                            st.balloons()
-                                            st.success(f"🤝 **COMPANION LEVEL UP!** {c_name} reached Level {c_res['new_level']}! (+{c_res['hp_gain']} Max HP)")
-                                except (ValueError, TypeError):
-                                    pass
-                            if "hp_change" in c_data and hasattr(mechanics, "get_companion"):
-                                c_obj = mechanics.get_companion(st.session_state.player, c_name)
-                                try:
-                                    chp_delta = int(str(c_data["hp_change"]).replace(",", "").replace(" ", ""))
-                                    c_obj["hp"] = max(0, min(c_obj.get("max_hp", 35), c_obj.get("hp", 35) + chp_delta))
-                                except (ValueError, TypeError):
-                                    pass
+                    # Dungeon Trap Disarming
+                    if state_updates.get("dungeon_trap_disarm") and hasattr(mechanics, "disarm_dungeon_trap"):
+                        mechanics.disarm_dungeon_trap(st.session_state.player)
 
-                # Boss Damage processing
-                boss_dmg = state_updates.get("boss_damage")
-                if boss_dmg is not None:
-                    try:
-                        bd_int = int(str(boss_dmg).replace(",", "").replace(" ", ""))
-                        is_h = bool(state_updates.get("boss_is_heavy", False))
-                        if hasattr(mechanics, "apply_damage_to_boss") and bd_int > 0:
-                            b_res = mechanics.apply_damage_to_boss(st.session_state.player, bd_int, is_heavy=is_h)
-                            if b_res.get("stagger_triggered"):
-                                st.warning("💥 **BOSS STAGGERED!** System recoil active! DR bypassed!")
-                            if b_res.get("phase_transition"):
-                                st.error(f"🚨 **BOSS PHASE TRANSITION!** Overlord has entered Phase {b_res['phase']}!")
-                            if b_res.get("boss_hp", 1) <= 0 and hasattr(mechanics, "claim_boss_victory"):
-                                st.balloons()
-                                mechanics.claim_boss_victory(st.session_state.player)
-                    except (ValueError, TypeError):
-                        pass
+                    # Dungeon Puzzle Solving
+                    d_puzzle = state_updates.get("dungeon_puzzle_solve")
+                    if d_puzzle is not None and hasattr(mechanics, "solve_dungeon_puzzle"):
+                        seq = d_puzzle if isinstance(d_puzzle, list) else None
+                        mechanics.solve_dungeon_puzzle(st.session_state.player, sequence=seq)
 
-                # Boss Telegraph Counter processing
-                tele_counter = state_updates.get("boss_telegraph_counter")
-                if tele_counter and hasattr(mechanics, "counter_boss_telegraph"):
-                    mechanics.counter_boss_telegraph(st.session_state.player, str(tele_counter))
+                    # Handle Skill Mastery updates with Milestone Auto-Unlocker
+                    skill_updates = state_updates.get("skill_updates") or []
+                    if isinstance(skill_updates, list):
+                        for su in skill_updates:
+                            if isinstance(su, dict) and "name" in su:
+                                name = su["name"]
+                                change = int(su.get("mastery_change", 1))
+                                desc = su.get("description", "")
+                                task_dc = su.get("task_dc", None)
 
-                # Dungeon Movement
-                d_move = state_updates.get("dungeon_move")
-                if d_move and hasattr(mechanics, "move_dungeon_room"):
-                    mechanics.move_dungeon_room(st.session_state.player, str(d_move))
-
-                # Dungeon Trap Disarming
-                if state_updates.get("dungeon_trap_disarm") and hasattr(mechanics, "disarm_dungeon_trap"):
-                    mechanics.disarm_dungeon_trap(st.session_state.player)
-
-                # Dungeon Puzzle Solving
-                d_puzzle = state_updates.get("dungeon_puzzle_solve")
-                if d_puzzle is not None and hasattr(mechanics, "solve_dungeon_puzzle"):
-                    seq = d_puzzle if isinstance(d_puzzle, list) else None
-                    mechanics.solve_dungeon_puzzle(st.session_state.player, sequence=seq)
-                            
-                # Handle Skill Mastery updates with Milestone Auto-Unlocker
-                skill_updates = state_updates.get("skill_updates") or []
-                if isinstance(skill_updates, list):
-                    for su in skill_updates:
-                        if isinstance(su, dict) and "name" in su:
-                            name = su["name"]
-                            change = int(su.get("mastery_change", 1))
-                            desc = su.get("description", "")
-                            task_dc = su.get("task_dc", None)
-
-                            # Use deterministic mechanics engine if available
-                            if hasattr(mechanics, "update_skill_mastery"):
-                                result = mechanics.update_skill_mastery(
-                                    st.session_state.player,
-                                    name,
-                                    gain_or_dc=change if task_dc is None else int(task_dc),
-                                    is_dc=(task_dc is not None),
-                                    desc=desc
-                                )
-                                # Trigger celebratory announcements for newly unlocked milestones
-                                new_unlocks = result.get("unlocked_milestones") or result.get("new_unlocks") or []
-                                for unlock in new_unlocks:
-                                    if isinstance(unlock, dict):
-                                        perk_title = unlock.get("name", "Unknown Perk")
-                                        perk_tier = unlock.get("tier", "Milestone")
+                                # Use deterministic mechanics engine if available
+                                if hasattr(mechanics, "update_skill_mastery"):
+                                    result = mechanics.update_skill_mastery(
+                                        st.session_state.player,
+                                        name,
+                                        gain_or_dc=change if task_dc is None else int(task_dc),
+                                        is_dc=(task_dc is not None),
+                                        desc=desc
+                                    )
+                                    # Trigger celebratory announcements for newly unlocked milestones
+                                    new_unlocks = result.get("unlocked_milestones") or result.get("new_unlocks") or []
+                                    for unlock in new_unlocks:
+                                        if isinstance(unlock, dict):
+                                            perk_title = unlock.get("name", "Unknown Perk")
+                                            perk_tier = unlock.get("tier", "Milestone")
+                                        else:
+                                            perk_title = str(unlock)
+                                            perk_tier = "Milestone"
+                                        st.toast(f"🎉 MILESTONE UNLOCKED: {perk_title} ({name} [{perk_tier}])!", icon="👑")
+                                        st.balloons()
+                                else:
+                                    # Fallback local update
+                                    skills_dict = st.session_state.player.setdefault("skills", {})
+                                    if name in skills_dict:
+                                        old_m = skills_dict[name].get("mastery", 1)
+                                        new_m = min(1000, old_m + change)
+                                        skills_dict[name]["mastery"] = new_m
+                                        if desc: skills_dict[name]["description"] = desc
                                     else:
-                                        perk_title = str(unlock)
-                                        perk_tier = "Milestone"
-                                    st.toast(f"🎉 MILESTONE UNLOCKED: {perk_title} ({name} [{perk_tier}])!", icon="👑")
-                                    st.balloons()
-                            else:
-                                # Fallback local update
-                                skills_dict = st.session_state.player.setdefault("skills", {})
-                                if name in skills_dict:
-                                    old_m = skills_dict[name].get("mastery", 1)
-                                    new_m = min(1000, old_m + change)
-                                    skills_dict[name]["mastery"] = new_m
-                                    if desc: skills_dict[name]["description"] = desc
-                                else:
-                                    skills_dict[name] = {
-                                        "mastery": max(1, change),
-                                        "tier": "Novice",
-                                        "description": desc or f"Proficiency with {name}.",
-                                        "milestones_unlocked": []
-                                    }
-                                
-                for k in ["spells_add", "feats_add", "racial_abilities_add"]:
-                    adds = state_updates.get(k) or []
-                    if isinstance(adds, list):
-                        target_list = k.replace("_add", "")
-                        for a in adds:
-                            if a not in st.session_state.player[target_list]:
-                                st.session_state.player[target_list].append(a)
-                                
-                for k in ["spells_remove", "feats_remove", "racial_abilities_remove"]:
-                    removes = state_updates.get(k) or []
-                    if isinstance(removes, list):
-                        target_list = k.replace("_remove", "")
-                        for item_to_remove in removes:
-                            for existing_item in st.session_state.player[target_list][:]:
-                                if str(item_to_remove).lower() in existing_item.lower():
-                                    st.session_state.player[target_list].remove(existing_item)
-                                    break
-                                    
-                # Handle Active Quests & Bounties
-                for q in state_updates.get("quests_add", []):
-                    # To prevent identical dicts from failing simple 'not in' checks, we check titles
-                    new_title = q.get('title', q.get('name', str(q))) if isinstance(q, dict) else str(q)
-                    exists = False
-                    for active_q in st.session_state.player["quests"]:
-                        active_title = active_q.get('title', active_q.get('name', str(active_q))) if isinstance(active_q, dict) else str(active_q)
-                        if new_title.lower() == active_title.lower():
-                            exists = True
-                            break
-                    if not exists:
-                        st.session_state.player["quests"].append(q)
-                        st.toast(f"📜 New Quest Accepted: {new_title}")
-                        
-                for q in state_updates.get("quests_complete", []):
-                    search_title = q.get('title', q.get('name', str(q))) if isinstance(q, dict) else str(q)
-                    for active_q in st.session_state.player["quests"][:]:
-                        active_title = active_q.get('title', active_q.get('name', str(active_q))) if isinstance(active_q, dict) else str(active_q)
-                        if search_title.lower() in active_title.lower():
-                            st.session_state.player["quests"].remove(active_q)
-                            st.toast(f"✅ Quest Completed: {active_title}")
-                            st.balloons()
-                            break
-                            
-                for q in state_updates.get("quests_remove", []):
-                    search_title = q.get('title', q.get('name', str(q))) if isinstance(q, dict) else str(q)
-                    for active_q in st.session_state.player["quests"][:]:
-                        active_title = active_q.get('title', active_q.get('name', str(active_q))) if isinstance(active_q, dict) else str(active_q)
-                        if search_title.lower() in active_title.lower():
-                            st.session_state.player["quests"].remove(active_q)
-                            break
-                            
-                # Process Durability Updates
-                dur_updates = state_updates.get("durability_updates")
-                if dur_updates and isinstance(dur_updates, dict):
-                    gear_dur = st.session_state.player.setdefault("gear_durability", {})
-                    for target, change in dur_updates.items():
-                        target_lower = str(target).lower()
-                        matched_slot = None
-                        for s, iname in st.session_state.player["equipped"].items():
-                            if target_lower in iname.lower() or target_lower == s.lower():
-                                matched_slot = s
+                                        skills_dict[name] = {
+                                            "mastery": max(1, change),
+                                            "tier": "Novice",
+                                            "description": desc or f"Proficiency with {name}.",
+                                            "milestones_unlocked": []
+                                        }
+
+                    for k in ["spells_add", "feats_add", "racial_abilities_add"]:
+                        adds = state_updates.get(k) or []
+                        if isinstance(adds, list):
+                            target_list = k.replace("_add", "")
+                            for a in adds:
+                                if a not in st.session_state.player[target_list]:
+                                    st.session_state.player[target_list].append(a)
+
+                    for k in ["spells_remove", "feats_remove", "racial_abilities_remove"]:
+                        removes = state_updates.get(k) or []
+                        if isinstance(removes, list):
+                            target_list = k.replace("_remove", "")
+                            for item_to_remove in removes:
+                                for existing_item in st.session_state.player[target_list][:]:
+                                    if str(item_to_remove).lower() in existing_item.lower():
+                                        st.session_state.player[target_list].remove(existing_item)
+                                        break
+
+                    # Handle Active Quests & Bounties
+                    for q in state_updates.get("quests_add", []):
+                        # To prevent identical dicts from failing simple 'not in' checks, we check titles
+                        new_title = q.get('title', q.get('name', str(q))) if isinstance(q, dict) else str(q)
+                        exists = False
+                        for active_q in st.session_state.player["quests"]:
+                            active_title = active_q.get('title', active_q.get('name', str(active_q))) if isinstance(active_q, dict) else str(active_q)
+                            if new_title.lower() == active_title.lower():
+                                exists = True
                                 break
-                        if matched_slot and matched_slot in gear_dur:
-                            if isinstance(change, int) and change < 0:
-                                gear_dur[matched_slot]["cur"] = max(0, gear_dur[matched_slot]["cur"] + change)
-                            elif isinstance(change, int):
-                                gear_dur[matched_slot]["cur"] = min(gear_dur[matched_slot]["max"], change)
-                        else:
-                            for item in st.session_state.player.get("inventory", []):
-                                if isinstance(item, dict) and target_lower in item.get("name", "").lower():
-                                    if isinstance(change, int) and change < 0:
-                                        item["durability"] = max(0, item.get("durability", 100) + change)
-                                    elif isinstance(change, int):
-                                        item["durability"] = min(item.get("max_durability", 100), change)
+                        if not exists:
+                            st.session_state.player["quests"].append(q)
+                            st.toast(f"📜 New Quest Accepted: {new_title}")
+
+                    for q in state_updates.get("quests_complete", []):
+                        search_title = q.get('title', q.get('name', str(q))) if isinstance(q, dict) else str(q)
+                        for active_q in st.session_state.player["quests"][:]:
+                            active_title = active_q.get('title', active_q.get('name', str(active_q))) if isinstance(active_q, dict) else str(active_q)
+                            if search_title.lower() in active_title.lower():
+                                st.session_state.player["quests"].remove(active_q)
+                                st.toast(f"✅ Quest Completed: {active_title}")
+                                st.balloons()
+                                break
+
+                    for q in state_updates.get("quests_remove", []):
+                        search_title = q.get('title', q.get('name', str(q))) if isinstance(q, dict) else str(q)
+                        for active_q in st.session_state.player["quests"][:]:
+                            active_title = active_q.get('title', active_q.get('name', str(active_q))) if isinstance(active_q, dict) else str(active_q)
+                            if search_title.lower() in active_title.lower():
+                                st.session_state.player["quests"].remove(active_q)
+                                break
+
+                    # Process Durability Updates
+                    dur_updates = state_updates.get("durability_updates")
+                    if dur_updates and isinstance(dur_updates, dict):
+                        gear_dur = st.session_state.player.setdefault("gear_durability", {})
+                        for target, change in dur_updates.items():
+                            target_lower = str(target).lower()
+                            matched_slot = None
+                            for s, iname in st.session_state.player["equipped"].items():
+                                if target_lower in iname.lower() or target_lower == s.lower():
+                                    matched_slot = s
                                     break
+                            if matched_slot and matched_slot in gear_dur:
+                                if isinstance(change, int) and change < 0:
+                                    gear_dur[matched_slot]["cur"] = max(0, gear_dur[matched_slot]["cur"] + change)
+                                elif isinstance(change, int):
+                                    gear_dur[matched_slot]["cur"] = min(gear_dur[matched_slot]["max"], change)
+                            else:
+                                for item in st.session_state.player.get("inventory", []):
+                                    if isinstance(item, dict) and target_lower in item.get("name", "").lower():
+                                        if isinstance(change, int) and change < 0:
+                                            item["durability"] = max(0, item.get("durability", 100) + change)
+                                        elif isinstance(change, int):
+                                            item["durability"] = min(item.get("max_durability", 100), change)
+                                        break
 
-                # Phase 7: Infamy & Cursor Criminality
-                inf_delta = state_updates.get("infamy_change")
-                if inf_delta is not None and hasattr(mechanics, "adjust_infamy"):
-                    try:
-                        i_int = int(str(inf_delta).replace(",", "").replace(" ", ""))
-                        if i_int != 0:
-                            inf_res = mechanics.adjust_infamy(st.session_state.player, i_int, reason="Encounter resolution")
-                            if inf_res.get("transition"):
-                                st.error(f"🚨 CURSOR STATE TRANSITION: Player has become {inf_res['status_info']['label']}!")
-                            elif i_int > 0:
-                                st.warning(f"⚠️ Cursor Infamy +{i_int} -> Now {inf_res['new_infamy']} [{inf_res['status_info']['badge']}]")
-                    except (ValueError, TypeError):
-                        pass
+                    # Phase 7: Infamy & Cursor Criminality
+                    inf_delta = state_updates.get("infamy_change")
+                    if inf_delta is not None and hasattr(mechanics, "adjust_infamy"):
+                        try:
+                            i_int = int(str(inf_delta).replace(",", "").replace(" ", ""))
+                            if i_int != 0:
+                                inf_res = mechanics.adjust_infamy(st.session_state.player, i_int, reason="Encounter resolution")
+                                if inf_res.get("transition"):
+                                    st.error(f"🚨 CURSOR STATE TRANSITION: Player has become {inf_res['status_info']['label']}!")
+                                elif i_int > 0:
+                                    st.warning(f"⚠️ Cursor Infamy +{i_int} -> Now {inf_res['new_infamy']} [{inf_res['status_info']['badge']}]")
+                        except (ValueError, TypeError):
+                            pass
 
-                # Phase 7: Faction Reputation Updates
-                fac_reps = state_updates.get("faction_rep_updates")
-                if fac_reps and isinstance(fac_reps, list) and hasattr(mechanics, "modify_faction_rep"):
-                    for fu in fac_reps:
-                        if isinstance(fu, dict) and "faction" in fu and "rep_change" in fu:
-                            try:
-                                f_id = fu["faction"]
-                                f_delta = int(fu["rep_change"])
-                                f_res = mechanics.modify_faction_rep(st.session_state.player, f_id, f_delta, reason=fu.get("reason", ""))
-                                if f_delta > 0:
-                                    st.toast(f"📈 {f_res['faction']} Reputation +{f_delta} ({f_res['standing']})", icon="🚩")
-                                elif f_delta < 0:
-                                    st.toast(f"📉 {f_res['faction']} Reputation {f_delta} ({f_res['standing']})", icon="⚔️")
-                            except (ValueError, TypeError):
-                                pass
+                    # Phase 7: Faction Reputation Updates
+                    fac_reps = state_updates.get("faction_rep_updates")
+                    if fac_reps and isinstance(fac_reps, list) and hasattr(mechanics, "modify_faction_rep"):
+                        for fu in fac_reps:
+                            if isinstance(fu, dict) and "faction" in fu and "rep_change" in fu:
+                                try:
+                                    f_id = fu["faction"]
+                                    f_delta = int(fu["rep_change"])
+                                    f_res = mechanics.modify_faction_rep(st.session_state.player, f_id, f_delta, reason=fu.get("reason", ""))
+                                    if f_delta > 0:
+                                        st.toast(f"📈 {f_res['faction']} Reputation +{f_delta} ({f_res['standing']})", icon="🚩")
+                                    elif f_delta < 0:
+                                        st.toast(f"📉 {f_res['faction']} Reputation {f_delta} ({f_res['standing']})", icon="⚔️")
+                                except (ValueError, TypeError):
+                                    pass
 
-                # Phase 7: Companion Affinity Updates
-                aff_updates = state_updates.get("affinity_updates")
-                if aff_updates and isinstance(aff_updates, list) and hasattr(mechanics, "increase_companion_affinity"):
-                    for au in aff_updates:
-                        if isinstance(au, dict) and "companion" in au and "affinity_change" in au:
-                            try:
-                                c_target = au["companion"]
-                                a_delta = int(au["affinity_change"])
-                                aff_res = mechanics.increase_companion_affinity(st.session_state.player, c_target, a_delta, reason=au.get("reason", ""))
-                                if aff_res.get("unlocked_combo"):
-                                    st.balloons()
-                                    st.success(f"✨ **DUAL-TECH COMBO UNLOCKED!** Reached Affinity 50 with {c_target}! Unlocked '{aff_res['unlocked_combo']['name']}'!")
-                                else:
-                                    st.toast(f"🤝 {c_target} Affinity +{a_delta} -> {aff_res['new_affinity']}/100 [{aff_res['tier']}]", icon="❤️")
-                            except (ValueError, TypeError):
-                                pass
+                    # Phase 7: Companion Affinity Updates
+                    aff_updates = state_updates.get("affinity_updates")
+                    if aff_updates and isinstance(aff_updates, list) and hasattr(mechanics, "increase_companion_affinity"):
+                        for au in aff_updates:
+                            if isinstance(au, dict) and "companion" in au and "affinity_change" in au:
+                                try:
+                                    c_target = au["companion"]
+                                    a_delta = int(au["affinity_change"])
+                                    aff_res = mechanics.increase_companion_affinity(st.session_state.player, c_target, a_delta, reason=au.get("reason", ""))
+                                    if aff_res.get("unlocked_combo"):
+                                        st.balloons()
+                                        st.success(f"✨ **DUAL-TECH COMBO UNLOCKED!** Reached Affinity 50 with {c_target}! Unlocked '{aff_res['unlocked_combo']['name']}'!")
+                                    else:
+                                        st.toast(f"🤝 {c_target} Affinity +{a_delta} -> {aff_res['new_affinity']}/100 [{aff_res['tier']}]", icon="❤️")
+                                except (ValueError, TypeError):
+                                    pass
 
-                # Phase 7: Companion Recruitment
-                rec_target = state_updates.get("recruit_companion")
-                if rec_target and hasattr(mechanics, "recruit_companion"):
-                    rec_res = mechanics.recruit_companion(st.session_state.player, str(rec_target))
-                    if rec_res.get("success"):
+                    # Phase 7: Companion Recruitment
+                    rec_target = state_updates.get("recruit_companion")
+                    if rec_target and hasattr(mechanics, "recruit_companion"):
+                        rec_res = mechanics.recruit_companion(st.session_state.player, str(rec_target))
+                        if rec_res.get("success"):
+                            st.balloons()
+                            st.success(f"🤝 **NEW COMPANION RECRUITED:** {rec_res['companion']} ({rec_res['class']}) has joined your vanguard!")
+
+                    # Phase 7: Dual-Tech Execution
+                    dt_target = state_updates.get("dual_tech_execute")
+                    if dt_target and hasattr(mechanics, "execute_dual_tech"):
+                        dt_res = mechanics.execute_dual_tech(st.session_state.player, str(dt_target))
+                        if dt_res.get("success"):
+                            st.toast(f"⚡ DUAL-TECH: {dt_res['combo']} executed!", icon="⚡")
+
+                    # Phase 8: Campfire Cooking
+                    c_cook = state_updates.get("cook_recipe")
+                    if c_cook and hasattr(mechanics, "cook_campfire_meal"):
+                        c_res = mechanics.cook_campfire_meal(st.session_state.player, str(c_cook))
+                        if c_res.get("success"):
+                            st.toast(f"🍲 Cooked {c_res['recipe']}! ({c_res['buff']['name']})", icon="🍲")
+
+                    # Phase 8: Wilderness Camping
+                    p_camp = state_updates.get("pitch_camp")
+                    if p_camp is not None and hasattr(mechanics, "pitch_wilderness_camp"):
+                        w_guard = "Ren"
+                        if isinstance(p_camp, dict):
+                            w_guard = p_camp.get("watch", "Ren")
+                        elif isinstance(p_camp, str) and p_camp.strip():
+                            w_guard = p_camp.strip()
+                        camp_res = mechanics.pitch_wilderness_camp(st.session_state.player, watch_companion=w_guard)
+                        if camp_res.get("success"):
+                            st.toast(f"⛺ Camp pitched! Rested 8 hours ({camp_res['watch_companion']} watch).", icon="⛺")
+
+                    # Phase 8: Weather Shifts
+                    w_shift = state_updates.get("set_weather")
+                    if w_shift and hasattr(mechanics, "set_weather"):
+                        w_res = mechanics.set_weather(st.session_state.player, str(w_shift))
+                        if w_res.get("success"):
+                            st.toast(f"🌤️ Weather shifted: {w_res['weather_info']['label']}", icon="🌤️")
+
+                    # Phase 8: Chrono Game Time Advance
+                    # If pitch_camp was executed, it already advanced 480 mins. Otherwise advance by specified minutes or default 15 mins.
+                    if not p_camp and hasattr(mechanics, "advance_game_time"):
+                        t_adv = state_updates.get("time_advance_minutes", 15)
+                        try:
+                            t_adv_int = int(str(t_adv).replace(",", "").replace(" ", ""))
+                        except (ValueError, TypeError):
+                            t_adv_int = 15
+                        if t_adv_int > 0:
+                            mechanics.advance_game_time(st.session_state.player, minutes=t_adv_int)
+
+                    # Phase 9: Homestead, Vault & Economy Toasts
+                    h_act = state_updates.get("homestead_action")
+                    if h_act:
+                        st.toast("🏰 Homestead Estate / Facility updated!", icon="🏰")
+                    v_dep = state_updates.get("vault_deposit")
+                    if v_dep:
+                        st.toast("📦 Items/Col secured in Subsurface Vault.", icon="📦")
+                    v_wdr = state_updates.get("vault_withdraw")
+                    if v_wdr:
+                        st.toast("📦 Retrieved items/Col from Subsurface Vault.", icon="📦")
+                    m_trophy = state_updates.get("mount_trophy")
+                    if m_trophy:
+                        st.toast("🏆 Boss Trophy mounted in Great Hall!", icon="🏆")
+                    h_green = state_updates.get("harvest_greenhouse")
+                    if h_green:
+                        st.toast("🌿 Harvested Alchemical Greenhouse botanical yield!", icon="🌿")
+                    t_com = state_updates.get("trade_commodity")
+                    if t_com:
+                        st.toast("⚖️ Commodity traded on Regional Exchange!", icon="⚖️")
+                    f_myth = state_updates.get("forge_mythic")
+                    if f_myth:
                         st.balloons()
-                        st.success(f"🤝 **NEW COMPANION RECRUITED:** {rec_res['companion']} ({rec_res['class']}) has joined your vanguard!")
+                        st.toast("⚡ Deepforged Master-Anvil: Mythic Armament forged!", icon="⚡")
 
-                # Phase 7: Dual-Tech Execution
-                dt_target = state_updates.get("dual_tech_execute")
-                if dt_target and hasattr(mechanics, "execute_dual_tech"):
-                    dt_res = mechanics.execute_dual_tech(st.session_state.player, str(dt_target))
-                    if dt_res.get("success"):
-                        st.toast(f"⚡ DUAL-TECH: {dt_res['combo']} executed!", icon="⚡")
+                # 1.5 Handle Combat Crunch Logs
+                combat_logs = turn_data.get("combat_logs", [])
+                log_markdown = ""
+                if combat_logs and isinstance(combat_logs, list):
+                    for log in combat_logs:
+                        if "CRITICAL" in log.upper() or "FAIL" in log.upper() or "MISS" in log.upper():
+                            st.error(f"💥 **{log}**")
+                        elif "DAMAGE" in log.upper() or "DMG" in log.upper():
+                            st.warning(f"🩸 {log}")
+                        elif "ROLL" in log.upper():
+                            st.info(f"🎲 {log}")
+                        else:
+                            st.info(f"⚔️ {log}")
+                        log_markdown += f"> 🎲 `{log}`\n>\n"
 
-                # Phase 8: Campfire Cooking
-                c_cook = state_updates.get("cook_recipe")
-                if c_cook and hasattr(mechanics, "cook_campfire_meal"):
-                    c_res = mechanics.cook_campfire_meal(st.session_state.player, str(c_cook))
-                    if c_res.get("success"):
-                        st.toast(f"🍲 Cooked {c_res['recipe']}! ({c_res['buff']['name']})", icon="🍲")
+                    # Prepend the logs to the narrative so it persists in the chat history
+                    if log_markdown:
+                        narrative = log_markdown + "\n\n" + narrative
 
-                # Phase 8: Wilderness Camping
-                p_camp = state_updates.get("pitch_camp")
-                if p_camp is not None and hasattr(mechanics, "pitch_wilderness_camp"):
-                    w_guard = "Ren"
-                    if isinstance(p_camp, dict):
-                        w_guard = p_camp.get("watch", "Ren")
-                    elif isinstance(p_camp, str) and p_camp.strip():
-                        w_guard = p_camp.strip()
-                    camp_res = mechanics.pitch_wilderness_camp(st.session_state.player, watch_companion=w_guard)
-                    if camp_res.get("success"):
-                        st.toast(f"⛺ Camp pitched! Rested 8 hours ({camp_res['watch_companion']} watch).", icon="⛺")
+                st.markdown(narrative)
 
-                # Phase 8: Weather Shifts
-                w_shift = state_updates.get("set_weather")
-                if w_shift and hasattr(mechanics, "set_weather"):
-                    w_res = mechanics.set_weather(st.session_state.player, str(w_shift))
-                    if w_res.get("success"):
-                        st.toast(f"🌤️ Weather shifted: {w_res['weather_info']['label']}", icon="🌤️")
+                # 2. Generate Scene Image (Decoupled & Saved to Disk PNG)
+                disk_img_path = None
+                scene_art_mode = st.session_state.get("pref_scene_art_mode", "On Demand (Instant, ~2s)")
+                should_generate_image = False
+                if image_prompt:
+                    if "Always Generate Scene" in scene_art_mode:
+                        should_generate_image = True
+                    elif "Major Events" in scene_art_mode:
+                        in_boss = "boss" in str(st.session_state.player.get("location", "")).lower() or "OVERLORD" in narrative.upper()
+                        has_combat = bool(turn_data.get("combat_logs"))
+                        has_milestone = "MILESTONE" in narrative.upper() or "UNLOCKED" in narrative.upper() or "DEFEATED" in narrative.upper()
+                        should_generate_image = in_boss or has_combat or has_milestone
 
-                # Phase 8: Chrono Game Time Advance
-                # If pitch_camp was executed, it already advanced 480 mins. Otherwise advance by specified minutes or default 15 mins.
-                if not p_camp and hasattr(mechanics, "advance_game_time"):
-                    t_adv = state_updates.get("time_advance_minutes", 15)
-                    try:
-                        t_adv_int = int(str(t_adv).replace(",", "").replace(" ", ""))
-                    except (ValueError, TypeError):
-                        t_adv_int = 15
-                    if t_adv_int > 0:
-                        mechanics.advance_game_time(st.session_state.player, minutes=t_adv_int)
+                if should_generate_image and image_prompt:
+                    with st.spinner("Rendering scene visual via Cardinal System..."):
+                        image_bytes, img_error = llm_engine.generate_scene_image(api_key, image_prompt)
+                        if image_bytes:
+                            slug = cg.sanitize_character_slug(st.session_state.player.get("name", "Survivor"))
+                            img_dir = os.path.join(BASE_DIR, 'assets', 'generated_images', slug)
+                            os.makedirs(img_dir, exist_ok=True)
+                            turn_idx = len(st.session_state.messages)
+                            img_filename = f"turn_{turn_idx}_{int(time.time())}.png"
+                            full_img_path = os.path.join(img_dir, img_filename)
+                            with open(full_img_path, "wb") as f_img:
+                                f_img.write(image_bytes)
+                            disk_img_path = os.path.relpath(full_img_path, BASE_DIR).replace("\\", "/")
+                            st.image(disk_img_path, use_container_width=True)
+                        elif img_error:
+                            narrative += f"\n\n*(System Note: Image Generation Skipped - {img_error})*"
 
-                # Phase 9: Homestead, Vault & Economy Toasts
-                h_act = state_updates.get("homestead_action")
-                if h_act:
-                    st.toast("🏰 Homestead Estate / Facility updated!", icon="🏰")
-                v_dep = state_updates.get("vault_deposit")
-                if v_dep:
-                    st.toast("📦 Items/Col secured in Subsurface Vault.", icon="📦")
-                v_wdr = state_updates.get("vault_withdraw")
-                if v_wdr:
-                    st.toast("📦 Retrieved items/Col from Subsurface Vault.", icon="📦")
-                m_trophy = state_updates.get("mount_trophy")
-                if m_trophy:
-                    st.toast("🏆 Boss Trophy mounted in Great Hall!", icon="🏆")
-                h_green = state_updates.get("harvest_greenhouse")
-                if h_green:
-                    st.toast("🌿 Harvested Alchemical Greenhouse botanical yield!", icon="🌿")
-                t_com = state_updates.get("trade_commodity")
-                if t_com:
-                    st.toast("⚖️ Commodity traded on Regional Exchange!", icon="⚖️")
-                f_myth = state_updates.get("forge_mythic")
-                if f_myth:
-                    st.balloons()
-                    st.toast("⚡ Deepforged Master-Anvil: Mythic Armament forged!", icon="⚡")
+        # Save to history & trigger Autosave
+        new_msg = {
+            "role": "system", 
+            "content": narrative,
+            "image_path": disk_img_path,
+            "image_prompt": image_prompt,
+            "is_admin": is_admin
+        }
+        st.session_state.messages.append(new_msg)
+        save_game(st.session_state.player, st.session_state.messages)
 
-            # 1.5 Handle Combat Crunch Logs
-            combat_logs = turn_data.get("combat_logs", [])
-            log_markdown = ""
-            if combat_logs and isinstance(combat_logs, list):
-                for log in combat_logs:
-                    if "CRITICAL" in log.upper() or "FAIL" in log.upper() or "MISS" in log.upper():
-                        st.error(f"💥 **{log}**")
-                    elif "DAMAGE" in log.upper() or "DMG" in log.upper():
-                        st.warning(f"🩸 {log}")
-                    elif "ROLL" in log.upper():
-                        st.info(f"🎲 {log}")
-                    else:
-                        st.info(f"⚔️ {log}")
-                    log_markdown += f"> 🎲 `{log}`\n>\n"
-                
-                # Prepend the logs to the narrative so it persists in the chat history
-                if log_markdown:
-                    narrative = log_markdown + "\n\n" + narrative
-            
-            st.markdown(narrative)
-            
-            # 2. Generate Scene Image & Encode to Base64
-            image_data = None
-            if image_prompt:
-                image_bytes, img_error = llm_engine.generate_scene_image(api_key, image_prompt)
-                if image_bytes:
-                    b64_img = base64.b64encode(image_bytes).decode("utf-8")
-                    image_data = f"data:image/png;base64,{b64_img}"
-                    st.image(image_data, use_container_width=True)
-                elif img_error:
-                    narrative += f"\n\n*(System Note: Image Generation Failed - {img_error})*"
-            
-    # Save to history & trigger Autosave
-    new_msg = {
-        "role": "system", 
-        "content": narrative,
-        "image_data": image_data
-    }
-    st.session_state.messages.append(new_msg)
-    save_game(st.session_state.player, st.session_state.messages)
-    
-    st.rerun()
+        st.rerun()
