@@ -1501,6 +1501,197 @@ def render_tab_raiding_party(player, comps, active_comps, cursor_data):
 
 
 
+def render_boss_encounter_card(player, key_prefix="hud", is_sticky_banner=False):
+    """
+    Renders the Sector Boss Encounter Card / Sticky HUD Banner.
+    Displays live Boss HP, Stance Break Gauge, Stagger state, active Telegraph warnings with
+    direct counter-tactics, and fast strike action triggers.
+    """
+    if not hasattr(mechanics, "SECTOR_BOSSES"):
+        return
+
+    boss_enc = player.get("boss_encounter")
+    has_boss = boss_enc is not None
+    cur_r_type = mechanics.get_current_dungeon_room(player).get("type") if hasattr(mechanics, "get_current_dungeon_room") else ""
+    in_arena = cur_r_type == "boss_arena"
+
+    if not (has_boss or in_arena):
+        return
+
+    # Auto-initialize boss encounter if player entered arena without one
+    if not has_boss and in_arena:
+        boss_enc = mechanics.initialize_boss_encounter(player)
+
+    if not boss_enc or not isinstance(boss_enc, dict):
+        return
+
+    b_hp = boss_enc.get("current_hp", 0)
+    d_state = player.get("dungeon_state", {})
+    is_dungeon_completed = d_state.get("dungeon_completed", False) or player.get("sector_boss_defeated", False)
+
+    # If defeated, victory claimed, and outside arena: do not display sticky banner in tab_adv
+    if is_sticky_banner and is_dungeon_completed and not in_arena:
+        return
+
+    boss_name = boss_enc.get("name", "The Gilded Spire Overlord")
+    b_max_hp = boss_enc.get("max_hp", 300)
+    b_phase = boss_enc.get("phase", 1)
+    p_info = boss_enc.get("phases", {}).get(b_phase, {})
+    p_name = p_info.get("name", f"Phase {b_phase}")
+    p_ac = p_info.get("ac", 18)
+    p_dr = p_info.get("dr", 3)
+
+    equipped = player.get("equipped", {})
+    main_wpn = equipped.get("main_hand") or "Axe Strike"
+    off_wpn = equipped.get("off_hand") or "Hammer Smash"
+
+    container = st.container()
+    with container:
+        if is_sticky_banner:
+            st.markdown(
+                f"""
+                <div style="
+                    background: linear-gradient(135deg, rgba(220, 38, 38, 0.22) 0%, rgba(24, 18, 28, 0.95) 100%);
+                    border: 2px solid #ef4444;
+                    border-radius: 10px;
+                    padding: 12px 18px;
+                    margin-bottom: 14px;
+                    box-shadow: 0 0 18px rgba(239, 68, 68, 0.35);
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                        <span style="font-size: 1.18rem; font-weight: 800; color: #f87171; letter-spacing: 0.5px;">
+                            👑 RAID BOSS ENGAGED: {boss_name.upper()}
+                        </span>
+                        <span style="background: rgba(239, 68, 68, 0.25); border: 1px solid #ef4444; padding: 2px 10px; border-radius: 5px; font-size: 0.85rem; font-weight: 700; color: #fbbf24;">
+                            PHASE {b_phase} // {p_name.upper()}
+                        </span>
+                    </div>
+                    <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 5px;">
+                        <b>{boss_enc.get('title', 'Sector 1 Apex Construct')}</b> &bull; AC: <code>{p_ac}</code> &bull; DR: <code>{p_dr}</code> &bull; <i>{p_info.get('description', '')}</i>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(f"### 👑 {boss_name}")
+            st.caption(f"**{boss_enc.get('title', 'Sector 1 Apex Construct')}**")
+            st.markdown(f"🏷️ **Active Phase:** `{p_name}` *(AC: {p_ac}, DR: {p_dr})*")
+            st.caption(f"*{p_info.get('description', '')}*")
+
+        # Side-by-side HP Bar and Break Gauge
+        col_hp, col_brk = st.columns(2)
+        with col_hp:
+            hp_pct = max(0.0, min(1.0, b_hp / b_max_hp)) if b_max_hp > 0 else 0.0
+            st.write(f"❤️ **Boss Health:** `{b_hp} / {b_max_hp} HP` ({int(hp_pct*100)}%)")
+            st.progress(hp_pct)
+        with col_brk:
+            b_break = boss_enc.get("current_break", 100)
+            b_max_break = boss_enc.get("max_break", 100)
+            break_pct = max(0.0, min(1.0, b_break / b_max_break)) if b_max_break > 0 else 0.0
+            st.write(f"🛡️ **Stance Break Gauge:** `{b_break} / {b_max_break}`")
+            st.progress(break_pct)
+
+        # Stagger State Warning
+        if boss_enc.get("is_staggered"):
+            st.error("💥 **BOSS STAGGERED!** System recoil active! DR bypassed & takes +50% Critical Damage for 1 round!")
+
+        # Active Telegraph Warning & Counter-Tactics
+        telegraph = boss_enc.get("active_telegraph")
+        if telegraph and b_hp > 0:
+            st.warning(f"⚠️ **TELEGRAPH INCOMING:** {telegraph.get('warning', telegraph.get('name'))}\n\n*Save DC {telegraph.get('dc', 15)} {telegraph.get('stat', 'DEX')} or take {telegraph.get('damage', 'Force Dmg')}!*")
+            st.markdown("##### 🛡️ Quick Counter-Tactics:")
+            c_col1, c_col2 = st.columns(2)
+            with c_col1:
+                if st.button("🏃 Evasive Dive (DEX)", key=f"{key_prefix}_tele_dodge", use_container_width=True):
+                    tc = mechanics.counter_boss_telegraph(player, "dodge")
+                    st.session_state.messages.append({"role": "system", "content": f"🛡️ **COUNTER-TACTIC:** {tc['log']}", "image_path": None})
+                    save_game(player, st.session_state.messages)
+                    if tc["success"]: st.toast(tc["message"], icon="💨"); st.success(tc["log"])
+                    else: st.toast(tc["message"], icon="💥"); st.error(tc["log"])
+                    st.rerun()
+                if st.button("🛡️ Shield Block (CON)", key=f"{key_prefix}_tele_block", use_container_width=True):
+                    tc = mechanics.counter_boss_telegraph(player, "shield_block")
+                    st.session_state.messages.append({"role": "system", "content": f"🛡️ **COUNTER-TACTIC:** {tc['log']}", "image_path": None})
+                    save_game(player, st.session_state.messages)
+                    st.toast(tc["message"], icon="🛡️")
+                    st.info(tc["log"])
+                    st.rerun()
+            with c_col2:
+                if st.button("🌫️ Ren: Phase-Veil", key=f"{key_prefix}_tele_ren", use_container_width=True):
+                    tc = mechanics.counter_boss_telegraph(player, "ren_phase_veil")
+                    st.session_state.messages.append({"role": "system", "content": f"🛡️ **COUNTER-TACTIC:** {tc['log']}", "image_path": None})
+                    save_game(player, st.session_state.messages)
+                    st.toast(tc["message"], icon="🌫️")
+                    st.success(tc["log"])
+                    st.rerun()
+                if st.button("🔨 Stagger Interrupt", key=f"{key_prefix}_tele_interrupt", use_container_width=True):
+                    tc = mechanics.counter_boss_telegraph(player, "stagger_interrupt")
+                    st.session_state.messages.append({"role": "system", "content": f"🛡️ **COUNTER-TACTIC:** {tc['log']}", "image_path": None})
+                    save_game(player, st.session_state.messages)
+                    st.toast(tc["message"], icon="🔨")
+                    st.success(tc["log"])
+                    st.rerun()
+
+        # Attack Boss Direct Controls
+        if b_hp > 0:
+            st.divider()
+            st.markdown("##### ⚔️ Strike Sector Boss:")
+            atk_col1, atk_col2, atk_col3 = st.columns(3)
+            with atk_col1:
+                btn_lbl_norm = f"⚔️ {main_wpn} (Normal)" if len(main_wpn) <= 22 else "⚔️ Main Strike (Normal)"
+                if st.button(btn_lbl_norm, key=f"{key_prefix}_atk_boss_normal", use_container_width=True):
+                    dmg_roll = 18
+                    res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=False)
+                    boss_action = mechanics.get_boss_turn_action(player)
+                    combat_log = f"⚔️ **PLAYER STRIKE:** {res_dmg['log']}\n\n👾 **BOSS ACTION:** {boss_action.get('log', '')}"
+                    st.session_state.messages.append({"role": "system", "content": combat_log, "image_path": None})
+                    save_game(player, st.session_state.messages)
+                    st.toast(f"Struck {boss_name} for {res_dmg['damage_dealt']} DMG!", icon="⚔️")
+                    st.info(res_dmg["log"])
+                    if boss_action.get("log"): st.warning(boss_action["log"])
+                    st.rerun()
+            with atk_col2:
+                btn_lbl_hvy = f"🔨 {off_wpn} (Heavy)" if len(off_wpn) <= 22 else "🔨 Heavy Smash (Stagger)"
+                if st.button(btn_lbl_hvy, key=f"{key_prefix}_atk_boss_heavy", use_container_width=True):
+                    dmg_roll = 26
+                    res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=True, is_stagger_hit=True)
+                    boss_action = mechanics.get_boss_turn_action(player)
+                    combat_log = f"🔨 **HEAVY STAGGER SMASH:** {res_dmg['log']}\n\n👾 **BOSS ACTION:** {boss_action.get('log', '')}"
+                    st.session_state.messages.append({"role": "system", "content": combat_log, "image_path": None})
+                    save_game(player, st.session_state.messages)
+                    st.toast(f"Heavy Smash -> {res_dmg['damage_dealt']} DMG!", icon="🔨")
+                    st.info(res_dmg["log"])
+                    if boss_action.get("log"): st.warning(boss_action["log"])
+                    st.rerun()
+            with atk_col3:
+                if st.button("⚡ Ren: Overcharge", key=f"{key_prefix}_atk_boss_ren", use_container_width=True):
+                    dmg_roll = 22
+                    res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=True, is_stagger_hit=True)
+                    boss_action = mechanics.get_boss_turn_action(player)
+                    combat_log = f"⚡ **REN OVERCHARGE STUNNER:** {res_dmg['log']}\n\n👾 **BOSS ACTION:** {boss_action.get('log', '')}"
+                    st.session_state.messages.append({"role": "system", "content": combat_log, "image_path": None})
+                    save_game(player, st.session_state.messages)
+                    st.toast(f"Ren fired Overcharged Stunner -> {res_dmg['damage_dealt']} DMG!", icon="⚡")
+                    st.info(res_dmg["log"])
+                    if boss_action.get("log"): st.warning(boss_action["log"])
+                    st.rerun()
+        else:
+            st.balloons()
+            st.success(f"👑 **{boss_name} HAS BEEN DEFEATED!**")
+            if not is_dungeon_completed:
+                if st.button("🏆 Claim Sector 1 Victory & Unseal Teleport Gate!", key=f"{key_prefix}_claim_boss_victory", use_container_width=True):
+                    v_res = mechanics.claim_boss_victory(player)
+                    player["sector_boss_defeated"] = True
+                    st.session_state.messages.append({"role": "system", "content": f"🏆 **VICTORY CLAIMED:** {v_res['log']}", "image_path": None})
+                    save_game(player, st.session_state.messages)
+                    st.toast("Sector 1 Cleared! Sector 2 Teleport Gate Activated!", icon="👑")
+                    st.success(v_res["log"])
+                    st.rerun()
+            else:
+                st.info("🏆 Sector 1 Victory has been claimed! Sector 2 Teleport Gate is unsealed.")
+
+
 def render_tab_world(player, world_state, in_dungeon, player_skill_tokens):
     """Renders the expansive tactical Panzoom map, safe zone facilities, wilderness survival, and dungeon chambers."""
     st.markdown("### 🗺️ Sector 1 Tactical Map & Reconnaissance")
@@ -1962,113 +2153,7 @@ def render_tab_world(player, world_state, in_dungeon, player_skill_tokens):
         
         if has_boss or in_arena:
             with st.expander("👑 Sector Boss: The Gilded Spire Overlord", expanded=True):
-                if not has_boss and in_arena:
-                    boss_enc = mechanics.initialize_boss_encounter(player)
-                    
-                boss_name = boss_enc.get("name", "The Gilded Spire Overlord")
-                b_hp = boss_enc.get("current_hp", 0)
-                b_max_hp = boss_enc.get("max_hp", 300)
-                b_phase = boss_enc.get("phase", 1)
-                p_info = boss_enc.get("phases", {}).get(b_phase, {})
-                p_name = p_info.get("name", f"Phase {b_phase}")
-                
-                st.markdown(f"### {boss_name}")
-                st.caption(f"**{boss_enc.get('title', 'Sector 1 Apex Construct')}**")
-                st.markdown(f"🏷️ **Active Phase:** `{p_name}` *(AC: {p_info.get('ac', 18)}, DR: {p_info.get('dr', 3)})*")
-                st.caption(f"*{p_info.get('description', '')}*")
-                
-                # HP Bar
-                hp_pct = max(0.0, min(1.0, b_hp / b_max_hp)) if b_max_hp > 0 else 0.0
-                st.write(f"❤️ **Boss Health:** `{b_hp} / {b_max_hp} HP` ({int(hp_pct*100)}%)")
-                st.progress(hp_pct)
-                
-                # Break Gauge
-                b_break = boss_enc.get("current_break", 100)
-                b_max_break = boss_enc.get("max_break", 100)
-                break_pct = max(0.0, min(1.0, b_break / b_max_break)) if b_max_break > 0 else 0.0
-                st.write(f"🛡️ **Stance Break Gauge:** `{b_break} / {b_max_break}`")
-                st.progress(break_pct)
-                
-                if boss_enc.get("is_staggered"):
-                    st.error("💥 **BOSS STAGGERED!** System recoil active! DR bypassed & takes +50% Critical Damage for 1 round!")
-                
-                # Active Telegraph Warning
-                telegraph = boss_enc.get("active_telegraph")
-                if telegraph and b_hp > 0:
-                    st.warning(f"⚠️ **TELEGRAPH INCOMING:** {telegraph.get('warning', telegraph.get('name'))}\n\n*Save DC {telegraph.get('dc', 15)} {telegraph.get('stat', 'DEX')} or take {telegraph.get('damage', 'Force Dmg')}!*")
-                    st.markdown("##### 🛡️ Counter-Tactics:")
-                    c_col1, c_col2 = st.columns(2)
-                    with c_col1:
-                        if st.button("🏃 Evasive Dive (DEX)", key="btn_tele_dodge", use_container_width=True):
-                            tc = mechanics.counter_boss_telegraph(player, "dodge")
-                            save_game(player, st.session_state.messages)
-                            if tc["success"]: st.toast(tc["message"], icon="💨"); st.success(tc["log"])
-                            else: st.toast(tc["message"], icon="💥"); st.error(tc["log"])
-                            st.rerun()
-                        if st.button("🛡️ Shield Block (CON)", key="btn_tele_block", use_container_width=True):
-                            tc = mechanics.counter_boss_telegraph(player, "shield_block")
-                            save_game(player, st.session_state.messages)
-                            st.toast(tc["message"], icon="🛡️")
-                            st.info(tc["log"])
-                            st.rerun()
-                    with c_col2:
-                        if st.button("🌫️ Ren: Phase-Veil", key="btn_tele_ren", use_container_width=True):
-                            tc = mechanics.counter_boss_telegraph(player, "ren_phase_veil")
-                            save_game(player, st.session_state.messages)
-                            st.toast(tc["message"], icon="🌫️")
-                            st.success(tc["log"])
-                            st.rerun()
-                        if st.button("🔨 Stagger Interrupt", key="btn_tele_interrupt", use_container_width=True):
-                            tc = mechanics.counter_boss_telegraph(player, "stagger_interrupt")
-                            save_game(player, st.session_state.messages)
-                            st.toast(tc["message"], icon="🔨")
-                            st.success(tc["log"])
-                            st.rerun()
-                
-                # Attack Boss Direct Controls
-                if b_hp > 0:
-                    st.divider()
-                    st.markdown("##### ⚔️ Strike Sector Boss:")
-                    atk_col1, atk_col2, atk_col3 = st.columns(3)
-                    with atk_col1:
-                        if st.button("⚔️ Axe Cleave (Normal)", key="btn_atk_boss_normal", use_container_width=True):
-                            dmg_roll = 18
-                            res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=False)
-                            boss_action = mechanics.get_boss_turn_action(player)
-                            save_game(player, st.session_state.messages)
-                            st.toast(f"Struck {boss_name} for {res_dmg['damage_dealt']} DMG!", icon="⚔️")
-                            st.info(res_dmg["log"])
-                            if boss_action.get("log"): st.warning(boss_action["log"])
-                            st.rerun()
-                    with atk_col2:
-                        if st.button("🔨 Hammer Smash (Heavy)", key="btn_atk_boss_heavy", use_container_width=True):
-                            dmg_roll = 26
-                            res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=True, is_stagger_hit=True)
-                            boss_action = mechanics.get_boss_turn_action(player)
-                            save_game(player, st.session_state.messages)
-                            st.toast(f"Heavy Hammer Smash -> {res_dmg['damage_dealt']} DMG!", icon="🔨")
-                            st.info(res_dmg["log"])
-                            if boss_action.get("log"): st.warning(boss_action["log"])
-                            st.rerun()
-                    with atk_col3:
-                        if st.button("⚡ Ren: Overcharge Stunner", key="btn_atk_boss_ren", use_container_width=True):
-                            dmg_roll = 22
-                            res_dmg = mechanics.apply_damage_to_boss(player, dmg_roll, is_heavy=True, is_stagger_hit=True)
-                            boss_action = mechanics.get_boss_turn_action(player)
-                            save_game(player, st.session_state.messages)
-                            st.toast(f"Ren fired Overcharged Stunner -> {res_dmg['damage_dealt']} DMG!", icon="⚡")
-                            st.info(res_dmg["log"])
-                            if boss_action.get("log"): st.warning(boss_action["log"])
-                            st.rerun()
-                else:
-                    st.balloons()
-                    st.success(f"👑 **{boss_name} HAS BEEN DEFEATED!**")
-                    if st.button("🏆 Claim Sector 1 Victory & Unseal Teleport Gate!", key="btn_claim_boss_victory", use_container_width=True):
-                        v_res = mechanics.claim_boss_victory(player)
-                        save_game(player, st.session_state.messages)
-                        st.toast("Sector 1 Cleared! Sector 2 Teleport Gate Activated!", icon="👑")
-                        st.success(v_res["log"])
-                        st.rerun()
+                render_boss_encounter_card(player, key_prefix="world_hud", is_sticky_banner=False)
 
     with st.expander("🌍 Global Threat Intelligence", expanded=False):
         global_news = world_state.get("global_news", [])
@@ -2903,6 +2988,9 @@ with tab_adv:
                                         save_game(player, st.session_state.messages)
                                         st.success(f"Unlocked {f_opt['name']}!")
                                         st.rerun()
+
+    # --- STICKY BOSS ENCOUNTER HUD BANNER (UI Improvement #2) ---
+    render_boss_encounter_card(player, key_prefix="adv_hud", is_sticky_banner=True)
 
     # Render Chat History
     for idx, msg in enumerate(st.session_state.messages):
