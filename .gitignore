@@ -5,6 +5,7 @@ gdrive_tokens.json
 drive_credentials.json
 current_map.jpg
 current_global_map.jpg
+current_tactical_map.jpg
 *.gsheet
 *.gdoc
 /SKILL.md
@@ -15,5 +16,6 @@ current_global_map.jpg
 .agents/
 saves/Test_*
 saves/ChimeraHero/
+saves/Garrick/
 
 

@@ -1,0 +1,496 @@
+{
+  "sectors": {
+    "sector0_core": {
+      "id": "sector0_core",
+      "name": "Sector 0: Washington Municipal Core",
+      "prefix": "Sector0_Washington_Core",
+      "radius_miles": 5.0,
+      "center_gps": [
+        40.7584,
+        -74.9793
+      ],
+      "elevation_asl_ft": 460,
+      "bounds_lat_lon": {
+        "north": 40.8309,
+        "south": 40.6859,
+        "east": -74.8837,
+        "west": -75.0749
+      },
+      "description": "5-mile high-resolution municipal grid around Washington Borough safe-zone.",
+      "layers": {
+        "usgs_topo": {
+          "raw_file": "assets\\maps\\raw\\Sector0_Washington_Core_01_USGS_Topo_HiRes.png",
+          "opt_file": "assets\\maps\\optimized\\sector0_core\\usgs_topo.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "satellite_ortho": {
+          "raw_file": "assets\\maps\\raw\\Sector0_Washington_Core_02_Satellite_Ortho_HiRes.png",
+          "opt_file": "assets\\maps\\optimized\\sector0_core\\satellite_ortho.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "lidar_hillshade": {
+          "raw_file": "assets\\maps\\raw\\Sector0_Washington_Core_03_LiDAR_3DEP_Hillshade.png",
+          "opt_file": "assets\\maps\\optimized\\sector0_core\\lidar_hillshade.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "bathymetry_underground": {
+          "raw_file": "assets\\maps\\raw\\Sector0_Washington_Core_04_Underground_and_Bathymetry_Map.png",
+          "opt_file": "assets\\maps\\optimized\\sector0_core\\bathymetry_underground.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "vertical_cross_section": {
+          "raw_file": "assets\\maps\\raw\\Sector0_Washington_Core_05_Vertical_Cross_Section.png",
+          "opt_file": "assets\\maps\\optimized\\sector0_core\\vertical_cross_section.jpg",
+          "original_size": [
+            2000,
+            1200
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        }
+      }
+    },
+    "sector1_primary": {
+      "id": "sector1_primary",
+      "name": "Sector 1: Primary 25-Mile Core",
+      "prefix": "Sector1_Primary",
+      "radius_miles": 25.0,
+      "center_gps": [
+        40.7584,
+        -74.9793
+      ],
+      "elevation_asl_ft": 460,
+      "bounds_lat_lon": {
+        "north": 41.1209,
+        "south": 40.3959,
+        "east": -74.5013,
+        "west": -75.4573
+      },
+      "description": "25-mile regional corridor covering Warren, Hunterdon, Morris, Sussex, and Northampton.",
+      "layers": {
+        "usgs_topo": {
+          "raw_file": "assets\\maps\\raw\\Sector1_Primary_01_USGS_Topo_HiRes.png",
+          "opt_file": "assets\\maps\\optimized\\sector1_primary\\usgs_topo.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "satellite_ortho": {
+          "raw_file": "assets\\maps\\raw\\Sector1_Primary_02_Satellite_Ortho_HiRes.png",
+          "opt_file": "assets\\maps\\optimized\\sector1_primary\\satellite_ortho.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "lidar_hillshade": {
+          "raw_file": "assets\\maps\\raw\\Sector1_Primary_03_LiDAR_3DEP_Hillshade.png",
+          "opt_file": "assets\\maps\\optimized\\sector1_primary\\lidar_hillshade.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "bathymetry_underground": {
+          "raw_file": "assets\\maps\\raw\\Sector1_Primary_04_Underground_and_Bathymetry_Map.png",
+          "opt_file": "assets\\maps\\optimized\\sector1_primary\\bathymetry_underground.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "vertical_cross_section": {
+          "raw_file": "assets\\maps\\raw\\Sector1_Primary_05_Vertical_Cross_Section.png",
+          "opt_file": "assets\\maps\\optimized\\sector1_primary\\vertical_cross_section.jpg",
+          "original_size": [
+            2000,
+            1200
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        }
+      }
+    },
+    "sector2_west_nw": {
+      "id": "sector2_west_nw",
+      "name": "Sector 2: West & NW Poconos / Anthracite",
+      "prefix": "Sector2_WestNW",
+      "radius_miles": 100.0,
+      "center_gps": [
+        41.05,
+        -75.5
+      ],
+      "elevation_asl_ft": 1200,
+      "bounds_lat_lon": {
+        "north": 41.8,
+        "south": 40.3,
+        "east": -74.5,
+        "west": -76.5
+      },
+      "description": "Lehigh River Gorge, Poconos, Scranton, Wilkes-Barre, and PA Anthracite Coal Belt.",
+      "layers": {
+        "usgs_topo": {
+          "raw_file": "assets\\maps\\raw\\Sector2_WestNW_01_USGS_Topo_HiRes.png",
+          "opt_file": "assets\\maps\\optimized\\sector2_west_nw\\usgs_topo.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "satellite_ortho": {
+          "raw_file": "assets\\maps\\raw\\Sector2_WestNW_02_Satellite_Ortho_HiRes.png",
+          "opt_file": "assets\\maps\\optimized\\sector2_west_nw\\satellite_ortho.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "lidar_hillshade": {
+          "raw_file": "assets\\maps\\raw\\Sector2_WestNW_03_LiDAR_3DEP_Hillshade.png",
+          "opt_file": "assets\\maps\\optimized\\sector2_west_nw\\lidar_hillshade.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "bathymetry_underground": {
+          "raw_file": "assets\\maps\\raw\\Sector2_WestNW_04_Underground_and_Bathymetry_Map.png",
+          "opt_file": "assets\\maps\\optimized\\sector2_west_nw\\bathymetry_underground.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "vertical_cross_section": {
+          "raw_file": "assets\\maps\\raw\\Sector2_WestNW_05_Vertical_Cross_Section.png",
+          "opt_file": "assets\\maps\\optimized\\sector2_west_nw\\vertical_cross_section.jpg",
+          "original_size": [
+            2000,
+            1200
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        }
+      }
+    },
+    "sector3_north_east": {
+      "id": "sector3_north_east",
+      "name": "Sector 3: North & East NYC / Hudson / Catskills",
+      "prefix": "Sector3_NorthEast",
+      "radius_miles": 100.0,
+      "center_gps": [
+        41.1,
+        -74.2
+      ],
+      "elevation_asl_ft": 200,
+      "bounds_lat_lon": {
+        "north": 42.1,
+        "south": 40.4,
+        "east": -73.2,
+        "west": -75.2
+      },
+      "description": "Northern NJ, NYC 5 Boroughs, Hudson Fjord, West Point, Catskills, and deep aqueducts.",
+      "layers": {
+        "usgs_topo": {
+          "raw_file": "assets\\maps\\raw\\Sector3_NorthEast_01_USGS_Topo_HiRes.png",
+          "opt_file": "assets\\maps\\optimized\\sector3_north_east\\usgs_topo.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "satellite_ortho": {
+          "raw_file": "assets\\maps\\raw\\Sector3_NorthEast_02_Satellite_Ortho_HiRes.png",
+          "opt_file": "assets\\maps\\optimized\\sector3_north_east\\satellite_ortho.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "lidar_hillshade": {
+          "raw_file": "assets\\maps\\raw\\Sector3_NorthEast_03_LiDAR_3DEP_Hillshade.png",
+          "opt_file": "assets\\maps\\optimized\\sector3_north_east\\lidar_hillshade.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "bathymetry_underground": {
+          "raw_file": "assets\\maps\\raw\\Sector3_NorthEast_04_Underground_and_Bathymetry_Map.png",
+          "opt_file": "assets\\maps\\optimized\\sector3_north_east\\bathymetry_underground.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "vertical_cross_section": {
+          "raw_file": "assets\\maps\\raw\\Sector3_NorthEast_05_Vertical_Cross_Section.png",
+          "opt_file": "assets\\maps\\optimized\\sector3_north_east\\vertical_cross_section.jpg",
+          "original_size": [
+            2000,
+            1200
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        }
+      }
+    },
+    "sector4_south_sw": {
+      "id": "sector4_south_sw",
+      "name": "Sector 4: South & SW Pine Barrens / Philly",
+      "prefix": "Sector4_SouthSW",
+      "radius_miles": 100.0,
+      "center_gps": [
+        40.2,
+        -75.1
+      ],
+      "elevation_asl_ft": 100,
+      "bounds_lat_lon": {
+        "north": 40.8,
+        "south": 39.2,
+        "east": -74.0,
+        "west": -76.2
+      },
+      "description": "Central/South NJ, Pine Barrens aquifer, Greater Philadelphia, and Cornwall iron mining belt.",
+      "layers": {
+        "usgs_topo": {
+          "raw_file": "assets\\maps\\raw\\Sector4_SouthSW_01_USGS_Topo_HiRes.png",
+          "opt_file": "assets\\maps\\optimized\\sector4_south_sw\\usgs_topo.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "satellite_ortho": {
+          "raw_file": "assets\\maps\\raw\\Sector4_SouthSW_02_Satellite_Ortho_HiRes.png",
+          "opt_file": "assets\\maps\\optimized\\sector4_south_sw\\satellite_ortho.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "lidar_hillshade": {
+          "raw_file": "assets\\maps\\raw\\Sector4_SouthSW_03_LiDAR_3DEP_Hillshade.png",
+          "opt_file": "assets\\maps\\optimized\\sector4_south_sw\\lidar_hillshade.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "bathymetry_underground": {
+          "raw_file": "assets\\maps\\raw\\Sector4_SouthSW_04_Underground_and_Bathymetry_Map.png",
+          "opt_file": "assets\\maps\\optimized\\sector4_south_sw\\bathymetry_underground.jpg",
+          "original_size": [
+            2000,
+            1560
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "vertical_cross_section": {
+          "raw_file": "assets\\maps\\raw\\Sector4_SouthSW_05_Vertical_Cross_Section.png",
+          "opt_file": "assets\\maps\\optimized\\sector4_south_sw\\vertical_cross_section.jpg",
+          "original_size": [
+            2000,
+            1200
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        }
+      }
+    },
+    "master_100mi": {
+      "id": "master_100mi",
+      "name": "Master 100-Mile Regional Overview",
+      "prefix": "Master_100Mile",
+      "radius_miles": 100.0,
+      "center_gps": [
+        40.7584,
+        -74.9793
+      ],
+      "elevation_asl_ft": 460,
+      "bounds_lat_lon": {
+        "north": 42.2084,
+        "south": 39.3084,
+        "east": -73.0793,
+        "west": -76.8793
+      },
+      "description": "Macro 100-mile tri-state overview across NY, NJ, and PA.",
+      "layers": {
+        "usgs_topo": {
+          "raw_file": "assets\\maps\\raw\\Master_100Mile_01_USGS_Topo_Overview.png",
+          "opt_file": "assets\\maps\\optimized\\master_100mi\\usgs_topo.jpg",
+          "original_size": [
+            2000,
+            1600
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "lidar_hillshade": {
+          "raw_file": "assets\\maps\\raw\\Master_100Mile_02_LiDAR_3DEP_Shaded_Relief_Overview.png",
+          "opt_file": "assets\\maps\\optimized\\master_100mi\\lidar_hillshade.jpg",
+          "original_size": [
+            2000,
+            1600
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        },
+        "satellite_ortho": {
+          "raw_file": "assets\\maps\\raw\\Master_100Mile_03_Satellite_Hybrid_Overview.png",
+          "opt_file": "assets\\maps\\optimized\\master_100mi\\satellite_ortho.jpg",
+          "original_size": [
+            2000,
+            1600
+          ],
+          "optimized_size": [
+            1024,
+            1024
+          ],
+          "status": "ready"
+        }
+      }
+    }
+  },
+  "total_plates": 28,
+  "layers": [
+    "usgs_topo",
+    "satellite_ortho",
+    "lidar_hillshade",
+    "bathymetry_underground",
+    "vertical_cross_section"
+  ]
+}

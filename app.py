@@ -2998,26 +2998,58 @@ def render_game_hud():
                     st.error(f"Voice Processing Error: {e}")
             
     st.divider()
-    st.subheader("🗺️ Dual-Scale Overlay Atlas")
+    st.subheader("🌐 Cardinal Omniscience Multi-Layer Geospatial Atlas")
     import map_engine
     map_state = map_engine.load_map_state()
-    map_scale_mode = st.radio(
-        "Atlas Projection:",
-        ["📍 Sector 1 Tactical Grid (100-Mi Local)", "🌍 Planetary Patchwork Earth (Global Raids)"],
-        horizontal=True,
-        key="hud_map_scale_toggle"
+
+    col_sector, col_layer = st.columns([3, 2])
+    with col_sector:
+        sector_options = list(map_engine.SECTORS.keys())
+        cur_sec = map_state.get("active_sector", "sector1_primary")
+        sec_idx = sector_options.index(cur_sec) if cur_sec in sector_options else 1
+        selected_sector_id = st.selectbox(
+            "🗺️ Sector Region:",
+            options=sector_options,
+            format_func=lambda s: map_engine.SECTORS[s]["name"],
+            index=sec_idx,
+            key="hud_map_sector_select"
+        )
+
+    with col_layer:
+        available_layers = map_engine.get_available_layers(selected_sector_id)
+        cur_lay = map_state.get("active_layer", "usgs_topo")
+        lay_idx = available_layers.index(cur_lay) if cur_lay in available_layers else 0
+        selected_layer_id = st.selectbox(
+            "📊 Sensor Datum Layer:",
+            options=available_layers,
+            format_func=lambda l: map_engine.LAYERS.get(l, {}).get("label", l),
+            index=lay_idx,
+            key="hud_map_layer_select"
+        )
+
+    # Render Tactical Composite Map
+    rendered_map_path, telemetry = map_engine.render_sector_layer(
+        sector_id=selected_sector_id,
+        layer_id=selected_layer_id,
+        player_state=st.session_state.player,
+        character_id=st.session_state.get("active_character_id")
     )
-    player_skills = st.session_state.player.get("skills", [])
-    if map_scale_mode.startswith("🌍") and hasattr(map_engine, "generate_global_atlas_overlay"):
-        g_map_path = map_engine.generate_global_atlas_overlay(player_state=st.session_state.player)
-        if g_map_path and os.path.exists(g_map_path):
-            st.image(g_map_path, caption="Global Patchwork Earth Overlay (6 Planetary 1–50 Floor Raids)", use_container_width=True)
-    else:
-        map_path = map_engine.generate_overlay(player_skills=player_skills)
-        if map_path and os.path.exists(map_path):
-            st.image(map_path, caption="Sector 1 Tactical Grid (Pohatcong / Oxford / Washington)", use_container_width=True)
-        
-    st.write(f"**GPS Coordinates:** X: {map_state['player_x']}, Y: {map_state['player_y']}")
+
+    if rendered_map_path and os.path.exists(rendered_map_path):
+        sec_name = map_engine.SECTORS.get(selected_sector_id, {}).get("name", selected_sector_id)
+        lay_name = map_engine.LAYERS.get(selected_layer_id, {}).get("label", selected_layer_id)
+        st.image(rendered_map_path, caption=f"{sec_name} — {lay_name}", use_container_width=True)
+
+    # Subterranean Telemetry HUD (Shown on Subterranean & Cross-Section layers)
+    if selected_layer_id in ("bathymetry_underground", "vertical_cross_section"):
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Altitude / Depth", f"{telemetry.get('bottom_asl_ft', 460)} ft ASL")
+        c2.metric("Overburden", f"{telemetry.get('overburden_ft', 0)} ft")
+        c3.metric("Hydrostatic Pressure", f"{telemetry.get('hydrostatic_psi', 0.0)} PSI")
+        c4.metric("Atmosphere", telemetry.get("environment_state", "Dry Bedrock"))
+
+    gps_lat, gps_lon = telemetry.get("player_gps", (40.7584, -74.9793))
+    st.write(f"**GPS Coordinates:** Lat: `{gps_lat:.4f}° N`, Lon: `{gps_lon:.4f}° W` | Grid: X: `{map_state.get('player_x', 50)}`, Y: `{map_state.get('player_y', 50)}`")
     st.write(f"**Status:** {world_state['world_status']}")
 
     # Continental & Faction News Wire
