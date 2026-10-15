@@ -115,6 +115,86 @@ SECTORS: Dict[str, Dict[str, Any]] = {
         },
         "description": "Macro 100-mile tri-state overview across NY, NJ, and PA."
     },
+    "sector_ring_20_50mi_master": {
+        "id": "sector_ring_20_50mi_master",
+        "name": "Intermediate Ring: 20–50 Mile Master Belt",
+        "prefix": "Sector_Ring_20_50Mi_Master",
+        "radius_miles": 50.0,
+        "inner_radius_miles": 20.0,
+        "center_gps": (40.7584, -74.9793),
+        "elevation_asl_ft": 460,
+        "bounds_lat_lon": {
+            "north": 41.4834,
+            "south": 40.0334,
+            "east": -74.0200,
+            "west": -75.9386
+        },
+        "description": "Macro 20-to-50-mile annular buffer ring (~6,597 sq mi) surrounding Washington Borough."
+    },
+    "sector_ring_20_50mi_nw": {
+        "id": "sector_ring_20_50mi_nw",
+        "name": "Ring-NW: Poconos, Jim Thorpe & Lehigh Gorge (20–50 Mi)",
+        "prefix": "Sector_Ring_20_50Mi_NW",
+        "radius_miles": 50.0,
+        "inner_radius_miles": 20.0,
+        "center_gps": (41.0500, -75.4500),
+        "elevation_asl_ft": 1100,
+        "bounds_lat_lon": {
+            "north": 41.4834,
+            "south": 40.6500,
+            "east": -74.9000,
+            "west": -75.9386
+        },
+        "description": "Northwest quadrant: Delaware Water Gap, Poconos, Jim Thorpe (Mauch Chunk), and Lehigh Gorge."
+    },
+    "sector_ring_20_50mi_ne": {
+        "id": "sector_ring_20_50mi_ne",
+        "name": "Ring-NE: Kittatinny, Sterling Hill & Picatinny (20–50 Mi)",
+        "prefix": "Sector_Ring_20_50Mi_NE",
+        "radius_miles": 50.0,
+        "inner_radius_miles": 20.0,
+        "center_gps": (41.0500, -74.5000),
+        "elevation_asl_ft": 900,
+        "bounds_lat_lon": {
+            "north": 41.4834,
+            "south": 40.6500,
+            "east": -74.0200,
+            "west": -75.0500
+        },
+        "description": "Northeast quadrant: High Point (1,803 ft), Sterling Hill (-2,675 ft), Mt. Hope (-2,694 ft), Picatinny Arsenal."
+    },
+    "sector_ring_20_50mi_sw": {
+        "id": "sector_ring_20_50mi_sw",
+        "name": "Ring-SW: Bethlehem Steel, Allentown & Doylestown (20–50 Mi)",
+        "prefix": "Sector_Ring_20_50Mi_SW",
+        "radius_miles": 50.0,
+        "inner_radius_miles": 20.0,
+        "center_gps": (40.4500, -75.4500),
+        "elevation_asl_ft": 350,
+        "bounds_lat_lon": {
+            "north": 40.8500,
+            "south": 40.0334,
+            "east": -74.9000,
+            "west": -75.9386
+        },
+        "description": "Southwest quadrant: Bethlehem Steel blast furnaces, Allentown, Doylestown concrete castles, Valley Forge."
+    },
+    "sector_ring_20_50mi_se": {
+        "id": "sector_ring_20_50mi_se",
+        "name": "Ring-SE: Sourlands, Princeton Tokamak & Lakehurst (20–50 Mi)",
+        "prefix": "Sector_Ring_20_50Mi_SE",
+        "radius_miles": 50.0,
+        "inner_radius_miles": 20.0,
+        "center_gps": (40.4500, -74.5000),
+        "elevation_asl_ft": 200,
+        "bounds_lat_lon": {
+            "north": 40.8500,
+            "south": 40.0334,
+            "east": -74.0200,
+            "west": -75.0500
+        },
+        "description": "Southeast quadrant: Sourland Mountain, Princeton PPPL fusion tokamak, Trenton, and Lakehurst Hangar No. 1."
+    },
     "global_raid": {
         "id": "global_raid",
         "name": "Planetary Patchwork Earth (Global Raids)",
@@ -207,6 +287,38 @@ SECRETS = {
     "ATT_Netcong_EMP_Bunker": {
         "x": 68, "y": 32, "color": "yellow", "label": "AT&T Roxbury Vault",
         "skill": "Aether-Mapping", "layer": "bathymetry_underground"
+    },
+    "Sterling_Hill_Rainbow_Caverns": {
+        "x": 55, "y": 28, "color": "magenta", "label": "Sterling Hill UV Tunnels (-2675 ft)",
+        "skill": "Cartography III", "layer": "bathymetry_underground"
+    },
+    "Mt_Hope_Leonard_Vein": {
+        "x": 62, "y": 36, "color": "purple", "label": "Mt. Hope Leonard Shaft (-2694 ft)",
+        "skill": "Cartography II", "layer": "bathymetry_underground"
+    },
+    "Lausanne_7_Mile_Discharge": {
+        "x": 26, "y": 32, "color": "cyan", "label": "Lausanne Drainage Adit (7.5 Mi)",
+        "skill": "Cartography II", "layer": "bathymetry_underground"
+    },
+    "Friedensville_President_Engine": {
+        "x": 42, "y": 48, "color": "purple", "label": "Friedensville 'The President' Sump (-1260 ft)",
+        "skill": "Cartography II", "layer": "bathymetry_underground"
+    },
+    "Princeton_PPPL_Tokamak_Cryo": {
+        "x": 62, "y": 66, "color": "magenta", "label": "Princeton Tokamak Plasma Trench",
+        "skill": "Aether-Mapping", "layer": "usgs_topo"
+    },
+    "Mauch_Chunk_Gravity_Switchback": {
+        "x": 24, "y": 35, "color": "gold", "label": "Mauch Chunk Gravity Grade (1827)",
+        "skill": "Cartography I", "layer": "lidar_hillshade"
+    },
+    "Doylestown_Concrete_Vaults": {
+        "x": 48, "y": 62, "color": "darkgray", "label": "Fonthill Concrete Crypts",
+        "skill": "Cartography I", "layer": "lidar_hillshade"
+    },
+    "Lake_Hopatcong_Sunken_Boiler": {
+        "x": 60, "y": 32, "color": "cyan", "label": "Lake Hopatcong 1750 Forge Dam",
+        "skill": "Cartography I", "layer": "bathymetry_underground"
     }
 }
 
@@ -330,6 +442,16 @@ def get_sector_zones(sector_id: str) -> List[Dict[str, Any]]:
         if sector_id == "sector0_core" and dist <= 5.0:
             include = True
         elif sector_id == "sector1_primary" and ("Inner Core" in quad or dist <= 25.0):
+            include = True
+        elif sector_id == "sector_ring_20_50mi_master" and (18.0 <= dist <= 52.0):
+            include = True
+        elif sector_id == "sector_ring_20_50mi_nw" and (18.0 <= dist <= 52.0 or "West" in quad) and (260 <= z.get("bearing_deg", 0) <= 360 or 0 <= z.get("bearing_deg", 0) <= 20):
+            include = True
+        elif sector_id == "sector_ring_20_50mi_ne" and (18.0 <= dist <= 52.0 or "North" in quad) and (0 <= z.get("bearing_deg", 0) <= 100):
+            include = True
+        elif sector_id == "sector_ring_20_50mi_sw" and (18.0 <= dist <= 52.0 or "South" in quad) and (180 <= z.get("bearing_deg", 0) <= 270):
+            include = True
+        elif sector_id == "sector_ring_20_50mi_se" and (18.0 <= dist <= 52.0 or "East" in quad) and (80 <= z.get("bearing_deg", 0) <= 190):
             include = True
         elif sector_id == "sector2_west_nw" and ("West" in quad or "Northwest" in quad):
             include = True
@@ -521,7 +643,25 @@ def render_sector_layer(
     # Determine elevation and depth telemetry
     collar_asl = 460
     bottom_asl = 460
-    if "mine" in p_loc.lower() or "shaft" in p_loc.lower() or "oxford" in p_loc.lower():
+    if "sterling" in p_loc.lower() or "ogdensburg" in p_loc.lower():
+        collar_asl = 720
+        bottom_asl = -1955 # Sterling Hill 2,675 ft deep
+    elif "mount hope" in p_loc.lower() or "leonard" in p_loc.lower():
+        collar_asl = 900
+        bottom_asl = -1794 # Mt. Hope 2,694 ft deep
+    elif "friedensville" in p_loc.lower():
+        collar_asl = 420
+        bottom_asl = -840 # Friedensville 1,260 ft deep
+    elif "lausanne" in p_loc.lower():
+        collar_asl = 950
+        bottom_asl = 500 # Lausanne Tunnel 450 ft overburden
+    elif "high point" in p_loc.lower():
+        collar_asl = 1803
+        bottom_asl = 1803
+    elif "camelback" in p_loc.lower() or "pocono" in p_loc.lower():
+        collar_asl = 2133
+        bottom_asl = 2133
+    elif "mine" in p_loc.lower() or "shaft" in p_loc.lower() or "oxford" in p_loc.lower():
         collar_asl = 600
         bottom_asl = -2100 # Oxford 2,700 ft deep
     elif "merrill" in p_loc.lower():

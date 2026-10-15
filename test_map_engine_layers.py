@@ -184,5 +184,52 @@ class TestMapEngineLayers(unittest.TestCase):
         self.assertIsNotNone(legacy_global)
         self.assertTrue(os.path.exists(legacy_global))
 
+    def test_20_50mi_expansion_sectors(self):
+        import map_engine
+        expansion_sectors = [
+            "sector_ring_20_50mi_master",
+            "sector_ring_20_50mi_nw",
+            "sector_ring_20_50mi_ne",
+            "sector_ring_20_50mi_sw",
+            "sector_ring_20_50mi_se"
+        ]
+        for s_id in expansion_sectors:
+            self.assertIn(s_id, map_engine.SECTORS)
+            # Test Topo render
+            topo_p, topo_tel = map_engine.render_sector_layer(s_id, "usgs_topo")
+            self.assertIsNotNone(topo_p)
+            self.assertTrue(os.path.exists(topo_p))
+
+            # Test Subterranean render
+            sub_p, sub_tel = map_engine.render_sector_layer(s_id, "bathymetry_underground")
+            self.assertIsNotNone(sub_p)
+            self.assertTrue(os.path.exists(sub_p))
+
+            # Test Cross-Section render
+            cross_p, cross_tel = map_engine.render_sector_layer(s_id, "vertical_cross_section")
+            self.assertIsNotNone(cross_p)
+            self.assertTrue(os.path.exists(cross_p))
+
+    def test_20_50mi_telemetry_depths(self):
+        import map_engine
+        # Sterling Hill Zinc Mine (-2,675 ft depth)
+        sh_state = {"location": "Sterling Hill Zinc Mine (Ogdensburg, NJ)"}
+        _, sh_tel = map_engine.render_sector_layer("sector_ring_20_50mi_ne", "bathymetry_underground", player_state=sh_state)
+        self.assertEqual(sh_tel["depth_ft"], 2675)
+        self.assertTrue(sh_tel["submerged"])
+        self.assertEqual(round(sh_tel["hydrostatic_psi"], 1), 1019.7)
+
+        # Mount Hope Mine (-2,694 ft depth)
+        mh_state = {"location": "Mount Hope Mine (New Leonard Shaft)"}
+        _, mh_tel = map_engine.render_sector_layer("sector_ring_20_50mi_ne", "bathymetry_underground", player_state=mh_state)
+        self.assertEqual(mh_tel["depth_ft"], 2694)
+        self.assertTrue(mh_tel["submerged"])
+
+        # High Point Monument (+1,803 ft ASL summit)
+        hp_state = {"location": "High Point Monument & Ridge"}
+        _, hp_tel = map_engine.render_sector_layer("sector_ring_20_50mi_ne", "usgs_topo", player_state=hp_state)
+        self.assertEqual(hp_tel["bottom_asl_ft"], 1803)
+        self.assertFalse(hp_tel["submerged"])
+
 if __name__ == "__main__":
     unittest.main()

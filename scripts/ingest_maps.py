@@ -109,6 +109,86 @@ SECTOR_CONFIG = {
             "west": -76.8793
         },
         "description": "Macro 100-mile tri-state overview across NY, NJ, and PA."
+    },
+    "sector_ring_20_50mi_master": {
+        "id": "sector_ring_20_50mi_master",
+        "name": "20–50 Mile Annular Master Ring (All Quadrants)",
+        "prefix": "Sector_Ring_20_50Mi_Master",
+        "radius_miles": 50.0,
+        "inner_radius_miles": 20.0,
+        "center_gps": (40.7584, -74.9793),
+        "elevation_asl_ft": 460,
+        "bounds_lat_lon": {
+            "north": 41.4834,
+            "south": 40.0334,
+            "east": -74.0200,
+            "west": -75.9386
+        },
+        "description": "Macro 20-to-50-mile annular buffer ring (~6,597 sq mi) surrounding Washington Borough."
+    },
+    "sector_ring_20_50mi_nw": {
+        "id": "sector_ring_20_50mi_nw",
+        "name": "Ring-NW: Poconos, Jim Thorpe & Lehigh Gorge (20–50 Mi)",
+        "prefix": "Sector_Ring_20_50Mi_NW",
+        "radius_miles": 50.0,
+        "inner_radius_miles": 20.0,
+        "center_gps": (41.0500, -75.4500),
+        "elevation_asl_ft": 1100,
+        "bounds_lat_lon": {
+            "north": 41.4834,
+            "south": 40.6500,
+            "east": -74.9000,
+            "west": -75.9386
+        },
+        "description": "Northwest quadrant: Delaware Water Gap, Poconos, Jim Thorpe (Mauch Chunk), and Lehigh Gorge."
+    },
+    "sector_ring_20_50mi_ne": {
+        "id": "sector_ring_20_50mi_ne",
+        "name": "Ring-NE: Kittatinny, Sterling Hill & Picatinny (20–50 Mi)",
+        "prefix": "Sector_Ring_20_50Mi_NE",
+        "radius_miles": 50.0,
+        "inner_radius_miles": 20.0,
+        "center_gps": (41.0500, -74.5000),
+        "elevation_asl_ft": 900,
+        "bounds_lat_lon": {
+            "north": 41.4834,
+            "south": 40.6500,
+            "east": -74.0200,
+            "west": -75.0500
+        },
+        "description": "Northeast quadrant: High Point (1,803 ft), Sterling Hill (-2,675 ft), Mt. Hope (-2,694 ft), Picatinny Arsenal."
+    },
+    "sector_ring_20_50mi_sw": {
+        "id": "sector_ring_20_50mi_sw",
+        "name": "Ring-SW: Bethlehem Steel, Allentown & Doylestown (20–50 Mi)",
+        "prefix": "Sector_Ring_20_50Mi_SW",
+        "radius_miles": 50.0,
+        "inner_radius_miles": 20.0,
+        "center_gps": (40.4500, -75.4500),
+        "elevation_asl_ft": 350,
+        "bounds_lat_lon": {
+            "north": 40.8500,
+            "south": 40.0334,
+            "east": -74.9000,
+            "west": -75.9386
+        },
+        "description": "Southwest quadrant: Bethlehem Steel blast furnaces, Allentown, Doylestown concrete castles, Valley Forge."
+    },
+    "sector_ring_20_50mi_se": {
+        "id": "sector_ring_20_50mi_se",
+        "name": "Ring-SE: Sourlands, Princeton Tokamak & Lakehurst (20–50 Mi)",
+        "prefix": "Sector_Ring_20_50Mi_SE",
+        "radius_miles": 50.0,
+        "inner_radius_miles": 20.0,
+        "center_gps": (40.4500, -74.5000),
+        "elevation_asl_ft": 200,
+        "bounds_lat_lon": {
+            "north": 40.8500,
+            "south": 40.0334,
+            "east": -74.0200,
+            "west": -75.0500
+        },
+        "description": "Southeast quadrant: Sourland Mountain, Princeton PPPL fusion tokamak, Trenton, and Lakehurst Hangar No. 1."
     }
 }
 
