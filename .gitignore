@@ -4,7 +4,16 @@ __pycache__/
 gdrive_tokens.json
 drive_credentials.json
 current_map.jpg
+current_global_map.jpg
 *.gsheet
 *.gdoc
 /SKILL.md
+*.db
+*.db-wal
+*.db-shm
+*.log
+.agents/
+saves/Test_*
+saves/ChimeraHero/
+
 

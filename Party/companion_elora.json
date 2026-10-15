@@ -52,5 +52,10 @@
     },
     "active_debuffs": [],
     "recruited": false,
-    "active": false
+    "active": false,
+    "slug": "elora",
+    "companion_name": "Elora Vael",
+    "is_active": false,
+    "stats": {},
+    "skills": {}
 }

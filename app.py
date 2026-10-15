@@ -19,6 +19,25 @@ import backend.character_generator as cg
 import backend.world_atlas as world_atlas
 import backend.bestiary_compendium as bestiary
 import backend.persona_engine as persona_engine
+import backend.database as db
+from backend.database.adapters import (
+    activate_character_session as adapter_activate_character_session,
+    atomic_read_json,
+    atomic_write_json,
+    ensure_database_initialized,
+    get_base_dir,
+    list_save_slots,
+    load_world as adapter_load_world,
+    sanitize_character_slug,
+    save_game as adapter_save_game,
+)
+from backend.database.engine import db_transaction
+from backend.database.repositories import (
+    CharacterRepository,
+    MasterStateRepository,
+    PartyRepository,
+    StagingRepository,
+)
 
 
 def _refresh_stale_backend_modules():
@@ -88,15 +107,42 @@ SAVES_DIR = os.path.join(BASE_DIR, 'saves')
 if not os.path.exists(SAVES_DIR):
     os.makedirs(SAVES_DIR, exist_ok=True)
 
+# --- INITIALIZE RELATIONAL DATABASE & AUTO-SEED IF EMPTY ---
+try:
+    ensure_database_initialized(BASE_DIR)
+except Exception as init_err:
+    print(f"[DB INIT WARNING] Relational engine deferred: {init_err}", flush=True)
+
+
+def get_current_session_id() -> str:
+    """
+    Resolves the active campaign session ID for Streamlit and CLI environments.
+    1. Checks URL query parameters ('session_id' or 'session').
+    2. Checks st.session_state['session_id'].
+    3. Falls back to 'default' (ensures 100% CLI test compatibility).
+    """
+    try:
+        q_sid = st.query_params.get("session_id") or st.query_params.get("session")
+        if q_sid and str(q_sid).strip():
+            sid = str(q_sid).strip()
+            st.session_state["session_id"] = sid
+            return sid
+
+        if hasattr(st, "session_state") and "session_id" in st.session_state:
+            s_val = str(st.session_state["session_id"]).strip()
+            if s_val:
+                return s_val
+    except Exception:
+        pass
+
+    return "default"
+
+
 # --- SAVE/LOAD & PROFILE LOGIC ---
 def load_world():
-    if os.path.exists(WORLD_PATH):
-        try:
-            with open(WORLD_PATH, 'r', encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            pass
-    return {"sector": 1, "world_status": "CRUCIBLE: ACTIVE", "map_locations": [], "global_news": []}
+    sid = get_current_session_id()
+    return adapter_load_world(base_dir=BASE_DIR, session_id=sid)
+
 
 def get_available_profiles():
     # Discover all character folders in saves/ and auto-migrate legacy files
@@ -139,31 +185,40 @@ def get_available_profiles():
 
     return sorted(list(set(profiles)))
 
+
 def activate_character_session(profile_name: str, update_query_params: bool = True) -> bool:
-    """Loads the specified character profile into session_state and syncs query params."""
+    """Loads the specified character profile into session_state and syncs query params using database adapters."""
     resolved = cg.resolve_character_profile_name(BASE_DIR, profile_name) or profile_name
-    p_data = cg.load_character_from_folder(BASE_DIR, resolved)
-    if not p_data or "player" not in p_data:
+    clean_slug = sanitize_character_slug(resolved).lower()
+    sid = get_current_session_id()
+    if sid == "default":
+        session_id = "default" if clean_slug in ("survivor", "banki") else f"session_{clean_slug}"
+    else:
+        session_id = sid
+
+    # Clear ephemeral turn keys across switches
+    for stale_key in ("pending_dev_command", "pending_fusion_components", "last_processed_audio_hash"):
+        st.session_state.pop(stale_key, None)
+
+    activated = adapter_activate_character_session(resolved, session_id=session_id, base_dir=BASE_DIR)
+    if not activated or not activated.get("player"):
         return False
 
-    st.session_state.player = p_data["player"]
-    st.session_state.messages = p_data.get("messages", [])
-    if "world_state" in p_data and isinstance(p_data["world_state"], dict):
-        st.session_state.world_state = p_data["world_state"]
+    st.session_state.player = activated["player"]
+    st.session_state.messages = activated.get("messages", [])
+    if "world_state" in activated and isinstance(activated["world_state"], dict) and activated["world_state"]:
+        st.session_state.world_state = activated["world_state"]
     st.session_state.active_profile = resolved
     st.session_state.character_selected = True
     st.session_state.character_creation_mode = False
 
-    if "master_state" in p_data and p_data["master_state"]:
-        m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+    if "master_state" in activated and activated["master_state"]:
         try:
-            os.makedirs(os.path.dirname(m_path), exist_ok=True)
-            clean_m = dict(p_data["master_state"]) if isinstance(p_data["master_state"], dict) else {}
-            clean_m.pop("player", None)
-            with open(m_path, "w", encoding="utf-8") as f:
-                json.dump(clean_m, f, indent=4)
+            with db_transaction(session_id=session_id) as db_sess:
+                MasterStateRepository.save_master_state(db_sess, activated["master_state"], session_id=session_id)
         except Exception:
-            pass
+            m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+            atomic_write_json(m_path, activated["master_state"])
 
     try:
         if hasattr(mechanics, "restore_companions_for_character"):
@@ -180,6 +235,7 @@ def activate_character_session(profile_name: str, update_query_params: bool = Tr
             pass
     return True
 
+
 def load_game():
     active_prof = st.session_state.get("active_profile")
     if active_prof:
@@ -188,42 +244,23 @@ def load_game():
             return char_data
     return None
 
-def save_game(player_state, messages):
-    master_state_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
-    master_state = {}
-    if os.path.exists(master_state_path):
-        try:
-            with open(master_state_path, "r", encoding="utf-8") as f:
-                master_state = json.load(f)
-            if isinstance(master_state, dict):
-                master_state.pop("player", None)
-        except Exception:
-            pass
 
-    world_data = st.session_state.get("world_state", load_world())
-
-    extra_meta = {
-        "world_state": world_data,
-        "master_state": master_state
-    }
-    save_file = cg.save_character_to_folder(BASE_DIR, player_state, messages, extra_meta=extra_meta)
-        
-    # Persist world_state.json
-    try:
-        with open(WORLD_PATH, 'w', encoding="utf-8") as f:
-            json.dump(world_data, f, indent=4)
-    except Exception:
-        pass
-
-    # Rolling chat thread backup (after messages have had any inline base64 images offloaded to disk)
-    try:
-        backup_path = os.path.join(BASE_DIR, "chat_history_backup.json")
-        with open(backup_path, 'w', encoding="utf-8") as f:
-            json.dump(messages, f, indent=4)
-    except Exception:
-        pass
-        
-    return save_file
+def save_game(player_state, messages, extra_meta=None, session_id=None):
+    """
+    Backward-compatible save_game adapter for app.py.
+    Automatically scopes to active session_id without breaking any of the 71 call sites.
+    """
+    sid = session_id or get_current_session_id()
+    if extra_meta is None:
+        world_data = st.session_state.get("world_state", load_world())
+        extra_meta = {"world_state": world_data}
+    return adapter_save_game(
+        player_state=player_state,
+        messages=messages,
+        extra_meta=extra_meta,
+        session_id=sid,
+        base_dir=BASE_DIR,
+    )
 
 # --- CHARACTER GENERATOR & CALIBRATION INTERFACE ---
 def get_cg_chimera_choices():
@@ -995,15 +1032,15 @@ def render_character_calibration_wizard():
                 except Exception:
                     pass
                 
-                # Sync V2 master state on disk (seeded with Cardinal Calibration Crucible Stage 1)
-                m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+                # Sync V2 master state (seeded with Cardinal Calibration Crucible Stage 1)
+                m_state = mechanics.build_tutorial_master_state(new_avatar, stage=1)
+                sid = get_current_session_id()
                 try:
-                    os.makedirs(os.path.dirname(m_path), exist_ok=True)
-                    m_state = mechanics.build_tutorial_master_state(new_avatar, stage=1)
-                    with open(m_path, 'w', encoding="utf-8") as mf:
-                        json.dump(m_state, mf, indent=4)
+                    with db_transaction(session_id=sid) as db_sess:
+                        MasterStateRepository.save_master_state(db_sess, m_state, session_id=sid)
                 except Exception:
-                    pass
+                    m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+                    atomic_write_json(m_path, m_state)
                         
                 save_game(st.session_state.player, st.session_state.messages)
                 st.balloons()
@@ -1537,16 +1574,16 @@ def apply_companion_state_updates(hp_changes: dict):
                 elif delta > 0:
                     st.toast(f"💚 {c_name} recovered {delta} HP! (HP: {new_hp}/{max_hp})", icon="🩹")
                     
-            # 2. Update Party/companion_*.json on disk
-            party_file = os.path.join(BASE_DIR, "Party", f"companion_{c_name.lower()}.json")
-            if os.path.exists(party_file):
+            # 2. Persist updated companion state via PartyRepository
+            comps = st.session_state.player.get("companions", {})
+            if comps:
+                sid = get_current_session_id()
+                p_slug = st.session_state.player.get("slug") or sanitize_character_slug(st.session_state.player.get("name", "Survivor"))
                 try:
-                    with open(party_file, "r", encoding="utf-8") as f:
-                        p_sheet = json.load(f)
-                    p_max = p_sheet.get("max_hp", 35)
-                    p_sheet["hp"] = max(0, min(p_max, p_sheet.get("hp", 35) + delta))
-                    with open(party_file, "w", encoding="utf-8") as f:
-                        json.dump(p_sheet, f, indent=4)
+                    with db_transaction(session_id=sid) as db_sess:
+                        PartyRepository.save_party(
+                            db_sess, comps, session_id=sid, mirror_disk=True, character_slug=p_slug, base_dir=BASE_DIR
+                        )
                 except Exception as e:
                     print(f"[COMPANION SYNC ERROR] {e}", flush=True)
 
@@ -1601,15 +1638,14 @@ world_state = st.session_state.world_state
 if "player" not in st.session_state:
     if saved_data:
         st.session_state.player = saved_data["player"]
-        # Restore master state onto disk if saved
         if "master_state" in saved_data and saved_data["master_state"]:
-            m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+            sid = get_current_session_id()
             try:
-                os.makedirs(os.path.dirname(m_path), exist_ok=True)
-                with open(m_path, "w", encoding="utf-8") as f:
-                    json.dump(saved_data["master_state"], f, indent=4)
+                with db_transaction(session_id=sid) as db_sess:
+                    MasterStateRepository.save_master_state(db_sess, saved_data["master_state"], session_id=sid)
             except Exception:
-                pass
+                m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+                atomic_write_json(m_path, saved_data["master_state"])
     else:
         st.session_state.player = {
             "name": "TestSubject_01",
@@ -2296,10 +2332,18 @@ def render_game_hud():
         ])
 
         with tab_active_party:
-            if not active_comps:
+            seen_active_names = set()
+            unique_active_comps = []
+            for c in active_comps:
+                if isinstance(c, dict):
+                    cn = c.get("name", "Companion")
+                    if cn not in seen_active_names:
+                        seen_active_names.add(cn)
+                        unique_active_comps.append(c)
+            if not unique_active_comps:
                 st.info("No active companions deployed in vanguard. Check Reserve or Recruit tabs!")
             else:
-                for comp in active_comps:
+                for comp_idx, comp in enumerate(unique_active_comps):
                     if not isinstance(comp, dict):
                         continue
                     c_name = comp.get("name", "Companion")
@@ -2326,7 +2370,7 @@ def render_game_hud():
                         else:
                             st.caption("Reach Affinity 50 to unlock Dual-Tech combo.")
                     with col_aff2:
-                        if st.button(f"Share Rations (50 Col)", key=f"btn_share_meal_{c_name}"):
+                        if st.button(f"Share Rations (50 Col)", key=f"btn_share_meal_{c_name}_{comp_idx}"):
                             if player.get("col", 0) >= 50:
                                 player["col"] -= 50
                                 aff_res = mechanics.increase_companion_affinity(player, c_name, 10, reason="Shared rations")
@@ -2338,7 +2382,7 @@ def render_game_hud():
 
                     if c_aff >= 50:
                         combo_id = comp.get("dual_tech_id")
-                        if st.button(f"⚡ Execute Dual-Tech: {comp.get('dual_tech_name', 'Combo')}", key=f"btn_exec_dt_{c_name}", use_container_width=True):
+                        if st.button(f"⚡ Execute Dual-Tech: {comp.get('dual_tech_name', 'Combo')}", key=f"btn_exec_dt_{c_name}_{comp_idx}", use_container_width=True):
                             if hasattr(mechanics, "execute_dual_tech"):
                                 dt_res = mechanics.execute_dual_tech(player, combo_id)
                                 if dt_res["success"]:
@@ -2358,7 +2402,7 @@ def render_game_hud():
                             options=stance_keys,
                             index=curr_idx,
                             format_func=lambda k: stances.get(k, {}).get("label", k),
-                            key=f"sb_stance_{c_name}"
+                            key=f"sb_stance_{c_name}_{comp_idx}"
                         )
                         if new_st != c_stance:
                             if hasattr(mechanics, "set_party_member_stance"):
@@ -2368,7 +2412,7 @@ def render_game_hud():
                                 st.rerun()
                         st.caption(f"↳ **Effect:** {stances.get(c_stance, {}).get('tactical_effect', '')}")
 
-                    if st.button(f"Bench {c_name} (Send to Reserve)", key=f"btn_bench_{c_name}"):
+                    if st.button(f"Bench {c_name} (Send to Reserve)", key=f"btn_bench_{c_name}_{comp_idx}"):
                         comp["active"] = False
                         save_game(player, st.session_state.messages)
                         st.toast(f"{c_name} moved to Reserve.", icon="🛋️")
@@ -3464,13 +3508,15 @@ def render_game_hud():
                     if any(c in desc.lower() for c in ["splintered and venting", "superheated geothermal", "falling shale", "rock debris litter"]):
                         m_state.setdefault("environment", {})["description"] = "A damp, cavernous mine shaft exit junction. The massive chassis of Silt-Marrow the Unhewn lies completely inert, dismantled, and harvested. The seismic rumbles have ceased, leaving the path open to ascend upward via the ore-cart track toward the Washington Borough Safe-Zone or descend toward the Morris Canal Aqueducts."
 
-                os.makedirs(os.path.dirname(m_path), exist_ok=True)
-                with open(m_path, "w", encoding="utf-8") as f:
-                    json.dump(m_state, f, indent=4)
+                sid = get_current_session_id()
+                try:
+                    with db_transaction(session_id=sid) as db_sess:
+                        MasterStateRepository.save_master_state(db_sess, m_state, session_id=sid)
+                except Exception:
+                    os.makedirs(os.path.dirname(m_path), exist_ok=True)
+                    atomic_write_json(m_path, m_state)
 
-                # Synchronize Staging_Ground/visible_room.json
-                vr_path = os.path.join(BASE_DIR, "Staging_Ground", "visible_room.json")
-                os.makedirs(os.path.dirname(vr_path), exist_ok=True)
+                # Synchronize Staging_Ground
                 vis_room = {
                     "turn_number": m_state.get("turn_number", 1),
                     "environment": {
@@ -3483,29 +3529,30 @@ def render_game_hud():
                         for e in m_state.get("entities", [])
                     ]
                 }
-                with open(vr_path, "w", encoding="utf-8") as f:
-                    json.dump(vis_room, f, indent=4)
-
-            # Clear action queue
-            q_path = os.path.join(BASE_DIR, "Staging_Ground", "action_queue.json")
-            if os.path.exists(os.path.dirname(q_path)):
-                with open(q_path, "w", encoding="utf-8") as f:
-                    json.dump([], f)
+                try:
+                    with db_transaction(session_id=sid) as db_sess:
+                        StagingRepository.save_staging_state(
+                            db_sess, visible_room=vis_room, action_queue=[], session_id=sid
+                        )
+                except Exception:
+                    vr_path = os.path.join(BASE_DIR, "Staging_Ground", "visible_room.json")
+                    atomic_write_json(vr_path, vis_room)
+                    q_path = os.path.join(BASE_DIR, "Staging_Ground", "action_queue.json")
+                    atomic_write_json(q_path, [])
 
             # Sync Party/companion_ren.json
             ren_data = st.session_state.player.get("companions", {}).get("Ren")
             if ren_data:
-                p_ren_path = os.path.join(BASE_DIR, "Party", "companion_ren.json")
-                if os.path.exists(p_ren_path):
-                    try:
-                        with open(p_ren_path, "r", encoding="utf-8") as f:
-                            ren_sheet = json.load(f)
-                        ren_sheet["hp"] = ren_data.get("hp", ren_sheet.get("hp", 35))
-                        ren_sheet["max_hp"] = ren_data.get("max_hp", ren_sheet.get("max_hp", 35))
-                        with open(p_ren_path, "w", encoding="utf-8") as f:
-                            json.dump(ren_sheet, f, indent=4)
-                    except Exception:
-                        pass
+                sid = get_current_session_id()
+                comps = st.session_state.player.get("companions", {})
+                p_slug = st.session_state.player.get("slug") or sanitize_character_slug(st.session_state.player.get("name", "Survivor"))
+                try:
+                    with db_transaction(session_id=sid) as db_sess:
+                        PartyRepository.save_party(
+                            db_sess, comps, session_id=sid, mirror_disk=True, character_slug=p_slug, base_dir=BASE_DIR
+                        )
+                except Exception:
+                    pass
 
             save_game(st.session_state.player, st.session_state.messages)
 
@@ -3555,55 +3602,16 @@ with st.sidebar:
         if selected_prof == active_char_name or st.session_state.get('character_creation_mode', False):
             return
 
-        # 1. Save current profile gamestate and party before switching
+        # 1. Atomically save current profile state prior to switching
         try:
-            save_game(st.session_state.player, st.session_state.messages)
+            save_game(st.session_state.player, st.session_state.get('messages', []))
             mechanics.save_party_to_character_folder(BASE_DIR, active_char_name)
         except Exception:
             pass
 
-        p_data = cg.load_character_from_folder(BASE_DIR, selected_prof)
-        if p_data and 'player' in p_data:
-            st.session_state.player = p_data['player']
-            st.session_state.messages = p_data.get('messages', [])
-            st.session_state.active_profile = selected_prof
-            st.session_state.character_selected = True
-            st.session_state.character_creation_mode = False
-            try:
-                st.query_params["character"] = selected_prof
-                if "mode" in st.query_params:
-                    del st.query_params["mode"]
-            except Exception:
-                pass
-
-            # 2. Restore target character's companions into Party/ and Entities/
-            try:
-                mechanics.restore_companions_for_character(BASE_DIR, selected_prof, st.session_state.player)
-            except Exception:
-                pass
-
-            # Sync to secret_master_state.json if present (without embedding redundant player dict)
-            m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
-            if "master_state" in p_data and isinstance(p_data["master_state"], dict) and p_data["master_state"]:
-                try:
-                    os.makedirs(os.path.dirname(m_path), exist_ok=True)
-                    clean_m = {k: v for k, v in p_data["master_state"].items() if k != "player"}
-                    with open(m_path, "w", encoding="utf-8") as f:
-                        json.dump(clean_m, f, indent=4)
-                except Exception:
-                    pass
-            elif os.path.exists(m_path):
-                try:
-                    with open(m_path, "r", encoding="utf-8") as f:
-                        m_data = json.load(f)
-                    if isinstance(m_data, dict):
-                        m_data.pop("player", None)
-                        m_data.setdefault("environment", {})["location"] = p_data["player"].get("location", "Sector 1 Safe-Zone: Washington Borough, NJ")
-                        with open(m_path, "w", encoding="utf-8") as f:
-                            json.dump(m_data, f, indent=4)
-                except Exception:
-                    pass
-            save_game(st.session_state.player, st.session_state.messages)
+        # 2. Activate target character cleanly via authoritative adapter
+        activate_character_session(selected_prof, update_query_params=True)
+        save_game(st.session_state.player, st.session_state.messages)
 
     if st.button("🏠 Choose Your Character Lobby", use_container_width=True, key="btn_return_char_select"):
         try:
@@ -3705,13 +3713,13 @@ def render_tutorial_crucible_banner():
                 key=f"btn_tut_instant_s{curr_stage}",
             ):
                 m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+                sid = get_current_session_id()
                 m_state = None
-                if os.path.exists(m_path):
-                    try:
-                        with open(m_path, "r", encoding="utf-8") as mf:
-                            m_state = json.load(mf)
-                    except Exception:
-                        m_state = None
+                try:
+                    with db_transaction(session_id=sid) as db_sess:
+                        m_state = MasterStateRepository.load_master_state(db_sess, session_id=sid)
+                except Exception:
+                    m_state = atomic_read_json(m_path, default=None)
                 res = mechanics.advance_tutorial_stage(
                     st.session_state.player,
                     player_action=stage_info["suggested_action"],
@@ -3720,10 +3728,10 @@ def render_tutorial_crucible_banner():
                 )
                 if m_state is not None:
                     try:
-                        with open(m_path, "w", encoding="utf-8") as mf:
-                            json.dump(m_state, mf, indent=4)
+                        with db_transaction(session_id=sid) as db_sess:
+                            MasterStateRepository.save_master_state(db_sess, m_state, session_id=sid)
                     except Exception:
-                        pass
+                        atomic_write_json(m_path, m_state)
                 if res.get("teleported"):
                     try:
                         import map_engine
@@ -3759,13 +3767,13 @@ def render_tutorial_crucible_banner():
                 key=f"btn_tut_skip_s{curr_stage}",
             ):
                 m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+                sid = get_current_session_id()
                 m_state = None
-                if os.path.exists(m_path):
-                    try:
-                        with open(m_path, "r", encoding="utf-8") as mf:
-                            m_state = json.load(mf)
-                    except Exception:
-                        m_state = None
+                try:
+                    with db_transaction(session_id=sid) as db_sess:
+                        m_state = MasterStateRepository.load_master_state(db_sess, session_id=sid)
+                except Exception:
+                    m_state = atomic_read_json(m_path, default=None)
                 res = mechanics.advance_tutorial_stage(
                     st.session_state.player,
                     player_action="Complete full Cardinal Calibration Crucible tutorial.",
@@ -3774,10 +3782,10 @@ def render_tutorial_crucible_banner():
                 )
                 if m_state is not None:
                     try:
-                        with open(m_path, "w", encoding="utf-8") as mf:
-                            json.dump(m_state, mf, indent=4)
+                        with db_transaction(session_id=sid) as db_sess:
+                            MasterStateRepository.save_master_state(db_sess, m_state, session_id=sid)
                     except Exception:
-                        pass
+                        atomic_write_json(m_path, m_state)
                 try:
                     import map_engine
                     ms = map_engine.load_map_state()
@@ -3917,11 +3925,12 @@ if prompt := (dev_prompt or chat_prompt):
                 for n in news_add:
                     if n not in world_state["global_news"]:
                         world_state["global_news"].append(n)
+                sid = get_current_session_id()
                 try:
-                    with open("world_state.json", "w", encoding="utf-8") as f:
-                        json.dump(world_state, f, indent=4)
+                    with db_transaction(session_id=sid) as db_sess:
+                        MasterStateRepository.save_world_state(db_sess, world_state, session_id=sid)
                 except Exception:
-                    pass
+                    atomic_write_json(os.path.join(BASE_DIR, "world_state.json"), world_state)
 
             # Apply State Updates
             if state_updates and isinstance(state_updates, dict):
@@ -3932,11 +3941,12 @@ if prompt := (dev_prompt or chat_prompt):
                 w_status = state_updates.get("world_status")
                 if w_status and isinstance(w_status, str):
                     world_state["world_status"] = w_status
+                    sid = get_current_session_id()
                     try:
-                        with open("world_state.json", "w", encoding="utf-8") as f:
-                            json.dump(world_state, f, indent=4)
+                        with db_transaction(session_id=sid) as db_sess:
+                            MasterStateRepository.save_world_state(db_sess, world_state, session_id=sid)
                     except Exception:
-                        pass
+                        atomic_write_json(os.path.join(BASE_DIR, "world_state.json"), world_state)
 
                 # Note: col_change and equip_* updates are applied inside apply_player_state_updates(state_updates) below.
 
@@ -4030,13 +4040,13 @@ if prompt := (dev_prompt or chat_prompt):
             tutorial_res = None
             if hasattr(mechanics, "is_tutorial_active") and mechanics.is_tutorial_active(st.session_state.player):
                 m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+                sid = get_current_session_id()
                 m_state = None
-                if os.path.exists(m_path):
-                    try:
-                        with open(m_path, "r", encoding="utf-8") as mf:
-                            m_state = json.load(mf)
-                    except Exception:
-                        m_state = None
+                try:
+                    with db_transaction(session_id=sid) as db_sess:
+                        m_state = MasterStateRepository.load_master_state(db_sess, session_id=sid)
+                except Exception:
+                    m_state = atomic_read_json(m_path, default=None)
                 tutorial_res = mechanics.advance_tutorial_stage(
                     st.session_state.player,
                     player_action=ai_prompt,
@@ -4045,10 +4055,10 @@ if prompt := (dev_prompt or chat_prompt):
                 )
                 if m_state is not None:
                     try:
-                        with open(m_path, "w", encoding="utf-8") as mf:
-                            json.dump(m_state, mf, indent=4)
+                        with db_transaction(session_id=sid) as db_sess:
+                            MasterStateRepository.save_master_state(db_sess, m_state, session_id=sid)
                     except Exception:
-                        pass
+                        atomic_write_json(m_path, m_state)
                 if tutorial_res.get("teleported"):
                     try:
                         ms = map_engine.load_map_state()

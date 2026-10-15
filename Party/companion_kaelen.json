@@ -59,5 +59,10 @@
     },
     "active_debuffs": [],
     "recruited": false,
-    "active": false
+    "active": false,
+    "slug": "kaelen",
+    "companion_name": "Brother Kaelen",
+    "is_active": false,
+    "stats": {},
+    "skills": {}
 }

@@ -59,5 +59,10 @@
     },
     "active_debuffs": [],
     "recruited": false,
-    "active": false
+    "active": false,
+    "slug": "morrigan",
+    "companion_name": "Morrigan Black-Thorn",
+    "is_active": false,
+    "stats": {},
+    "skills": {}
 }

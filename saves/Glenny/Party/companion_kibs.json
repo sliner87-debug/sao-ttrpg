@@ -79,5 +79,10 @@
     },
     "active_debuffs": [],
     "recruited": false,
-    "active": false
+    "active": false,
+    "slug": "kibs",
+    "companion_name": "Kibs Nine-Fingers",
+    "is_active": false,
+    "stats": {},
+    "skills": {}
 }

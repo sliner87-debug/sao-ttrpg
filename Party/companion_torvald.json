@@ -69,5 +69,10 @@
     },
     "active_debuffs": [],
     "recruited": false,
-    "active": false
+    "active": false,
+    "slug": "torvald",
+    "companion_name": "Torvald Iron-Vein",
+    "is_active": false,
+    "stats": {},
+    "skills": {}
 }

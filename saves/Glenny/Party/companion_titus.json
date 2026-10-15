@@ -61,5 +61,10 @@
     },
     "active_debuffs": [],
     "recruited": false,
-    "active": false
+    "active": false,
+    "slug": "titus",
+    "companion_name": "Titus Sterling (Unit PX-09)",
+    "is_active": false,
+    "stats": {},
+    "skills": {}
 }
