@@ -408,7 +408,8 @@ def calculate_depth_telemetry(collar_asl_ft: float, bottom_asl_ft: float, phreat
         "submerged": submerged,
         "water_head_ft": int(water_head_ft),
         "hydrostatic_psi": psi,
-        "environment_state": "Flooded / Sump" if submerged else "Dry Bedrock Cavity"
+        "environment_state": "Flooded / Sump" if submerged else "Dry Bedrock Cavity",
+        "travel_minutes": 0
     }
 
 # -----------------------------------------------------------------------------
@@ -632,7 +633,15 @@ def render_sector_layer(
     global _OVERLAY_CACHE_HASH
 
     if sector_id == "global_raid":
-        return generate_global_atlas_overlay(player_state), {"mode": "global_raid"}
+        return generate_global_atlas_overlay(player_state), {
+            "mode": "global_raid",
+            "travel_minutes": 0,
+            "player_gps": (0.0, 0.0),
+            "bottom_asl_ft": 0,
+            "overburden_ft": 0,
+            "hydrostatic_psi": 0.0,
+            "environment_state": "Planetary Surface"
+        }
 
     state = load_map_state()
     p_skills = (player_state or {}).get("skills", [])
@@ -681,7 +690,8 @@ def render_sector_layer(
         "sector_name": SECTORS.get(sector_id, {}).get("name", sector_id),
         "layer_label": LAYERS.get(layer_id, {}).get("label", layer_id),
         "player_grid": (player_x, player_y),
-        "player_gps": grid_to_gps(player_x, player_y, sector_id)
+        "player_gps": grid_to_gps(player_x, player_y, sector_id),
+        "travel_minutes": 0
     })
 
     # Cache signature check

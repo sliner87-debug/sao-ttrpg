@@ -20,6 +20,13 @@ import backend.world_atlas as world_atlas
 import backend.bestiary_compendium as bestiary
 import backend.persona_engine as persona_engine
 import backend.database as db
+import map_engine
+if not hasattr(map_engine, "SECTORS"):
+    import importlib
+    try:
+        importlib.reload(map_engine)
+    except Exception as _re_err:
+        print(f"[RELOAD ERROR] Failed to reload map_engine: {_re_err}", flush=True)
 from backend.database.adapters import (
     activate_character_session as adapter_activate_character_session,
     atomic_read_json,
@@ -43,33 +50,43 @@ from backend.database.repositories import (
 def _refresh_stale_backend_modules():
     """
     Streamlit re-executes app.py on every rerun/redeploy but keeps already-imported backend
-    modules cached in memory. Reload backend modules in dependency order ONLY when one or more
+    and root engine modules cached in memory. Reload modules in dependency order ONLY when one or more
     of their files actually changed on disk since they were loaded.
     """
     import importlib
     import backend as _backend_pkg
-    order = ["schemas", "world_atlas", "bestiary_compendium", "mechanics", "character_generator",
-             "persona_engine", "voice_engine", "actor_engine", "auth", "gm_engine"]
+
+    # Ensure map_engine has current registry attributes before mtime checks
+    mod_map = sys.modules.get("map_engine")
+    if mod_map is not None and not hasattr(mod_map, "SECTORS"):
+        try:
+            importlib.reload(mod_map)
+        except Exception as reload_err:
+            print(f"[HOT-RELOAD] Failed to reload map_engine: {reload_err}", flush=True)
+
+    order = ["backend.schemas", "backend.world_atlas", "backend.bestiary_compendium", "backend.mechanics",
+             "backend.character_generator", "backend.persona_engine", "backend.voice_engine",
+             "backend.actor_engine", "backend.auth", "backend.gm_engine", "map_engine"]
     current = {}
-    for name in order:
-        mod = sys.modules.get(f"backend.{name}")
+    for mod_name in order:
+        mod = sys.modules.get(mod_name)
         path = getattr(mod, "__file__", None) if mod else None
         if path and os.path.exists(path):
-            current[name] = os.path.getmtime(path)
+            current[mod_name] = os.path.getmtime(path)
     previous = getattr(_backend_pkg, "_loaded_mtimes", None)
     if previous is None:
         _backend_pkg._loaded_mtimes = current
         return
     if previous == current:
         return
-    for name in order:
-        if previous.get(name) != current.get(name):
-            mod = sys.modules.get(f"backend.{name}")
+    for mod_name in order:
+        if previous.get(mod_name) != current.get(mod_name):
+            mod = sys.modules.get(mod_name)
             if mod is not None:
                 try:
                     importlib.reload(mod)
                 except Exception as reload_err:
-                    print(f"[HOT-RELOAD] Failed to reload backend.{name}: {reload_err}", flush=True)
+                    print(f"[HOT-RELOAD] Failed to reload {mod_name}: {reload_err}", flush=True)
     _backend_pkg._loaded_mtimes = current
 
 
@@ -3000,55 +3017,106 @@ def render_game_hud():
     st.divider()
     st.subheader("🌐 Cardinal Omniscience Multi-Layer Geospatial Atlas")
     import map_engine
-    map_state = map_engine.load_map_state()
+    if not hasattr(map_engine, "SECTORS"):
+        import importlib
+        try:
+            importlib.reload(map_engine)
+        except Exception as _re_err:
+            print(f"[RELOAD ERROR] Failed to reload map_engine in HUD: {_re_err}", flush=True)
+
+    map_state = map_engine.load_map_state() if hasattr(map_engine, "load_map_state") else {
+        "player_x": 50, "player_y": 50, "active_sector": "sector1_primary", "active_layer": "usgs_topo"
+    }
+
+    sectors_dict = getattr(map_engine, "SECTORS", {})
+    if not sectors_dict:
+        sectors_dict = {
+            "sector1_primary": {
+                "id": "sector1_primary",
+                "name": "Sector 1: Primary 25-Mile Core",
+                "radius_miles": 25.0,
+                "center_gps": (40.7584, -74.9793),
+                "elevation_asl_ft": 460,
+                "description": "Warren, Hunterdon, Morris, Sussex, and Northampton regional corridor."
+            }
+        }
+
+    layers_dict = getattr(map_engine, "LAYERS", {})
+    if not layers_dict:
+        layers_dict = {
+            "usgs_topo": {
+                "id": "usgs_topo",
+                "label": "🗺️ Surface Topography (USGS Topo)",
+                "description": "USGS topographic elevation contours, surface highways, and township boundaries."
+            }
+        }
 
     col_sector, col_layer = st.columns([3, 2])
     with col_sector:
-        sector_options = list(map_engine.SECTORS.keys())
+        sector_options = list(sectors_dict.keys())
         cur_sec = map_state.get("active_sector", "sector1_primary")
-        sec_idx = sector_options.index(cur_sec) if cur_sec in sector_options else 1
+        sec_idx = sector_options.index(cur_sec) if cur_sec in sector_options else (sector_options.index("sector1_primary") if "sector1_primary" in sector_options else 0)
         selected_sector_id = st.selectbox(
             "🗺️ Sector Region:",
             options=sector_options,
-            format_func=lambda s: map_engine.SECTORS[s]["name"],
+            format_func=lambda s: sectors_dict.get(s, {}).get("name", s),
             index=sec_idx,
             key="hud_map_sector_select"
         )
 
     with col_layer:
-        available_layers = map_engine.get_available_layers(selected_sector_id)
+        if hasattr(map_engine, "get_available_layers"):
+            available_layers = map_engine.get_available_layers(selected_sector_id)
+        else:
+            available_layers = list(layers_dict.keys())
         cur_lay = map_state.get("active_layer", "usgs_topo")
         lay_idx = available_layers.index(cur_lay) if cur_lay in available_layers else 0
         selected_layer_id = st.selectbox(
             "📊 Sensor Datum Layer:",
             options=available_layers,
-            format_func=lambda l: map_engine.LAYERS.get(l, {}).get("label", l),
+            format_func=lambda l: layers_dict.get(l, {}).get("label", l),
             index=lay_idx,
             key="hud_map_layer_select"
         )
 
     # Render Tactical Composite Map
-    rendered_map_path, telemetry = map_engine.render_sector_layer(
-        sector_id=selected_sector_id,
-        layer_id=selected_layer_id,
-        player_state=st.session_state.player,
-        character_id=st.session_state.get("active_character_id")
-    )
+    rendered_map_path = None
+    map_telemetry = {}
+    if hasattr(map_engine, "render_sector_layer"):
+        try:
+            rendered_map_path, map_telemetry = map_engine.render_sector_layer(
+                sector_id=selected_sector_id,
+                layer_id=selected_layer_id,
+                player_state=st.session_state.player,
+                character_id=st.session_state.get("active_character_id")
+            )
+        except Exception as _map_err:
+            print(f"[MAP RENDER ERROR] {_map_err}", flush=True)
+            map_telemetry = {}
+    elif hasattr(map_engine, "generate_overlay"):
+        try:
+            rendered_map_path = map_engine.generate_overlay(player_skills=st.session_state.player.get("skills", []))
+        except Exception as _map_err:
+            print(f"[MAP OVERLAY ERROR] {_map_err}", flush=True)
+
+    if not isinstance(map_telemetry, dict):
+        map_telemetry = {}
 
     if rendered_map_path and os.path.exists(rendered_map_path):
-        sec_name = map_engine.SECTORS.get(selected_sector_id, {}).get("name", selected_sector_id)
-        lay_name = map_engine.LAYERS.get(selected_layer_id, {}).get("label", selected_layer_id)
+        sec_name = sectors_dict.get(selected_sector_id, {}).get("name", selected_sector_id)
+        lay_name = layers_dict.get(selected_layer_id, {}).get("label", selected_layer_id)
         st.image(rendered_map_path, caption=f"{sec_name} — {lay_name}", use_container_width=True)
 
     # Subterranean Telemetry HUD (Shown on Subterranean & Cross-Section layers)
-    if selected_layer_id in ("bathymetry_underground", "vertical_cross_section"):
+    if selected_layer_id in ("bathymetry_underground", "vertical_cross_section") and map_telemetry:
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Altitude / Depth", f"{telemetry.get('bottom_asl_ft', 460)} ft ASL")
-        c2.metric("Overburden", f"{telemetry.get('overburden_ft', 0)} ft")
-        c3.metric("Hydrostatic Pressure", f"{telemetry.get('hydrostatic_psi', 0.0)} PSI")
-        c4.metric("Atmosphere", telemetry.get("environment_state", "Dry Bedrock"))
+        c1.metric("Altitude / Depth", f"{map_telemetry.get('bottom_asl_ft', 460)} ft ASL")
+        c2.metric("Overburden", f"{map_telemetry.get('overburden_ft', 0)} ft")
+        c3.metric("Hydrostatic Pressure", f"{map_telemetry.get('hydrostatic_psi', 0.0)} PSI")
+        c4.metric("Atmosphere", map_telemetry.get("environment_state", "Dry Bedrock"))
 
-    gps_lat, gps_lon = telemetry.get("player_gps", (40.7584, -74.9793))
+    gps_coords = map_telemetry.get("player_gps", (40.7584, -74.9793))
+    gps_lat, gps_lon = gps_coords if isinstance(gps_coords, (tuple, list)) and len(gps_coords) >= 2 else (40.7584, -74.9793)
     st.write(f"**GPS Coordinates:** Lat: `{gps_lat:.4f}° N`, Lon: `{gps_lon:.4f}° W` | Grid: X: `{map_state.get('player_x', 50)}`, Y: `{map_state.get('player_y', 50)}`")
     st.write(f"**Status:** {world_state['world_status']}")
 
@@ -3203,7 +3271,12 @@ def render_game_hud():
             sel_zone_label = st.selectbox("Select Destination Zone:", list(zone_Display_map.keys()), key="atlas_zone_select")
             target_z_id = zone_Display_map[sel_zone_label]
             target_z = world_atlas.WORLD_ATLAS_ZONES[target_z_id]
-            telemetry = world_atlas.calculate_travel_telemetry(curr_loc, target_z_id, st.session_state.player)
+            travel_telemetry = world_atlas.calculate_travel_telemetry(curr_loc, target_z_id, st.session_state.player) if hasattr(world_atlas, "calculate_travel_telemetry") else {}
+            if not isinstance(travel_telemetry, dict):
+                travel_telemetry = {}
+            t_dist = travel_telemetry.get("distance_miles", target_z.get("distance_miles", 0))
+            t_hrs = travel_telemetry.get("travel_hours", round(t_dist / 3.0, 1))
+            t_mins = travel_telemetry.get("travel_minutes", int(t_hrs * 60))
 
             with st.container(border=True):
                 lv_min, lv_max = target_z.get("level_range", (1, 5))
@@ -3211,7 +3284,7 @@ def render_game_hud():
                 st.caption(
                     f"🌍 **Real-World Site:** {target_z.get('real_world_name', '')} ({target_z.get('distance_miles', 0)} mi {target_z.get('bearing', '')} of Washington NJ)  \n"
                     f"⚔️ **Recommended Level:** `Lv. {lv_min}–{lv_max}` | 🏛️ **Faction:** `{target_z.get('faction', 'Unaligned')}`  \n"
-                    f"🧭 **Transit Estimate:** `{telemetry['distance_miles']} mi` (~`{telemetry['travel_hours']} hrs` / `{telemetry['travel_minutes']} mins`)"
+                    f"🧭 **Transit Estimate:** `{t_dist} mi` (~`{t_hrs} hrs` / `{t_mins} mins`)"
                 )
                 st.write(target_z.get("lore_summary", ""))
                 if target_z.get("resident_races"):
@@ -3256,8 +3329,8 @@ def render_game_hud():
                     if [gx, gy] not in map_state.get("explored_tiles", []):
                         map_state.setdefault("explored_tiles", []).append([gx, gy])
                     map_engine.save_map_state(map_state)
-                    if telemetry["travel_minutes"] > 0:
-                        mechanics.advance_game_time(st.session_state.player, minutes=min(telemetry["travel_minutes"], 240))
+                    if t_mins > 0:
+                        mechanics.advance_game_time(st.session_state.player, minutes=min(t_mins, 240))
                     st.session_state.pending_dev_command = (
                         f"We chart an expedition across the Fractured Overlay to [{target_z['name']}] "
                         f"({target_z.get('real_world_name', '')}, {target_z.get('distance_miles', 0)} miles {target_z.get('bearing', '')} of Washington Borough). "
