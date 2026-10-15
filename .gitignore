@@ -18,5 +18,8 @@ saves/Test_*
 saves/ChimeraHero/
 saves/Garrick/
 .venv/
+*.m4a
+*.mp3
+
 
 
