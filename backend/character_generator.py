@@ -2,7 +2,7 @@
 Pre-to-Post Integration Character Generator Engine
 Translates real-world Earth knowledge, vocations, and physical conditioning into LitRPG parameters.
 Fully integrated with the 1-1000 Skill Mastery and Mechanics Engine.
-Supports 18 Lifestyle Presets, 20 Vocations, 20 Lineages, 17+ Relics,
+Supports 18 Lifestyle Presets, 32 Vocations, 20 Lineages, 29+ Relics,
 an interactive Custom Life Collaboration Parser, and Character-Folder Save Management.
 """
 
@@ -518,8 +518,252 @@ PRESET_BACKGROUNDS = {
             }
         },
         "innate_perk": "Seamless Stitch (Passive): Fabric and leather armor repaired by you gains +10% bonus durability over maximum."
+    },
+
+    # 12 Rare Previous Integration Vocations (With Special System Resonance)
+    "speleologist_rescuer": {
+        "title": "Sub-Surface Speleologist & Mine Rescue Operative",
+        "description": "Navigated unmapped abyss stopes, unlined bedrock tunnels, hypoxic boreholes, and structural squeeze faults.",
+        "stat_recommendations": {"CON": 3, "WIS": 2, "STR": 1, "DEX": 0, "INT": 0, "CHA": 0},
+        "skills": {
+            "Subterranean Spelunking": {
+                "mastery": 55,
+                "tier": "Apprentice",
+                "description": "Navigating vertical shafts, cave squeeze-ways, subterranean rappelling, and unmapped stopes.",
+                "milestones_unlocked": [50]
+            },
+            "Mine-Gas Ventilation": {
+                "mastery": 45,
+                "tier": "Novice",
+                "description": "Detecting blackdamp, routing airflow currents, and surviving hypoxic sub-surface voids.",
+                "milestones_unlocked": []
+            }
+        },
+        "innate_perk": "Lithic Echonavigation (Passive): Rapping a piton against bare bedrock reveals structural voids, hidden chambers, and ore stopes up to 100ft away; take 25% reduced cave-in damage."
+    },
+    "cryptographer_signals": {
+        "title": "Clandestine Cryptographer / Number-Station Monitor",
+        "description": "Monitored atmospheric shortwave frequencies, cold war one-time pads, and intercepted clandestine telemetric broadcasts.",
+        "stat_recommendations": {"INT": 4, "WIS": 2, "STR": 0, "DEX": 0, "CON": 0, "CHA": 0},
+        "skills": {
+            "Algorithmic Decryption": {
+                "mastery": 55,
+                "tier": "Apprentice",
+                "description": "Decoding aether-cipher locks, logic wards, and intercepted Cardinal system telemetry.",
+                "milestones_unlocked": [50]
+            },
+            "Signal Interception": {
+                "mastery": 45,
+                "tier": "Novice",
+                "description": "Tuning into ambient mana radio frequencies and detecting distant enemy transmissions.",
+                "milestones_unlocked": []
+            }
+        },
+        "innate_perk": "Dead-Air Whisper (Passive): Receive an aetheric cipher alert 1 round before an elite enemy uses a named power or before an environmental hazard triggers."
+    },
+    "horologist_artisan": {
+        "title": "Master Horologist & Chronometer Artisan",
+        "description": "Crafted tourbillons, jeweled escapements, balance springs, and high-precision mechanical dead-beat clocks.",
+        "stat_recommendations": {"DEX": 3, "INT": 2, "WIS": 1, "STR": 0, "CON": 0, "CHA": 0},
+        "skills": {
+            "Chrono-Mechanical Repair": {
+                "mastery": 55,
+                "tier": "Apprentice",
+                "description": "Assembling high-precision clockwork gears, tripwires, and mechanical timing assemblies.",
+                "milestones_unlocked": [50]
+            },
+            "Escapement Calibration": {
+                "mastery": 45,
+                "tier": "Novice",
+                "description": "Tuning mechanical harmonic balance and microsecond kinetic release.",
+                "milestones_unlocked": []
+            }
+        },
+        "innate_perk": "Temporal Pendulum (Passive): Once per combat encounter, rewind a failed physical attack, spellcast, or lockpicking attempt by 1 turn to re-roll with +2 advantage."
+    },
+    "mortician_conservator": {
+        "title": "Forensic Mortician & Embalming Conservator",
+        "description": "Practiced vascular embalming, reconstructive tissue restoration, and clinical post-mortem examination.",
+        "stat_recommendations": {"WIS": 3, "INT": 2, "CON": 1, "STR": 0, "DEX": 0, "CHA": 0},
+        "skills": {
+            "Post-Mortem Anatomy": {
+                "mastery": 55,
+                "tier": "Apprentice",
+                "description": "Extracting intact organs, gland catalysts, and identifying lethal anatomical trauma.",
+                "milestones_unlocked": [50]
+            },
+            "Thanato-Preservation": {
+                "mastery": 45,
+                "tier": "Novice",
+                "description": "Formulating preservative fluids to stabilize corpse decay and neutralize rot miasmas.",
+                "milestones_unlocked": []
+            }
+        },
+        "innate_perk": "Rigor Mortis Read (Passive): Examining a fresh or ancient corpse reveals the exact weapon/spell that felled them, killer's level, and highest-tier loot drop with 100% accuracy."
+    },
+    "saturation_diver": {
+        "title": "Deep-Sea Hyperbaric Saturation Diver",
+        "description": "Lived in pressurized habitat capsules breathing heliox to weld pipelines in pitch-black ocean abysses.",
+        "stat_recommendations": {"CON": 4, "STR": 2, "DEX": 0, "INT": 0, "WIS": 0, "CHA": 0},
+        "skills": {
+            "Hyperbaric Pressure-Mastery": {
+                "mastery": 55,
+                "tier": "Apprentice",
+                "description": "Enduring extreme hydrostatic psi, pressurized gas mixtures, and crushing depths.",
+                "milestones_unlocked": [50]
+            },
+            "Abyssal Salvage": {
+                "mastery": 45,
+                "tier": "Novice",
+                "description": "Underwater cutting torches, subsea rigging, and zero-visibility tactile recovery.",
+                "milestones_unlocked": []
+            }
+        },
+        "innate_perk": "Zero-Atmosphere Fortitude (Passive): Immune to water pressure crushing up to -3,000ft ASL, vacuum decompression, and drowning for up to 45 minutes without diving gear."
+    },
+    "paleo_botanist": {
+        "title": "Paleo-Botanist & Seed Vault Conservator",
+        "description": "Preserved cryo-stored heirloom seed banks, excavated fossilized flora, and analyzed prehistoric pollen cores.",
+        "stat_recommendations": {"WIS": 3, "INT": 2, "CON": 1, "STR": 0, "DEX": 0, "CHA": 0},
+        "skills": {
+            "Paleo-Spore Cultivation": {
+                "mastery": 55,
+                "tier": "Apprentice",
+                "description": "Germinating extinct prehistoric plants and symbiotic fungal mycelia from past world cycles.",
+                "milestones_unlocked": [50]
+            },
+            "Phytochemical Synthesis": {
+                "mastery": 45,
+                "tier": "Novice",
+                "description": "Distilling primordial floral resins, medicinal saps, and antimicrobial varnishes.",
+                "milestones_unlocked": []
+            }
+        },
+        "innate_perk": "Spore-Ward Symbiosis (Passive): Inhaling plant spores, fungal neurotoxins, or floral pollens grants temporary HP (+10 Temp HP) instead of inflicting debuffs."
+    },
+    "beamline_physicist": {
+        "title": "Particle Physicist & Synchrotron Beamline Operator",
+        "description": "Engineered multi-GeV electron storage rings, superconducting magnets, and ultra-high vacuum RF cavities.",
+        "stat_recommendations": {"INT": 4, "WIS": 1, "DEX": 1, "STR": 0, "CON": 0, "CHA": 0},
+        "skills": {
+            "Subatomic Flux Analysis": {
+                "mastery": 55,
+                "tier": "Apprentice",
+                "description": "Analyzing energetic wave-particle interference, leyline flux harmonics, and beam scattering.",
+                "milestones_unlocked": [50]
+            },
+            "Kinetic Deflection Arrays": {
+                "mastery": 45,
+                "tier": "Novice",
+                "description": "Modulating electromagnetic and aetheric barrier fields to deflect directed energy.",
+                "milestones_unlocked": []
+            }
+        },
+        "innate_perk": "Observation Collapse (Passive): Critical hits landed against this character are downgraded to normal hits; energy beam and elemental projectile attacks suffer 25% damage reduction."
+    },
+    "ordnance_demolitionist": {
+        "title": "Master Pyrotechnician & Ordnance Demolitionist",
+        "description": "Specialized in shaped charges, thermobaric charges, blasting cap delays, and military clearance.",
+        "stat_recommendations": {"DEX": 3, "CON": 2, "INT": 1, "STR": 0, "WIS": 0, "CHA": 0},
+        "skills": {
+            "Shaped Charge Demolitions": {
+                "mastery": 55,
+                "tier": "Apprentice",
+                "description": "Channeling concussive explosive energy along directional cutting planes against hardened armor.",
+                "milestones_unlocked": [50]
+            },
+            "Thermobaric Formulation": {
+                "mastery": 45,
+                "tier": "Novice",
+                "description": "Mixing aluminum powder, fuel-air oxidizers, and delayed incendiary ignition trains.",
+                "milestones_unlocked": []
+            }
+        },
+        "innate_perk": "Zero-Backblast Vector (Passive): Explosives, grenades, and demolition charges deal +30% armor-piercing damage to structures/constructs and cannot damage allies."
+    },
+    "para_rescue_jumper": {
+        "title": "High-Altitude Smokejumper & Para-Rescue Specialist",
+        "description": "Conducted low-altitude round-canopy drops into burning canopies, high-angle rescue, and casualty evacuation.",
+        "stat_recommendations": {"STR": 2, "DEX": 3, "CON": 1, "INT": 0, "WIS": 0, "CHA": 0},
+        "skills": {
+            "Freefall Vectoring": {
+                "mastery": 55,
+                "tier": "Apprentice",
+                "description": "High-altitude glide control, turbulence compensation, and precision parachute landings.",
+                "milestones_unlocked": [50]
+            },
+            "Wildland Rapid-Extraction": {
+                "mastery": 45,
+                "tier": "Novice",
+                "description": "Lifting immobilized casualties, chainsaw debris clearing, and rapid tactical egress.",
+                "milestones_unlocked": []
+            }
+        },
+        "innate_perk": "Aero-Pneumatic Landing (Passive): Completely immune to fall damage; falling more than 30ft releases an outward kinetic shockwave that knocks back and stuns adjacent enemies."
+    },
+    "sonar_acoustician": {
+        "title": "Acoustic Submarine Sonarman / Hydrophone Analyst",
+        "description": "Trained ears to classify submerged diesel blades, biological clicks, thermocline echoes, and Doppler warbles.",
+        "stat_recommendations": {"WIS": 3, "INT": 2, "DEX": 1, "STR": 0, "CON": 0, "CHA": 0},
+        "skills": {
+            "Passive Acoustic Detection": {
+                "mastery": 55,
+                "tier": "Apprentice",
+                "description": "Listening to micro-decibel mechanical clicks, breathing patterns, and gear rustles through barriers.",
+                "milestones_unlocked": [50]
+            },
+            "Frequency Waveform Jamming": {
+                "mastery": 45,
+                "tier": "Novice",
+                "description": "Emitting acoustic white noise and resonance tones to scramble sonar and bats/blind predators.",
+                "milestones_unlocked": []
+            }
+        },
+        "innate_perk": "Thermocline Hearing (Passive): Cannot be surprised; enemies within 60ft (even behind walls or invisible) have their exact locations, heartbeats, and weapons highlighted on HUD."
+    },
+    "grimoire_binder": {
+        "title": "Antiquarian Grimoire Conservator & Occult Binder",
+        "description": "Restored vellum folios, scraped palimpsests, bound illuminated manuscripts, and neutralized cursed parchment.",
+        "stat_recommendations": {"INT": 3, "WIS": 3, "STR": 0, "DEX": 0, "CON": 0, "CHA": 0},
+        "skills": {
+            "Parchment Binding & Restoration": {
+                "mastery": 55,
+                "tier": "Apprentice",
+                "description": "Stitching leather covers, repairing torn vellum, and preserving magical runic ink from degradation.",
+                "milestones_unlocked": [50]
+            },
+            "Occult Paleography": {
+                "mastery": 45,
+                "tier": "Novice",
+                "description": "Translating ancient dead alphabets, identifying demonic seals, and analyzing warding scripts.",
+                "milestones_unlocked": []
+            }
+        },
+        "innate_perk": "Curse-Proof Vellum (Passive): Equipping or reading cursed tomes, scrolls, or inscribed artifacts never binds them maliciously to your soul and nullifies negative backlash."
+    },
+    "blast_furnace_metallurgist": {
+        "title": "Heavy Industrial Blast-Furnace Metallurgist",
+        "description": "Tended 3,000-degree molten iron stoves, tapped silica slag, and mastered steel microstructure transformations.",
+        "stat_recommendations": {"STR": 3, "CON": 3, "INT": 0, "DEX": 0, "WIS": 0, "CHA": 0},
+        "skills": {
+            "Slag & Refractory Metallurgy": {
+                "mastery": 55,
+                "tier": "Apprentice",
+                "description": "Evaluating refractory brick heat endurance, molten slag skimming, and alloy carbon content.",
+                "milestones_unlocked": [50]
+            },
+            "Pyric Crucible Forging": {
+                "mastery": 45,
+                "tier": "Novice",
+                "description": "Working raw molten metal directly under supernatural fire and thermal forge conditions.",
+                "milestones_unlocked": []
+            }
+        },
+        "innate_perk": "Molten Hearth Stance (Passive): Immune to heat exhaustion and magma burns; whenever struck by fire damage, your melee weapon superheats for +1d6 fire damage on next strike."
     }
 }
+
+EARTH_VOCATIONS = PRESET_BACKGROUNDS
 
 # --- 20 RACIAL MUTATIONS & LINEAGES (Fantasy & Sci-Fi) ---
 RACIAL_LINEAGES = {
@@ -1956,6 +2200,128 @@ PERSONAL_RELICS = {
         "qty": 1,
         "desc": "Rubber-armored digital monocular laser rangefinder used by precision marksmen. Features an LCD reticle displaying line-of-sight distance in yards, true horizontal angle compensation, and scan mode.",
         "mechanics": "Ballistic Ranging: Spending a minor action to range an enemy before firing eliminates distance penalties for bows, crossbows, and firearms up to 200 yards, and grants +2 on the next ranged attack roll. True Elevation: Automatically calculates horizontal distance when aiming up or down steep cliffs or towers. Operates on CR2 lithium cell with 85/100 battery remaining (1 charge per 10 range scans)."
+    },
+
+    # 12 Eccentric Relics (Including Miniature Sentient Elder Brain Prototype)
+    "elder_brain_jar": {
+        "name": "Miniature Elder Brain Prototype ('Gyrus the Ancient')",
+        "rarity": "Mythic / Sentient Living Relic",
+        "category": "Sentient Symbiote & System Sage",
+        "durability": 100,
+        "max_durability": 100,
+        "qty": 1,
+        "desc": "A fist-sized, bioluminescent lilac-grey cerebral cortex suspended in swirling amniotic briny fluid within a sealed, bronze-capped borosilicate glass cylinder. Pulse-arcs of violet psionic lightning ripple across its sulci. It communicates via telepathic resonance directly into your mind with a dry, sardonic, ancient voice. Gyrus survived three prior planetary Integrations and views the Cardinal System not as divine magic, but as a bloated, buggy operating system whose hidden loopholes, exploits, and undocumented routines it knows intimately.",
+        "mechanics": "Telepathic Oracle: Advises the carrier in real time, exposing monster damage vulnerabilities, hidden dungeon room triggers, and past integration history. Psionic Mind-Spike (1/Combat Action): Deals 2d8 psychic damage to a target within 40ft and interrupts enemy spellcasting or sword skill windups. System Exploitation: Permanently boosts experience gain by +10% and reduces skill milestone thresholds by 5%. Cannot be permanently destroyed; regenerates inside its fluid."
+    },
+    "chrono_station_dial": {
+        "name": "Chrono-Dial of the Vanished Station Master",
+        "rarity": "Rare",
+        "category": "Spatial Transit & Spectral Slip",
+        "durability": 100,
+        "max_durability": 100,
+        "qty": 1,
+        "desc": "A heavy, nickel-plated pocket dispatch dial salvaged from a long-demolished Pennsylvania Railroad junction tower. The numbers on the dial tick in reverse, tracking arrival schedules for phantom trains that ceased running seventy years ago.",
+        "mechanics": "Ghost Train Slip (1/Long Rest): Turning the brass dispatch key summons the distant spectral roar of a steam locomotive whistle. You and your party slip into an ethereal rail siding for 1 round, passing through solid barricades, cave-ins, or hostile encirclements completely untouchable and untargetable."
+    },
+    "oscilloscope_raven": {
+        "name": "Taxidermied Raven with Aether-Oscilloscope Eye",
+        "rarity": "Rare",
+        "category": "Anomalous Detection & Omen Radar",
+        "durability": 100,
+        "max_durability": 100,
+        "qty": 1,
+        "desc": "A preserved soot-black raven mounted on an ironwood perch. Its right eye has been replaced with a miniature green cathode-ray oscilloscope tube that flickers with erratic green sine waves whenever sentient malice or lethal intent is directed at you.",
+        "mechanics": "Corvid Omen Radar: The cathode eye spikes into frantic green sawtooth ripples and the raven's taxidermied beak snaps three times whenever an ambush, trap, or invisible stalker is within 120ft. Grants +4 on Initiative rolls and prevents the party from ever being surprised or flat-footed."
+    },
+    "infinite_anchovy_tin": {
+        "name": "Self-Filling Tin of Mediterranean Salted Anchovies",
+        "rarity": "Uncommon",
+        "category": "Infinite Sustenance & Olfactory Repulsion",
+        "durability": 100,
+        "max_durability": 100,
+        "qty": 1,
+        "desc": "An oily, dented oval tin of Mediterranean flat anchovies stamped with an unreadable 1963 date code. No matter how many savory, garlic-brine fillets you consume, three glistening silver fillets always remain submerged in aromatic olive oil.",
+        "mechanics": "Bottomless Sustenance: Provides infinite daily sustenance, making the carrier completely immune to starvation and dehydration. Beast Distraction Toss: Hurling a scoop of oily fillets creates an overwhelming olfactory cloud that distracts beast-type pursuers and vermin for 2 full rounds while they fight over the feast."
+    },
+    "soviet_geiger_counter": {
+        "name": "Soviet Lead-Shielded Radiac Meter ('Pripyat-66')",
+        "rarity": "Rare",
+        "category": "Mana-Fallout Sensor & Arcane Grounding",
+        "durability": 80,
+        "max_durability": 100,
+        "qty": 1,
+        "desc": "A heavy olive-drab dosimeter with Cyrillic dial markings, thick rubber probe cable, and cast lead housing. Its internal Geiger-Müller tube has mutated to click frantically in response to ambient magical radiation, void rot, and eldritch rift corruption.",
+        "mechanics": "Aetheric Rad-Click: Audio clicks accelerate into a screaming whine when within 100ft of corrupted rift nodes, high-tier boss chambers, or invisible necrotic hazards. Arcane Grounding Pulse (3 Charges/Rest): Flipping the discharge breaker grounds out ambient magical fields, dissipating arcane storm hazards or poison cloud traps in a 15ft radius."
+    },
+    "ceramic_doll_head": {
+        "name": "Weeping Porcelain Doll Head of Sector 4",
+        "rarity": "Rare",
+        "category": "Psychic Horror & Wailing Ward",
+        "durability": 100,
+        "max_durability": 100,
+        "qty": 1,
+        "desc": "A cracked Victorian doll head with hand-painted porcelain cheeks, real human hair curls, and glass eyes that slowly follow whoever carries it. Whenever nearby creatures experience terror, cold viscous tears bead along its eye sockets.",
+        "mechanics": "Mournful Shriek (Active, 1/Short Rest): Squeezing the porcelain cheeks causes it to release an ear-splitting child's wail. Humanoid, beast, and undead hostiles within 30ft must make a DC 14 WIS saving throw or drop their weapons and flee in terror for 1 round (inflicts [Frightened])."
+    },
+    "glitched_gameboy": {
+        "name": "Aether-Infused CRT Handheld ('Glitch-Cartridge')",
+        "rarity": "Rare",
+        "category": "Tactical RNG Decryption & Logic Bend",
+        "durability": 90,
+        "max_durability": 100,
+        "qty": 1,
+        "desc": "A classic 1989 off-white handheld gaming console with magenta buttons and dot-matrix screen, powered by two AA batteries that never run out. Slotted in the back is an unlabelled gunmetal cartridge that renders an 8-bit top-down pixel map of your current dungeon chamber.",
+        "mechanics": "Pixel-Dungeon Preview: Displays hidden pitfalls, secret doors, and mimic chests as flashing red pixel clusters on its 8-bit screen. Soft-Reset (1/Day): Pressing Start+Select+A+B allows the player to immediately re-roll a failed non-combat skill check (lockpicking, trap disarm, deciphering) by rewinding local causality 5 seconds."
+    },
+    "gravedigger_lantern": {
+        "name": "Wrought-Iron Gravedigger's Lantern (Soul-Wax Wick)",
+        "rarity": "Rare",
+        "category": "Necrotic Ward & Reverse Shadow Pointer",
+        "durability": 100,
+        "max_durability": 100,
+        "qty": 1,
+        "desc": "An octagonal iron lantern glazed with green bottle-glass panes. Inside burns an eerie blue flame fueled by grave-soil and sanctified beeswax. Peculiarly, the shadows cast by the light point directly toward nearby living creatures rather than away from the flame.",
+        "mechanics": "Hallowed Ward: Undead, shadows, and specters cannot cross into the 15ft halo of its pale blue light unless they succeed on a DC 15 CON check. Reverse-Shadow Tracking: Shadows cast by the lantern point like compass needles toward concealed or invisible living predators within 40ft."
+    },
+    "titanic_crossword_sheet": {
+        "name": "Waterlogged Maritime Crossword (April 14, 1912)",
+        "rarity": "Rare",
+        "category": "Premonition & Fate Weaver",
+        "durability": 50,
+        "max_durability": 50,
+        "qty": 1,
+        "desc": "A yellowed, water-stained newspaper clipping of an unsolved crossword puzzle from the morning of the Titanic's collision. Faint pencil marks fill in several clues. As you journey through the System, new letters mysteriously pencil themselves into blank grid boxes describing upcoming threats.",
+        "mechanics": "Crossword Premonition: Studying the grid before a dungeon or raid reveals one critical weakness or lethal gimmick of the sector's Boss (e.g. '7 Down: Shatter-Chitin'). Grants the entire party +2 on all saving throws during the first two rounds of combat against that boss."
+    },
+    "foot_treadle_drill": {
+        "name": "Dentist's Foot-Treadle Drill (Obsidian Burr)",
+        "rarity": "Rare",
+        "category": "Macabre Engineering & Armor Breaker",
+        "durability": 70,
+        "max_durability": 100,
+        "qty": 1,
+        "desc": "An eccentric antique cast-iron dental drill powered by a foot-pedal treadle and cable pulley, retrofitted with a screaming volcanic obsidian diamond burr. Smells faintly of clove oil and ancient dental clinic dread.",
+        "mechanics": "Armor-Bore Shucking: In melee, pumping the pedal spins the burr to 10,000 RPM. On a successful strike against an armored foe, construct, or shelled monster, shreds 3 points of enemy Armor Class (AC) and inflicts unbearable rattling agony (-2 to enemy concentration and spellcasting rolls for 3 rounds)."
+    },
+    "lighthouse_foghorn": {
+        "name": "Submerged Beacon Keeper's Foghorn Diaphragm",
+        "rarity": "Rare",
+        "category": "Sonic Concussion & Weather Dispersal",
+        "durability": 100,
+        "max_durability": 100,
+        "qty": 1,
+        "desc": "A heavy, sea-corroded naval bronze horn bell fitted with an acoustic reed valve and pressure chamber, salvaged from a drowned maritime lighthouse.",
+        "mechanics": "Fog-Clearing Blast: Blowing through the horn releases a deafening 130-decibel nautical blast heard for 3 miles. Disperses all magical fog, toxic smoke, and blindness miasmas in a 60ft cone, and forces small and medium creatures in the cone to make a DC 14 STR check or be knocked prone."
+    },
+    "endless_soup_thermos": {
+        "name": "Great-Aunt Martha's Red Plaid Soup Thermos",
+        "rarity": "Rare",
+        "category": "Alchemical Comfort & Poison Purge",
+        "durability": 3,
+        "max_durability": 3,
+        "qty": 1,
+        "desc": "A classic red-and-black plaid tin thermos with a cork stopper and screw-on red cup lid. Kept steaming hot by a tiny embedded thermoelectric rune, it smells of slow-simmered vine tomatoes, crushed basil, butter, and black pepper.",
+        "mechanics": "Soul-Restoring Broth (3 Pours per Rest): Pouring and drinking a steaming cup cures all active biological poisons, venoms, and acid burns, restores 25 HP, and grants the 'Hearty Warmth' buff (+10 Temp HP and total immunity to freezing cold and hypothermia for 4 hours)."
     }
 }
 

@@ -13019,7 +13019,201 @@ def activate_personal_relic(
             "message": "The 440 Hz Tuning Fork hums against the stone, mapping hollow chambers and leyline frequencies (+4 Investigation)."
         }
 
-    # 4. Default / Dead Earth Smartphone (Cognitive Stress Relief & Willpower Anchor)
+    # 4. Miniature Elder Brain Prototype ('Gyrus the Ancient')
+    if any(k in relic_raw for k in ["elder brain", "gyrus", "brain prototype", "specimen jar"]):
+        buffs = player_state.setdefault("active_relic_buffs", [])
+        if "Gyrus Synaptic Advisory (+10% EXP & Vulnerability Exploitation)" not in buffs:
+            buffs.append("Gyrus Synaptic Advisory (+10% EXP & Vulnerability Exploitation)")
+        # Clear mental debuffs
+        statuses = player_state.get("status_effects", [])
+        cleared_m = [s for s in statuses if any(w in str(s).lower() for w in ["stress", "dread", "frightened", "panic", "madness", "confusion", "charm"])]
+        player_state["status_effects"] = [s for s in statuses if s not in cleared_m]
+        log = (
+            "🧠 [RELIC ACTIVATED — MINIATURE ELDER BRAIN PROTOTYPE ('GYRUS THE ANCIENT')]: "
+            "Violet psionic lightning crackles through the amniotic brine! Gyrus's raspy, ancient voice echoes directly "
+            "into your cerebral cortex: 'Ah... still stumbling through Cardinal's clumsy subroutines, fledgling? "
+            "Target the carotid seam between their second and third chitin plates—that glitch has remained unpatched since the Fourth Cycle.' "
+            "Dealt 2d8 psionic mind-spike interruption, cleared all mental stress/fear, and granted +10% EXP / System Vulnerability insight!"
+        )
+        return {
+            "success": True,
+            "relic": "Miniature Elder Brain Prototype ('Gyrus the Ancient')",
+            "effect_type": "sentient_psionic_advisory",
+            "gyrus_dialogue": "Cardinal believes itself omnipotent. It is merely a compiler that forgot its garbage collector. Listen closely, and I will show you where the memory leaks.",
+            "psychic_damage_dice": "2d8",
+            "cleared_statuses": cleared_m,
+            "log": log,
+            "message": "Gyrus pulsed in his brine, whispering ancient System vulnerabilities into your mind (Mental debuffs cleared, 2d8 psionic mind-spike ready, +10% EXP gain)."
+        }
+
+    # 5. Chrono-Dial of the Vanished Station Master (Ghost Train Slip)
+    if any(k in relic_raw for k in ["chrono-dial", "station master", "ghost train", "dispatch dial"]):
+        buffs = player_state.setdefault("active_relic_buffs", [])
+        if "Ghost Train Intangibility (Phased / Untouchable 1 Turn)" not in buffs:
+            buffs.append("Ghost Train Intangibility (Phased / Untouchable 1 Turn)")
+        log = (
+            "🚂 [RELIC ACTIVATED — CHRONO-DIAL OF THE VANISHED STATION MASTER]: "
+            "You twist the brass dispatch key. The ghostly wail of a 1940s Baldwin steam locomotive reverberates through the aether! "
+            "Spectral phantom tracks materialize underfoot as you and your party slip into an ethereal rail-siding for 1 round—"
+            "passing through physical barriers and hostile encirclements completely untouchable!"
+        )
+        return {
+            "success": True,
+            "relic": "Chrono-Dial of the Vanished Station Master",
+            "effect_type": "spectral_slip",
+            "log": log,
+            "message": "Ghost train whistle shrieked! You slipped into the spectral siding (Untouchable & phased through obstacles for 1 turn)."
+        }
+
+    # 6. Taxidermied Raven with Aether-Oscilloscope Eye (Corvid Omen Radar)
+    if any(k in relic_raw for k in ["oscilloscope", "raven", "poe"]):
+        buffs = player_state.setdefault("active_relic_buffs", [])
+        if "Corvid Omen Radar (+4 Initiative & Ambush Immunity)" not in buffs:
+            buffs.append("Corvid Omen Radar (+4 Initiative & Ambush Immunity)")
+        log = (
+            "🦅 [RELIC ACTIVATED — TAXIDERMIED RAVEN (AETHER-OSCILLOSCOPE EYE)]: "
+            "The cathode-ray tube in the raven's eye socket hums to life in phosphor-green! Erratic sawtooth sine waves spike "
+            "across the glass reticle, and the taxidermied beak snaps three times in sharp mechanical warning! "
+            "Hidden snipers, camouflaged predators, and hostile intent within 120ft are immediately pinged (+4 Initiative & Ambush Immunity)!"
+        )
+        return {
+            "success": True,
+            "relic": "Taxidermied Raven with Aether-Oscilloscope Eye",
+            "effect_type": "omen_radar",
+            "log": log,
+            "message": "The raven's cathode eye flared green sawtooth waves (+4 Initiative, all ambushes/invisible foes pinged within 120ft)."
+        }
+
+    # 7. Soviet Lead-Shielded Radiac Meter ('Pripyat-66')
+    if any(k in relic_raw for k in ["geiger", "radiac", "pripyat"]):
+        buffs = player_state.setdefault("active_relic_buffs", [])
+        if "Arcane Grounding Pulse (Rift Hazard & Necrotic Fallout Immunity)" not in buffs:
+            buffs.append("Arcane Grounding Pulse (Rift Hazard & Necrotic Fallout Immunity)")
+        log = (
+            "☢️ [RELIC ACTIVATED — SOVIET RADIAC METER ('PRIPYAT-66')]: "
+            "Rapid clicking screams from the bakelite speaker! Flipping the lead discharge breaker emits a grounded static field, "
+            "neutralizing ambient necrotic fallout, arcane storm hazards, and gas cloud traps within a 15ft radius!"
+        )
+        return {
+            "success": True,
+            "relic": "Soviet Lead-Shielded Radiac Meter ('Pripyat-66')",
+            "effect_type": "arcane_grounding",
+            "log": log,
+            "message": "Pripyat-66 discharge flipped! Local necrotic radiation and magical hazards grounded within 15ft."
+        }
+
+    # 8. Weeping Porcelain Doll Head of Sector 4 (Mournful Shriek)
+    if any(k in relic_raw for k in ["doll head", "porcelain doll", "weeping doll"]):
+        buffs = player_state.setdefault("active_relic_buffs", [])
+        if "Weeping Doll Terror Pulse (Nearby Foes Frightened)" not in buffs:
+            buffs.append("Weeping Doll Terror Pulse (Nearby Foes Frightened)")
+        log = (
+            "🎭 [RELIC ACTIVATED — WEEPING PORCELAIN DOLL HEAD]: "
+            "Cold, viscous tears stream from the doll's glass eye sockets as you press its cheeks. "
+            "An ear-shattering, unnatural child's wail echoes across the dungeon! Humanoid, beast, and undead hostiles "
+            "within 30ft must pass a DC 14 WIS save or drop their weapons and flee in terror (inflicts [Frightened])!"
+        )
+        return {
+            "success": True,
+            "relic": "Weeping Porcelain Doll Head of Sector 4",
+            "effect_type": "mournful_terror",
+            "dc": 14,
+            "log": log,
+            "message": "The doll shrieked a supernatural lament! Hostiles within 30ft roll DC 14 WIS save or suffer [Frightened]."
+        }
+
+    # 9. Aether-Infused CRT Handheld ('Glitch-Cartridge')
+    if any(k in relic_raw for k in ["gameboy", "game boy", "glitch-cartridge", "crt handheld"]):
+        buffs = player_state.setdefault("active_relic_buffs", [])
+        if "8-Bit Pixel Foresight (Trap/Mimic Reveal & Skill Re-roll)" not in buffs:
+            buffs.append("8-Bit Pixel Foresight (Trap/Mimic Reveal & Skill Re-roll)")
+        log = (
+            "🎮 [RELIC ACTIVATED — AETHER-INFUSED CRT HANDHELD]: "
+            "The 8-bit dot-matrix screen chimes with a nostalgic startup jingle. Flashing red pixel clusters render on the LCD, "
+            "revealing hidden floor spikes, false walls, and mimic chests in the chamber! "
+            "Granted Soft-Reset causality rewind (+1 instant re-roll on any failed non-combat skill check)."
+        )
+        return {
+            "success": True,
+            "relic": "Aether-Infused CRT Handheld ('Glitch-Cartridge')",
+            "effect_type": "pixel_foresight",
+            "log": log,
+            "message": "The Game Boy's 8-bit screen mapped chamber traps and armed your Soft-Reset causality rewind!"
+        }
+
+    # 10. Great-Aunt Martha's Red Plaid Soup Thermos
+    if any(k in relic_raw for k in ["soup thermos", "martha", "tomato soup", "plaid thermos"]):
+        rem = int(player_state.get("soup_pours_remaining", 3))
+        if rem <= 0:
+            return {
+                "success": False,
+                "relic": "Great-Aunt Martha's Red Plaid Soup Thermos",
+                "message": "The thermos is empty! It re-infuses with 3 steaming cups after a long rest."
+            }
+        rem -= 1
+        player_state["soup_pours_remaining"] = rem
+        statuses = player_state.get("status_effects", [])
+        cleared_p = [s for s in statuses if any(w in str(s).lower() for w in ["poison", "venom", "acid", "toxic", "hypothermia", "frostbite"])]
+        player_state["status_effects"] = [s for s in statuses if s not in cleared_p]
+        old_hp = int(player_state.get("hp", 50))
+        max_hp = int(player_state.get("max_hp", 100))
+        player_state["hp"] = min(max_hp, old_hp + 25)
+        buffs = player_state.setdefault("active_relic_buffs", [])
+        if "Hearty Warmth (+10 Temp HP & Cold Immunity)" not in buffs:
+            buffs.append("Hearty Warmth (+10 Temp HP & Cold Immunity)")
+        log = (
+            f"🥣 [RELIC ACTIVATED — GREAT-AUNT MARTHA'S SOUP THERMOS ({rem}/3 Pours Remaining)]: "
+            "You pop the cork and pour a steaming cup of rich tomato basil broth. "
+            "Restored +25 HP, neutralized all biological poisons, venoms, and frostbite, and granted 'Hearty Warmth' (+10 Temp HP & Cold Immunity for 4 hours)!"
+        )
+        return {
+            "success": True,
+            "relic": "Great-Aunt Martha's Red Plaid Soup Thermos",
+            "effect_type": "comfort_restorative",
+            "pours_remaining": rem,
+            "hp_restored": 25,
+            "cleared_statuses": cleared_p,
+            "log": log,
+            "message": f"Drank Great-Aunt Martha's tomato soup ({rem}/3 left)! Restored 25 HP, purged poison/frostbite, gained Hearty Warmth."
+        }
+
+    # 11. Submerged Beacon Keeper's Foghorn Diaphragm
+    if any(k in relic_raw for k in ["foghorn", "beacon horn", "lighthouse horn"]):
+        buffs = player_state.setdefault("active_relic_buffs", [])
+        if "Acoustic Fog Dispersal (Miasma Cleared & Cone Knockdown)" not in buffs:
+            buffs.append("Acoustic Fog Dispersal (Miasma Cleared & Cone Knockdown)")
+        log = (
+            "📯 [RELIC ACTIVATED — SUBMERGED BEACON FOGHORN DIAPHRAGM]: "
+            "HOOOOOOONK! A 130-decibel naval foghorn blast shakes dust from the cavern ceiling! "
+            "All supernatural fog, poison gas, and blindness miasmas are instantly blown away in a 60ft cone, "
+            "knocking small and medium creatures prone (DC 14 STR save)!"
+        )
+        return {
+            "success": True,
+            "relic": "Submerged Beacon Keeper's Foghorn Diaphragm",
+            "effect_type": "foghorn_concussion",
+            "dc": 14,
+            "log": log,
+            "message": "The foghorn roared! All toxic fog and miasmas dispersed in 60ft cone, knocking foes prone (DC 14 STR save)."
+        }
+
+    # 12. Dentist's Foot-Treadle Drill (Obsidian Burr)
+    if any(k in relic_raw for k in ["treadle drill", "dental drill", "obsidian burr"]):
+        log = (
+            "⚙️ [RELIC ACTIVATED — DENTIST'S FOOT-TREADLE DRILL]: "
+            "Whirrrr-SCREEECH! You pump the iron treadle to 10,000 RPM, driving the volcanic obsidian diamond burr "
+            "straight into enemy armor! Shredded 3 points of enemy Armor Class (AC) and inflicted rattling agony (-2 to enemy spell/skill rolls)!"
+        )
+        return {
+            "success": True,
+            "relic": "Dentist's Foot-Treadle Drill (Obsidian Burr)",
+            "effect_type": "armor_shred",
+            "ac_shred": 3,
+            "log": log,
+            "message": "PUMPED THE FOOT TREADLE! The 10,000 RPM obsidian burr shredded 3 enemy AC and rattled concentration!"
+        }
+
+    # 13. Default / Dead Earth Smartphone (Cognitive Stress Relief & Willpower Anchor)
     statuses = player_state.get("status_effects", [])
     cleared = [s for s in statuses if any(w in str(s).lower() for w in ["stress", "dread", "frightened", "panic", "madness", "shaken"])]
     player_state["status_effects"] = [s for s in statuses if s not in cleared]

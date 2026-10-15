@@ -13,8 +13,9 @@ class TestCharacterGeneratorExpanded(unittest.TestCase):
             self.assertEqual(total, 20, f"Preset {key} sums to {total}, expected 20!")
             self.assertEqual(len(pts), 6, f"Preset {key} must specify all 6 stats!")
 
-    def test_all_20_vocational_backgrounds(self):
-        self.assertGreaterEqual(len(cg.PRESET_BACKGROUNDS), 20)
+    def test_all_32_vocational_backgrounds(self):
+        self.assertGreaterEqual(len(cg.PRESET_BACKGROUNDS), 32)
+        self.assertEqual(len(cg.EARTH_VOCATIONS), len(cg.PRESET_BACKGROUNDS))
         for key, bg in cg.PRESET_BACKGROUNDS.items():
             self.assertIn("title", bg)
             self.assertIn("description", bg)
@@ -38,8 +39,10 @@ class TestCharacterGeneratorExpanded(unittest.TestCase):
             self.assertIn("racial_abilities", race)
             self.assertGreaterEqual(len(race["racial_abilities"]), 2)
 
-    def test_all_17_personal_relics_and_custom_relic(self):
-        self.assertGreaterEqual(len(cg.PERSONAL_RELICS), 17)
+    def test_all_29_personal_relics_and_custom_relic(self):
+        self.assertGreaterEqual(len(cg.PERSONAL_RELICS), 29)
+        self.assertIn("elder_brain_jar", cg.PERSONAL_RELICS)
+        self.assertIn("Gyrus", cg.PERSONAL_RELICS["elder_brain_jar"]["name"])
         for key, relic in cg.PERSONAL_RELICS.items():
             self.assertIn("name", relic)
             self.assertIn("durability", relic)
@@ -54,6 +57,40 @@ class TestCharacterGeneratorExpanded(unittest.TestCase):
         self.assertEqual(custom_r["name"], "Grandpa's Pocket Bible")
         self.assertEqual(custom_r["rarity"], "Custom Relic")
         self.assertIn("custom_ability", custom_r)
+
+    def test_activate_elder_brain_and_eccentric_relics(self):
+        import backend.mechanics as mechanics
+        # Test Elder Brain Prototype ('Gyrus the Ancient')
+        player_gyrus = {
+            "name": "Psion Test",
+            "hp": 40,
+            "max_hp": 80,
+            "personal_relic": "Miniature Elder Brain Prototype ('Gyrus the Ancient')",
+            "status_effects": ["Frightened", "Cognitive Stress"],
+            "inventory": []
+        }
+        res_gyrus = mechanics.activate_personal_relic(player_gyrus, relic_action="auto")
+        self.assertTrue(res_gyrus["success"])
+        self.assertEqual(res_gyrus["effect_type"], "sentient_psionic_advisory")
+        self.assertIn("Gyrus", res_gyrus["relic"])
+        self.assertIn("Cardinal", res_gyrus["gyrus_dialogue"])
+        self.assertNotIn("Frightened", player_gyrus["status_effects"])
+        self.assertNotIn("Cognitive Stress", player_gyrus["status_effects"])
+
+        # Test Great-Aunt Martha's Soup Thermos
+        player_soup = {
+            "name": "Soup Test",
+            "hp": 20,
+            "max_hp": 100,
+            "personal_relic": "Great-Aunt Martha's Red Plaid Soup Thermos",
+            "status_effects": ["Spider Venom", "Frostbite"],
+            "inventory": []
+        }
+        res_soup = mechanics.activate_personal_relic(player_soup, relic_action="auto")
+        self.assertTrue(res_soup["success"])
+        self.assertEqual(player_soup["hp"], 45)
+        self.assertEqual(player_soup["status_effects"], [])
+        self.assertEqual(player_soup["soup_pours_remaining"], 2)
 
     def test_consult_custom_background(self):
         consult = cg.consult_custom_background("I was a master carpenter who built timber log cabins and brewed dark beer.")

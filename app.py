@@ -615,7 +615,7 @@ def render_character_calibration_wizard():
         
         v_mode = st.radio(
             "Vocation Input Mode:",
-            ["Preset Earth Vocations (20 Archetypes)", "✍️ Custom Earth Life (Interactive Collaboration with Cardinal)"],
+            [f"Preset Earth Vocations ({len(cg.PRESET_BACKGROUNDS)} Archetypes)", "✍️ Custom Earth Life (Interactive Collaboration with Cardinal)"],
             horizontal=True,
             key="vocation_mode_radio"
         )
@@ -626,7 +626,7 @@ def render_character_calibration_wizard():
             
             cur_bg_idx = bg_keys.index(st.session_state.cg_bg_key) if st.session_state.cg_bg_key in bg_keys else 0
             sel_bg_title = st.selectbox(
-                "Choose Earth Profession (20 Options):",
+                f"Choose Earth Profession ({len(cg.PRESET_BACKGROUNDS)} Options):",
                 options=bg_titles,
                 index=cur_bg_idx,
                 key="sel_preset_bg_box"
@@ -919,7 +919,7 @@ def render_character_calibration_wizard():
         st.markdown("#### 📱 Pre-Integration Earth Relic")
         relic_mode = st.radio(
             "Relic Selection Mode:",
-            ["Choose from 17 Pre-Integration Earth Relics", "✍️ Custom Personal Keepsake (Write-In Object)"],
+            [f"Choose from {len(cg.PERSONAL_RELICS)} Pre-Integration Earth Relics", "✍️ Custom Personal Keepsake (Write-In Object)"],
             horizontal=True,
             key="relic_mode_radio"
         )
@@ -930,7 +930,7 @@ def render_character_calibration_wizard():
             cur_relic_idx = relic_keys.index(st.session_state.cg_relic_key) if st.session_state.cg_relic_key in relic_keys else 0
             
             sel_relic_name = st.selectbox(
-                "Choose Personal Relic (17 Options):",
+                f"Choose Personal Relic ({len(cg.PERSONAL_RELICS)} Options):",
                 options=relic_names,
                 index=cur_relic_idx,
                 key="sel_relic_box"
