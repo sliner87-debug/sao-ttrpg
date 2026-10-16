@@ -514,12 +514,17 @@ class CharacterRepository:
         clean_slug = str(character_slug).strip().lower()
         session_id = str(session_id or "default").strip()
 
-        rec = db_session.execute(
-            select(CharacterRecord).where(
-                CharacterRecord.session_id == session_id,
-                func.lower(CharacterRecord.slug) == clean_slug,
-            )
-        ).scalar_one_or_none()
+        rec = None
+        if isinstance(character_slug, int) or (isinstance(character_slug, str) and character_slug.isdigit()):
+            rec = db_session.get(CharacterRecord, int(character_slug))
+
+        if not rec:
+            rec = db_session.execute(
+                select(CharacterRecord).where(
+                    CharacterRecord.session_id == session_id,
+                    func.lower(CharacterRecord.slug) == clean_slug,
+                )
+            ).scalar_one_or_none()
 
         if not rec:
             return None
