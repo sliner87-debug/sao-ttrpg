@@ -45,6 +45,45 @@ except Exception:
     search_bestiary = None
     roll_random_zone_encounter = None
 
+try:
+    from backend.psionics_dsp import (
+        FULL_MANIFESTER_PP_TABLE,
+        PARTIAL_MANIFESTER_PP_TABLE,
+        calculate_manifester_level,
+        calculate_max_power_points,
+        validate_power_manifestation,
+        manifest_psionic_power,
+        meditate_for_psionic_focus,
+        expend_psionic_focus,
+        manifest_mind_blade,
+        charge_psychic_strike,
+        execute_wild_surge,
+        calculate_aegis_customization_points,
+        AEGIS_CUSTOMIZATIONS_CATALOG,
+        configure_astral_suit,
+        init_collective,
+        join_collective,
+        transfer_wounds,
+    )
+except Exception:
+    FULL_MANIFESTER_PP_TABLE = {}
+    PARTIAL_MANIFESTER_PP_TABLE = {}
+    calculate_manifester_level = None
+    calculate_max_power_points = None
+    validate_power_manifestation = None
+    manifest_psionic_power = None
+    meditate_for_psionic_focus = None
+    expend_psionic_focus = None
+    manifest_mind_blade = None
+    charge_psychic_strike = None
+    execute_wild_surge = None
+    calculate_aegis_customization_points = None
+    AEGIS_CUSTOMIZATIONS_CATALOG = {}
+    configure_astral_suit = None
+    init_collective = None
+    join_collective = None
+    transfer_wounds = None
+
 
 class ItemEntry(dict):
     """
@@ -2534,6 +2573,237 @@ CLASS_FEATS_TREE = {
             {"id": "B", "name": "Dimensional Tear", "type": "Active", "desc": "Spend 50 Resonance to slash reality, dealing 4d12 null-void damage that bypasses all defenses."},
             {"id": "C", "name": "Limitless Resonance", "type": "Passive", "desc": "Max Resonance increased to 150. Generating Resonance restores 5% of max HP per trigger."}
         ]
+    },
+    # --- D&D 3.5 EXPANDED PSIONICS HANDBOOK (XPH) & DSP CLASSES ---
+    "psion": {
+        "title": "Psion (Disciplined Manifestor)",
+        "resource": {"name": "Power Points", "max": 2, "start": 2, "type": "power_points"},
+        "level_1": [
+            "Psionic Meditation (Active): Meditate against DC 20 Concentration to gain Psionic Focus.",
+            "Energy Ray (Psionic) (Active): Fire a 1d6 ray of cold, electricity, fire, or sonic energy (1 PP)."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Overchannel", "type": "Passive", "desc": "Take 1d8 damage to manifest powers at +1 Manifester Level."},
+            {"id": "B", "name": "Empower Power", "type": "Metapsionic", "desc": "Expend Psionic Focus to increase power variable numeric effects by 50%."},
+            {"id": "C", "name": "Discipline Insight", "type": "Passive", "desc": "+2 DC to all powers of your chosen discipline."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Maximize Power", "type": "Metapsionic", "desc": "Expend Psionic Focus to maximize all variable numeric effects of a power."},
+            {"id": "B", "name": "Psychic Bastion", "type": "Passive", "desc": "+2 bonus on all Will saving throws and +5 Power Points."},
+            {"id": "C", "name": "Quicken Power", "type": "Metapsionic", "desc": "Expend Psionic Focus to manifest a power as a Swift Action."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Apotheosis of Thought", "type": "Passive", "desc": "Gain permanent Power Resistance 22 and +10 bonus PP."},
+            {"id": "B", "name": "Twin Power", "type": "Metapsionic", "desc": "Manifest a power twice simultaneously in a single action."},
+            {"id": "C", "name": "Omni-Discipline Master", "type": "Passive", "desc": "Can manifest any power from any discipline without penalty."}
+        ]
+    },
+    "psychic_warrior": {
+        "title": "Psychic Warrior (Martial Mind)",
+        "resource": {"name": "Power Points", "max": 0, "start": 0, "type": "power_points"},
+        "level_1": [
+            "Psionic Weapon (Active): Expend focus to add +2d6 damage to a melee strike.",
+            "Biofeedback (Psionic) (Active): Spend 1 PP to gain Damage Reduction 2/-."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Deep Impact", "type": "Active", "desc": "Expend focus to resolve your next melee weapon attack as a Touch Attack."},
+            {"id": "B", "name": "Metaphysical Weapon", "type": "Passive", "desc": "Imbued weapons gain +1 enhancement bonus per 4 ML."},
+            {"id": "C", "name": "Inertial Barrier", "type": "Passive", "desc": "+2 natural AC bonus while maintaining Psionic Focus."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Greater Psionic Weapon", "type": "Passive", "desc": "Psionic Weapon damage increases to +4d6."},
+            {"id": "B", "name": "Rapid Expansion", "type": "Active", "desc": "Manifest Expansion as a Swift Action."},
+            {"id": "C", "name": "Vampiric Blade", "type": "Active", "desc": "Heal 50% of melee damage dealt on next strike."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Martial Mind Apotheosis", "type": "Passive", "desc": "Gain DR 5/- and +4 STR while maintaining Psionic Focus."},
+            {"id": "B", "name": "Eternal Focus", "type": "Passive", "desc": "Can maintain two separate Psionic Focuses simultaneously."},
+            {"id": "C", "name": "Sunder Soul", "type": "Active", "desc": "Melee strikes drain 2d4 PP or spell slots from struck enemies."}
+        ]
+    },
+    "soulknife": {
+        "title": "Soulknife (Mind Blade Master)",
+        "resource": {"name": "Mind Blade & Focus", "max": 1, "start": 1, "type": "focus"},
+        "level_1": [
+            "Manifest Mind Blade (Active): Conjure a semi-solid psychic weapon in your main hand.",
+            "Psychic Strike (Active): Charge mind blade with +1d8 psychic strike damage."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Mind Blade Enhancement +1", "type": "Passive", "desc": "Mind Blade gains +1 enhancement bonus to attack and damage."},
+            {"id": "B", "name": "Throw Mind Blade", "type": "Active", "desc": "Throw Mind Blade up to 30 ft as a ranged attack; it re-manifests in hand."},
+            {"id": "C", "name": "Psychic Strike +2d8", "type": "Passive", "desc": "Psychic Strike damage increases to +2d8."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Mind Blade Enhancement +2", "type": "Passive", "desc": "Mind Blade gains +2 enhancement bonus and Psychokinetic trait (+1d4 force)."},
+            {"id": "B", "name": "Bladewind", "type": "Active", "desc": "Spin and strike every enemy within reach simultaneously."},
+            {"id": "C", "name": "Psychic Strike +3d8", "type": "Passive", "desc": "Psychic Strike damage increases to +3d8."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Knife to the Soul", "type": "Active", "desc": "Convert Psychic Strike damage into INT, WIS, or CHA ability damage."},
+            {"id": "B", "name": "Mind Blade Enhancement +3", "type": "Passive", "desc": "Mind Blade gains +3 enhancement bonus and Keen trait."},
+            {"id": "C", "name": "Dual Mind Blades", "type": "Passive", "desc": "Can manifest paired dual Mind Blades without off-hand penalty."}
+        ]
+    },
+    "wilder": {
+        "title": "Wilder (Emotional Conduit)",
+        "resource": {"name": "Power Points", "max": 2, "start": 2, "type": "power_points"},
+        "level_1": [
+            "Wild Surge (Active): Push Manifester Level by +1 to +6 with 15% enervation risk.",
+            "Surging Euphoria (Passive): Successful surges grant +1 to +3 morale bonus on attacks/saves."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Volatile Mind", "type": "Passive", "desc": "Telepathic intruders must pay +1 PP to target you with powers."},
+            {"id": "B", "name": "Wild Surge +2", "type": "Passive", "desc": "Wild Surge increases to +2 ML boost."},
+            {"id": "C", "name": "Euphoric Rush", "type": "Passive", "desc": "+10 ft movement speed during Surging Euphoria."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Wild Surge +3", "type": "Passive", "desc": "Wild Surge increases to +3 ML boost."},
+            {"id": "B", "name": "Surging Euphoria +2", "type": "Passive", "desc": "Morale bonus increases to +2."},
+            {"id": "C", "name": "Enervation Shield", "type": "Reaction", "desc": "If enervated, backlash deals equal damage to adjacent foes."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Unbounded Surge", "type": "Passive", "desc": "Wild Surge increases to +4 ML boost; enervation chance reduced to 10%."},
+            {"id": "B", "name": "Surging Euphoria +3", "type": "Passive", "desc": "Morale bonus increases to +3 on all attacks and damage."},
+            {"id": "C", "name": "Cathartic Blast", "type": "Active", "desc": "Detonate emotional aether for 6d10 damage in a 30-ft radius."}
+        ]
+    },
+    "aegis": {
+        "title": "Aegis (Astral Suit Artisan)",
+        "resource": {"name": "Customization Points & PP", "max": 3, "start": 3, "type": "customization_points"},
+        "level_1": [
+            "Form Astral Suit (Active): Swift action to manifest Astral Skin, Armor, or Juggernaut.",
+            "Customize Astral Suit (Passive): Allocate Customization Points across adaptations."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Ectoplasmic Flight", "type": "Suit Customization", "desc": "Unlock Astral Flight customization (fly speed 40 ft)."},
+            {"id": "B", "name": "Hardened Carapace", "type": "Suit Customization", "desc": "+2 additional Natural Armor bonus."},
+            {"id": "C", "name": "Reconfigure Suit", "type": "Active", "desc": "Reallocate 2 CP as a full round action during combat."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Extra Limbs (Arms)", "type": "Suit Customization", "desc": "Astral Suit manifests two additional functional arms for multi-limb wielding."},
+            {"id": "B", "name": "Energy Resistance", "type": "Suit Customization", "desc": "Gain 15 resistance to two chosen energy types."},
+            {"id": "C", "name": "Reach Enhancement", "type": "Suit Customization", "desc": "Natural melee reach increased by +5 ft."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Master Astral Juggernaut", "type": "Passive", "desc": "Astral Juggernaut grants Large size, DR 10/-, and +4 STR."},
+            {"id": "B", "name": "Invulnerable Mesh", "type": "Passive", "desc": "Gain Power Resistance 20 while suit is active."},
+            {"id": "C", "name": "Ectoplasmic Swarm", "type": "Active", "desc": "Suit erupts shards dealing 8d6 damage to all adjacent hostiles."}
+        ]
+    },
+    "vitalist": {
+        "title": "Vitalist (Collective Life-Weaver)",
+        "resource": {"name": "Power Points & Collective", "max": 2, "start": 2, "type": "power_points"},
+        "level_1": [
+            "The Collective (Active): Link party members into a shared telepathic mesh.",
+            "Transfer Wounds (Active): Transfer HP between collective members as a standard action."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Spirit of Many", "type": "Passive", "desc": "Powers with Range: Personal/Touch affect all collective members."},
+            {"id": "B", "name": "Health Sense", "type": "Passive", "desc": "Automatically detect when any collective member falls below 25% HP."},
+            {"id": "C", "name": "Steal Health", "type": "Active", "desc": "Touch an enemy to drain 2d6 HP into the collective pool."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Collective Healing Wave", "type": "Active", "desc": "Channel 4d6 healing evenly across all active collective allies."},
+            {"id": "B", "name": "Purify Network", "type": "Active", "desc": "Dispel poison and disease from all collective members simultaneously."},
+            {"id": "C", "name": "Pain Buffer", "type": "Passive", "desc": "Collective members take 2 less damage from every hit."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Resurrection Pulse", "type": "Active", "desc": "Revive a fallen collective member if cast within 1 round of death."},
+            {"id": "B", "name": "Total Symbiosis", "type": "Passive", "desc": "When one member gains a morale or resistance buff, all members gain it."},
+            {"id": "C", "name": "Master Vitalist Node", "type": "Passive", "desc": "Collective member limit increased by +4; transfer wounds is a move action."}
+        ]
+    },
+    "tactician": {
+        "title": "Tactician (Collective Commander)",
+        "resource": {"name": "Power Points & Strategy", "max": 2, "start": 2, "type": "power_points"},
+        "level_1": [
+            "Collective Strategy (Active): Grant connected allies flanking bonuses.",
+            "Coordinate Strike (Active): Direct a collective ally to strike with tactical advantage."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Coordinated Defense", "type": "Passive", "desc": "+1 AC to all collective members within 30 ft of each other."},
+            {"id": "B", "name": "Tactical Swap", "type": "Active", "desc": "Swap positions of two willing collective allies instantly (range 60 ft)."},
+            {"id": "C", "name": "Battlefield Query", "type": "Passive", "desc": "Collective members ignore surprise rounds."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Synchronized Barrage", "type": "Active", "desc": "Spend 3 PP to grant all collective allies an immediate ranged attack."},
+            {"id": "B", "name": "Strategic Reposition", "type": "Active", "desc": "All collective allies move up to their speed as a reaction."},
+            {"id": "C", "name": "Overwhelming Focus", "type": "Passive", "desc": "Allies in collective add +2 to save DCs of their abilities."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Grandmaster Gambit", "type": "Active", "desc": "All collective allies gain +4 on attacks, +4 AC, and +20 ft speed for 3 rounds."},
+            {"id": "B", "name": "Hivemind Reaction", "type": "Passive", "desc": "Collective allies can borrow reactions from one another."},
+            {"id": "C", "name": "Flank Master", "type": "Passive", "desc": "Collective allies flank from any angle regardless of position."}
+        ]
+    },
+    "cryptic": {
+        "title": "Cryptic (Pattern Breaker)",
+        "resource": {"name": "Power Points & Insights", "max": 2, "start": 2, "type": "power_points"},
+        "level_1": [
+            "Pattern Disruption (Active): Strike structural flaw lines to deal bonus disruption damage.",
+            "Altered Defense (Passive): Add INT modifier as an insight bonus to AC."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Disruptive Trapfinding", "type": "Passive", "desc": "Automatically sense mechanical and magical traps within 20 ft."},
+            {"id": "B", "name": "Pattern Decryption", "type": "Active", "desc": "Analyze enemy AC; next attack completely ignores armor bonus."},
+            {"id": "C", "name": "Hidden Pattern", "type": "Active", "desc": "Become invisible for 1 round per ML or until attacking."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Geometric Sunder", "type": "Active", "desc": "Sunder enemy weapon or armor, ignoring object hardness."},
+            {"id": "B", "name": "Pattern Disruption +4d6", "type": "Passive", "desc": "Disruption damage increases to +4d6."},
+            {"id": "C", "name": "Distort Space", "type": "Active", "desc": "Create a 20-ft zone of distorted space that slows enemies by 50%."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Reality Unraveling", "type": "Active", "desc": "Disrupt enemy pattern for 10d6 damage; target must save or be unmade."},
+            {"id": "B", "name": "Perceive Flaws", "type": "Passive", "desc": "All critical threat ranges are doubled against observed targets."},
+            {"id": "C", "name": "Matrix Glitcher", "type": "Passive", "desc": "50% concealment against all incoming attacks."}
+        ]
+    },
+    "dread": {
+        "title": "Dread (Avatar of Terror)",
+        "resource": {"name": "Power Points & Terror", "max": 2, "start": 2, "type": "power_points"},
+        "level_1": [
+            "Aura of Fear (Active): 30-ft aura eroding enemy morale and willpower.",
+            "Devastating Touch (Active): Melee touch attack channeling cold terror (1d6 + Cha)."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Terrifying Strike", "type": "Active", "desc": "Expend focus to force struck target to save vs Frightened."},
+            {"id": "B", "name": "Dread Armor", "type": "Passive", "desc": "Gain +2 deflection bonus to AC against shaken or frightened foes."},
+            {"id": "C", "name": "Cold Soul", "type": "Passive", "desc": "Gain Resistance 10 to Cold and immunity to Fear."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Horrifying Touch", "type": "Passive", "desc": "Devastating Touch damage increases to +4d6."},
+            {"id": "B", "name": "Aura of Cowardice", "type": "Passive", "desc": "Enemies within 30 ft lose immunity to fear effects."},
+            {"id": "C", "name": "Cruel Panic", "type": "Active", "desc": "Cause all shaken enemies within 30 ft to panic and flee."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Avatar of Nightmares", "type": "Passive", "desc": "Enemies that enter your Aura of Fear must save or drop unconscious from fright."},
+            {"id": "B", "name": "Devastating Touch +7d6", "type": "Passive", "desc": "Devastating Touch damage increases to +7d6."},
+            {"id": "C", "name": "Grim Feast", "type": "Passive", "desc": "Whenever an enemy dies within 30 ft, you heal 20 HP and gain 2 PP."}
+        ]
+    },
+    "marksman": {
+        "title": "Marksman (Psychic Sharpshooter)",
+        "resource": {"name": "Power Points & Wind", "max": 1, "start": 1, "type": "power_points"},
+        "level_1": [
+            "Wind Reader (Active): Swift action to negate wind and range penalties.",
+            "Psionic Shot (Active): Expend focus to add +2d6 damage to a ranged attack."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Finesse Shot", "type": "Passive", "desc": "Use WIS modifier for ranged attack rolls instead of DEX."},
+            {"id": "B", "name": "Point Blank Mastery", "type": "Passive", "desc": "Ranged attacks no longer provoke attacks of opportunity."},
+            {"id": "C", "name": "Cover Piercer", "type": "Active", "desc": "Ranged attacks ignore partial and total cover."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Greater Psionic Shot", "type": "Passive", "desc": "Psionic Shot damage increases to +4d6."},
+            {"id": "B", "name": "Ricochet Telekinesis", "type": "Active", "desc": "Arrow bounces to a secondary target within 20 ft on hit."},
+            {"id": "C", "name": "Sonic Snipe", "type": "Passive", "desc": "Ranged attacks make no sound and do not break stealth."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Heartseeker Shot", "type": "Active", "desc": "Expend focus: arrow automatically seeks and critical hits target."},
+            {"id": "B", "name": "Hail of Telekinetic Bolts", "type": "Active", "desc": "Fire 5 arrows simultaneously at different targets in a single standard action."},
+            {"id": "C", "name": "Ascendant Sniper", "type": "Passive", "desc": "Ranged attacks deal double damage from beyond 60 feet."}
+        ]
     }
 }
 
@@ -2575,6 +2845,22 @@ def normalize_class_key(class_str):
     if c_low in canonical_10:
         return canonical_10[c_low]
 
+    # Exact canonical identity for Psionic classes (XPH & DSP)
+    psionic_canon = {
+        "psion": "psion",
+        "psychic_warrior": "psychic_warrior",
+        "soulknife": "soulknife",
+        "wilder": "wilder",
+        "aegis": "aegis",
+        "vitalist": "vitalist",
+        "tactician": "tactician",
+        "cryptic": "cryptic",
+        "dread": "dread",
+        "marksman": "marksman",
+    }
+    if c_low in psionic_canon:
+        return psionic_canon[c_low]
+
     # Specific required exact aliases
     alias_map = {
         "warrior": "fighter",
@@ -2586,7 +2872,6 @@ def normalize_class_key(class_str):
         "wilderness_ranger": "ranger",
         "magi_saboteur": "engineer",
         "hunter": "ranger",
-        "marksman": "ranger",
         "templar": "cleric",
         "priest": "cleric",
         "arcanist": "wizard",
@@ -2604,6 +2889,10 @@ def normalize_class_key(class_str):
         "eldritch": "warlock",
         "hellfire_warlock": "warlock",
         "eldritch_theurge": "warlock",
+        "psychic warrior": "psychic_warrior",
+        "mind blade": "soulknife",
+        "astral suit": "aegis",
+        "collective healer": "vitalist",
     }
     if c_low in alias_map:
         return alias_map[c_low]
@@ -2617,6 +2906,26 @@ def normalize_class_key(class_str):
         return "pathless"
 
     # Substring matching for descriptive titles like "Fighter (Martial Weaponmaster)"
+    if "wilderness" in c_low:
+        return "ranger"
+    if "psychic_warrior" in c_low or "psychic warrior" in c_low:
+        return "psychic_warrior"
+    if "soulknife" in c_low or "mind blade" in c_low:
+        return "soulknife"
+    if "wilder" in c_low:
+        return "wilder"
+    if "aegis" in c_low or "astral suit" in c_low:
+        return "aegis"
+    if "vitalist" in c_low or "collective healer" in c_low:
+        return "vitalist"
+    if "tactician" in c_low:
+        return "tactician"
+    if "cryptic" in c_low:
+        return "cryptic"
+    if "dread" in c_low:
+        return "dread"
+    if "marksman" in c_low:
+        return "marksman"
     if "barbarian" in c_low or "berserker" in c_low:
         return "barbarian"
     if "paladin" in c_low or "crusader" in c_low:
@@ -2637,7 +2946,7 @@ def normalize_class_key(class_str):
         return "rogue"
     if "cleric" in c_low or "templar" in c_low:
         return "cleric"
-    if "ranger" in c_low or "hunter" in c_low or "marksman" in c_low:
+    if "ranger" in c_low or "hunter" in c_low:
         return "ranger"
 
     return "pathless"
@@ -2705,6 +3014,10 @@ def get_combat_resource_display(player):
 
     if r_type == "strain":
         display_str = f"{cur}% / {m}% Strain"
+    elif r_type in ["power_points", "pp"]:
+        display_str = f"{cur} / {m} PP"
+    elif r_type in ["customization_points", "cp"]:
+        display_str = f"{cur} / {m} CP"
     elif r_type in ["momentum", "focus", "ki"]:
         display_str = f"{cur} / {m} Charges"
     elif r_type == "rage":
@@ -2752,24 +3065,68 @@ ARCHETYPE_HP_GROWTH = {
     "wilderness_ranger": 28,
     "engineer": 28,
     "magi_saboteur": 28,
-    "psion": 24,
+    "warlock": 22,
     "pathless": 25,
+    # D&D 3.5 XPH & Dreamscarred Press Psionics
+    "psion": 24,
+    "psychic_warrior": 28,
+    "soulknife": 26,
+    "wilder": 22,
+    "aegis": 30,
+    "vitalist": 20,
+    "tactician": 26,
+    "cryptic": 24,
+    "dread": 30,
+    "marksman": 26,
 }
+
+MAX_PLAYER_LEVEL = 100
+
+
+def calculate_player_next_level_xp(level: int) -> int:
+    """
+    Calculates XP required to advance from `level` to `level + 1`.
+    Caps progression at MAX_PLAYER_LEVEL (100).
+    Progression curve:
+    - Tier 1 (1-9): 1000 to 9000 XP
+    - Tier 2 (10-19): ~10k to ~30k XP
+    - Tiers 3-5 (20-49): scales smoothly into epic
+    - Tiers 6-10 (50-100): transcendent progression up to 1.3M XP
+    """
+    if level >= MAX_PLAYER_LEVEL:
+        return 0  # Max level reached
+    lvl = max(1, int(level))
+    curve_bonus = int(((lvl - 1) ** 1.85) * 250)
+    return max(1000, (lvl * 1000) + curve_bonus)
+
 
 def get_archetype_hp_growth(player_class):
     """Calculates base HP growth per level for the character's class."""
     k = normalize_class_key(player_class)
     return ARCHETYPE_HP_GROWTH.get(k, ARCHETYPE_HP_GROWTH.get(player_class, 25))
 
+
 def apply_level_up(player, chosen_feat=None, stat_allocations=None):
     """
-    Levels up the character:
+    Levels up the character up to MAX_PLAYER_LEVEL (100):
+    - Enforces level 100 cap
     - Increments level
     - Adds archetype HP (+ CON mod)
     - Adds 2 free attribute points (or applies allocated points)
     - Appends chosen_feat to feats if provided
     """
-    player["level"] = player.get("level", 1) + 1
+    current_lvl = int(player.get("level", 1) or 1)
+    if current_lvl >= MAX_PLAYER_LEVEL:
+        return {
+            "new_level": MAX_PLAYER_LEVEL,
+            "hp_gain": 0,
+            "max_hp": player.get("max_hp", 100),
+            "free_points": player.get("free_attribute_points", 0),
+            "max_level_reached": True
+        }
+
+    new_lvl = current_lvl + 1
+    player["level"] = new_lvl
     con = player.get("stats", {}).get("CON", 10)
     con_mod = (con - 10) // 2
     
@@ -2777,7 +3134,7 @@ def apply_level_up(player, chosen_feat=None, stat_allocations=None):
     player["max_hp"] = player.get("max_hp", 100) + hp_gain
     player["hp"] = player.get("hp", 100) + hp_gain
     
-    # Free attribute points
+    # Free attribute points: +2 per level
     player["free_attribute_points"] = player.get("free_attribute_points", 0) + 2
     
     if stat_allocations and isinstance(stat_allocations, dict):
@@ -2789,12 +3146,38 @@ def apply_level_up(player, chosen_feat=None, stat_allocations=None):
         feat_entry = chosen_feat if isinstance(chosen_feat, str) else chosen_feat.get("name", str(chosen_feat))
         if feat_entry not in player["feats"]:
             player["feats"].append(feat_entry)
-            
+
+    # Dynamically update psionic Power Points or Customization Points
+    c_norm = normalize_class_key(player.get("class", "pathless"))
+    if c_norm in ["psion", "psychic_warrior", "wilder", "vitalist", "tactician", "cryptic", "dread", "marksman"]:
+        try:
+            if calculate_max_power_points:
+                pp = calculate_max_power_points(player)
+                cr = player.setdefault("combat_resource", {})
+                cr["max"] = pp
+                cr["current"] = min(cr.get("current", pp), pp)
+                cr["type"] = "power_points"
+                cr["name"] = "Power Points"
+        except Exception:
+            pass
+    elif c_norm == "aegis":
+        try:
+            if calculate_aegis_customization_points:
+                cp = calculate_aegis_customization_points(player)
+                cr = player.setdefault("combat_resource", {})
+                cr["max"] = cp
+                cr["current"] = min(cr.get("current", cp), cp)
+                cr["type"] = "customization_points"
+                cr["name"] = "Customization Points & PP"
+        except Exception:
+            pass
+
     return {
         "new_level": player["level"],
         "hp_gain": hp_gain,
         "max_hp": player["max_hp"],
-        "free_points": player["free_attribute_points"]
+        "free_points": player["free_attribute_points"],
+        "max_level_reached": (new_lvl >= MAX_PLAYER_LEVEL)
     }
 
 def allocate_attribute_points(player, allocations):
@@ -2814,6 +3197,32 @@ def allocate_attribute_points(player, allocations):
             
     player["free_attribute_points"] = avail - total_requested
     return stats
+
+
+def get_class_tier_name(level: int) -> str:
+    """Returns the descriptive continuum tier name for player levels 1 to 100."""
+    lvl = max(1, int(level or 1))
+    if lvl < 10:
+        return "Tier 1: Novice"
+    elif lvl < 20:
+        return "Tier 2: Journeyman"
+    elif lvl < 30:
+        return "Tier 3: Adept Master"
+    elif lvl < 40:
+        return "Tier 4: Paragon"
+    elif lvl < 50:
+        return "Tier 5: Sovereign"
+    elif lvl < 60:
+        return "Tier 6: Transcendent"
+    elif lvl < 70:
+        return "Tier 7: Astral Architect"
+    elif lvl < 80:
+        return "Tier 8: Primordial Ascendant"
+    elif lvl < 90:
+        return "Tier 9: Chronos Reality-Weaver"
+    else:
+        return "Tier 10: Ouroboros Godhead"
+
 
 # --- HARMONIZED MULTI-TIER EVOLUTION ENGINE ---
 
@@ -2888,8 +3297,21 @@ def check_evolution_eligibility(player):
     except (ValueError, TypeError):
         current_tier = 1
 
+    if current_tier >= 10:
+        return {
+            "eligible": False,
+            "target_tier": 10,
+            "current_tier": 10,
+            "reasons": ["Maximum class evolution tier (Tier 10 Transcendent) reached."],
+            "unmet_conditions": [],
+            "top_skill": top_skill,
+            "top_mastery": max_mastery
+        }
+
+    target_tier = min(10, max(current_tier + 1, (lvl // 10) + 1))
+
     # Tier 2 Check (Level 10)
-    if current_tier <= 1:
+    if target_tier == 2:
         reasons = []
         unmet = []
 
@@ -2912,15 +3334,15 @@ def check_evolution_eligibility(player):
         return {
             "eligible": eligible,
             "target_tier": 2,
-            "current_tier": 1,
+            "current_tier": current_tier,
             "reasons": reasons + unmet,
             "unmet_conditions": unmet,
             "top_skill": top_skill,
             "top_mastery": max_mastery
         }
 
-    # Tier 3 Check (Level 20 - FIX legacy Level 25 bug!)
-    elif current_tier == 2:
+    # Tier 3 Check (Level 20)
+    elif target_tier == 3:
         reasons = []
         unmet = []
 
@@ -2943,15 +3365,15 @@ def check_evolution_eligibility(player):
         return {
             "eligible": eligible,
             "target_tier": 3,
-            "current_tier": 2,
+            "current_tier": current_tier,
             "reasons": reasons + unmet,
             "unmet_conditions": unmet,
             "top_skill": top_skill,
             "top_mastery": max_mastery
         }
 
-    # Tier 4 Check (Level 30 - NEW)
-    elif current_tier == 3:
+    # Tier 4 Check (Level 30)
+    elif target_tier == 4:
         reasons = []
         unmet = []
 
@@ -2974,7 +3396,127 @@ def check_evolution_eligibility(player):
         return {
             "eligible": eligible,
             "target_tier": 4,
-            "current_tier": 3,
+            "current_tier": current_tier,
+            "reasons": reasons + unmet,
+            "unmet_conditions": unmet,
+            "top_skill": top_skill,
+            "top_mastery": max_mastery
+        }
+
+    # Tier 5 Check (Level 40 - Continental Sovereign)
+    elif target_tier == 5:
+        reasons, unmet = [], []
+        if lvl >= 40:
+            reasons.append(f"Level Requirement Met: Level {lvl} >= 40")
+        else:
+            unmet.append(f"Level Requirement Unmet: Level {lvl} / 40")
+        rift_boss_down = any("rift" in str(b).lower() or "dimensional" in str(b).lower() or "tier 5" in str(b).lower() for b in bosses) or lvl >= 40
+        if rift_boss_down:
+            reasons.append("Dimensional Rift Lord Defeated")
+        else:
+            unmet.append("Dimensional Rift Lord Not Yet Slayed")
+        if max_mastery >= 850:
+            reasons.append(f"Skill Mastery Milestone Met: '{top_skill}' Mastery {max_mastery} >= 850")
+        else:
+            unmet.append(f"Skill Mastery Milestone Unmet: Highest Mastery {max_mastery} / 850")
+        return {
+            "eligible": len(unmet) == 0,
+            "target_tier": 5,
+            "current_tier": current_tier,
+            "reasons": reasons + unmet,
+            "unmet_conditions": unmet,
+            "top_skill": top_skill,
+            "top_mastery": max_mastery
+        }
+
+    # Tier 6 Check (Level 50 - Stellar Arbiter)
+    elif target_tier == 6:
+        reasons, unmet = [], []
+        if lvl >= 50:
+            reasons.append(f"Level Requirement Met: Level {lvl} >= 50")
+        else:
+            unmet.append(f"Level Requirement Unmet: Level {lvl} / 50")
+        stellar_boss_down = any("stellar" in str(b).lower() or "arbiter" in str(b).lower() or "tier 6" in str(b).lower() for b in bosses) or lvl >= 50
+        if stellar_boss_down:
+            reasons.append("Stellar Arbiter Defeated")
+        else:
+            unmet.append("Stellar Arbiter Not Yet Slayed")
+        if max_mastery >= 1000:
+            reasons.append(f"Skill Mastery Milestone Met: '{top_skill}' Mastery 1000 (Transcendent)")
+        else:
+            unmet.append(f"Skill Mastery Milestone Unmet: Highest Mastery {max_mastery} / 1000")
+        return {
+            "eligible": len(unmet) == 0,
+            "target_tier": 6,
+            "current_tier": current_tier,
+            "reasons": reasons + unmet,
+            "unmet_conditions": unmet,
+            "top_skill": top_skill,
+            "top_mastery": max_mastery
+        }
+
+    # Tier 7 Check (Level 60 - Astral Architect)
+    elif target_tier == 7:
+        reasons, unmet = [], []
+        if lvl >= 60:
+            reasons.append(f"Level Requirement Met: Level {lvl} >= 60")
+        else:
+            unmet.append(f"Level Requirement Unmet: Level {lvl} / 60")
+        return {
+            "eligible": len(unmet) == 0,
+            "target_tier": 7,
+            "current_tier": current_tier,
+            "reasons": reasons + unmet,
+            "unmet_conditions": unmet,
+            "top_skill": top_skill,
+            "top_mastery": max_mastery
+        }
+
+    # Tier 8 Check (Level 70 - Primordial Ascendant)
+    elif target_tier == 8:
+        reasons, unmet = [], []
+        if lvl >= 70:
+            reasons.append(f"Level Requirement Met: Level {lvl} >= 70")
+        else:
+            unmet.append(f"Level Requirement Unmet: Level {lvl} / 70")
+        return {
+            "eligible": len(unmet) == 0,
+            "target_tier": 8,
+            "current_tier": current_tier,
+            "reasons": reasons + unmet,
+            "unmet_conditions": unmet,
+            "top_skill": top_skill,
+            "top_mastery": max_mastery
+        }
+
+    # Tier 9 Check (Level 80 - Chronos Reality-Weaver)
+    elif target_tier == 9:
+        reasons, unmet = [], []
+        if lvl >= 80:
+            reasons.append(f"Level Requirement Met: Level {lvl} >= 80")
+        else:
+            unmet.append(f"Level Requirement Unmet: Level {lvl} / 80")
+        return {
+            "eligible": len(unmet) == 0,
+            "target_tier": 9,
+            "current_tier": current_tier,
+            "reasons": reasons + unmet,
+            "unmet_conditions": unmet,
+            "top_skill": top_skill,
+            "top_mastery": max_mastery
+        }
+
+    # Tier 10 Check (Level 90-100 - Ouroboros Godhead / Transcendent)
+    elif target_tier == 10:
+        reasons, unmet = [], []
+        if lvl >= 90:
+            reasons.append(f"Level Requirement Met: Level {lvl} >= 90")
+        else:
+            unmet.append(f"Level Requirement Unmet: Level {lvl} / 90")
+        return {
+            "eligible": len(unmet) == 0,
+            "target_tier": 10,
+            "current_tier": current_tier,
             "reasons": reasons + unmet,
             "unmet_conditions": unmet,
             "top_skill": top_skill,
@@ -2985,8 +3527,10 @@ def check_evolution_eligibility(player):
         "eligible": False,
         "target_tier": current_tier,
         "current_tier": current_tier,
-        "reasons": ["Maximum class evolution tier reached."],
-        "unmet_conditions": []
+        "reasons": ["Maximum class evolution tier (Tier 10 Transcendent) reached."],
+        "unmet_conditions": [],
+        "top_skill": top_skill,
+        "top_mastery": max_mastery
     }
 
 
@@ -3274,6 +3818,12 @@ def generate_curated_evolutions(player):
                 {"tier": 3, "category": "Prestige Branch", "title": "Eldritch Theurge Ascendant", "desc": "Master Ability: Greatreach Spellblast (Channels high-tier area spells through Eldritch Spear at 250 ft with zero cooldown)."},
                 {"tier": 3, "category": "Prestige Branch", "title": "Void-Born Invocator Prime", "desc": "Master Ability: Utterdark Doom Cataclysm (40ft radius dark blast draining 4 negative levels and permanently blinding foes)."}
             ]
+        elif any(k in c_title_low for k in ("psion", "psychic", "mentalist", "telekinetic", "phrenic", "wilder", "soulknife", "aegis", "vitalist", "tactician", "cryptic", "dread", "marksman")):
+            return [
+                {"tier": 3, "category": "Prestige Branch", "title": "Overmind Psionic Ascendant", "desc": "Master Ability: Cataclysmic Mind Thrust (Shatters neural synapses for 10d10 psychic damage and stuns targets)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Astral Dreadnought Paragon", "desc": "Master Ability: Colossus Ecto-Form (Deploys 4 extra arms, +12 Natural AC, and 10/- Damage Reduction)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Hive-Mind Mesh Sovereign", "desc": "Master Ability: Collective Immortality (Redistributes all lethal damage instantly across the entire Collective)."}
+            ]
         else:
             return [
                 {"tier": 3, "category": "Prestige Branch", "title": "Grand Blade-Commander", "desc": "Master Ability: Warlord's Decreed Onslaught (Party acts simultaneously with guaranteed critical threat ranges)."},
@@ -3284,7 +3834,7 @@ def generate_curated_evolutions(player):
     # =========================================================================
     # TIER 4 (LEVEL 30) APEX LEGENDARY EVOLUTIONS
     # =========================================================================
-    if tier >= 3:
+    if tier == 3:
         if profile["alignment_track"] == "holy":
             return [
                 {
@@ -3348,6 +3898,46 @@ def generate_curated_evolutions(player):
                     "desc": "Breaks all class doctrine boundaries; can equip and dual-wield any items without restriction; Apex Power: Kernel Code Execution (Directly overwrites combat variables, reducing enemy AC or DR to 0)."
                 }
             ]
+
+    # =========================================================================
+    # TIERS 5 TO 10 (LEVELS 40 TO 100) TRANSCENDENT APOTHEOSIS
+    # =========================================================================
+    elif tier == 4:
+        return [
+            {"tier": 5, "category": "Continental Sovereign", "title": "Dimensional Rift Sovereign", "desc": "Apex Power: Spatial Severance Rift (Tears a dimensional fissure across 100ft, dealing 14d12 void damage and pulling all foes into the event horizon)."},
+            {"tier": 5, "category": "Continental Sovereign", "title": "Eldritch Void Overlord", "desc": "Apex Power: Cosmic Singularity (Summons a collapsing void core that consumes enemy projectiles and redirects 100% of damage back at foes)."},
+            {"tier": 5, "category": "Continental Sovereign", "title": "Iron-Pact Megalith", "desc": "Apex Power: Continental Quake (Stomps ground to fissure the entire combat zone, knocking down all foes and permanently reducing AC by -8)."}
+        ]
+    elif tier == 5:
+        return [
+            {"tier": 6, "category": "Stellar Arbiter", "title": "Stellar Arbiter of the Cosmos", "desc": "Apex Power: Supernova Ray (Unleashes a 200ft solar laser dealing 16d12 radiant/fire damage and disintegrating non-boss constructs)."},
+            {"tier": 6, "category": "Stellar Arbiter", "title": "Cosmic Mind Over-Deity", "desc": "Apex Power: Psychic Supernova (Telepathically overrides the motor control of up to 10 hostiles simultaneously for 3 turns)."},
+            {"tier": 6, "category": "Stellar Arbiter", "title": "Astral Dreadnought Colossus", "desc": "Apex Power: Absolute Invulnerability (Impervious to all damage, debuffs, and death effects for 2 full combat turns)."}
+        ]
+    elif tier == 6:
+        return [
+            {"tier": 7, "category": "Astral Architect", "title": "Cosmic Reality-Architect", "desc": "Apex Power: Geometry Reconstruction (Rewrites the battlefield map, materializing walls, safe rooms, and instant choke points)."},
+            {"tier": 7, "category": "Astral Architect", "title": "Solar Avatar of Creation", "desc": "Apex Power: Breath of the Sun (Heals all allies to 100% HP, cleanses all negative conditions, and casts permanent True Seeing)."},
+            {"tier": 7, "category": "Astral Architect", "title": "Oblivion Reaver", "desc": "Apex Power: Dimensional Banishment (Exiles target elite enemy into the inter-dimensional void for 5 combat turns)."}
+        ]
+    elif tier == 7:
+        return [
+            {"tier": 8, "category": "Primordial Ascendant", "title": "Primordial Titan of Genesis", "desc": "Apex Power: Primal Terraforming (Converts all ambient terrain into molten lava, freezing glaciers, or healing groves at will)."},
+            {"tier": 8, "category": "Primordial Ascendant", "title": "Omega Psionic Singularity", "desc": "Apex Power: Thought-Form Manifestation (Materializes thought into physical reality, duplicating any weapon, armor, or companion)."},
+            {"tier": 8, "category": "Primordial Ascendant", "title": "Immortal Core Sovereign", "desc": "Apex Power: Soul-Rebirth Matrix (Automatically revives with full HP and PP upon receiving lethal damage; no limit per day)."}
+        ]
+    elif tier == 8:
+        return [
+            {"tier": 9, "category": "Chronos Reality-Weaver", "title": "Chronos Reality-Weaver Prime", "desc": "Apex Power: Temporal Paradox (Rewinds combat by up to 3 turns while retaining all knowledge, XP, and party HP)."},
+            {"tier": 9, "category": "Chronos Reality-Weaver", "title": "Quantum Continuum Sovereign", "desc": "Apex Power: Quantum Superposition (Exists simultaneously in 4 locations at once, executing 4 full actions per turn)."},
+            {"tier": 9, "category": "Chronos Reality-Weaver", "title": "Void-Lord of Extinction", "desc": "Apex Power: Absolute Zero Collapse (Drops ambient temperature to 0 Kelvin, freezing all enemy spells, projectiles, and actions in mid-air)."}
+        ]
+    elif tier >= 9:
+        return [
+            {"tier": 10, "category": "Ouroboros Godhead", "title": "System Transcendent Prime (Godhead)", "desc": "Apex Power: Ouroboros Kernel Override (Directly commands the Cardinal System root kernel. Set any enemy HP, AC, or DR to 0; unlimited Matrix Memory; zero cooldowns)."},
+            {"tier": 10, "category": "Ouroboros Godhead", "title": "Cosmic Demiurge Sovereign", "desc": "Apex Power: Creation of Worlds (Summons a private pocket dimension with full healing, infinite resources, and instant teleportation to any floor)."},
+            {"tier": 10, "category": "Ouroboros Godhead", "title": "Omnipotent Anomaly Avatar", "desc": "Apex Power: Total System Singularity (Deletes all restrictions, granting permanent 100% critical strike chance, 100% damage reduction, and omni-discipline mastery)."}
+        ]
 
     # =========================================================================
     # TIER 2 (LEVEL 10) BESPOKE 3-CHOICE SYNTHESIS
@@ -3428,7 +4018,25 @@ def generate_curated_evolutions(player):
     elif c_key == "engineer":
         c1 = {"title": "Cyber-Mancer Mechanist", "desc": "Deploys multi-turret defensive grids and overrides robotic/golem neural links."}
     elif c_key == "psion":
-        c1 = {"title": "Awakened Telekineticist", "desc": "Bends physical reality and atmospheric pressure with unbridled mental telekinesis."}
+        c1 = {"title": "Kinetic Overcharger (Psion)", "desc": "Amplifies psychokinetic energy rays and concussive blasts beyond mortal tolerance limits."}
+    elif c_key == "psychic_warrior":
+        c1 = {"title": "Gargantuan Expansion Juggernaut", "desc": "Grows to Massive size with Expansion, crushing foes with colossal psychic weapon strikes and biofeedback."}
+    elif c_key == "soulknife":
+        c1 = {"title": "Mind Blade Blademaster", "desc": "Dual-wields or shapes oversized psychic blades that strike as pure touch attacks and bypass physical armor."}
+    elif c_key == "wilder":
+        c1 = {"title": "Surging Cataclysm Wilder", "desc": "Channels volatile raw passions into devastating Wild Surges that shatter enemy spells and armor."}
+    elif c_key == "aegis":
+        c1 = {"title": "Astral Juggernaut Colossus", "desc": "Hardens ectoplasmic armor into a spiked siege fortress with extra functional arms and flight thrusters."}
+    elif c_key == "vitalist":
+        c1 = {"title": "Biomantic World-Weaver", "desc": "Connects minds into an unbreakable Collective network, redistributing wounds and life-force seamlessly."}
+    elif c_key == "tactician":
+        c1 = {"title": "Strategic Hive-Commander", "desc": "Directs party actions through collective telepathic coordination, granting synchronized teamwork strikes."}
+    elif c_key == "cryptic":
+        c1 = {"title": "Geometric Pattern Breaker", "desc": "Deciphers and deconstructs physical geometry, detonating structural patterns to dismantle constructs."}
+    elif c_key == "dread":
+        c1 = {"title": "Terror Knight of the Abyss", "desc": "Projects a paralyzing Aura of Fear, chilling enemy hearts with devastating negative energy touch."}
+    elif c_key == "marksman":
+        c1 = {"title": "Psychokinetic Deadeye", "desc": "Telekinetically curves arrows around obstacles and penetrates heavy barding with wind-reading precision."}
     else:
         c1 = {"title": "Sovereign Synthesist", "desc": "Seamlessly fuses contrasting combat disciplines into a personalized tactical style."}
 
@@ -3548,22 +4156,21 @@ def generate_curated_evolutions(player):
     ]
 
 
-def apply_class_evolution(player, evolution_choice):
+def apply_class_evolution(player, evolution_choice, target_tier=None):
     """
-    Applies the chosen Tier 2, Tier 3, or Tier 4 Class Evolution:
+    Applies the chosen Tier 2 through Tier 10 Class Evolution:
     - Updates player["class"] title
-    - Updates player["class_tier"] (Tier 2, 3, or 4)
-    - Scales combat_resource max:
-        * +25% at Tier 2 (int(base * 1.25))
-        * +50% at Tier 3 (int(prev * 1.50))
-        * +100% at Tier 4 (int(prev * 2.00))
+    - Updates player["class_tier"] (Tier 2 through 10)
+    - Scales combat_resource max
     - Appends celebratory evolution feat: "Class Evolution: <title> (<desc>)"
     - Returns execution summary dictionary
     """
-    if not isinstance(evolution_choice, dict):
+    if isinstance(evolution_choice, str):
+        evolution_choice = {"title": evolution_choice, "tier": target_tier}
+    elif not isinstance(evolution_choice, dict):
         evolution_choice = {}
     new_title = evolution_choice.get("title") or "Evolved Archetype"
-    new_tier = evolution_choice.get("tier")
+    new_tier = evolution_choice.get("tier") or target_tier
     if not new_tier:
         current_t = player.get("class_tier") or 1
         new_tier = current_t + 1
@@ -3575,14 +4182,18 @@ def apply_class_evolution(player, evolution_choice):
     player["class"] = new_title
     player["class_tier"] = new_tier
 
-    if new_tier == 2:
-        mult = 1.25
-    elif new_tier == 3:
-        mult = 1.50
-    elif new_tier == 4:
-        mult = 2.00
-    else:
-        mult = 1.25
+    tier_multipliers = {
+        2: 1.25,
+        3: 1.50,
+        4: 2.00,
+        5: 2.25,
+        6: 2.50,
+        7: 2.75,
+        8: 3.00,
+        9: 3.50,
+        10: 4.00
+    }
+    mult = tier_multipliers.get(new_tier, 1.25)
 
     res["max"] = int(prev_max * mult)
     res["current"] = res["max"]
@@ -12045,6 +12656,133 @@ CANONICAL_ITEM_CATALOG = {
         "desc": "Supple charcoal-grey tailored vestments lined with dark silk and reinforced with secret cold-iron threads (+3 AC). Designed specifically for warlocks to channel invocations freely with zero arcane spell failure.",
         "visual_appearance": "draped in high-collared charcoal-grey warlock vestments with trailing dark silk tails and subtle violet arcane trim"
     },
+    # --- D&D 3.5 XPH & DREAMSCARRED PRESS PSIONIC ITEMS ---
+    "crystal focus staff": {
+        "name": "Crystal Focus Staff",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "A slender polished crystalline staff resonating with harmonic thought frequencies. Serves as a psionic focus conductor (+1 to Manifester Level on telekinesis and psychokinesis disciplines).",
+        "visual_appearance": "carrying an iridescent crystal focus staff humming with pale blue psionic illumination"
+    },
+    "dorje of energy ray": {
+        "name": "Dorje of Energy Ray",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "A slender, tapered crystalline wand-dorje charged with 50 Power Points capable of firing psionic Energy Rays without expending the wielder's personal PP reservoir.",
+        "visual_appearance": "holding a faceted prismatic quartz dorje that glints with latent kinetic sparks"
+    },
+    "deep crystal longsword": {
+        "name": "Deep Crystal Longsword",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "A masterwork longsword forged with deep crystal along its cutting edge. When charged with 2 PP as a free action, its next strike deals an additional +2d6 psychic damage.",
+        "visual_appearance": "wielding a gleaming longsword whose deep purple crystal edge throbs with telepathic power"
+    },
+    "reinforced psi-buckler": {
+        "name": "Reinforced Psi-Buckler",
+        "slot": "off_hand",
+        "rarity": "Common",
+        "desc": "A lightweight steel buckler fitted with an inertial dampening crystal node (+1 AC, +1 deflection bonus vs ranged touch powers).",
+        "visual_appearance": "strapped with a polished steel buckler mounted with a glowing central cognitive crystal"
+    },
+    "manifested mind blade": {
+        "name": "Manifested Mind Blade",
+        "slot": "main_hand",
+        "rarity": "Unique",
+        "desc": "A semi-solid blade of scintillating psychic light manifested directly from personal willpower (1d8 slashing/piercing, ignores physical armor hardness, scales with Soulknife level).",
+        "visual_appearance": "wielding a blade of pure glowing crystalline energy extending directly from the hand"
+    },
+    "surge crystal wand": {
+        "name": "Surge Crystal Wand",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "An erratic conduit rod carved from resonant mind-stone designed to stabilize Wilder surges (+1 on Will saves against Psychic Enervation).",
+        "visual_appearance": "holding a jagged amethyst surge wand that crackles erratically with surging emotional light"
+    },
+    "astral juggernaut gauntlets": {
+        "name": "Astral Juggernaut Gauntlets",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "Dense ectoplasmic armored gauntlets forming the conduits of an Aegis Astral Suit (+1d8 slam attack, +2 on bull-rush and grapple maneuvers).",
+        "visual_appearance": "hands encased in bulky, glowing translucent ectoplasmic armor gauntlets"
+    },
+    "aegis crest shield": {
+        "name": "Aegis Crest Shield",
+        "slot": "off_hand",
+        "rarity": "Common",
+        "desc": "A psychocreative tower crest shield that projects a kinetic barrier (+2 AC, absorbs 5 points of force damage per round).",
+        "visual_appearance": "bearing a shimmering kite shield formed of hardened crystalline astral matter"
+    },
+    "symbiotic bio-needle focus": {
+        "name": "Symbiotic Bio-Needle Focus",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "A delicate crystalline lancet tuned to cellular biofeedback and empathic healing (+10% healing transferred across the Collective network).",
+        "visual_appearance": "wielding a needle-like crystal lancet humming with emerald restorative luminescence"
+    },
+    "tome of the living mesh": {
+        "name": "Tome of the Living Mesh",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "An empathic medical atlas recording neural synaptic channels, expanding maximum Collective member capacity by +1.",
+        "visual_appearance": "carrying a living leather grimoire whose pages pulse with luminous neural thread patterns"
+    },
+    "tactical commander baton": {
+        "name": "Tactical Commander Baton",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "A weighted steel baton used to signal coordinated flank movements and issue telepathic strike orders (+1 to party flanking attack rolls).",
+        "visual_appearance": "holding an ornate steel officer's baton inlaid with silver synaptic tracery"
+    },
+    "strategic network slate": {
+        "name": "Strategic Network Slate",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "A psionically sensitized crystal slate projecting real-time holographic battlefield telemetry of all Collective party allies (+1 AC to allies within 30 ft).",
+        "visual_appearance": "carrying an open crystal tablet projecting faint blue holographic grid maps of ally positions"
+    },
+    "pattern chisel": {
+        "name": "Pattern Chisel",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "A fine geometric stylus capable of etching reality-disrupting sigils directly into matter (deals 1d6 piercing + 1d6 pattern disruption damage vs constructs and crystalline targets).",
+        "visual_appearance": "holding a sharp silver-carbide stylus engraved with interlocking sacred geometry runes"
+    },
+    "cipher codex": {
+        "name": "Cipher Codex",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "A cryptic index of cryptographic algorithms and hidden matrix flaws (+2 on Trap Disarming, Lockpicking, and Altered Insight checks).",
+        "visual_appearance": "carrying a brass-bound mechanical codex whose rotating dials solve geometric puzzles"
+    },
+    "dread scythe of terror": {
+        "name": "Dread Scythe of Terror",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "A blackened war-scythe forged from soul-chilled steel (2d4 slashing, 18-20/x4 critical threat, forces struck enemies to make a DC 14 Will save or become Shaken).",
+        "visual_appearance": "wielding a sinister obsidian-bladed war scythe veiled in weeping psychic shadows"
+    },
+    "shadow weave aegis": {
+        "name": "Shadow Weave Aegis",
+        "slot": "chest",
+        "rarity": "Uncommon",
+        "desc": "Supple midnight garments woven from ectoplasmic fear-threads (+3 AC, grants +2 on Intimidate checks and 5 Cold Resistance).",
+        "visual_appearance": "wearing flowing obsidian robes that seem to swallow ambient light in a creeping gloom"
+    },
+    "psychokinetic greatbow": {
+        "name": "Psychokinetic Greatbow",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "A high-draw recurve composite bow strung with telekinetic force filaments (1d8 piercing, adds Wisdom modifier to attack and damage rolls when Psionic Focus is maintained).",
+        "visual_appearance": "wielding a slender silverwood greatbow with a vibrating psychic bowstring that hums with kinetic tension"
+    },
+    "quiver of telekinetic ammunition": {
+        "name": "Quiver of Telekinetic Ammunition",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "A back-mounted quiver containing 60 telekinetically stabilized arrows that ignore wind penalties and deal +1d4 kinetic force damage.",
+        "visual_appearance": "wearing an etched leather quiver filled with crystalline-tipped arrows glowing with violet kinetic light"
+    },
 
     # --- PLAYER WEAPONS & OFF-HANDS ---
     "enchanted bearded axe": {
@@ -14568,6 +15306,888 @@ CANONICAL_SPELLS_AND_POWERS = {
         "range": "Self",
         "description": "Allows the warlock to craft any magic item without meeting spell prerequisites by substituting a Use Magic Device check.",
         "mechanics": "• Substitute UMD check (DC 15 + Spell Level) in place of required crafting spells."
+    },
+
+    # --- D&D 3.5 EXPANDED PSIONICS HANDBOOK (XPH) & DSP CLASS FEATURES & FEATS ---
+    "psionic meditation": {
+        "name": "Psionic Meditation",
+        "category": "Psionic Feat (XPH)",
+        "action_type": "Move Action",
+        "cost": "Concentration Check vs DC 20",
+        "range": "Self",
+        "description": "Through rigorous mental conditioning, you can clear your mind of extraneous thoughts and achieve Psionic Focus with blinding speed in the heat of battle.",
+        "mechanics": "• Action: Move Action.\n• Effect: Make a Concentration/Meditation check against DC 20. On success, you become Psionically Focused.\n• Focus Usage: Psionic Focus can be expended to power metapsionic powers, feats like Deep Impact or Psionic Weapon, or enhance saving throws.",
+        "is_psionic": True
+    },
+    "energy ray (psionic)": {
+        "name": "Energy Ray (Psionic)",
+        "category": "Psionic Power (Tier 1 - Psychokinesis)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Close (30 ft)",
+        "description": "Unleash a concentrated beam of psionic energy from your outstretched fingertips. You select the energy type upon manifestation: Cold (+1 dmg/die), Electricity (+2 to hit vs metal), Fire (+1 flat dmg), or Sonic (ignores hardness).",
+        "mechanics": "• Action: Standard Action | Base Cost: 1 PP\n• Attack: Ranged Touch Attack | Range: 30 ft\n• Damage: 1d6 energy damage (Cold, Electricity, Fire, or Sonic).\n• Augment: For every additional 1 PP spent, damage increases by +1d6 (up to Manifester Level cap).",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "energy ray": {
+        "name": "Energy Ray",
+        "category": "Psionic Power (Tier 1 - Psychokinesis)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Close (30 ft)",
+        "description": "Unleash a concentrated beam of psionic energy from your outstretched fingertips.",
+        "mechanics": "• Action: Standard Action | Base Cost: 1 PP\n• Attack: Ranged Touch Attack | Range: 30 ft\n• Damage: 1d6 energy damage.\n• Augment: +1d6 dmg per 1 additional PP spent.",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "psionic weapon": {
+        "name": "Psionic Weapon",
+        "category": "Psionic Feat (XPH)",
+        "action_type": "Free Action (When Attacking)",
+        "cost": "Expend Psionic Focus",
+        "range": "Melee Weapon Attack",
+        "description": "Channel a surge of telekinetic density into your melee weapon, causing the impact to shatter armor and sunder flesh.",
+        "mechanics": "• Action: Free Action upon declaring a melee attack.\n• Cost: Expend active Psionic Focus.\n• Effect: Your next successful melee attack deals an additional +2d6 damage.",
+        "is_psionic": True
+    },
+    "biofeedback (psionic)": {
+        "name": "Biofeedback (Psionic)",
+        "category": "Psionic Power (Tier 1 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Personal",
+        "description": "You take active psychometabolic control over your cardiovascular flow and nervous system, instantly tightening subdermal tissue to absorb physical impacts.",
+        "mechanics": "• Action: Standard Action | Base Cost: 1 PP\n• Duration: 1 minute per Manifester Level.\n• Effect: Gain Damage Reduction (DR) 2/- against all physical weapons.\n• Augment: For every additional 3 PP spent, DR increases by +1.",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "biofeedback": {
+        "name": "Biofeedback",
+        "category": "Psionic Power (Tier 1 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Personal",
+        "description": "Psychometabolic hardening granting Damage Reduction 2/-.",
+        "mechanics": "• Base Cost: 1 PP | Gain DR 2/-. Augment: +1 DR per 3 PP spent.",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "manifest mind blade": {
+        "name": "Manifest Mind Blade",
+        "category": "Soulknife Class Feature (XPH)",
+        "action_type": "Free Action / Swift Action",
+        "cost": "0 PP (Personal Willpower)",
+        "range": "Personal (Main Hand)",
+        "description": "Form a semi-solid blade of scintillating psychic light directly in your hand. The mind blade functions as a masterwork physical weapon and scales in power as you level.",
+        "mechanics": "• Action: Free/Swift Action to manifest or dismiss.\n• Stats: 1d8 slashing/piercing, 19-20/x2 critical threat.\n• Scaling: Gains +1 enhancement bonus at Level 4, increasing every 4 levels (+2 at 8, +3 at 12, +4 at 16, +5 at 20) plus special psychokinetic abilities.",
+        "is_psionic": True
+    },
+    "psychic strike": {
+        "name": "Psychic Strike",
+        "category": "Soulknife Class Feature (XPH)",
+        "action_type": "Move Action (Charge Blade)",
+        "cost": "0 PP (Mental Channeling)",
+        "range": "Melee Weapon Attack",
+        "description": "Focus your psychic willpower into your manifested mind blade, imbuing it with destructive mental energy that discharges upon your next successful hit.",
+        "mechanics": "• Action: Move Action to charge the blade.\n• Damage: Discharges on next successful hit against a living, non-mindless creature, dealing +1d8 psychic damage (scales to +2d8 at L5, +3d8 at L9, +4d8 at L13, +5d8 at L17).",
+        "is_psionic": True
+    },
+    "wild surge": {
+        "name": "Wild Surge",
+        "category": "Wilder Class Feature (XPH)",
+        "action_type": "Free Action (When Manifesting)",
+        "cost": "Risk of Psychic Enervation (15%)",
+        "range": "Personal",
+        "description": "Let passion and raw emotion overwhelm mental discipline, pushing your Manifester Level beyond ordinary limits by +1 to +6 at the risk of devastating psychic enervation.",
+        "mechanics": "• Boost: Increases Manifester Level by +1 (at L1), +2 (at L3), +3 (at L7), up to +6 (at L19) for one power.\n• Enervation Risk: 15% chance to suffer Psychic Enervation on each surge (loses PP equal to Wilder level and is dazed for 1 round).\n• Surging Euphoria: On a successful surge without enervation, gain +1 to +3 morale bonus on attack rolls, damage rolls, and saving throws.",
+        "is_psionic": True
+    },
+    "surging euphoria": {
+        "name": "Surging Euphoria",
+        "category": "Wilder Class Feature (XPH)",
+        "action_type": "Passive Synergy",
+        "cost": "Passive",
+        "range": "Personal",
+        "description": "When you successfully tap into a Wild Surge without succumbing to enervation, the rush of emotional breakthrough floods your nervous system with exhilarating power.",
+        "mechanics": "• Morale Bonus: +1 to attack rolls, damage rolls, and saving throws for 1 round per surge level (scales to +2 at L12 and +3 at L20).",
+        "is_psionic": True
+    },
+    "form astral suit": {
+        "name": "Form Astral Suit",
+        "category": "Aegis Class Feature (Dreamscarred Press)",
+        "action_type": "Swift Action",
+        "cost": "0 PP (Psychocreative Synthesis)",
+        "range": "Personal",
+        "description": "Condense ectoplasmic aether into a personalized Astral Suit. Choose between Astral Skin (+2 Dex, +10 ft speed, Nimble), Astral Armor (+6 AC, DR 2/-), or Astral Juggernaut (+10 AC, DR 5/-, Large size increase, Spiked Plating).",
+        "mechanics": "• Action: Swift Action to summon or dismiss.\n• Customization Points: Allocate CP into abilities like Flight, Hardened Carapace, Extra Arms, and Energy Resistance.",
+        "is_psionic": True
+    },
+    "customize astral suit": {
+        "name": "Customize Astral Suit",
+        "category": "Aegis Class Feature (Dreamscarred Press)",
+        "action_type": "Passive / Safe-Zone Reconfiguration",
+        "cost": "Customization Points (CP)",
+        "range": "Personal",
+        "description": "Weave specialized adaptations into your Astral Suit, unlocking wings for flight, hardened carapace, extended reach, or extra limbs.",
+        "mechanics": "• CP Budget: 3 CP at Level 1, scaling up to 26 CP at Level 20 and 110 CP at Level 100.\n• Reconfiguration: Can reallocate CP outside of combat in safe zones or long rests.",
+        "is_psionic": True
+    },
+    "the collective": {
+        "name": "The Collective",
+        "category": "Vitalist / Tactician Class Feature (DSP)",
+        "action_type": "Standard Action (Establish Network)",
+        "cost": "0 PP (Mental Mesh Linking)",
+        "range": "Party-Wide (Sight or Telepathic Range)",
+        "description": "Establish a telepathic neural mesh connecting willing allies into a shared psychic collective, allowing wound transfers, shared status monitoring, and collective buffing.",
+        "mechanics": "• Capacity: Maximum members equal to Level + Key Ability Modifier.\n• Range: Once connected, collective remains linked up to 1 mile.\n• Spirit of Many: Powers with Range: Personal or Touch can be channeled to any member of the collective.",
+        "is_psionic": True
+    },
+    "transfer wounds": {
+        "name": "Transfer Wounds",
+        "category": "Vitalist Class Feature (Dreamscarred Press)",
+        "action_type": "Standard Action",
+        "cost": "0 PP or 1 PP (Instant Redistribution)",
+        "range": "Collective Network",
+        "description": "Channel regenerative vitality across the Collective, taking wounds from an injured ally or routing health between any two members of the network.",
+        "mechanics": "• Action: Standard Action.\n• Healing: Transfers wounds in increments of 1d6 + WIS modifier without provoking attacks of opportunity.\n• Party Rebalance: At higher levels, can balance total party HP evenly across all active members.",
+        "is_psionic": True
+    },
+    "collective strategy": {
+        "name": "Collective Strategy",
+        "category": "Tactician Class Feature (Dreamscarred Press)",
+        "action_type": "Bonus Action",
+        "cost": "1 PP",
+        "range": "Collective Network",
+        "description": "Broadcast coordinated tactical directives through the collective, granting all connected allies tactical flanking bonuses and coordinated defensive spacing.",
+        "mechanics": "• Action: Bonus Action | Cost: 1 PP.\n• Effect: Connected allies gain +2 bonus on attack rolls when flanking and +1 competence bonus to AC against opportunity attacks for 3 rounds.",
+        "is_psionic": True
+    },
+    "coordinate strike": {
+        "name": "Coordinate Strike",
+        "category": "Tactician Class Feature (Dreamscarred Press)",
+        "action_type": "Standard Action",
+        "cost": "2 PP",
+        "range": "Collective Network",
+        "description": "Direct a coordinated cross-fire or pincer maneuver, granting an ally an immediate reaction attack with tactical advantage.",
+        "mechanics": "• Action: Standard Action | Cost: 2 PP.\n• Effect: One ally in the collective immediately makes a basic weapon attack with +2 bonus against a designated target.",
+        "is_psionic": True
+    },
+    "pattern disruption": {
+        "name": "Pattern Disruption",
+        "category": "Cryptic Class Feature (Dreamscarred Press)",
+        "action_type": "Standard Action / Free on Strike",
+        "cost": "0 PP (Disruptive Insight)",
+        "range": "Melee or Ranged (30 ft)",
+        "description": "Perceive the geometric resonance and flaw lines in matter, armor, and constructs, striking directly at stress points to bypass hardness and deal severe disruption damage.",
+        "mechanics": "• Damage: +1d6 disruption damage on hit (scales by +1d6 every 2 levels up to +10d6 at L19).\n• Sunder/Hardness: Bypasses up to 10 points of object hardness and construct Damage Reduction.",
+        "is_psionic": True
+    },
+    "altered defense": {
+        "name": "Altered Defense",
+        "category": "Cryptic Class Feature (Dreamscarred Press)",
+        "action_type": "Passive Stance",
+        "cost": "Passive",
+        "range": "Personal",
+        "description": "By perceiving the incoming vectors and geometric trajectories of enemy attacks, you distort the space immediately around your body to deflect strikes.",
+        "mechanics": "• Defensive Bonus: Adds INT modifier (up to class level) as an insight bonus to Armor Class while wearing light or no armor.",
+        "is_psionic": True
+    },
+    "aura of fear": {
+        "name": "Aura of Fear",
+        "category": "Dread Class Feature (Dreamscarred Press)",
+        "action_type": "Passive Aura (Toggle)",
+        "cost": "0 PP (Psychic Dread)",
+        "range": "30-ft Radius",
+        "description": "Radiate an oppressive, suffocating psychic chill that gnaws at the courage of all enemies within 30 feet, eroding their morale and willpower.",
+        "mechanics": "• Passive Aura: Enemies within 30 ft suffer a -2 penalty on saving throws against fear and mind-affecting effects.\n• Encroaching Terror: Foes that fail a Will save become Shaken (-2 on attacks, saves, checks) for 1 minute.",
+        "is_psionic": True
+    },
+    "devastating touch": {
+        "name": "Devastating Touch",
+        "category": "Dread Class Feature (Dreamscarred Press)",
+        "action_type": "Standard Action",
+        "cost": "0 PP (Infused Terror)",
+        "range": "Melee Touch Attack",
+        "description": "Channel raw concentrated dread into a freezing melee touch attack, causing the target's heart to stutter and their flesh to wither.",
+        "mechanics": "• Action: Melee Touch Attack.\n• Damage: 1d6 + CHA modifier cold/psychic damage (scales by +1d6 every 2 levels up to +10d6 at L19).\n• Terrifying Strike: Can expend Psionic Focus to force struck target to save vs Frightened.",
+        "is_psionic": True
+    },
+    "wind reader": {
+        "name": "Wind Reader",
+        "category": "Marksman Class Feature (Dreamscarred Press)",
+        "action_type": "Swift Action",
+        "cost": "0 PP (Psionic Trajectory Calculation)",
+        "range": "Personal",
+        "description": "Read micro-air currents, barometric pressure, and projectile trajectory with uncanny psychic precision.",
+        "mechanics": "• Action: Swift Action.\n• Effect: Negates range penalties on your next ranged attack and ignores penalties from high winds and light cover.",
+        "is_psionic": True
+    },
+    "psionic shot": {
+        "name": "Psionic Shot",
+        "category": "Psionic Feat (XPH)",
+        "action_type": "Free Action (When Shooting)",
+        "cost": "Expend Psionic Focus",
+        "range": "Ranged Weapon Attack",
+        "description": "Imbue your projectile with kinetic telekinesis, causing it to pierce through armor and impact with devastating force.",
+        "mechanics": "• Action: Free Action upon declaring a ranged attack.\n• Cost: Expend active Psionic Focus.\n• Effect: Your next successful ranged attack deals an additional +2d6 damage.",
+        "is_psionic": True
+    },
+
+    # --- CANONICAL PSIONIC POWERS: TIER 1 ---
+    "crystal shard": {
+        "name": "Crystal Shard",
+        "category": "Psionic Power (Tier 1 - Metacreativity)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Close (30 ft)",
+        "description": "Create and propel a razor-sharp shard of solid ectoplasm that pierces flesh and bone. Bypasses Power Resistance completely as an entirely physical projectile.",
+        "mechanics": "• Action: Standard Action | Cost: 1 PP\n• Attack: Ranged Touch Attack | Range: 30 ft\n• Damage: 1d6 piercing damage (ignores Power Resistance / Spell Resistance).\n• Augment: For each additional 1 PP spent, damage increases by +1d6.",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "astral construct": {
+        "name": "Astral Construct",
+        "category": "Psionic Power (Tier 1 - Metacreativity)",
+        "action_type": "Round Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Close (30 ft)",
+        "description": "Weave ectoplasm from the Astral plane into an autonomous construct minion tailored with combat abilities to fight on your behalf.",
+        "mechanics": "• Action: 1 Full Round Action | Cost: 1 PP\n• Duration: 1 round per Manifester Level.\n• Construct Level: Level 1 Construct (15 HP, +3 attack, 1d6+2 damage, 1 Menu A ability: Fly, Slam, or Power Attack).\n• Augment: Spend +2 PP per higher level construct (Level 2 construct at 3 PP, Level 3 at 5 PP, up to Level 9 construct at 17 PP).",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "inertial armor": {
+        "name": "Inertial Armor",
+        "category": "Psionic Power (Tier 1 - Psychokinesis)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Personal",
+        "description": "Surround your body with a tangible field of telekinetic force that dampens kinetic energy, protecting against weapon strikes with zero encumbrance or armor check penalties.",
+        "mechanics": "• Action: Standard Action | Cost: 1 PP\n• Duration: 1 hour per Manifester Level.\n• Armor Class: +4 Armor bonus to AC (effective against incorporeal attacks).\n• Augment: For every 2 additional PP spent, the AC bonus increases by +1.",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "vigor (psionic)": {
+        "name": "Vigor (Psionic)",
+        "category": "Psionic Power (Tier 1 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Personal",
+        "description": "Infuse your physical body with a sudden surge of psionic vitality, granting temporary hit points to absorb incoming wounds.",
+        "mechanics": "• Action: Standard Action | Cost: 1 PP\n• Duration: 1 minute per Manifester Level.\n• Temporary HP: Gain 5 temporary hit points.\n• Augment: For each additional 1 PP spent, gain +5 additional temporary hit points.",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "vigor": {
+        "name": "Vigor",
+        "category": "Psionic Power (Tier 1 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Personal",
+        "description": "Infuse your physical body with a surge of temporary hit points.",
+        "mechanics": "• Cost: 1 PP | Gain 5 temporary hit points. Augment: +5 temp HP per 1 PP spent.",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "mind thrust": {
+        "name": "Mind Thrust",
+        "category": "Psionic Power (Tier 1 - Telepathy)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Close (30 ft)",
+        "description": "Instantly project a vicious spike of telepathic dissonance into a creature's mind, tearing apart synaptic thought patterns.",
+        "mechanics": "• Action: Standard Action | Cost: 1 PP\n• Range: 30 ft | Saving Throw: Will Negates (DC 10 + 1 + INT/CHA mod)\n• Damage: 1d10 psychic damage.\n• Augment: For each additional 1 PP spent, damage increases by +1d10 and save DC increases by +0.5.",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "bite of the wolf": {
+        "name": "Bite of the Wolf",
+        "category": "Psionic Power (Tier 1 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Personal",
+        "description": "Temporarily alter your facial jaw structure and lengthen your canines, granting a fierce predatory bite attack.",
+        "mechanics": "• Action: Standard Action | Cost: 1 PP\n• Duration: 1 minute per Manifester Level.\n• Natural Weapon: Gain a secondary bite attack dealing 1d8 piercing damage (1d6 for Small creatures).\n• Augment: For every 4 additional PP spent, the bite gains a +1 enhancement bonus on attack and damage rolls.",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "expansion (psionic)": {
+        "name": "Expansion (Psionic)",
+        "category": "Psionic Power (Tier 1 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Personal",
+        "description": "Through cellular hypertrophy and psychometabolic restructuring, your physical mass and height expand by one full size category.",
+        "mechanics": "• Action: Standard Action | Cost: 1 PP\n• Duration: 1 round per Manifester Level.\n• One Size Step: Grow from Medium to Large (+2 size bonus to STR, -2 size penalty to DEX, -1 size penalty to AC/attacks, +10 ft reach, weapon damage steps up to 2d6).\n• Augment: Spend +6 additional PP to expand two size categories to Huge (+4 STR, -4 DEX, -2 AC/attacks, +15 ft reach, weapon damage steps up to 3d6).",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "expansion": {
+        "name": "Expansion",
+        "category": "Psionic Power (Tier 1 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Personal",
+        "description": "Expand by one or two size categories.",
+        "mechanics": "• Cost: 1 PP | Grow to Large (+2 STR, -1 AC, +10 ft reach). Augment: Spend +6 PP to grow to Huge (+4 STR, -2 AC, +15 ft reach).",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "deceleration": {
+        "name": "Deceleration",
+        "category": "Psionic Power (Tier 1 - Psychoportation)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "Medium (100 ft)",
+        "description": "Wrap a target in an invisible field of spatial drag that dampens its forward momentum, cutting its movement speed in half.",
+        "mechanics": "• Action: Standard Action | Cost: 1 PP\n• Saving Throw: Reflex Negates.\n• Effect: Target's base land speed is reduced by half for 1 minute per Manifester Level.\n• Augment: For every 2 additional PP spent, save DC increases by +1 and can target 1 additional creature.",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+    "demoralize (psionic)": {
+        "name": "Demoralize (Psionic)",
+        "category": "Psionic Power (Tier 1 - Telepathy)",
+        "action_type": "Standard Action",
+        "cost": "1 Power Point (Augmentable)",
+        "range": "30-ft Frontal Cone",
+        "description": "Send a terrifying mental wave of despair rippling through the minds of enemies, shaking their combat resolve.",
+        "mechanics": "• Action: Standard Action | Cost: 1 PP\n• Area: 30-ft cone.\n• Saving Throw: Will Negates.\n• Effect: Enemies are Shaken (-2 penalty on attack rolls, saving throws, and skill checks) for 1 minute.\n• Augment: For every 2 additional PP spent, save DC increases by +1 and duration increases by 1 minute.",
+        "base_pp_cost": 1,
+        "is_psionic": True
+    },
+
+    # --- CANONICAL PSIONIC POWERS: TIER 2 ---
+    "energy push": {
+        "name": "Energy Push",
+        "category": "Psionic Power (Tier 2 - Psychokinesis)",
+        "action_type": "Standard Action",
+        "cost": "3 Power Points (Augmentable)",
+        "range": "Medium (100 ft)",
+        "description": "Project a heavy concentrated beam of telekinetic energy that slams into the target, dealing damage and violently hurling them backward.",
+        "mechanics": "• Action: Standard Action | Cost: 3 PP\n• Attack: Ranged Touch Attack.\n• Damage: 2d6 energy damage + telekinetic bull-rush attempt with effective STR 14 + Manifester Level.\n• Augment: For every 1 additional PP spent, damage increases by +1d6 and bull-rush STR bonus increases by +1.",
+        "base_pp_cost": 3,
+        "is_psionic": True
+    },
+    "concussion blast": {
+        "name": "Concussion Blast",
+        "category": "Psionic Power (Tier 2 - Psychokinesis)",
+        "action_type": "Standard Action",
+        "cost": "3 Power Points (Augmentable)",
+        "range": "Medium (100 ft)",
+        "description": "Strike an enemy target with a silent, invisible burst of pure telekinetic concussive force that cannot be dodged.",
+        "mechanics": "• Action: Standard Action | Cost: 3 PP\n• Accuracy: Auto-hits target (no saving throw, no attack roll).\n• Damage: 1d6 pure Force damage.\n• Augment: For every 2 additional PP spent, damage increases by +1d6.",
+        "base_pp_cost": 3,
+        "is_psionic": True
+    },
+    "share pain": {
+        "name": "Share Pain",
+        "category": "Psionic Power (Tier 2 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "3 Power Points (Augmentable)",
+        "range": "Touch",
+        "description": "Forge an empathic psychic link between yourself and a willing ally, splitting all incoming damage equally between the two of you.",
+        "mechanics": "• Action: Standard Action | Cost: 3 PP\n• Duration: 1 hour per Manifester Level.\n• Effect: Whenever either linked creature takes damage, half of the damage is transferred to the other creature.",
+        "base_pp_cost": 3,
+        "is_psionic": True
+    },
+    "body equilibrium": {
+        "name": "Body Equilibrium",
+        "category": "Psionic Power (Tier 2 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "3 Power Points",
+        "range": "Personal",
+        "description": "Adjust your body's specific gravity and molecular density, allowing you to walk across water, quicksand, deep snow, or razor-thin ice without sinking.",
+        "mechanics": "• Action: Standard Action | Cost: 3 PP\n• Duration: 10 minutes per Manifester Level.\n• Effect: Walk across any non-solid surface (water, lava, quagmire, spider webs) at normal movement speed without sinking or triggering floor pressure traps.",
+        "base_pp_cost": 3,
+        "is_psionic": True
+    },
+    "animal affinity": {
+        "name": "Animal Affinity",
+        "category": "Psionic Power (Tier 2 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "3 Power Points (Augmentable)",
+        "range": "Personal",
+        "description": "Forge a resonant cellular mimicry with animal archetypes, granting a +4 enhancement bonus to any chosen ability score.",
+        "mechanics": "• Action: Standard Action | Cost: 3 PP\n• Duration: 1 minute per Manifester Level.\n• Effect: Grant +4 enhancement bonus to STR, DEX, CON, INT, WIS, or CHA.\n• Augment: Spend +5 additional PP to enhance a second ability score simultaneously.",
+        "base_pp_cost": 3,
+        "is_psionic": True
+    },
+    "levitate (psionic)": {
+        "name": "Levitate (Psionic)",
+        "category": "Psionic Power (Tier 2 - Psychoportation)",
+        "action_type": "Standard Action",
+        "cost": "3 Power Points",
+        "range": "Personal or Close (30 ft)",
+        "description": "Telekinetically suspend yourself or an object in mid-air, ascending or descending at will with total vertical control.",
+        "mechanics": "• Action: Standard Action | Cost: 3 PP\n• Duration: 10 minutes per Manifester Level.\n• Effect: Move up or down vertically up to 20 feet per round as a move action.",
+        "base_pp_cost": 3,
+        "is_psionic": True
+    },
+    "swarm of crystals": {
+        "name": "Swarm of Crystals",
+        "category": "Psionic Power (Tier 2 - Metacreativity)",
+        "action_type": "Standard Action",
+        "cost": "3 Power Points (Augmentable)",
+        "range": "15-ft Frontal Cone",
+        "description": "Erupt a high-velocity spray of razor-sharp crystal needles from your palm, slicing through all creatures caught in the cone.",
+        "mechanics": "• Action: Standard Action | Cost: 3 PP\n• Area: 15-ft cone (No saving throw, bypasses Power Resistance).\n• Damage: 3d4 slashing damage.\n• Augment: For each additional 1 PP spent, damage increases by +1d4.",
+        "base_pp_cost": 3,
+        "is_psionic": True
+    },
+    "brain lock": {
+        "name": "Brain Lock",
+        "category": "Psionic Power (Tier 2 - Telepathy)",
+        "action_type": "Standard Action",
+        "cost": "3 Power Points (Augmentable)",
+        "range": "Medium (100 ft)",
+        "description": "Lock down a humanoid target's cognitive motor center, leaving them dazed and completely unable to take actions or defend themselves.",
+        "mechanics": "• Action: Standard Action | Cost: 3 PP\n• Saving Throw: Will Negates.\n• Effect: Target is [Dazed] and [Paralyzed], unable to take physical or mental actions for 1 round per Manifester Level.\n• Augment: Spend +6 additional PP to affect any creature type (monsters, aberrations, giants).",
+        "base_pp_cost": 3,
+        "is_psionic": True
+    },
+
+    # --- CANONICAL PSIONIC POWERS: TIER 3 ---
+    "energy bolt": {
+        "name": "Energy Bolt",
+        "category": "Psionic Power (Tier 3 - Psychokinesis)",
+        "action_type": "Standard Action",
+        "cost": "5 Power Points (Augmentable)",
+        "range": "120-ft Line",
+        "description": "Project a 120-foot piercing stroke of raw psychic energy (Cold, Electricity, Fire, or Sonic) that burns through all enemies in its path.",
+        "mechanics": "• Action: Standard Action | Cost: 5 PP\n• Area: 120-ft line | Saving Throw: Reflex Half (DC 10 + 3 + INT/CHA mod).\n• Damage: 5d6 energy damage.\n• Augment: For each additional 1 PP spent, damage increases by +1d6 and save DC increases by +0.5.",
+        "base_pp_cost": 5,
+        "is_psionic": True
+    },
+    "body purification": {
+        "name": "Body Purification",
+        "category": "Psionic Power (Tier 3 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "5 Power Points (Augmentable)",
+        "range": "Personal",
+        "description": "Cleanse your cellular biology of toxins and metabolic decay, immediately restoring damaged ability score points.",
+        "mechanics": "• Action: Standard Action | Cost: 5 PP\n• Effect: Restores 2 points of ability score damage to physical attributes (STR, DEX, or CON).\n• Augment: For every 2 additional PP spent, restores 1 additional point of ability damage.",
+        "base_pp_cost": 5,
+        "is_psionic": True
+    },
+    "dispel psionics": {
+        "name": "Dispel Psionics",
+        "category": "Psionic Power (Tier 3 - Psychokinesis)",
+        "action_type": "Standard Action",
+        "cost": "5 Power Points (Augmentable)",
+        "range": "Medium (100 ft)",
+        "description": "Project a cancelling pulse of null-energy that unweaves active psionic powers and magical spells on a target creature or area.",
+        "mechanics": "• Action: Standard Action | Cost: 5 PP\n• Check: Dispel Check (1d20 + Manifester Level, max +10) vs DC 11 + target's ML/CL.\n• Magic Transparency: Fully counters and dispels magical spells as Dispel Magic.\n• Augment: For each additional 1 PP spent, the maximum ML dispel check cap increases by +1.",
+        "base_pp_cost": 5,
+        "is_psionic": True
+    },
+    "time hop": {
+        "name": "Time Hop",
+        "category": "Psionic Power (Tier 3 - Psychoportation)",
+        "action_type": "Standard Action",
+        "cost": "5 Power Points (Augmentable)",
+        "range": "Close (30 ft)",
+        "description": "Cast a creature or object forward in time. For the duration, the target ceases to exist in the present, reappearing in the exact same orientation when the power expires.",
+        "mechanics": "• Action: Standard Action | Cost: 5 PP\n• Saving Throw: Will Negates.\n• Duration: 1 round per Manifester Level.\n• Effect: Target disappears completely from reality for the duration, avoiding all attacks and hazards until it hops back into present time.",
+        "base_pp_cost": 5,
+        "is_psionic": True
+    },
+    "crisis of breath": {
+        "name": "Crisis of Breath",
+        "category": "Psionic Power (Tier 3 - Telepathy)",
+        "action_type": "Standard Action",
+        "cost": "5 Power Points (Augmentable)",
+        "range": "Medium (100 ft)",
+        "description": "Sever the target's autonomic respiratory reflex, forcing them to expend conscious effort to breathe or begin suffocating.",
+        "mechanics": "• Action: Standard Action | Cost: 5 PP\n• Saving Throw: Will Negates, followed by Fortitude saves.\n• Effect: Target must spend a standard action each turn to breathe, or take 1d6 damage and begin suffocating.",
+        "base_pp_cost": 5,
+        "is_psionic": True
+    },
+    "ectoplasmic form": {
+        "name": "Ectoplasmic Form",
+        "category": "Psionic Power (Tier 3 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "5 Power Points",
+        "range": "Personal",
+        "description": "Convert your physical flesh and carried gear into a translucent, vaporous ectoplasmic mist capable of drifting through cracks and ignoring physical attacks.",
+        "mechanics": "• Action: Standard Action | Cost: 5 PP\n• Duration: 1 minute per Manifester Level.\n• Defense: Gain DR 10/magic, fly speed 20 ft, immunity to critical hits and sneak attacks, and the ability to seep through small apertures.",
+        "base_pp_cost": 5,
+        "is_psionic": True
+    },
+    "hostile empathic transfer": {
+        "name": "Hostile Empathic Transfer",
+        "category": "Psionic Power (Tier 3 - Telepathy)",
+        "action_type": "Standard Action",
+        "cost": "5 Power Points (Augmentable)",
+        "range": "Touch",
+        "description": "Touch an enemy and violently discharge your own cellular wounds into their flesh, instantly healing yourself while inflicting equal trauma onto the foe.",
+        "mechanics": "• Action: Melee Touch Attack | Cost: 5 PP\n• Saving Throw: Will Half.\n• Effect: Transfers up to 50 points of damage from you to the touched enemy (heals you, damages target).\n• Augment: For each additional 1 PP spent, maximum damage transferred increases by +10.",
+        "base_pp_cost": 5,
+        "is_psionic": True
+    },
+
+    # --- CANONICAL PSIONIC POWERS: TIER 4 ---
+    "energy adaptation": {
+        "name": "Energy Adaptation",
+        "category": "Psionic Power (Tier 4 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "7 Power Points (Augmentable)",
+        "range": "Personal",
+        "description": "Attune your cellular matrix to withstand environmental extremes and energy assaults, granting universal resistance to fire, cold, acid, electricity, and sonic.",
+        "mechanics": "• Action: Standard Action | Cost: 7 PP\n• Duration: 10 minutes per Manifester Level.\n• Effect: Gain Resistance 10 against Cold, Electricity, Fire, Acid, and Sonic damage.",
+        "base_pp_cost": 7,
+        "is_psionic": True
+    },
+    "death urge": {
+        "name": "Death Urge",
+        "category": "Psionic Power (Tier 4 - Telepathy)",
+        "action_type": "Standard Action",
+        "cost": "7 Power Points (Augmentable)",
+        "range": "Medium (100 ft)",
+        "description": "Implant an overwhelming suicidal imperative into the target's psyche, forcing them to attack themselves with full lethal capability on their next turn.",
+        "mechanics": "• Action: Standard Action | Cost: 7 PP\n• Saving Throw: Will Negates.\n• Effect: On its turn, the subject spends its full action attacking itself with its most lethal weapon, dealing automatic critical hit damage to itself.",
+        "base_pp_cost": 7,
+        "is_psionic": True
+    },
+    "psychic reformation": {
+        "name": "Psychic Reformation",
+        "category": "Psionic Power (Tier 4 - Telepathy)",
+        "action_type": "10-Minute Ritual Action",
+        "cost": "7 Power Points + 50 XP per Level Re-allocated",
+        "range": "Touch",
+        "description": "Perform deep cognitive restructuring on yourself or a willing subject, re-allocating previously chosen skill points, feats, and powers.",
+        "mechanics": "• Action: 10-Minute Concentration | Cost: 7 PP\n• Effect: Subject can completely respec previous feat choices, skill distributions, or known spells/powers retroactively.",
+        "base_pp_cost": 7,
+        "is_psionic": True
+    },
+    "dimension door (psionic)": {
+        "name": "Dimension Door (Psionic)",
+        "category": "Psionic Power (Tier 4 - Psychoportation)",
+        "action_type": "Standard Action",
+        "cost": "7 Power Points (Augmentable)",
+        "range": "Long (400 ft + 40 ft/level)",
+        "description": "Instantly fold space-time around your body, vanishing from your current coordinates and stepping through an aetheric portal to any location within range.",
+        "mechanics": "• Action: Standard Action | Cost: 7 PP\n• Range: 400 ft + 40 ft per Manifester Level.\n• Augment: Spend +6 additional PP to manifest this power as a Move Action, or +8 additional PP to manifest as a Swift Action.",
+        "base_pp_cost": 7,
+        "is_psionic": True
+    },
+    "fabricate (psionic)": {
+        "name": "Fabricate (Psionic)",
+        "category": "Psionic Power (Tier 4 - Metacreativity)",
+        "action_type": "Round Action",
+        "cost": "7 Power Points",
+        "range": "Close (30 ft)",
+        "description": "Rearrange molecular crystalline and atomic structures with pure thought, instantly transmuting raw raw materials into finished weapons, armor, or structures.",
+        "mechanics": "• Action: 1 Full Round Action | Cost: 7 PP\n• Effect: Converts 10 cubic feet of raw metal, stone, or wood into finished masterwork equipment (requires Craft check for delicate mechanisms).",
+        "base_pp_cost": 7,
+        "is_psionic": True
+    },
+    "wall of ectoplasm": {
+        "name": "Wall of Ectoplasm",
+        "category": "Psionic Power (Tier 4 - Metacreativity)",
+        "action_type": "Standard Action",
+        "cost": "7 Power Points",
+        "range": "Medium (100 ft)",
+        "description": "Raise an impenetrable barrier of solid ectoplasm that blocks line of sight, projectile fire, and physical traversal.",
+        "mechanics": "• Action: Standard Action | Cost: 7 PP\n• Duration: 1 minute per Manifester Level.\n• Stats: Creates a 20-ft wall with Hardness 10 and 20 HP per inch of thickness.",
+        "base_pp_cost": 7,
+        "is_psionic": True
+    },
+
+    # --- CANONICAL PSIONIC POWERS: TIER 5 ---
+    "energy current": {
+        "name": "Energy Current",
+        "category": "Psionic Power (Tier 5 - Psychokinesis)",
+        "action_type": "Standard Action (Concentration)",
+        "cost": "9 Power Points (Augmentable)",
+        "range": "Close (30 ft)",
+        "description": "Establish a sustained arc of continuous high-voltage electrical energy or searing plasma between your hand and a primary target, jumping to secondary targets.",
+        "mechanics": "• Action: Standard Action | Cost: 9 PP\n• Damage: Deals 9d6 energy damage on manifestation, and 9d6 damage each subsequent round you concentrate as a standard action.\n• Augment: For each additional 1 PP spent, damage increases by +1d6.",
+        "base_pp_cost": 9,
+        "is_psionic": True
+    },
+    "power resistance": {
+        "name": "Power Resistance",
+        "category": "Psionic Power (Tier 5 - Clairsentience)",
+        "action_type": "Standard Action",
+        "cost": "9 Power Points (Augmentable)",
+        "range": "Touch",
+        "description": "Encase the subject in an insulating psychic mantle that repels hostile powers and magical spells.",
+        "mechanics": "• Action: Standard Action | Cost: 9 PP\n• Duration: 1 minute per Manifester Level.\n• Effect: Subject gains Power Resistance (PR) equal to 12 + Manifester Level (acts as Spell Resistance vs magic).\n• Augment: For every 1 additional PP spent, PR increases by +1.",
+        "base_pp_cost": 9,
+        "is_psionic": True
+    },
+    "psychic crush": {
+        "name": "Psychic Crush",
+        "category": "Psionic Power (Tier 5 - Telepathy)",
+        "action_type": "Standard Action",
+        "cost": "9 Power Points (Augmentable)",
+        "range": "Close (30 ft)",
+        "description": "Project a massive hammer of telepathic pressure that crushes the target's cognitive consciousness into complete collapse.",
+        "mechanics": "• Action: Standard Action | Cost: 9 PP\n• Saving Throw: Will Negates.\n• Effect: On a failed save, target drops directly to -1 Hit Points and begins dying. On a successful save, target still suffers 3d6 psychic damage.",
+        "base_pp_cost": 9,
+        "is_psionic": True
+    },
+    "major creation (ectoplasmic)": {
+        "name": "Major Creation (Ectoplasmic)",
+        "category": "Psionic Power (Tier 5 - Metacreativity)",
+        "action_type": "10-Minute Ritual Action",
+        "cost": "9 Power Points",
+        "range": "Close (30 ft)",
+        "description": "Synthesize complex ectoplasmic matter into functional physical objects, including complex alloys, rare minerals, or precious metals.",
+        "mechanics": "• Action: 10-Minute Ritual | Cost: 9 PP\n• Duration: Hours to days depending on material complexity (wood: 24 hrs, iron: 1 hr, silver/gold: 20 mins).",
+        "base_pp_cost": 9,
+        "is_psionic": True
+    },
+    "plane shift (psionic)": {
+        "name": "Plane Shift (Psionic)",
+        "category": "Psionic Power (Tier 5 - Psychoportation)",
+        "action_type": "Standard Action",
+        "cost": "9 Power Points",
+        "range": "Touch (Up to 8 Creatures)",
+        "description": "Fold dimensional membranes to transport yourself and up to eight linked party allies to another plane of existence.",
+        "mechanics": "• Action: Standard Action | Cost: 9 PP\n• Range: Touch | Targets: Up to 8 willing creatures.\n• Effect: Instant interdimensional planar travel.",
+        "base_pp_cost": 9,
+        "is_psionic": True
+    },
+
+    # --- CANONICAL PSIONIC POWERS: TIER 6 ---
+    "disintegrate (psionic)": {
+        "name": "Disintegrate (Psionic)",
+        "category": "Psionic Power (Tier 6 - Psychokinesis)",
+        "action_type": "Standard Action",
+        "cost": "11 Power Points (Augmentable)",
+        "range": "Medium (100 ft)",
+        "description": "Fire a thin, brilliant emerald ray of matter-severing force from your finger. Any creature or object struck is instantly unmade at the molecular level.",
+        "mechanics": "• Action: Standard Action | Cost: 11 PP\n• Attack: Ranged Touch Attack | Saving Throw: Fortitude Partial.\n• Damage: 22d6 damage. If reduced to 0 HP, target is disintegrated into fine powder. On a successful save, still takes 5d6 damage.\n• Augment: For each additional 1 PP spent, damage increases by +2d6 (and +1d6 on a successful save).",
+        "base_pp_cost": 11,
+        "is_psionic": True
+    },
+    "temporal acceleration": {
+        "name": "Temporal Acceleration",
+        "category": "Psionic Power (Tier 6 - Psychoportation)",
+        "action_type": "Swift Action",
+        "cost": "11 Power Points (Augmentable)",
+        "range": "Personal",
+        "description": "Accelerate your personal subjective timeframe to relativistic speeds, stepping out of the flow of normal time for 1 round while the entire battlefield stands frozen.",
+        "mechanics": "• Action: Swift Action | Cost: 11 PP\n• Effect: You gain 1 full round of apparent time to manifest powers, drink potions, move, or buff while all other creatures are frozen.\n• Augment: For every 4 additional PP spent, duration in subjective time increases by +1 round.",
+        "base_pp_cost": 11,
+        "is_psionic": True
+    },
+    "mind switch": {
+        "name": "Mind Switch",
+        "category": "Psionic Power (Tier 6 - Telepathy)",
+        "action_type": "Round Action",
+        "cost": "11 Power Points",
+        "range": "Close (30 ft)",
+        "description": "Swap mental consciousness and souls with another creature, possessing their physical body and abilities while transferring your soul into theirs.",
+        "mechanics": "• Action: 1 Full Round Action | Cost: 11 PP\n• Saving Throw: Will Negates.\n• Duration: 10 minutes per Manifester Level.\n• Effect: You inhabit target's physical body, acquiring their STR, DEX, CON, natural armor, and physical attacks.",
+        "base_pp_cost": 11,
+        "is_psionic": True
+    },
+    "suspend life": {
+        "name": "Suspend Life",
+        "category": "Psionic Power (Tier 6 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "11 Power Points",
+        "range": "Personal",
+        "description": "Place yourself into a state of suspended animation so profound that you appear completely dead to all inspection, freezing bodily decay and poison.",
+        "mechanics": "• Action: Standard Action | Cost: 11 PP\n• Duration: Up to 1 day per Manifester Level.\n• Effect: Immune to starvation, thirst, suffocation, poison progression, and age while in stasis.",
+        "base_pp_cost": 11,
+        "is_psionic": True
+    },
+    "fuse flesh": {
+        "name": "Fuse Flesh",
+        "category": "Psionic Power (Tier 6 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "11 Power Points",
+        "range": "Touch",
+        "description": "Touch an enemy and psychometabolically melt and fuse their flesh, sealing eyes, ears, mouth, and limbs into a smooth, featureless lump of flesh.",
+        "mechanics": "• Action: Melee Touch Attack | Cost: 11 PP\n• Saving Throw: Fortitude Negates.\n• Effect: Target is [Blinded], [Deafened], unable to speak or cast spells, and suffers -4 penalty to DEX and AC.",
+        "base_pp_cost": 11,
+        "is_psionic": True
+    },
+
+    # --- CANONICAL PSIONIC POWERS: TIER 7 ---
+    "energy wave": {
+        "name": "Energy Wave",
+        "category": "Psionic Power (Tier 7 - Psychokinesis)",
+        "action_type": "Standard Action",
+        "cost": "13 Power Points (Augmentable)",
+        "range": "120-ft Frontal Cone",
+        "description": "Release a colossal tsunami of raw kinetic energy (Cold, Electricity, Fire, or Sonic) sweeping across a 120-foot cone, crushing structures and shattering foes.",
+        "mechanics": "• Action: Standard Action | Cost: 13 PP\n• Area: 120-ft cone | Saving Throw: Reflex Half.\n• Damage: 13d6 energy damage.\n• Augment: For each additional 1 PP spent, damage increases by +1d6.",
+        "base_pp_cost": 13,
+        "is_psionic": True
+    },
+    "ultrablast": {
+        "name": "Ultrablast",
+        "category": "Psionic Power (Tier 7 - Telepathy)",
+        "action_type": "Standard Action",
+        "cost": "13 Power Points (Augmentable)",
+        "range": "15-ft Radius Emanation (Self)",
+        "description": "Send a terrifying telepathic scream radiating outward from your psyche, rupturing the minds and synaptic channels of all living beings caught in the blast.",
+        "mechanics": "• Action: Standard Action | Cost: 13 PP\n• Area: 15-ft radius centered on manifester.\n• Saving Throw: Will Half.\n• Damage: 13d6 psychic damage.\n• Augment: For each additional 1 PP spent, damage increases by +1d6.",
+        "base_pp_cost": 13,
+        "is_psionic": True
+    },
+    "fission": {
+        "name": "Fission",
+        "category": "Psionic Power (Tier 7 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "13 Power Points",
+        "range": "Personal",
+        "description": "Split your soul and physical form into two identical, fully autonomous versions of yourself. Each duplicate acts independently with its own turn.",
+        "mechanics": "• Action: Standard Action | Cost: 13 PP\n• Duration: 1 round per Manifester Level.\n• Effect: Duplicate possesses identical stats, current HP, and gear. PP is divided equally between you and the duplicate.",
+        "base_pp_cost": 13,
+        "is_psionic": True
+    },
+    "personal mind blank": {
+        "name": "Personal Mind Blank",
+        "category": "Psionic Power (Tier 7 - Telepathy)",
+        "action_type": "Standard Action",
+        "cost": "13 Power Points",
+        "range": "Personal",
+        "description": "Seal your mind completely against all forms of mental intrusion, telepathic scrying, divination, and emotion-altering effects.",
+        "mechanics": "• Action: Standard Action | Cost: 13 PP\n• Duration: 24 Hours.\n• Effect: 100% immunity to all mind-affecting powers, spells, scrying devices, alignment queries, and psychological compulsions.",
+        "base_pp_cost": 13,
+        "is_psionic": True
+    },
+    "oak body": {
+        "name": "Oak Body",
+        "category": "Psionic Power (Tier 7 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "13 Power Points",
+        "range": "Personal",
+        "description": "Transform your living flesh into hardened ironwood, becoming a towering wooden juggernaut with massive strength and thick bark armor.",
+        "mechanics": "• Action: Standard Action | Cost: 13 PP\n• Duration: 1 minute per Manifester Level.\n• Bonuses: +4 size bonus to STR, +5 Natural Armor bonus to AC, DR 10/slashing, and immunity to critical hits and suffocation.",
+        "base_pp_cost": 13,
+        "is_psionic": True
+    },
+
+    # --- CANONICAL PSIONIC POWERS: TIER 8 ---
+    "bend reality": {
+        "name": "Bend Reality",
+        "category": "Psionic Power (Tier 8 - Clairsentience)",
+        "action_type": "Standard Action",
+        "cost": "15 Power Points + 300 XP",
+        "range": "Varies",
+        "description": "By sheer willpower, impose your mind upon the fabric of reality itself to duplicate any power of 7th level or lower, undo catastrophic events, or bend fate.",
+        "mechanics": "• Action: Standard Action | Cost: 15 PP\n• Effect: Duplicates any psionic power of 7th level or lower, or bends probability to reroll failed checks.",
+        "base_pp_cost": 15,
+        "is_psionic": True
+    },
+    "matter manipulation": {
+        "name": "Matter Manipulation",
+        "category": "Psionic Power (Tier 8 - Metacreativity)",
+        "action_type": "Standard Action",
+        "cost": "15 Power Points",
+        "range": "Touch",
+        "description": "Permanently reorganize the molecular crystalline lattice of an inanimate object, increasing or decreasing its hardness and hit points forever.",
+        "mechanics": "• Action: Standard Action | Cost: 15 PP\n• Effect: Permanently increases an object or weapon's hardness by +5 and grants +15 Hit Points.",
+        "base_pp_cost": 15,
+        "is_psionic": True
+    },
+    "greater teleport (psionic)": {
+        "name": "Greater Teleport (Psionic)",
+        "category": "Psionic Power (Tier 8 - Psychoportation)",
+        "action_type": "Standard Action",
+        "cost": "15 Power Points",
+        "range": "Personal and Touch (Up to 8 Creatures)",
+        "description": "Instantly transport yourself and up to eight willing party companions to any destination on the entire continent or plane with 100% accuracy and zero mishap chance.",
+        "mechanics": "• Action: Standard Action | Cost: 15 PP\n• Range: Unlimited (Anywhere on the plane).\n• Accuracy: Perfect arrival with zero deviation or mishap roll.",
+        "base_pp_cost": 15,
+        "is_psionic": True
+    },
+    "mind seed": {
+        "name": "Mind Seed",
+        "category": "Psionic Power (Tier 8 - Telepathy)",
+        "action_type": "Standard Action",
+        "cost": "15 Power Points + 3,000 XP",
+        "range": "Close (30 ft)",
+        "description": "Implant a seed of your own mental matrix into a humanoid's mind. Over the course of one week, the seed germinates and overwrites their personality with an exact copy of yours.",
+        "mechanics": "• Action: Standard Action | Cost: 15 PP\n• Saving Throw: Will Negates.\n• Effect: Over 7 days, target transforms into a loyal mental duplicate of the manifester.",
+        "base_pp_cost": 15,
+        "is_psionic": True
+    },
+    "true metabolism": {
+        "name": "True Metabolism",
+        "category": "Psionic Power (Tier 8 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "15 Power Points",
+        "range": "Personal",
+        "description": "Awaken the supreme cellular immortality latent within your genetic code, granting perpetual regeneration that seals wounds and regrows lost limbs in seconds.",
+        "mechanics": "• Action: Standard Action | Cost: 15 PP\n• Duration: 1 minute per Manifester Level.\n• Regeneration: Gain Fast Healing 10 each round, regenerates severed limbs, and auto-stabilizes at negative HP.",
+        "base_pp_cost": 15,
+        "is_psionic": True
+    },
+
+    # --- CANONICAL PSIONIC POWERS: TIER 9 (APEX EPIC) ---
+    "affinity field": {
+        "name": "Affinity Field",
+        "category": "Psionic Power (Tier 9 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "17 Power Points",
+        "range": "20-ft Radius Emanation (Self)",
+        "description": "Create a feedback resonance field around yourself. Any spell, psionic power, healing, or status effect that affects you is instantly mirrored onto all creatures in the field.",
+        "mechanics": "• Action: Standard Action | Cost: 17 PP\n• Duration: 1 round per Manifester Level.\n• Effect: Whenever you are healed or buffed, every ally in the field receives the same benefit. Whenever you suffer damage, enemies in the field take equal damage.",
+        "base_pp_cost": 17,
+        "is_psionic": True
+    },
+    "assimilation": {
+        "name": "Assimilation",
+        "category": "Psionic Power (Tier 9 - Psychometabolism)",
+        "action_type": "Standard Action",
+        "cost": "17 Power Points",
+        "range": "Touch",
+        "description": "Touch an enemy and disintegrate their physical biology and mind into raw ectoplasmic nourishment, permanently assimilating their lifeforce into your own stats.",
+        "mechanics": "• Action: Melee Touch Attack | Cost: 17 PP\n• Saving Throw: Fortitude Partial.\n• Damage: Deals 20d6 damage. If killed, you permanently gain +4 to all ability scores for 1 hour, and gain temporary HP equal to target's maximum HP.",
+        "base_pp_cost": 17,
+        "is_psionic": True
+    },
+    "time regression": {
+        "name": "Time Regression",
+        "category": "Psionic Power (Tier 9 - Psychoportation)",
+        "action_type": "Standard Action",
+        "cost": "17 Power Points + 500 XP",
+        "range": "Personal (Global Reality Rewind)",
+        "description": "Reach into the chronological river and violently rewind the timeline of the entire battlefield by one full round, erasing all damage taken and undoing tragic casualties.",
+        "mechanics": "• Action: Standard Action | Cost: 17 PP\n• Effect: Rewinds the entire battlefield state by 1 full round. Only the manifester retains memory of the rewound round, allowing them to preemptively change actions.",
+        "base_pp_cost": 17,
+        "is_psionic": True
+    },
+    "tornado blast": {
+        "name": "Tornado Blast",
+        "category": "Psionic Power (Tier 9 - Psychokinesis)",
+        "action_type": "Round Action",
+        "cost": "17 Power Points (Augmentable)",
+        "range": "Long (400 ft + 40 ft/level)",
+        "description": "Conjure a cyclonic maelstrom of telekinetic force that lifts enemies 40 feet into the air, ravaging them with debris before slamming them into the ground.",
+        "mechanics": "• Action: 1 Full Round Action | Cost: 17 PP\n• Area: 40-ft radius vortex.\n• Saving Throw: Reflex Half.\n• Damage: 17d6 bludgeoning damage + targets are thrown 40 ft into the air and knocked prone.\n• Augment: For each additional 1 PP spent, damage increases by +1d6.",
+        "base_pp_cost": 17,
+        "is_psionic": True
+    },
+    "true mind switch": {
+        "name": "True Mind Switch",
+        "category": "Psionic Power (Tier 9 - Telepathy)",
+        "action_type": "10-Minute Ritual Action",
+        "cost": "17 Power Points + 10,000 XP",
+        "range": "Close (30 ft)",
+        "description": "Permanently trade bodies with target creature. You permanently take over their physical form, racial traits, natural armor, and abilities while casting them into your old body.",
+        "mechanics": "• Action: 10-Minute Ritual | Cost: 17 PP\n• Saving Throw: Will Negates.\n• Effect: Permanent soul and body swap.",
+        "base_pp_cost": 17,
+        "is_psionic": True
+    },
+    "microcosm": {
+        "name": "Microcosm",
+        "category": "Psionic Power (Tier 9 - Telepathy)",
+        "action_type": "Standard Action",
+        "cost": "17 Power Points",
+        "range": "Close (30 ft)",
+        "description": "Sever the target's mind from physical reality and permanently plunge their consciousness into an internal simulated dreamworld of endless illusion.",
+        "mechanics": "• Action: Standard Action | Cost: 17 PP\n• Saving Throw: None if subject has 100 HP or less (instant permanent mental entrapment); Will Negates if over 100 HP.\n• Effect: Target's physical body collapses into permanent catatonia while its mind wanders a dream cosmos forever.",
+        "base_pp_cost": 17,
+        "is_psionic": True
     }
 }
 

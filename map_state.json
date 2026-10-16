@@ -1,0 +1,56 @@
+{
+    "player_x": 50,
+    "player_y": 50,
+    "active_sector": "sector1_primary",
+    "active_layer": "usgs_topo",
+    "elevation_asl": 460,
+    "explored_tiles": [
+        [
+            50,
+            50
+        ],
+        [
+            50,
+            49
+        ],
+        [
+            51,
+            50
+        ],
+        [
+            49,
+            50
+        ],
+        [
+            50,
+            51
+        ]
+    ],
+    "explored_sectors": {
+        "sector1_primary": [
+            [
+                50,
+                50
+            ],
+            [
+                50,
+                49
+            ],
+            [
+                51,
+                50
+            ],
+            [
+                49,
+                50
+            ],
+            [
+                50,
+                51
+            ]
+        ]
+    },
+    "macro_mode": false,
+    "dynamic_nodes": [],
+    "node_overrides": {}
+}

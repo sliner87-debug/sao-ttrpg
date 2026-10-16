@@ -931,18 +931,19 @@ def render_character_calibration_wizard():
         st.markdown("### ⚔️ Stage 4: Combat Doctrine & Class Path")
         st.write("Choose your philosophical approach to surviving the death-game. Structured classes provide specialized tactical frameworks, while the Pathless walk an unconstrained anomaly path.")
         
-        # Classic 10 Base Classes + Warlock (D&D 3.5) + Pathless (+ non-breaking legacy classes if in registry)
+        # Classic 10 Base Classes + Pact & Anomaly (Warlock, Pathless) + Psionic Masters (XPH & DSP) + Artificer
         classic_10_keys = [
             "fighter", "wizard", "rogue", "cleric", "ranger",
-            "paladin", "druid", "bard", "barbarian", "monk", "warlock"
+            "paladin", "druid", "bard", "barbarian", "monk"
         ]
-        roster_order = classic_10_keys + ["pathless"]
+        pact_anomaly_keys = ["warlock", "pathless"]
+        psionic_keys = [
+            "psion", "psychic_warrior", "soulknife", "wilder",
+            "aegis", "vitalist", "tactician", "cryptic", "dread", "marksman"
+        ]
+        legacy_keys = ["engineer"]
+        roster_order = classic_10_keys + pact_anomaly_keys + psionic_keys + legacy_keys
         class_keys = [k for k in roster_order if k in cg.CLASS_PATHS]
-        
-        # Include legacy non-breaking classes if defined in CLASS_PATHS
-        for legacy_k in ["engineer", "psion"]:
-            if legacy_k in cg.CLASS_PATHS and legacy_k not in class_keys:
-                class_keys.append(legacy_k)
 
         # Legacy alias map for backward compatibility
         legacy_alias_map = {
@@ -975,7 +976,7 @@ def render_character_calibration_wizard():
         class_titles = [cg.CLASS_PATHS[k]["title"] for k in class_keys]
         
         sel_class_title = st.selectbox(
-            "Select Combat Doctrine (Classic 10 Framework):",
+            "Select Combat Doctrine (Classic, Pact, or Psionic):",
             options=class_titles,
             index=cur_c_idx,
             key="sel_class_box"
@@ -1496,15 +1497,16 @@ def apply_player_state_updates(state_updates):
                 st.session_state.player["xp"] += clean_xp
                 st.toast(f"✨ Gained {clean_xp} XP!")
                 
-                while st.session_state.player["xp"] >= st.session_state.player["level"] * 1000:
-                    st.session_state.player["xp"] -= st.session_state.player["level"] * 1000
-                    st.session_state.player["level"] += 1
-                    st.session_state.player["max_hp"] += 25
-                    st.session_state.player["hp"] = st.session_state.player["max_hp"]
-                    for s in st.session_state.player["stats"]:
-                        st.session_state.player["stats"][s] += 1
+                cur_lvl = int(st.session_state.player.get("level", 1) or 1)
+                max_cap = getattr(mechanics, "MAX_PLAYER_LEVEL", 100)
+                req_xp = mechanics.calculate_player_next_level_xp(cur_lvl) if hasattr(mechanics, "calculate_player_next_level_xp") else (cur_lvl * 1000)
+                while req_xp > 0 and st.session_state.player["xp"] >= req_xp and cur_lvl < max_cap:
+                    st.session_state.player["xp"] -= req_xp
+                    lvl_res = mechanics.apply_level_up(st.session_state.player)
+                    cur_lvl = int(st.session_state.player["level"])
                     st.balloons()
-                    st.success(f"🎉 **LEVEL UP!** You are now Level {st.session_state.player['level']}! Max HP and Core Stats increased!")
+                    st.success(f"🎉 **LEVEL UP!** You are now Level {cur_lvl}! Max HP (+{lvl_res.get('hp_gain', 25)}) and +2 Free Attribute Points awarded!")
+                    req_xp = mechanics.calculate_player_next_level_xp(cur_lvl) if hasattr(mechanics, "calculate_player_next_level_xp") else (cur_lvl * 1000)
         except (ValueError, TypeError):
             pass
     
@@ -2022,13 +2024,19 @@ def render_game_hud():
                 st.rerun()
 
     
-    xp_max = player.get("level", 1) * 1000
+    cur_lvl = int(player.get("level", 1) or 1)
+    max_lvl = getattr(mechanics, "MAX_PLAYER_LEVEL", 100)
+    xp_max = mechanics.calculate_player_next_level_xp(cur_lvl) if hasattr(mechanics, "calculate_player_next_level_xp") else (cur_lvl * 1000)
     xp_current = player.get("xp", 0)
-    xp_percent = max(0.0, min(1.0, xp_current / xp_max))
-    st.progress(xp_percent, text=f"XP: {xp_current} / {xp_max}")
+    if cur_lvl >= max_lvl or xp_max <= 0:
+        st.progress(1.0, text=f"XP: Max Level {max_lvl} Reached! (Transcendent)")
+    else:
+        xp_percent = max(0.0, min(1.0, xp_current / xp_max))
+        st.progress(xp_percent, text=f"XP: {xp_current} / {xp_max}")
     
     calc_ac_val = mechanics.calculate_ac(player) if hasattr(mechanics, "calculate_ac") else 10
-    st.write(f"**Level:** {player['level']} | **AC:** {calc_ac_val} 🛡️ | **Col:** {player['col']} 🪙")
+    tier_info = mechanics.get_class_tier_name(cur_lvl) if hasattr(mechanics, "get_class_tier_name") else f"Level {cur_lvl}"
+    st.write(f"**Level:** {cur_lvl}/{max_lvl} ({tier_info}) | **AC:** {calc_ac_val} 🛡️ | **Col:** {player.get('col', 0)} 🪙")
     
     st.divider()
     
@@ -2272,6 +2280,32 @@ def render_game_hud():
             max_ab_slots = mechanics.get_max_ability_slots(player)
             st.caption(f"🧠 **Active Matrix Memory:** `{len(slotted_now)} / {max_ab_slots}` Slots Loaded")
 
+        # Psionic Focus & Meditation Indicator
+        c_k_norm = mechanics.normalize_class_key(player.get("class", "")) if hasattr(mechanics, "normalize_class_key") else str(player.get("class", "")).lower()
+        is_psionic_player = (
+            player.get("combat_resource", {}).get("type") in ["power_points", "customization_points"]
+            or any("psionic" in str(sp.get("category", "")).lower() for sp in all_spells_powers)
+            or player.get("psionic_focus") is not None
+            or c_k_norm in [
+                "psion", "psychic_warrior", "soulknife", "wilder", "aegis", "vitalist", "tactician", "cryptic", "dread", "marksman"
+            ]
+        )
+        if is_psionic_player and hasattr(mechanics, "meditate_for_psionic_focus"):
+            f_col_stat, f_col_btn = st.columns([1, 1])
+            is_focused = bool(player.get("psionic_focus", False))
+            with f_col_stat:
+                focus_badge = "🌟 **ACTIVE**" if is_focused else "⭕ *Inactive*"
+                st.markdown(f"🧠 **Psionic Focus:** {focus_badge}")
+            with f_col_btn:
+                if st.button("🧘 Meditate for Focus (DC 20)", key="btn_meditate_focus", use_container_width=True):
+                    med_res = mechanics.meditate_for_psionic_focus(player)
+                    save_game(player, st.session_state.messages)
+                    if med_res.get("success"):
+                        st.toast(med_res.get("message", "Psionic Focus achieved!"), icon="🧘")
+                    else:
+                        st.warning(med_res.get("message", "Meditation failed."))
+                    st.rerun()
+
         if not all_spells_powers:
             st.info("No spells or special powers unlocked yet. Advance Skill Mastery to 100+, decipher Spell Slates, or fuse abilities!")
         else:
@@ -2356,6 +2390,48 @@ def render_game_hud():
                             )
                             st.rerun()
 
+                    # --- Psionic Power Point Augmentation Controls ---
+                    is_psi_power = (
+                        sp.get("is_psionic")
+                        or "psionic" in sp.get("category", "").lower()
+                        or sp.get("base_pp_cost", 0) > 0
+                        or "power point" in str(sp.get("cost", "")).lower()
+                    )
+                    if is_psi_power and hasattr(mechanics, "validate_power_manifestation"):
+                        st.markdown("---")
+                        st.markdown("🧠 **Psionic Power Point Augmentation (D&D 3.5 ML Cap Rule):**")
+                        base_cost = int(sp.get("base_pp_cost", 1) or 1)
+                        ml = mechanics.calculate_manifester_level(player) if hasattr(mechanics, "calculate_manifester_level") else int(player.get("level", 1))
+                        cr_info = player.get("combat_resource", {})
+                        cur_pp = cr_info.get("current", 0) if cr_info.get("type") in ["power_points", "customization_points"] else 999
+                        max_possible_aug = max(0, min(ml - base_cost, cur_pp - base_cost))
+                        
+                        aug_pp = 0
+                        if max_possible_aug > 0:
+                            aug_pp = st.slider(
+                                "Augment Power (+PP)",
+                                min_value=0,
+                                max_value=max_possible_aug,
+                                value=0,
+                                key=f"psi_aug_slider_{sp_idx}",
+                                help=f"Golden Rule of Psionics: Total PP spent ({base_cost} base + augment) cannot exceed Manifester Level ({ml})."
+                            )
+                        total_spend = base_cost + aug_pp
+                        st.caption(f"⚡ **Total PP Cost:** `{total_spend} PP` | 🎯 **Manifester Level Cap:** `{ml} PP` | 💧 **Current Available PP:** `{cur_pp} PP`")
+                        
+                        if st.button(f"🧠 Manifest {sp['name']} ({total_spend} PP)", key=f"btn_manifest_psi_{sp_idx}", use_container_width=True):
+                            val_check = mechanics.validate_power_manifestation(player, base_cost, aug_pp)
+                            if not val_check.get("valid"):
+                                st.warning(val_check.get("reason", "Manifestation invalid."))
+                            else:
+                                man_res = mechanics.manifest_psionic_power(player, sp["name"], base_cost, aug_pp)
+                                save_game(player, st.session_state.messages)
+                                st.session_state.pending_dev_command = (
+                                    f"I manifest psionic power [{sp['name']}] augmented by +{aug_pp} PP "
+                                    f"(Total: {total_spend} PP spent from reservoir). "
+                                    f"Resolve its augmented damage, DC, and psychokinetic effects."
+                                )
+                                st.rerun()
 
                     sp_col1, sp_col2 = st.columns(2)
                     with sp_col1:
@@ -2378,6 +2454,93 @@ def render_game_hud():
                         if st.button(f"⚡ Cast / Invoke", key=f"btn_cast_sp_{sp_idx}", use_container_width=True):
                             st.session_state.pending_dev_command = f"I invoke [{sp['name']}] ({sp.get('category', 'Spell / Power')})! Resolve its game mechanics and narrative impact."
                             st.rerun()
+
+    # --- Aegis Astral Suit Customization Workshop ---
+    norm_cls = mechanics.normalize_class_key(player.get("class", "")) if hasattr(mechanics, "normalize_class_key") else str(player.get("class", "")).lower()
+    if norm_cls == "aegis" or "astral_suit" in player or "aegis" in str(player.get("class", "")).lower():
+        with st.expander("🛡️ Aegis Astral Suit Workshop", expanded=False):
+            st.caption("Reconfigure your customizable Astral Suit using Dreamscarred Press Customization Points (CP).")
+            cur_suit = player.get("astral_suit", {})
+            suit_mode = cur_suit.get("form", "astral_armor")
+            
+            s_mode_col1, s_mode_col2 = st.columns([1, 1])
+            with s_mode_col1:
+                mode_choices = ["astral_skin", "astral_armor", "astral_juggernaut"]
+                mode_labels = {
+                    "astral_skin": "Astral Skin (Light: +2 Dex, +10ft Speed, Nimble)",
+                    "astral_armor": "Astral Armor (Medium: +6 AC, DR 2/-)",
+                    "astral_juggernaut": "Astral Juggernaut (Heavy: +10 AC, DR 5/-, Large Size)"
+                }
+                cur_m_idx = mode_choices.index(suit_mode) if suit_mode in mode_choices else 1
+                new_mode = st.selectbox("Suit Form", mode_choices, index=cur_m_idx, format_func=lambda k: mode_labels.get(k, k), key="suit_form_select")
+            
+            with s_mode_col2:
+                total_cp = mechanics.calculate_aegis_customization_points(player) if hasattr(mechanics, "calculate_aegis_customization_points") else 3
+                active_custs = cur_suit.get("customizations", [])
+                spent_cp = sum(mechanics.AEGIS_CUSTOMIZATIONS_CATALOG.get(c, {}).get("cost", 1) for c in active_custs) if hasattr(mechanics, "AEGIS_CUSTOMIZATIONS_CATALOG") else len(active_custs)
+                st.metric("Customization Points", f"{spent_cp} / {total_cp} CP", f"{total_cp - spent_cp} Free CP")
+            
+            cust_catalog = getattr(mechanics, "AEGIS_CUSTOMIZATIONS_CATALOG", {})
+            avail_cust_keys = list(cust_catalog.keys())
+            
+            selected_custs = st.multiselect(
+                "Active Adaptations & Upgrades",
+                options=avail_cust_keys,
+                default=[c for c in active_custs if c in avail_cust_keys],
+                format_func=lambda k: f"{cust_catalog[k]['name']} ({cust_catalog[k]['cost']} CP) — {cust_catalog[k]['desc']}",
+                key="suit_cust_multiselect"
+            )
+            
+            if st.button("🛠️ Reconfigure Astral Suit", key="btn_reconfigure_suit", use_container_width=True):
+                cfg_res = mechanics.configure_astral_suit(player, new_mode, selected_custs)
+                if cfg_res.get("success"):
+                    save_game(player, st.session_state.messages)
+                    st.toast(cfg_res.get("message", "Astral Suit updated!"), icon="🛡️")
+                    st.rerun()
+                else:
+                    st.warning(cfg_res.get("message", "Configuration failed."))
+
+    # --- The Collective Network Panel ---
+    if norm_cls in ["vitalist", "tactician"] or "collective" in player or any(c in str(player.get("class", "")).lower() for c in ["vitalist", "tactician"]):
+        with st.expander("🩸 The Collective Network (Mental Mesh)", expanded=False):
+            st.caption("Telepathic party neural mesh for instant health redistribution and range-less buff forwarding.")
+            coll = player.get("collective") or (mechanics.init_collective(player) if hasattr(mechanics, "init_collective") else {"members": [], "max_size": 5})
+            members = coll.get("members", [])
+            max_size = coll.get("max_size", 5)
+            st.markdown(f"🕸️ **Connected Members ({len(members)} / {max_size}):** `{', '.join(members) if members else 'None'}`")
+            
+            # Invite active party companions
+            party_dict = player.get("party", {})
+            invite_candidates = [cname for cname in party_dict.keys() if cname not in members]
+            if invite_candidates:
+                c_inv_col1, c_inv_col2 = st.columns([2, 1])
+                with c_inv_col1:
+                    to_invite = st.selectbox("Invite Companion to Collective", invite_candidates, key="coll_invite_select")
+                with c_inv_col2:
+                    if st.button("🔗 Connect Mind", key="btn_coll_invite", use_container_width=True):
+                        if hasattr(mechanics, "join_collective"):
+                            inv_res = mechanics.join_collective(player, to_invite)
+                            save_game(player, st.session_state.messages)
+                            st.toast(inv_res.get("message", "Member joined!"), icon="🕸️")
+                            st.rerun()
+            
+            # Transfer wounds controls
+            st.markdown("---")
+            st.markdown("💉 **Transfer Wounds / Rebalance Health:**")
+            tw_col1, tw_col2, tw_col3 = st.columns(3)
+            with tw_col1:
+                tw_src = st.selectbox("Source", members or [player.get("name", "Player")], key="tw_src_sel")
+            with tw_col2:
+                tw_tgt = st.selectbox("Target", members or [player.get("name", "Player")], key="tw_tgt_sel")
+            with tw_col3:
+                tw_amt = st.number_input("HP Amount", min_value=1, max_value=100, value=10, key="tw_amt_input")
+            
+            if st.button("🩸 Transfer Wounds", key="btn_exec_tw", use_container_width=True):
+                if hasattr(mechanics, "transfer_wounds"):
+                    tw_res = mechanics.transfer_wounds(player, None, tw_amt)
+                    save_game(player, st.session_state.messages)
+                    st.session_state.pending_dev_command = f"I channel [Transfer Wounds] across the Collective, routing {tw_amt} HP from [{tw_src}] to [{tw_tgt}]!"
+                    st.rerun()
 
     with st.expander("🔮 Ability Fusion Chamber", expanded=False):
         st.caption("Combine 2 skills or abilities to replace them with a unified **[Fusion] Skill** (Rule 10). Consumed Base Skills can be relearned at Novice (1/1000) if needed.")

@@ -1969,6 +1969,124 @@ RACIAL_LINEAGES = {
             "Deceitful Guise: Polymorph into any humanoid form at will, masking your fiendish nature and thoughts (+5 to Deception checks).",
             "Cursed Claws: Melee claw strike deals 1d6 + STR slashing damage + 1d6 necrotic curse damage that prevents the target from regaining hit points for 1 round."
         ]
+    },
+
+    # --- D&D 3.5 EXPANDED PSIONICS HANDBOOK (XPH) & DREAMSCARRED PRESS (DSP) RACES ---
+    "elan": {
+        "name": "Elan (Psionic Aberrant)",
+        "genre": "D&D 3.5 Psionic Lineage",
+        "desc": "Transformed humans reborn through psionic restructuring into long-lived psionic beings. Naturally psionic (+2 PP), capable of spending PP to shrug off lethal damage, resist hostile magic, and sustain physical form without food or water.",
+        "stat_mods": {"CON": 2, "INT": 1, "WIS": 1, "CHA": -2, "STR": 0, "DEX": 0},
+        "racial_abilities": [
+            "Naturally Psionic: +2 bonus Power Points added to your reservoir.",
+            "Resilience (Immediate Action): Spend 1 Power Point to negate 2 points of damage taken from an attack or spell.",
+            "Resistance (Immediate Action): Spend 1 Power Point to gain a +4 racial bonus on all saving throws until the start of your next turn.",
+            "Repletion (Psionic Sustenance): Spend 1 Power Point to sustain your biological form without food or water for 24 hours."
+        ],
+        "innate_spells": ["Resilience (Psionic)", "Resistance (Psionic)", "Repletion (Psionic)"]
+    },
+    "maenad": {
+        "name": "Maenad (Passionate Psychokinetic)",
+        "genre": "D&D 3.5 Psionic Lineage",
+        "desc": "Tall, dignified humanoids with flecks of living crystal in their skin who maintain disciplined composure over a core of violent psionic emotion. Capable of unleashing psychokinetic sonic rays and berserk physical outbursts.",
+        "stat_mods": {"STR": 2, "CHA": 2, "INT": 0, "WIS": -1, "CON": 0, "DEX": 0},
+        "racial_abilities": [
+            "Naturally Psionic: +2 bonus Power Points added to your reservoir.",
+            "Outburst (Free Action): Enter a 4-round psychic fervor gaining +2 STR at the cost of -2 INT and -2 WIS.",
+            "Energy Ray (Sonic 1/Day): Unleash a 30-ft ray of psychokinetic sonic energy dealing 1d6 sonic damage as a touch attack."
+        ],
+        "innate_spells": ["Outburst", "Energy Ray (1/Day)"]
+    },
+    "dromite": {
+        "name": "Dromite (Chitinous Gem-Kin)",
+        "genre": "D&D 3.5 Psionic Lineage",
+        "desc": "Small, chitin-armored subterranean humanoids with sparkling compound eyes and empathic antennae. Wield innate psychokinetic energy rays, natural armor, and blind-fight reflexes.",
+        "stat_mods": {"DEX": 2, "CHA": 2, "STR": -2, "CON": 0, "INT": 0, "WIS": 0},
+        "size": "Small",
+        "racial_abilities": [
+            "Naturally Psionic: +1 bonus Power Point added to your reservoir.",
+            "Chitinous Plating: +3 Natural Armor Class bonus from iridescent thoracic chitin.",
+            "Energy Ray (1/Day): Fires a ray of psionic fire, cold, electric, or sonic energy dealing 1d6 damage (30 ft ranged touch).",
+            "Subterranean Senses: Scent and Blind-Fight within 30 ft, ignoring darkness and visual concealments."
+        ],
+        "innate_spells": ["Energy Ray (1/Day)"]
+    },
+    "xeph": {
+        "name": "Xeph (Fleetfoot Psion)",
+        "genre": "D&D 3.5 Psionic Lineage",
+        "desc": "Swift and agile psionic humanoids with dark bronze skin and silken dark hair. Naturally attuned to psychoportative kinetic bursts and psychic shielding.",
+        "stat_mods": {"DEX": 2, "CHA": 1, "STR": -1, "CON": 0, "INT": 0, "WIS": 0},
+        "racial_abilities": [
+            "Naturally Psionic: +1 bonus Power Point added to your reservoir.",
+            "Burst (Free Action 3/Day): Tap psychoportative aether to boost land speed by +10 ft (scaling to +30 ft at higher levels) for 3 rounds.",
+            "Psionic Shielding: +1 racial bonus on all saving throws against powers, spells, and spell-like effects."
+        ],
+        "innate_spells": ["Burst (Psionic)"]
+    },
+    "half_giant": {
+        "name": "Half-Giant (Psionic Colossus)",
+        "genre": "D&D 3.5 Psionic Lineage",
+        "desc": "Massive humanoids with the towering frame of giants. Blessed with Powerful Build allowing them to wield Large weapons without penalty, innate psychokinetic stomps, and thermal resistance.",
+        "stat_mods": {"STR": 4, "CON": 2, "DEX": -2, "INT": 0, "WIS": 0, "CHA": -1},
+        "size": "Medium (Powerful Build)",
+        "racial_abilities": [
+            "Naturally Psionic: +2 bonus Power Points added to your reservoir.",
+            "Powerful Build: Treated as Large size whenever advantageous (wields Large weapons without penalty, +4 bonus on grapple/bull-rush/trip checks).",
+            "Stomp (1/Day): Slam ground to emit a 20-ft cone shockwave tripping all caught foes (Reflex DC 13).",
+            "Fire Acclimation: Natural 5 Fire Resistance."
+        ],
+        "innate_spells": ["Stomp (Psionic 1/Day)"]
+    },
+    "ophiduan": {
+        "name": "Ophiduan (Serpentine Psion)",
+        "genre": "Dreamscarred Press Psionic Lineage",
+        "desc": "Scaled humanoid folk descended from ancient serpentine sages. Possess a natural venomous bite, thick scales, and cold-blooded psychic calm.",
+        "stat_mods": {"WIS": 2, "DEX": 1, "CON": 1, "STR": 0, "INT": 0, "CHA": -2},
+        "racial_abilities": [
+            "Naturally Psionic: +2 bonus Power Points added to your reservoir.",
+            "Scaled Hide: +2 Natural Armor Class bonus from dense scales.",
+            "Venomous Bite: Natural bite attack dealing 1d4 piercing + poison (DC 13 Fort save or 1d2 STR damage).",
+            "Cold-Blooded Meditation: Advantage on saving throws vs Mind-Affecting and Fear effects."
+        ]
+    },
+    "forgeborn": {
+        "name": "Forgeborn (Psionic Living Vessel)",
+        "genre": "Dreamscarred Press Psionic Lineage",
+        "desc": "Half-living construct vessels created by channeling psionic soul-aether into heavy hardened metals and crystallized marrow.",
+        "stat_mods": {"CON": 2, "STR": 2, "CHA": -2, "INT": 0, "WIS": 0, "DEX": 0},
+        "racial_abilities": [
+            "Naturally Psionic: +1 bonus Power Point added to your reservoir.",
+            "Living Construct: Immune to biological disease, sleep effects, and starvation.",
+            "Source of Life: Can spend 1 PP to heal 1d8 HP as a swift action once per short rest.",
+            "Armored Chassis: +2 Natural Armor Class bonus."
+        ]
+    },
+    "blue": {
+        "name": "Blue (Psionic Goblinoid)",
+        "genre": "Dreamscarred Press Psionic Lineage",
+        "desc": "A distinct blue-skinned sub-species of goblins born with exceptional mental aptitude, psychic acuity, and mastery over mental intrusion.",
+        "stat_mods": {"INT": 4, "DEX": 2, "STR": -2, "CON": 0, "WIS": 0, "CHA": -1},
+        "size": "Small",
+        "racial_abilities": [
+            "Naturally Psionic: +2 bonus Power Points added to your reservoir.",
+            "Small Stature: +1 AC, +1 on attacks, +4 Stealth bonus.",
+            "Mind Thrust (At Will / 1 PP): Projects a vicious mental spike into enemy mind dealing 1d10 psychic damage (Will DC 14 negates).",
+            "Sneak Acuity: +2 on Stealth and Ride checks."
+        ],
+        "innate_spells": ["Mind Thrust (Psionic)"]
+    },
+    "duergar_psionic": {
+        "name": "Duergar Psion (Deep-Dwarf)",
+        "genre": "Dreamscarred Press Psionic Lineage",
+        "desc": "Grim deep dwarves who unlocked psionic self-alteration in the lightless chasms. Capable of growing to Large size (Expansion) and turning invisible at will.",
+        "stat_mods": {"CON": 2, "WIS": 2, "CHA": -4, "STR": 0, "DEX": 0, "INT": 0},
+        "racial_abilities": [
+            "Naturally Psionic: +1 bonus Power Point added to your reservoir.",
+            "Innate Expansion (1/Day): Expand to Large size (+2 STR, -1 AC/attacks, weapon damage steps up) for 1 minute.",
+            "Innate Invisibility (1/Day): Become invisible for 1 minute or until attacking.",
+            "Superior Darkvision: 120 ft darkvision."
+        ],
+        "innate_spells": ["Expansion (Psionic 1/Day)", "Invisibility (Psionic 1/Day)"]
     }
 }
 
@@ -2309,6 +2427,16 @@ RACIAL_PHYSICAL_DEFAULTS = {
     "illithid_mind_flayer": {"age": 80, "height_in": 72.0, "weight_lbs": 170.0},
     "mountain_orc_blood": {"age": 22, "height_in": 76.0, "weight_lbs": 260.0},
     "goblin_pyromaniac": {"age": 20, "height_in": 40.0, "weight_lbs": 50.0},
+    # D&D 3.5 XPH & DSP Psionic Lineages
+    "elan": {"age": 100, "height_in": 70.0, "weight_lbs": 160.0},
+    "maenad": {"age": 30, "height_in": 74.0, "weight_lbs": 200.0},
+    "dromite": {"age": 20, "height_in": 36.0, "weight_lbs": 40.0},
+    "xeph": {"age": 25, "height_in": 66.0, "weight_lbs": 140.0},
+    "half_giant": {"age": 30, "height_in": 94.0, "weight_lbs": 420.0},
+    "ophiduan": {"age": 35, "height_in": 68.0, "weight_lbs": 160.0},
+    "forgeborn": {"age": 50, "height_in": 72.0, "weight_lbs": 280.0},
+    "blue": {"age": 22, "height_in": 38.0, "weight_lbs": 45.0},
+    "duergar_psionic": {"age": 60, "height_in": 48.0, "weight_lbs": 150.0},
 }
 
 
@@ -2485,15 +2613,108 @@ CLASS_PATHS = {
         "native_armor": ["Medium", "Heavy"],
         "favored_skills": ["Field Smithing", "Golem-Graft Rigging", "Magi-Tech Hacking"]
     },
+    # --- D&D 3.5 EXPANDED PSIONICS HANDBOOK (XPH) BASE CLASSES ---
     "psion": {
-        "title": "Psion / Phrenic",
-        "description": "Awakened mentalist projecting mind-shattering kinetic repulsion and psychic lances, walking the edge of cognitive strain.",
-        "starting_feats": ["Kinetic Repulsion Barrier", "Mind Spike"],
-        "combat_resource": {"name": "Psi-Strain", "max": 100, "current": 0, "type": "strain"},
-        "base_hp": 85,
+        "title": "Psion (Disciplined Manifestor)",
+        "description": "Pure mentalist channeling the latent powers of the mind across six disciplines (Seer, Shaper, Kineticist, Egoist, Nomad, Telepath). Relies on a deep pool of Power Points.",
+        "starting_feats": ["Psionic Meditation", "Energy Ray (Psionic)"],
+        "combat_resource": {"name": "Power Points", "max": 2, "current": 2, "type": "power_points"},
+        "base_hp": 75,
+        "hp_per_lvl": 18,
+        "native_armor": ["Cloth"],
+        "favored_skills": ["Aether-Weaving", "Arcana", "Tactical Reflexes"]
+    },
+    "psychic_warrior": {
+        "title": "Psychic Warrior (Martial Mind)",
+        "description": "Frontline combatant who supplements martial combat with personal psionic enhancements, weapon imbuements, and cellular biofeedback.",
+        "starting_feats": ["Psionic Weapon", "Biofeedback (Psionic)"],
+        "combat_resource": {"name": "Power Points", "max": 0, "current": 0, "type": "power_points"},
+        "base_hp": 95,
         "hp_per_lvl": 24,
-        "native_armor": ["Cloth", "Light"],
-        "favored_skills": ["Aether-Circuit Query", "Tactical Reflexes"]
+        "native_armor": ["Heavy", "Medium", "Shield"],
+        "favored_skills": ["One-Handed Edge", "Shield Defense", "Athletics"]
+    },
+    "soulknife": {
+        "title": "Soulknife (Mind Blade Master)",
+        "description": "Deadly warrior who manifests weapons directly from personal psychic willpower, charging their mind blade with lethal psychic strikes.",
+        "starting_feats": ["Manifest Mind Blade", "Psychic Strike"],
+        "combat_resource": {"name": "Mind Blade & Focus", "max": 1, "current": 1, "type": "focus"},
+        "base_hp": 100,
+        "hp_per_lvl": 26,
+        "native_armor": ["Light"],
+        "favored_skills": ["One-Handed Edge", "Dual-Wield Coordination", "Tactical Reflexes"]
+    },
+    "wilder": {
+        "title": "Wilder (Emotional Conduit)",
+        "description": "Passionate psionic prodigy who channels raw surges of emotion to push manifester level past ordinary limits through Wild Surges.",
+        "starting_feats": ["Wild Surge", "Surging Euphoria"],
+        "combat_resource": {"name": "Power Points", "max": 2, "current": 2, "type": "power_points"},
+        "base_hp": 85,
+        "hp_per_lvl": 20,
+        "native_armor": ["Light", "Shield"],
+        "favored_skills": ["Intimidation", "Aether-Weaving", "Acrobatics"]
+    },
+
+    # --- DREAMSCARRED PRESS (DSP) BASE CLASSES ---
+    "aegis": {
+        "title": "Aegis (Astral Suit Artisan)",
+        "description": "Master of psychocreative engineering who wraps themselves in a customizable Astral Suit (Skin, Armor, or Juggernaut) tailored with Customization Points.",
+        "starting_feats": ["Form Astral Suit", "Customize Astral Suit"],
+        "combat_resource": {"name": "Customization Points & PP", "max": 3, "current": 3, "type": "customization_points"},
+        "base_hp": 105,
+        "hp_per_lvl": 26,
+        "native_armor": ["Medium", "Heavy", "Shield"],
+        "favored_skills": ["Field Smithing", "Shield Defense", "Heavy Plate Rigging"]
+    },
+    "vitalist": {
+        "title": "Vitalist (Collective Life-Weaver)",
+        "description": "Psionic medic who forms a mental Collective network linking party allies, transferring wounds, balancing health, and forwarding buffs instantly.",
+        "starting_feats": ["The Collective", "Transfer Wounds"],
+        "combat_resource": {"name": "Power Points & Collective", "max": 2, "current": 2, "type": "power_points"},
+        "base_hp": 80,
+        "hp_per_lvl": 20,
+        "native_armor": ["Light"],
+        "favored_skills": ["First Aid & Field Surgery", "Provisions & Alchemy", "Aether-Weaving"]
+    },
+    "tactician": {
+        "title": "Tactician (Collective Commander)",
+        "description": "Battlefield commander who weaves allies into a telepathic network to coordinate synchronized flank strikes and defensive battle strategies.",
+        "starting_feats": ["Collective Strategy", "Coordinate Strike"],
+        "combat_resource": {"name": "Power Points & Strategy", "max": 2, "current": 2, "type": "power_points"},
+        "base_hp": 90,
+        "hp_per_lvl": 22,
+        "native_armor": ["Medium", "Light", "Shield"],
+        "favored_skills": ["Tactical Reflexes", "Perimeter Intrusion", "One-Handed Edge"]
+    },
+    "cryptic": {
+        "title": "Cryptic (Pattern Breaker)",
+        "description": "Geometric investigator and infiltrator who perceives the underlying geometric patterns of reality, disrupting traps, armor, and enemy defenses.",
+        "starting_feats": ["Pattern Disruption", "Altered Defense"],
+        "combat_resource": {"name": "Power Points & Insights", "max": 2, "current": 2, "type": "power_points"},
+        "base_hp": 85,
+        "hp_per_lvl": 22,
+        "native_armor": ["Light"],
+        "favored_skills": ["Tumbler Decryption", "Perimeter Intrusion", "Magi-Tech Hacking"]
+    },
+    "dread": {
+        "title": "Dread (Avatar of Terror)",
+        "description": "Fearsome warrior who wields psionic nightmares and psychic chills as weapons, breaking enemy morale with an Aura of Fear and Devastating Touch.",
+        "starting_feats": ["Aura of Fear", "Devastating Touch"],
+        "combat_resource": {"name": "Power Points & Terror", "max": 2, "current": 2, "type": "power_points"},
+        "base_hp": 100,
+        "hp_per_lvl": 26,
+        "native_armor": ["Medium", "Light", "Shield"],
+        "favored_skills": ["Intimidation", "Two-Handed Cleave", "Tactical Reflexes"]
+    },
+    "marksman": {
+        "title": "Marksman (Psychic Sharpshooter)",
+        "description": "Ranged specialist who channels psionic momentum into archery and thrown weapons, reading air currents with Wind Reader and psionic shots.",
+        "starting_feats": ["Wind Reader", "Psionic Shot"],
+        "combat_resource": {"name": "Power Points & Wind", "max": 1, "current": 1, "type": "power_points"},
+        "base_hp": 95,
+        "hp_per_lvl": 24,
+        "native_armor": ["Light"],
+        "favored_skills": ["Archery & Marksmanship", "Tactical Reflexes", "Field Stealth"]
     },
     "pathless": {
         "title": "Pathless (Freeform Anomaly)",
@@ -2616,10 +2837,56 @@ CLASS_WEAPONS = {
         "off_hand": "Tanto Combat Knife",
         "desc": "A low-charge shock-pulse sidearm paired with a serrated carbon combat knife."
     },
+    # --- D&D 3.5 XPH & DSP Psionic Classes ---
     "psion": {
-        "main_hand": "Kinetic Shock-Staff",
+        "main_hand": "Crystal Focus Staff",
+        "off_hand": "Dorje of Energy Ray",
+        "desc": "A crystalline resonant staff tuned to harmonic thoughtwaves, paired with an energized crystal dorje."
+    },
+    "psychic_warrior": {
+        "main_hand": "Deep Crystal Longsword",
+        "off_hand": "Reinforced Psi-Buckler",
+        "desc": "A deep crystal edged arming blade capable of channeling psionic power, paired with a telekinetic buckler."
+    },
+    "soulknife": {
+        "main_hand": "Manifested Mind Blade",
         "off_hand": "None",
-        "desc": "A resonant quartz-tipped walking staff that projects and channels telekinetic pulses."
+        "desc": "A semi-solid blade of scintillating psychic light manifested directly from personal willpower."
+    },
+    "wilder": {
+        "main_hand": "Surge Crystal Wand",
+        "off_hand": "Scrap-Plate Shield",
+        "desc": "An erratic psychokinetic conduit wand designed to channel emotional surges, paired with a light shield."
+    },
+    "aegis": {
+        "main_hand": "Astral Juggernaut Gauntlets",
+        "off_hand": "Aegis Crest Shield",
+        "desc": "Hardened ectoplasmic gauntlets projecting kinetic forcefields, paired with an astral suit crest shield."
+    },
+    "vitalist": {
+        "main_hand": "Symbiotic Bio-Needle Focus",
+        "off_hand": "Tome of the Living Mesh",
+        "desc": "A crystalline lancet focus for telepathic cellular manipulation, paired with a medical anatomical atlas."
+    },
+    "tactician": {
+        "main_hand": "Tactical Commander Baton",
+        "off_hand": "Strategic Network Slate",
+        "desc": "A steel signal baton for directing troop movement, paired with an aetheric slate linking minds."
+    },
+    "cryptic": {
+        "main_hand": "Pattern Chisel",
+        "off_hand": "Cipher Codex",
+        "desc": "A rune-carved geometric scribe stylus that disrupts reality patterns, paired with a codebreaker cipher slate."
+    },
+    "dread": {
+        "main_hand": "Dread Scythe of Terror",
+        "off_hand": "None",
+        "desc": "A dark blackened two-handed war-scythe weeping psychic shadows and inflicting dread on foes."
+    },
+    "marksman": {
+        "main_hand": "Psychokinetic Greatbow",
+        "off_hand": "Quiver of Telekinetic Ammunition",
+        "desc": "A composite longbow reinforced with psychic resonance string, accompanied by kinetic arrows."
     },
     "pathless": {
         "main_hand": "Rusted Iron Sword",
