@@ -125,5 +125,6 @@
             "visual_appearance": "wearing a necklace of carved dire-wolf fangs glowing with green druidic runes"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

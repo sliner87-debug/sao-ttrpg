@@ -1082,6 +1082,8 @@ def render_character_calibration_wizard():
             relic_obj = cg.PERSONAL_RELICS[selected_relic_key]
             
             st.success(f"✨ **{relic_obj['name']}** [{relic_obj['rarity']} • {relic_obj.get('category', 'Relic')}]")
+            if relic_obj.get("avatar") and os.path.exists(relic_obj["avatar"]):
+                st.image(relic_obj["avatar"], caption=f"{relic_obj['name']} — 7-Donor Patchwork Elder Brain Prototype", width=260)
             st.caption(f"{relic_obj['desc']}")
             if "mechanics" in relic_obj:
                 st.info(f"🎲 **Game Mechanics:** {relic_obj['mechanics']}")
@@ -2759,7 +2761,9 @@ def render_game_hud():
                     c_aff = comp.get("affinity", 0)
                     c_tier = comp.get("affinity_tier", "Acquaintance")
 
-                    st.markdown(f"#### 👤 {c_name} `[Lv. {c_lvl} {c_class}]`")
+                    st.markdown(f"#### {'🧠' if 'gyrus' in c_name.lower() else '👤'} {c_name} `[Lv. {c_lvl} {c_class}]`")
+                    if comp.get("avatar") and os.path.exists(comp["avatar"]):
+                        st.image(comp["avatar"], width=180)
                     st.caption(f"Morale: **{c_morale}** | Affinity: `{c_aff}/100 [{c_tier}]`")
                     hp_pct = min(1.0, max(0.0, c_hp / max(1, c_max_hp)))
                     st.progress(hp_pct, text=f"HP: {c_hp} / {c_max_hp}")
@@ -2872,7 +2876,9 @@ def render_game_hud():
             else:
                 for u_comp in unrecruited:
                     u_name = u_comp.get("name", "Unknown Companion")
-                    st.markdown(f"##### 👤 {u_name} — `{u_comp.get('title', u_comp.get('class', 'Warrior'))}`")
+                    st.markdown(f"##### {'🧠' if 'gyrus' in u_name.lower() else '👤'} {u_name} — `{u_comp.get('title', u_comp.get('class', 'Warrior'))}`")
+                    if u_comp.get("avatar") and os.path.exists(u_comp["avatar"]):
+                        st.image(u_comp["avatar"], width=180)
                     st.caption(f"**Class:** {u_comp.get('class', '')} | **Lineage:** {u_comp.get('race', 'Human')} | **Starting Level:** {u_comp.get('level', 1)}")
                     st.write(u_comp.get("bio", u_comp.get("background", "")))
                     if st.button(f"Recruit {u_name} into Vanguard", key=f"btn_recruit_{u_name}"):
@@ -3337,8 +3343,10 @@ def render_game_hud():
                                 actor_name = sa.get("actor_name", actor_id or "SubAgent")
                                 thought = sa.get("internal_thought", "")
                                 intent = sa.get("intended_action", "Stands ready.")
-                                icon = "🤖" if "ren" in actor_id.lower() else "👾"
-                                subagent_log_lines.append(f"**[{icon} {actor_name} — SubAgent Mind]**\n> *\"{thought}\"*\n> **Intent:** {intent}")
+                                dial = sa.get("dialogue", "")
+                                icon = "🧠" if "gyrus" in actor_id.lower() else ("🤖" if "ren" in actor_id.lower() else "👾")
+                                dial_line = f"\n> **Telepathy / Speech:** {dial}" if dial else ""
+                                subagent_log_lines.append(f"**[{icon} {actor_name} — SubAgent Mind]**\n> *\"{thought}\"*\n> **Intent:** {intent}{dial_line}")
                             subagent_log = "\n\n".join(subagent_log_lines) if subagent_log_lines else ""
                             
                             # 3. GM resolution
@@ -4488,8 +4496,10 @@ if prompt := (dev_prompt or chat_prompt):
                 actor_name = sa.get("actor_name", actor_id or "SubAgent")
                 thought = sa.get("internal_thought", "")
                 intent = sa.get("intended_action", "Stands ready.")
-                icon = "🤖" if "ren" in actor_id.lower() else "👾"
-                subagent_log_lines.append(f"**[{icon} {actor_name} — SubAgent Mind]**\n> *\"{thought}\"*\n> **Intent:** {intent}")
+                dial = sa.get("dialogue", "")
+                icon = "🧠" if "gyrus" in actor_id.lower() else ("🤖" if "ren" in actor_id.lower() else "👾")
+                dial_line = f"\n> **Telepathy / Speech:** {dial}" if dial else ""
+                subagent_log_lines.append(f"**[{icon} {actor_name} — SubAgent Mind]**\n> *\"{thought}\"*\n> **Intent:** {intent}{dial_line}")
             subagent_log = "\n\n".join(subagent_log_lines) if subagent_log_lines else ""
             
             # c. Resolve the turn (Read Player Action + SubAgent Action Queue + Live Equipped Gear)

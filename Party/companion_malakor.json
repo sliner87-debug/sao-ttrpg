@@ -125,5 +125,6 @@
             "visual_appearance": "clad in matte-black Shadow-Steel scale mail beneath a tattered dark-matter warlock cloak"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

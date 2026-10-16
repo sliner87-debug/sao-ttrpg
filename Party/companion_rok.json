@@ -126,5 +126,6 @@
             "visual_appearance": "wearing a heavy cured troll-hide war-kilt and leather harness over a bare chest covered in glowing crimson blood-runes"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

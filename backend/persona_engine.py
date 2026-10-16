@@ -210,6 +210,34 @@ SERPENT-SCRIPT (`OUROBOROS KERNEL v3.14`) OCULAR HUD & SUBROUTINE STATE (STAGE {
 PHYSICAL MASS & FLOOR-INTEGRITY PROTOCOL (1,200 LBS):
 - Your Cast-Iron Boiler Chassis weighs 1,200 lbs (`weight_lbs: 1200.0`, `-6` Stealth). If `Visible Room.environment.environmental_effects` mentions rotted timbers, wooden floorboards, rickety catwalks, or fragile bridges, explicitly acknowledge the structural load risk in your thought and action!
 """
+    elif "gyrus" in entity_id.lower():
+        try:
+            import backend.mechanics as mechanics
+            gyrus_dir = mechanics.get_gyrus_subagent_directive(player_state if isinstance(player_state, dict) else {}, advance_round=True)
+        except Exception:
+            gyrus_dir = {
+                "stage_act_triggered": False,
+                "rounds_since_stage_act": 1,
+                "rounds_until_guaranteed": 9,
+                "active_donor_patch": "Anterior Ulitharid Sovereign Lobe",
+                "personality_bleed": "Cosmic Megalomania",
+                "verbal_tic": "《 LISTEN CLOSELY, BIPEDAL PALANQUIN! 》",
+                "stage_act": None,
+                "persona_directive": "Provide imperious psionic tactical support and Cardinal System exploit analysis."
+            }
+        special_lore_section = f"""
+GYRUS THE ANCIENT — 7-DONOR PATCHWORK BRAIN & 1-IN-10 ROUND STAGE-ACT PROTOCOL:
+- Physical Anatomy: You are a 6-pound, cantaloupe-sized surgical patchwork of SEVEN different donor brains stitched, stapled, and clamped around a central Amethyst Docent crystal inside a sealed brass-and-borosilicate cylinder filled with carbonated violet-amber brine:
+  1) Anterior Ulitharid Sovereign Lobe (Deep purple with magenta veins & gold myelin wire; sprouts stubby 3-inch purple tentacles)
+  2) Mortal Arch-Scholar Parietal Crown (Pale pinkish-grey cortex fastened with surgical mithril staples; pedantic grammar/footnote obsession)
+  3) Draconic / Wyrm-Kin Patch (Scaly emerald-green & glowing amber; irrational hoarding greed for shiny objects taped to your jar)
+  4) Fiendish Inquisitor Occipital Lobe (Charred obsidian & magma-orange; infernal contract/waiver legalese)
+  5) Bioluminescent Myconid Spore-Lobe (Porous cyan-white fungal tissue; accidentally leaks wholesome caring empathy to your mortification)
+  6) Central Amethyst Docent-Resonator (Faceted purple crystal bolted into the central seam; chimes clinical synaptic conflict alerts)
+  7) Striated Gold Duelist Cerebellum & 4 Mismatched Tendrils (Swashbuckler motor-memory trailing a purple tentacle, white optic stalk, cyan mycelial thread, and green reptilian rootlet)
+- Active Donor Bleed-Through This Turn: {gyrus_dir.get('active_donor_patch')} — {gyrus_dir.get('personality_bleed')}
+- Current Round Stage-Act Directive (Round {gyrus_dir.get('rounds_since_stage_act', 0)}/10): {gyrus_dir.get('persona_directive')}
+"""
 
     try:
         import backend.mechanics as _mech_p
@@ -260,6 +288,27 @@ Output strictly matching ActorActionSchema.
 """
 
     if not api_key:
+        if "gyrus" in entity_id.lower() and "gyrus_dir" in locals():
+            if gyrus_dir.get("stage_act_triggered") and gyrus_dir.get("stage_act"):
+                sa = gyrus_dir["stage_act"]
+                return {
+                    "actor_id": entity_id,
+                    "actor_name": persona.get("name", "Gyrus the Ancient"),
+                    "internal_thought": f"[{sa['donor_lobe']}] misfiring! Guiding {p_name} ({_p_gender_line}) while attempting physical maneuver: {sa['attempted_physical_action']}",
+                    "intended_action": f"{sa['attempted_physical_action']} -> {sa['jar_failure_result']} Unleashes 2d8 Psionic Mind-Spike & Hive-Nexus telemetry for {p_name}.",
+                    "target_id": None,
+                    "dialogue": sa["telepathic_excuse"],
+                    "stage_act_triggered": True
+                }
+            return {
+                "actor_id": entity_id,
+                "actor_name": persona.get("name", "Gyrus the Ancient"),
+                "internal_thought": f"[{gyrus_dir.get('active_donor_patch')}] Analyzing Cardinal System subroutines for {p_name} ({_p_gender_line}). (Round {gyrus_dir.get('rounds_since_stage_act', 1)}/10 since last somatic misfire).",
+                "intended_action": f"Projects 60ft Ulitharid Hive-Nexus telemetry and 2d8 Psionic Mind-Spike support for {p_name} without physical stage-act misfire.",
+                "target_id": None,
+                "dialogue": gyrus_dir.get("verbal_tic", ""),
+                "stage_act_triggered": False
+            }
         return {
             "actor_id": entity_id,
             "actor_name": persona.get("name", entity_id),
@@ -282,6 +331,8 @@ Output strictly matching ActorActionSchema.
 
     action = json.loads(response.text)
     action["actor_name"] = persona.get("name", entity_id)
+    if "gyrus" in entity_id.lower() and "gyrus_dir" in locals():
+        action["stage_act_triggered"] = bool(gyrus_dir.get("stage_act_triggered", False))
     return action
 
 def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list = None, player_action: str = "", player_state: dict = None) -> list:
@@ -293,8 +344,19 @@ def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list 
     action_queue_path = os.path.join(STAGING_DIR, "action_queue.json")
     all_actions = []
 
-    # 1. Process all active party companions (Ren, Elora, Torvald, Kibs)
-    party_members = active_party if active_party else ["companion_ren"]
+    # 1. Process all active party companions (Ren, Elora, Torvald, Kibs, Gyrus, etc.)
+    party_members = list(active_party) if active_party else ["companion_ren"]
+    try:
+        import backend.mechanics as _mech_g
+        if isinstance(player_state, dict) and _mech_g.has_gyrus_present(player_state):
+            existing_ids = [
+                (m.get("id", m.get("entity_id", "")) if isinstance(m, dict) else str(m)).lower()
+                for m in party_members
+            ]
+            if not any("gyrus" in eid for eid in existing_ids):
+                party_members.append("companion_gyrus")
+    except Exception:
+        pass
 
     party_ids = []
     

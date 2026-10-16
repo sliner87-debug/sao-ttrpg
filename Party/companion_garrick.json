@@ -125,5 +125,6 @@
             "visual_appearance": "wearing a sleeveless dark iron-thread martial arts gi revealing stone-grafted arms and glowing chest ki-glyphs"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

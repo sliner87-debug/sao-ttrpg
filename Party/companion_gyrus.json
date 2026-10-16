@@ -1,0 +1,132 @@
+{
+    "id": "companion_gyrus",
+    "name": "Gyrus",
+    "full_name": "Gyrus the Ancient ('The Patchwork Overmind')",
+    "race": "7-Donor Chimeric Elder Brain Prototype (Aberration / Construct in Jar)",
+    "class": "Psionic Hive-Nexus / System Oracle",
+    "title": "Miniature Elder Brain Prototype ('Gyrus the Ancient')",
+    "role": "Telepathic Hive-Nexus, Cardinal System Exploit Sage & Psionic Mind-Spike Controller",
+    "level": 5,
+    "hp": 46,
+    "max_hp": 46,
+    "ac": 16,
+    "weight_lbs": 14.0,
+    "stealth_penalty": 0,
+    "xp": 1000,
+    "next_level_xp": 1500,
+    "stance": "mini_mind_blast",
+    "morale": "Imperious",
+    "affinity": 30,
+    "affinity_tier": "Reluctant Palanquin-Bearer",
+    "recruited": false,
+    "active": false,
+    "avatar": "assets/avatars/gyrus.jpg",
+    "recruitment_location": "Pre-Integration Relic Attunement / Princeton Plasma Tokamak Sub-Vault (X:64, Y:42)",
+    "recruitment_requirements": {
+        "min_level": 1,
+        "col_cost": 0,
+        "relic_or_int": "elder_brain_jar",
+        "description": "Carry the Miniature Elder Brain Prototype ('Gyrus the Ancient') relic or pass an INT/Psionic resonance check (DC 13) to attune his brass containment cylinder."
+    },
+    "bio": "A cantaloupe-sized, seven-donor surgical patchwork Elder Brain suspended in carbonated violet-amber brine inside a riveted brass-and-borosilicate cylinder stamped 'GYRUS'. Stitched together from a purple Ulitharid frontal lobe, a pink Mortal Arch-Scholar crown, a scaly emerald Draconic patch, a magma-veined Fiendish occipital lobe, a porous cyan Myconid fungal lobe, a central Amethyst Docent crystal, and a striated gold Duelist cerebellum with four mismatched tendrils.",
+    "loadout": {
+        "main_hand": "7-Lobe Psionic Mind-Spike Array (2d8+4 Psychic + Spell Interrupt)",
+        "off_hand": "4x Mismatched Vestigial Tendrils (0 Physical DMG \u2014 Blocked by Glass)",
+        "armor": "Riveted Brass & Borosilicate Brine Cylinder (AC 16, DR 4, Auto-Regen)",
+        "chest": "Riveted Brass & Borosilicate Brine Cylinder (AC 16, DR 4, Auto-Regen)",
+        "accessory": "Central Amethyst Docent-Resonator (+10% Party EXP, -5% Skill Thresholds)"
+    },
+    "equipped": {
+        "main_hand": "7-Lobe Psionic Mind-Spike Array (2d8+4 Psychic + Spell Interrupt)",
+        "off_hand": "4x Mismatched Vestigial Tendrils (0 Physical DMG \u2014 Blocked by Glass)",
+        "armor": "Riveted Brass & Borosilicate Brine Cylinder (AC 16, DR 4, Auto-Regen)",
+        "chest": "Riveted Brass & Borosilicate Brine Cylinder (AC 16, DR 4, Auto-Regen)",
+        "accessory": "Central Amethyst Docent-Resonator (+10% Party EXP, -5% Skill Thresholds)"
+    },
+    "skills": {
+        "Ulitharid Telepathic Hub": {
+            "mastery": 320,
+            "tier": "Master",
+            "description": "60ft closed-loop Hive-Nexus (*The Illithiad*) linking party reflexes and exposing enemy weak points.",
+            "milestones_unlocked": [
+                "Creature Sense (60ft)",
+                "Qualith Thought-Encryption",
+                "Cardinal Exploit Scanner"
+            ]
+        },
+        "Patchwork Multi-Cortex Psionics": {
+            "mastery": 290,
+            "tier": "Adept",
+            "description": "Combined psychic blasts from seven stitched donor lobes (*Expanded Psionics Handbook*).",
+            "milestones_unlocked": [
+                "Psionic Mind-Spike",
+                "Ego Whip Tantrum",
+                "Id Insinuation"
+            ]
+        },
+        "Somatic Phantom-Limb Dissociation": {
+            "mastery": 250,
+            "tier": "Adept",
+            "description": "Involuntary swashbuckling/scholarly motor reflexes that misfire inside his brine cylinder at least once every 10 rounds.",
+            "milestones_unlocked": [
+                "360-Degree Brine Whirlpool",
+                "Prefrontal Glass-Bonk",
+                "Tendril Macrame Knot"
+            ]
+        }
+    },
+    "abilities": [
+        "Psionic Mind-Spike (2d8+4 Psychic DMG within 40ft + Interrupts Enemy Spellcasting/Windup)",
+        "7-Donor Telepathic Oracle (Exposes enemy vulnerabilities, clears Fear/Stress, +10% EXP)",
+        "Ego Whip Tantrum (1d10+4 Psychic DMG + Disadvantage on target's next attack + Insufferable Lecture)"
+    ],
+    "stances": {
+        "mini_mind_blast": {
+            "name": "Miniature Mind-Blast",
+            "label": "\ud83e\udde0 Miniature Mind-Blast",
+            "tag": "[GYRUS MIND-BLAST]",
+            "tactical_effect": "Unleashes a 30ft cone of 7-lobe synaptic static dealing 2d8+4 Psychic DMG and interrupting enemy spell/skill windups (DC 14 INT vs Stagger).",
+            "desc": "Offensive psionic cone & spell interrupt."
+        },
+        "hive_nexus_link": {
+            "name": "Hive-Nexus Telemetry",
+            "label": "\ud83d\udc41\ufe0f Hive-Nexus Telemetry",
+            "tag": "[GYRUS HIVE-NEXUS]",
+            "tactical_effect": "Links the party via Ulitharid Creature Sense & Arch-Scholar analysis: grants +3 Initiative, +2 Attack Rolls, clears mental debuffs, and reveals enemy weaknesses.",
+            "desc": "Tactical party buff & Cardinal System vulnerability oracle."
+        },
+        "ego_whip_tantrum": {
+            "name": "7-Lobe Ego-Whip Tantrum",
+            "label": "\ud83e\udee7 Ego-Whip Tantrum",
+            "tag": "[GYRUS EGO-WHIP]",
+            "tactical_effect": "Lashes a target with combined Ulitharid scorn, Scholar grammar-corrections, and Fiendish legalese for 1d10+4 Psychic DMG and Disadvantage on their next attack.",
+            "desc": "Psychic debuff & multi-donor verbal humiliation."
+        }
+    },
+    "dual_tech_id": "overmind_singularity",
+    "dual_tech_name": "Palanquin of the Overmind: 7-Lobe Cranial Nova",
+    "behavior_prompt": "You are Gyrus the Ancient, a 7-donor patchwork Miniature Elder Brain Prototype suspended in a brass-and-glass brine jar carried by Aria Valkyrie. Exhibit your 7-donor personality bleed-throughs (Ulitharid arrogance, Arch-Scholar pedantry, Draconic hoarding, Fiendish legalese, accidental Myconid empathy, and Amethyst Docent status alerts). Obey the round's Stage-Act Directive strictly: only perform your failed physical brain-in-a-jar stage act when the random/10-round pity trigger fires, and focus on sharp psionic tactics and Cardinal System exploit analysis on all other rounds.",
+    "inventory": [
+        {
+            "name": "Riveted Brass & Borosilicate Brine Cylinder",
+            "rarity": "Mythic",
+            "durability": 100,
+            "max_durability": 100,
+            "qty": 1,
+            "slot": "chest",
+            "desc": "Gyrus's heavy-duty alchemical containment vessel filled with glowing violet-amber nutrient brine, floating Qualith runes, top glass pressure coils, and a stamped brass 'GYRUS' nameplate (+6 AC, DR 4).",
+            "visual_appearance": "suspended inside a riveted brass-and-borosilicate glass containment cylinder filled with glowing violet-amber brine and stamped 'GYRUS'"
+        },
+        {
+            "name": "Central Amethyst Docent-Resonator",
+            "rarity": "Mythic",
+            "durability": 100,
+            "max_durability": 100,
+            "qty": 1,
+            "slot": "accessory",
+            "desc": "A diamond-cut purple psionic crystal bolted with four brass pins into the central surgical seam where Gyrus's seven incompatible donor lobes meet.",
+            "visual_appearance": "anchored at the central surgical seam by a faceted purple Amethyst Docent crystal with four brass pins"
+        }
+    ],
+    "active_debuffs": []
+}

@@ -125,5 +125,6 @@
             "visual_appearance": "wearing an acid-resistant slate-grey lab duster and heavy rubberized alchemist's hazard apron"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

@@ -89,5 +89,6 @@
         }
     },
     "dual_tech_id": "shadow_flank_execution",
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

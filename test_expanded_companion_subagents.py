@@ -35,9 +35,9 @@ class TestExpandedCompanionSubagents(unittest.TestCase):
             "Valeria", "Morrigan", "Garrick", "Sariel",
             "Kaelen", "Zedd", "Daphne", "Rok",
             "Lyra", "Titus", "Nyssa", "Malakor",
-            "Thorne", "Teresa"
+            "Thorne", "Teresa", "Gyrus"
         ]
-        self.assertEqual(len(RECRUITABLE_COMPANIONS), 18)
+        self.assertEqual(len(RECRUITABLE_COMPANIONS), 19)
         for name in expected_names:
             self.assertIn(name, RECRUITABLE_COMPANIONS, f"Missing companion {name}")
             c = RECRUITABLE_COMPANIONS[name]
@@ -52,7 +52,7 @@ class TestExpandedCompanionSubagents(unittest.TestCase):
             "companion_valeria", "companion_morrigan", "companion_garrick", "companion_sariel",
             "companion_kaelen", "companion_zedd", "companion_daphne", "companion_rok",
             "companion_lyra", "companion_titus", "companion_nyssa", "companion_malakor",
-            "companion_thorne", "companion_teresa"
+            "companion_thorne", "companion_teresa", "companion_gyrus"
         ]
         for cid in new_ids:
             filepath = os.path.join(self.entities_dir, f"{cid}.json")
@@ -72,7 +72,7 @@ class TestExpandedCompanionSubagents(unittest.TestCase):
             "companion_valeria", "companion_morrigan", "companion_garrick", "companion_sariel",
             "companion_kaelen", "companion_zedd", "companion_daphne", "companion_rok",
             "companion_lyra", "companion_titus", "companion_nyssa", "companion_malakor",
-            "companion_thorne", "companion_teresa"
+            "companion_thorne", "companion_teresa", "companion_gyrus"
         ]
         for cid in new_ids:
             filepath = os.path.join(self.party_dir, f"{cid}.json")
@@ -89,7 +89,7 @@ class TestExpandedCompanionSubagents(unittest.TestCase):
             self.assertTrue(bool(data.get("behavior_prompt")))
 
     def test_dual_tech_combos_complete(self):
-        self.assertEqual(len(DUAL_TECH_COMBOS), 18)
+        self.assertEqual(len(DUAL_TECH_COMBOS), 19)
         for name, comp in RECRUITABLE_COMPANIONS.items():
             dt_id = comp["dual_tech_id"]
             self.assertIn(dt_id, DUAL_TECH_COMBOS, f"Dual tech ID {dt_id} for {name} not in DUAL_TECH_COMBOS")
@@ -175,6 +175,39 @@ class TestExpandedCompanionSubagents(unittest.TestCase):
         dt_res = execute_dual_tech(state, "valkyries_wrath")
         self.assertTrue(dt_res["success"])
         self.assertIn("VALKYRIE'S SKY-CLEAVE", dt_res["log"])
+
+    def test_gyrus_patchwork_and_1_in_10_stage_act(self):
+        import backend.mechanics as mechanics
+        import backend.persona_engine as persona_engine
+        self.assertEqual(len(mechanics.GYRUS_DONOR_PATCHES), 7)
+        self.assertEqual(len(mechanics.GYRUS_STAGE_ACT_TABLE), 7)
+
+        state = copy.deepcopy(self.player_state)
+        state["personal_relic"] = "Miniature Elder Brain Prototype ('Gyrus the Ancient')"
+        self.assertTrue(mechanics.has_gyrus_present(state))
+
+        # Simulate 9 rounds where random roll does not proc (rng_val=0.95 >= 0.20)
+        for r in range(1, 10):
+            res = mechanics.advance_gyrus_stage_act_counter(state, rng_val=0.95)
+            self.assertFalse(res["stage_act_triggered"], f"Should not trigger on round {r} when rng_val=0.95")
+            self.assertEqual(res["rounds_since_stage_act"], r)
+
+        # On the 10th round (rounds_since == 9), even with rng_val=0.99, the 10-round pity guarantee MUST fire!
+        res_10 = mechanics.advance_gyrus_stage_act_counter(state, rng_val=0.99)
+        self.assertTrue(res_10["stage_act_triggered"], "10th round MUST guarantee stage-act trigger!")
+        self.assertEqual(res_10["trigger_reason"], "10_round_pity_guarantee")
+        self.assertEqual(res_10["rounds_since_stage_act"], 0)
+        self.assertIsNotNone(res_10["stage_act"])
+
+        # Verify persona_engine offline action includes Gyrus when relic is carried
+        actions = persona_engine.run_all_room_subagents(
+            api_key="",
+            visible_room={"environment": {"location": "Test Vault", "environmental_effects": []}, "entities": []},
+            player_action="Inspect the terminal.",
+            player_state=state
+        )
+        actor_ids = [a.get("actor_id") for a in actions]
+        self.assertIn("companion_gyrus", actor_ids)
 
 if __name__ == "__main__":
     unittest.main()

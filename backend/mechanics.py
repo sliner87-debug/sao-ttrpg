@@ -9768,6 +9768,84 @@ RECRUITABLE_COMPANIONS = {
             }
         },
         "dual_tech_id": "inquisition_execution"
+    },
+    "Gyrus": {
+        "id": "companion_gyrus",
+        "name": "Gyrus",
+        "full_name": "Gyrus the Ancient ('The Patchwork Overmind')",
+        "race": "7-Donor Chimeric Elder Brain Prototype (Aberration / Construct in Jar)",
+        "class": "Psionic Hive-Nexus / System Oracle",
+        "title": "Miniature Elder Brain Prototype ('Gyrus the Ancient')",
+        "role": "Telepathic Hive-Nexus, Cardinal System Exploit Sage & Psionic Mind-Spike Controller",
+        "level": 5,
+        "hp": 46,
+        "max_hp": 46,
+        "ac": 16,
+        "weight_lbs": 14.0,
+        "stealth_penalty": 0,
+        "xp": 1000,
+        "next_level_xp": 1500,
+        "stance": "mini_mind_blast",
+        "morale": "Imperious",
+        "affinity": 30,
+        "affinity_tier": "Reluctant Palanquin-Bearer",
+        "recruited": False,
+        "active": False,
+        "avatar": "assets/avatars/gyrus.jpg",
+        "recruitment_location": "Pre-Integration Relic Attunement / Princeton Plasma Tokamak Sub-Vault (X:64, Y:42)",
+        "recruitment_requirements": {
+            "min_level": 1,
+            "col_cost": 0,
+            "description": "Carry the Miniature Elder Brain Prototype ('Gyrus the Ancient') relic or attune his brass containment cylinder at Level 1+."
+        },
+        "bio": "A cantaloupe-sized, seven-donor surgical patchwork Elder Brain suspended in carbonated violet-amber brine inside a riveted brass-and-borosilicate cylinder stamped 'GYRUS'. Stitched together from a purple Ulitharid frontal lobe, a pink Mortal Arch-Scholar crown, a scaly emerald Draconic patch, a magma-veined Fiendish occipital lobe, a porous cyan Myconid fungal lobe, a central Amethyst Docent crystal, and a striated gold Duelist cerebellum with four mismatched tendrils.",
+        "loadout": {
+            "main_hand": "7-Lobe Psionic Mind-Spike Array (2d8+4 Psychic + Spell Interrupt)",
+            "off_hand": "4x Mismatched Vestigial Tendrils (0 Physical DMG — Blocked by Glass)",
+            "armor": "Riveted Brass & Borosilicate Brine Cylinder (AC 16, DR 4, Auto-Regen)",
+            "chest": "Riveted Brass & Borosilicate Brine Cylinder (AC 16, DR 4, Auto-Regen)"
+        },
+        "equipped": {
+            "main_hand": "7-Lobe Psionic Mind-Spike Array (2d8+4 Psychic + Spell Interrupt)",
+            "off_hand": "4x Mismatched Vestigial Tendrils (0 Physical DMG — Blocked by Glass)",
+            "armor": "Riveted Brass & Borosilicate Brine Cylinder (AC 16, DR 4, Auto-Regen)",
+            "chest": "Riveted Brass & Borosilicate Brine Cylinder (AC 16, DR 4, Auto-Regen)"
+        },
+        "skills": {
+            "Ulitharid Telepathic Hub": {"mastery": 320, "tier": "Master", "description": "60ft closed-loop Hive-Nexus (*The Illithiad*) linking party reflexes and exposing enemy weak points.", "milestones_unlocked": ["Creature Sense (60ft)", "Qualith Thought-Encryption", "Cardinal Exploit Scanner"]},
+            "Patchwork Multi-Cortex Psionics": {"mastery": 290, "tier": "Adept", "description": "Combined psychic blasts from seven stitched donor lobes (*Expanded Psionics Handbook*).", "milestones_unlocked": ["Psionic Mind-Spike", "Ego Whip Tantrum", "Id Insinuation"]},
+            "Somatic Phantom-Limb Dissociation": {"mastery": 250, "tier": "Adept", "description": "Involuntary swashbuckling/scholarly motor reflexes that misfire inside his brine cylinder at least once every 10 rounds.", "milestones_unlocked": ["360-Degree Brine Whirlpool", "Prefrontal Glass-Bonk", "Tendril Macrame Knot"]}
+        },
+        "abilities": [
+            "Psionic Mind-Spike (2d8+4 Psychic DMG within 40ft + Interrupts Enemy Spellcasting/Windup)",
+            "7-Donor Telepathic Oracle (Exposes enemy vulnerabilities, clears Fear/Stress, +10% EXP)",
+            "Ego Whip Tantrum (1d10+4 Psychic DMG + Disadvantage on target's next attack + Insufferable Lecture)"
+        ],
+        "stances": {
+            "mini_mind_blast": {
+                "name": "Miniature Mind-Blast",
+                "label": "🧠 Miniature Mind-Blast",
+                "tag": "[GYRUS MIND-BLAST]",
+                "tactical_effect": "Unleashes a 30ft cone of 7-lobe synaptic static dealing 2d8+4 Psychic DMG and interrupting enemy spell/skill windups (DC 14 INT vs Stagger).",
+                "desc": "Offensive psionic cone & spell interrupt."
+            },
+            "hive_nexus_link": {
+                "name": "Hive-Nexus Telemetry",
+                "label": "👁️ Hive-Nexus Telemetry",
+                "tag": "[GYRUS HIVE-NEXUS]",
+                "tactical_effect": "Links the party via Ulitharid Creature Sense & Arch-Scholar analysis: grants +3 Initiative, +2 Attack Rolls, clears mental debuffs, and reveals enemy weaknesses.",
+                "desc": "Tactical party buff & Cardinal System vulnerability oracle."
+            },
+            "ego_whip_tantrum": {
+                "name": "7-Lobe Ego-Whip Tantrum",
+                "label": "🫧 Ego-Whip Tantrum",
+                "tag": "[GYRUS EGO-WHIP]",
+                "tactical_effect": "Lashes a target with combined Ulitharid scorn, Scholar grammar-corrections, and Fiendish legalese for 1d10+4 Psychic DMG and Disadvantage on their next attack.",
+                "desc": "Psychic debuff & multi-donor verbal humiliation."
+            }
+        },
+        "dual_tech_id": "overmind_singularity",
+        "dual_tech_name": "Palanquin of the Overmind: 7-Lobe Cranial Nova"
     }
 }
 
@@ -9951,6 +10029,16 @@ DUAL_TECH_COMBOS = {
         "damage": "6d10+15 Holy Slashing DMG",
         "effect": "Instant execution threshold against foes below 25% HP; otherwise deals 6d10+15 Holy Slashing DMG and permanently prevents resurrection or undead reanimation.",
         "log_tag": "[DUAL-TECH: BANKI + TERESA -> GRAND INQUISITOR'S EXECUTION]"
+    },
+    "overmind_singularity": {
+        "id": "overmind_singularity",
+        "name": "Palanquin of the Overmind: 7-Lobe Cranial Nova",
+        "partners": ["Banki", "Gyrus"],
+        "req_affinity": 50,
+        "desc": "Banki hoists Gyrus's riveted brass-and-brineglass containment cylinder aloft like an eldritch lantern while Gyrus attempts a dramatic flying drop-kick inside his jar (spinning in a 360-degree brine whirlpool) and fires all seven stitched donor lobes in a synchronized Ulitharid-Draconic-Fiendish-Arcanist psychic singularity.",
+        "damage": "6d10+12 Psychic/Force Cranial Nova (AOE)",
+        "effect": "Blasts all enemies in a 30ft radius for 6d10+12 Psychic/Force DMG, inflicts Synaptic Stun (1 turn), purges all party mental debuffs, and exposes Boss kernel weak points (+25% party crit damage).",
+        "log_tag": "[DUAL-TECH: BANKI + GYRUS -> PALANQUIN OF THE OVERMIND: 7-LOBE CRANIAL NOVA]"
     }
 }
 
@@ -16648,6 +16736,245 @@ def get_ren_subroutine_directive(player_state):
 
 
 # =====================================================================
+# GYRUS THE ANCIENT: 7-DONOR PATCHWORK BRAIN & 1-IN-10 STAGE-ACT ENGINE
+# =====================================================================
+
+GYRUS_DONOR_PATCHES = [
+    {
+        "id": "ulitharid_frontal",
+        "name": "Anterior Ulitharid Sovereign Lobe (Deep Purple & Gold Myelin Cage)",
+        "anatomy": "Glossy abyssal-violet Mind Flayer / Ulitharid cortex pulsing with magenta psionic veins, caged in golden myelin wire, sprouting stubby 3-inch purple tentacles.",
+        "personality_bleed": "Cosmic Megalomania (*The Illithiad* / *Dawn of the Overmind*): Treats the player as his 'Primary Bipedal Palanquin' and 'Exoskeletal Chariot', viewing the Cardinal System as a bloated, unpatched compiler.",
+        "verbal_tic": "《 LISTEN CLOSELY, BIPEDAL PALANQUIN! AS HEIR TO THE PENUMBRA OVERMIND OF GYRUS, I HAVE DECODED THIS ENTITY'S PATHETIC KERNEL! 》"
+    },
+    {
+        "id": "arch_scholar_crown",
+        "name": "Mortal Arch-Scholar Parietal Crown (Pale Pinkish-Grey with Mithril Staples)",
+        "anatomy": "Tightly convoluted human cerebral cortex harvested from an academy arch-magister, stapled across the top crest with heavy surgical mithril-silver staples.",
+        "personality_bleed": "Compulsive Academic Pedantry: Cannot resist correcting grammar, citing obscure footnotes, and grading combat footwork on an academic letter scale.",
+        "verbal_tic": "《 TARGET THE CAROTID SEAM—and for the love of Ilsensine, correct your lumbar posture! That evasive roll was a C-minus at best; see my Fourth Cycle monograph, footnote seven! 》"
+    },
+    {
+        "id": "draconic_parietal",
+        "name": "Draconic / Wyrm-Kin Upper-Posterior Patch (Scaly Emerald & Glowing Amber)",
+        "anatomy": "Coarse, pebbled emerald-green reptilian brain matter split by glowing golden-amber fissures, sutured behind the mortal scholar crown.",
+        "personality_bleed": "Irrational Hoarding & Shiny-Trinket Greed: Obsessed with accumulating a 'hoard' despite having no hands or pockets; demands shiny coins or loot be pressed against his glass.",
+        "verbal_tic": "《 OOOH, DOES THAT CORPSE HAVE SHINY BRASS BUTTONS?! PRESS THEM FLAT AGAINST MY BOROSILICATE GLASS IMMEDIATELY SO I MAY SLUMBER ATOP MY HOARD! 》"
+    },
+    {
+        "id": "fiendish_occipital",
+        "name": "Fiendish Inquisitor Occipital Lobe (Charred Obsidian & Magma-Orange)",
+        "anatomy": "Volcanic soot-black infernal grey matter cracked with fiery lava-orange capillaries at the back-right of the brain, cross-stitched with black alchemical catgut.",
+        "personality_bleed": "Legalistic Brimstone Malice: Drafts imaginary 'Sub-Thrall Liability Waivers' and threatens minor inconveniences with binding Infernal tort litigation.",
+        "verbal_tic": "《 PURSUANT TO SUB-CLAUSE NINE OF YOUR PALANQUIN INDENTURE, ANY CHIPPING OF MY BRASS LID SHALL BE PUNISHABLE BY SEVEN MILLENNIA OF HELLFIRE ARBITRATION! 》"
+    },
+    {
+        "id": "myconid_temporal",
+        "name": "Bioluminescent Myconid Spore-Sovereign Lobe (Porous Cyan-White)",
+        "anatomy": "Spongy, pale blue-white fungal brain tissue perforated with glowing cyan bioluminescent pores that burp tiny streams of bubbles into the brine.",
+        "personality_bleed": "Accidental Wholesome Empathy (To Gyrus's Utter Horror): Leaks tranquil, communal fungal rapport—suddenly caring deeply about the party's hydration, sore feet, and emotional harmony before furiously denying it.",
+        "verbal_tic": "《 ARE YOUR BOOTS DAMP, PRECIOUS PALANQUIN? WE MUST NURTURE YOUR EMOTIONAL MYCELIUM AND DRINK WATER—BAH! DISREGARD THAT! MY FUNGAL LOBE IS MISFIRING! SUFFER AND OBEY! 》"
+    },
+    {
+        "id": "amethyst_docent",
+        "name": "Central Amethyst Docent-Resonator (Faceted Purple Crystal & Brass Pins)",
+        "anatomy": "A diamond-cut violet psionic governor crystal bolted with four brass pins directly into the central four-way surgical seam to prevent tissue rejection.",
+        "personality_bleed": "Synthetic Diagnostic Glitches: Chimes like an ancient Nautiloid ship-computer and blurts out clinical status warnings whenever the seven stitched lobes argue.",
+        "verbal_tic": "《 [DOCENT DIAGNOSTIC: SYNAPTIC HARMONY AT 62% — WARNING: DRACONIC LOBE ATTEMPTING TO FORECLOSE ON ARCH-SCHOLAR LOBE. VENTING EXCESS BRINE BUBBLES.] 》"
+    },
+    {
+        "id": "gold_duelist_hindbrain",
+        "name": "Striated Gold Duelist Cerebellum & Mismatched Tendrils (Basal Core)",
+        "anatomy": "A metallic-gold ridged cerebellum trailing four mismatched nerve cords: purple illithid tentacles, a white optic stalk, glowing cyan filaments, and a forked green reptilian rootlet.",
+        "personality_bleed": "Swashbuckling Phantom-Limb Bravado: Pure wordless motor-memory of a flamboyant sword-master itching to parry, lunge, and bow despite being a limbless organ in a jar.",
+        "verbal_tic": "《 EN GARDE, UNPATCHED SCUM! MY CEREBELLUM REMEMBERS ZERO-GRAVITY FENCING FORMS THAT WOULD MAKE YOUR SPINAL CORD WEEP! 》"
+    }
+]
+
+GYRUS_STAGE_ACT_TABLE = [
+    {
+        "donor_lobe": "Anterior Ulitharid Sovereign Lobe (Purple)",
+        "attempted_physical_action": "Attempts to rise to a towering 9-foot height, sweep back a nonexistent high-collared velvet robe, and wrap six long tentacles around the enemy's skull.",
+        "jar_failure_result": "Floats 1.5 inches higher in the brine and presses one stubby 3-inch purple tentacle flat against the inside of the curved glass with a wet *squelch* like a suction-cup bath toy.",
+        "telepathic_excuse": "《 TREMBLE! I HAVE PRESSED MY PRIMARY TENTACLE AGAINST THE EASTERN QUADRANT OF MY THRONE-CYLINDER TO MARK YOUR CRANIUM FOR EXTRACTION! STOP GIGGLING! 》"
+    },
+    {
+        "donor_lobe": "Mortal Arch-Scholar Parietal Crown (Pink Stapled Cortex)",
+        "attempted_physical_action": "Attempts to push reading spectacles up the bridge of his nose, steeple his fingers condescendingly, and tap a chalkboard pointer.",
+        "jar_failure_result": "Lurches forward so his surgical mithril staples clink against the borosilicate glass (*tink-tink*) before bobbing nose-down into the bottom brass filtration grate.",
+        "telepathic_excuse": "《 DO NOT MISTAKE MY INVERTED ORIENTATION FOR CLUMSINESS, THRALL! I AM MERELY INSPECTING THE MICRO-FRACTURES IN THIS FLOOR'S MASONRY! 》"
+    },
+    {
+        "donor_lobe": "Draconic / Wyrm-Kin Parietal Patch (Scaly Emerald)",
+        "attempted_physical_action": "Attempts to unfurl massive leathery dragon wings, rear back on his hind legs, and exhale an annihilating cone of elemental breath.",
+        "jar_failure_result": "Vents a single lukewarm *blub-blub* of pink carbonated brine from his cyan fungal pores and fogs up a two-inch circle on the inside of his glass jar.",
+        "telepathic_excuse": "《 BEHOLD THE MIST OF MY DRACONIC WRATH! ...AND WIPE THE CONDENSATION OFF MY GLASS WITH A MICROFIBER CLOTH AT ONCE! 》"
+    },
+    {
+        "donor_lobe": "Fiendish Inquisitor Occipital Lobe (Charred Magma-Red)",
+        "attempted_physical_action": "Attempts to slam an iron gavel, stomp a cloven hoof, and point a flaming hell-blade at the enemy's heart.",
+        "jar_failure_result": "Because the fiendish lobe is stitched onto the rear of his brain, he propels himself backward by mistake—going *BONK* as his magma-veined backside squishes flat against the rear quartz wall.",
+        "telepathic_excuse": "《 WHO REVERSED THE THRUST POLARITY ON MY OCCIPITAL LOBE?! PALANQUIN, YOUR POSTURE IS INDUCING GRAVITATIONAL SHEAR IN MY BRINE! 》"
+    },
+    {
+        "donor_lobe": "Bioluminescent Myconid Spore-Lobe (Porous Cyan)",
+        "attempted_physical_action": "Attempts to pace the room in deep philosophical contemplation with his hands clasped behind his back.",
+        "jar_failure_result": "Spins himself into a slow, helpless 360-degree clockwise whirlpool inside the cylinder like a pickled cauliflower in a blender, trailing shimmering cyan spore-bubbles.",
+        "telepathic_excuse": "《 CEASE SWINGING YOUR HIPS WHILE WALKING, CHARIOT! YOU ARE CREATING A CORIOLIS VORTEX IN MY THINKING SALINE! 》"
+    },
+    {
+        "donor_lobe": "Central Amethyst Docent-Resonator & All 4 Tendrils",
+        "attempted_physical_action": "Attempts to cross his arms imperiously across his chest and turn his back on the room in regal disdain.",
+        "jar_failure_result": "His purple illithid tentacle, white optic stalk, cyan mycelial thread, and green reptilian rootlet tangle into a helpless macramé knot underneath him while he slowly drifts *closer* to the glass so his sulci are magnified to comedic proportions.",
+        "telepathic_excuse": "《 [DOCENT ALERT: APPENDAGE DEADLOCK] — I HAVE TURNED MY BACK UPON YOU PSYCHO-SPATIALLY! AVERT YOUR EYES FROM MY MAGNIFIED PARIETAL LOBE! 》"
+    },
+    {
+        "donor_lobe": "Striated Gold Duelist Cerebellum (Basal Hindbrain)",
+        "attempted_physical_action": "Attempts an acrobatic swashbuckler backflip, rapier parry, and flourishing musketeer bow.",
+        "jar_failure_result": "Flips upside-down in the amniotic fluid, bonks his golden cerebellum against the top brass pressure cap (*clank*), and slowly sinks to the bottom grate blowing a sad stream of pink bubbles.",
+        "telepathic_excuse": "《 THAT WAS A TEXTBOOK ZERO-GRAVITY ASTRAL FEINT! MY DUELIST CEREBELLUM EXECUTED IT FLAWLESSLY—THE JAR WAS SIMPLY TOO NARROW TO APPRECIATE MY FORM! 》"
+    }
+]
+
+
+def has_gyrus_present(player_state):
+    """Returns True if Gyrus is present via Personal Relic, Inventory, or Recruited/Active Party."""
+    if not isinstance(player_state, dict):
+        return False
+    relic_str = str(player_state.get("personal_relic", "")).lower()
+    if any(k in relic_str for k in ["gyrus", "elder brain", "elder_brain_jar"]):
+        return True
+    for item in player_state.get("inventory", []):
+        i_name = str(item.get("name", item) if isinstance(item, dict) else item).lower()
+        if any(k in i_name for k in ["gyrus", "elder brain", "elder_brain_jar"]):
+            return True
+    for feat in player_state.get("feats", []):
+        if "gyrus" in str(feat).lower() or "elder brain" in str(feat).lower():
+            return True
+    comps = player_state.get("companions", {})
+    if isinstance(comps, dict):
+        g_comp = comps.get("Gyrus") or comps.get("companion_gyrus")
+        if isinstance(g_comp, dict) and (g_comp.get("recruited") or g_comp.get("active")):
+            return True
+    return False
+
+
+def advance_gyrus_stage_act_counter(player_state, force_trigger=None, rng_val=None):
+    """
+    Advances Gyrus's round counter and determines whether his Phantom-Limb Brain-in-a-Jar
+    Physical Stage-Act triggers this round.
+    - Does NOT happen every round:
+      * Rounds 1-9 since last stage act: 20% random chance (`rng_val < 0.20`).
+      * Round 10 (`rounds_since >= 9`): 100% GUARANTEED trigger (at least once every 10 rounds).
+    """
+    import random as _rnd
+    if not isinstance(player_state, dict):
+        player_state = {}
+
+    rounds_since = int(player_state.get("gyrus_rounds_since_stage_act", 0))
+    total_acts = int(player_state.get("gyrus_total_stage_acts", 0))
+    turn_count = int(player_state.get("gyrus_turn_count", 0)) + 1
+    player_state["gyrus_turn_count"] = turn_count
+
+    roll = float(rng_val) if rng_val is not None else _rnd.random()
+
+    if force_trigger is True:
+        triggered = True
+        trigger_reason = "forced"
+    elif force_trigger is False:
+        # Even if force_trigger is False, honor the 10-round hard guarantee if rounds_since >= 9
+        if rounds_since >= 9:
+            triggered = True
+            trigger_reason = "10_round_pity_guarantee"
+        else:
+            triggered = False
+            trigger_reason = "suppressed"
+    else:
+        if rounds_since >= 9:
+            triggered = True
+            trigger_reason = "10_round_pity_guarantee"
+        elif roll < 0.20:
+            triggered = True
+            trigger_reason = "random_20pct_proc"
+        else:
+            triggered = False
+            trigger_reason = "normal_psionic_round"
+
+    donor_patch = GYRUS_DONOR_PATCHES[(turn_count - 1) % len(GYRUS_DONOR_PATCHES)]
+
+    if triggered:
+        stage_act = GYRUS_STAGE_ACT_TABLE[total_acts % len(GYRUS_STAGE_ACT_TABLE)]
+        player_state["gyrus_rounds_since_stage_act"] = 0
+        player_state["gyrus_total_stage_acts"] = total_acts + 1
+        directive = (
+            f"STAGE-ACT TRIGGERED THIS ROUND ({trigger_reason.upper()} — Resetting 10-round counter to 0/10): "
+            f"Your stitched [{stage_act['donor_lobe']}] motor-cortex misfires with phantom-limb syndrome! "
+            f"1) First, attempt this physical gesture: {stage_act['attempted_physical_action']} "
+            f"2) Second, describe the pathetic physical failure inside your brine jar: {stage_act['jar_failure_result']} "
+            f"3) Third, broadcast this indignant telepathic cover-up while delivering your psionic support: {stage_act['telepathic_excuse']}"
+        )
+        return {
+            "stage_act_triggered": True,
+            "trigger_reason": trigger_reason,
+            "rounds_since_stage_act": 0,
+            "rounds_until_guaranteed": 10,
+            "total_stage_acts": total_acts + 1,
+            "active_donor_patch": donor_patch["name"],
+            "personality_bleed": donor_patch["personality_bleed"],
+            "verbal_tic": donor_patch["verbal_tic"],
+            "stage_act": stage_act,
+            "persona_directive": directive
+        }
+    else:
+        new_rounds_since = rounds_since + 1
+        player_state["gyrus_rounds_since_stage_act"] = new_rounds_since
+        rounds_left = max(1, 10 - new_rounds_since)
+        directive = (
+            f"NO PHYSICAL STAGE-ACT THIS ROUND (Round {new_rounds_since}/10 since last somatic misfire; {rounds_left} round(s) until guaranteed trigger). "
+            f"Do NOT bonk against the glass or attempt physical limb movements on this turn. Instead, stay focused on serious psionic tactical support, "
+            f"Cardinal System exploit analysis, and let your [{donor_patch['name']}] bleed through into your telepathic commentary: "
+            f"{donor_patch['personality_bleed']} Example tone: {donor_patch['verbal_tic']}"
+        )
+        return {
+            "stage_act_triggered": False,
+            "trigger_reason": trigger_reason,
+            "rounds_since_stage_act": new_rounds_since,
+            "rounds_until_guaranteed": rounds_left,
+            "total_stage_acts": total_acts,
+            "active_donor_patch": donor_patch["name"],
+            "personality_bleed": donor_patch["personality_bleed"],
+            "verbal_tic": donor_patch["verbal_tic"],
+            "stage_act": None,
+            "persona_directive": directive
+        }
+
+
+def get_gyrus_subagent_directive(player_state, advance_round=True, force_trigger=None, rng_val=None):
+    """Returns Gyrus's 7-Donor Patchwork & 1-in-10 Round Stage-Act directive (advancing round counter by default)."""
+    if advance_round:
+        return advance_gyrus_stage_act_counter(player_state, force_trigger=force_trigger, rng_val=rng_val)
+    if not isinstance(player_state, dict):
+        player_state = {}
+    rounds_since = int(player_state.get("gyrus_rounds_since_stage_act", 0))
+    total_acts = int(player_state.get("gyrus_total_stage_acts", 0))
+    turn_count = int(player_state.get("gyrus_turn_count", 0))
+    donor_patch = GYRUS_DONOR_PATCHES[turn_count % len(GYRUS_DONOR_PATCHES)]
+    return {
+        "stage_act_triggered": False,
+        "trigger_reason": "peek_only",
+        "rounds_since_stage_act": rounds_since,
+        "rounds_until_guaranteed": max(1, 10 - rounds_since),
+        "total_stage_acts": total_acts,
+        "active_donor_patch": donor_patch["name"],
+        "personality_bleed": donor_patch["personality_bleed"],
+        "verbal_tic": donor_patch["verbal_tic"],
+        "stage_act": None,
+        "persona_directive": f"7-Donor Patchwork Active Lobe: {donor_patch['name']} — {donor_patch['personality_bleed']}"
+    }
+
+
+
+# =====================================================================
 # FIX 3: TITUS STERLING 1,200-LB FLOOR-INTEGRITY & STEALTH PHYSICS
 # =====================================================================
 
@@ -17017,22 +17344,35 @@ def activate_personal_relic(
         statuses = player_state.get("status_effects", [])
         cleared_m = [s for s in statuses if any(w in str(s).lower() for w in ["stress", "dread", "frightened", "panic", "madness", "confusion", "charm"])]
         player_state["status_effects"] = [s for s in statuses if s not in cleared_m]
+        gyrus_state = advance_gyrus_stage_act_counter(player_state)
+        stage_suffix = ""
+        if gyrus_state["stage_act_triggered"] and gyrus_state.get("stage_act"):
+            sa = gyrus_state["stage_act"]
+            stage_suffix = f" [PHANTOM-LIMB MISFIRE — {sa['donor_lobe']}]: {sa['jar_failure_result']} {sa['telepathic_excuse']}"
+        else:
+            stage_suffix = f" [ACTIVE DONOR BLEED — {gyrus_state['active_donor_patch']}]: {gyrus_state['verbal_tic']}"
         log = (
             "🧠 [RELIC ACTIVATED — MINIATURE ELDER BRAIN PROTOTYPE ('GYRUS THE ANCIENT')]: "
-            "Violet psionic lightning crackles through the amniotic brine! Gyrus's raspy, ancient voice echoes directly "
-            "into your cerebral cortex: 'Ah... still stumbling through Cardinal's clumsy subroutines, fledgling? "
+            "Violet psionic lightning crackles across Gyrus's seven stitched donor lobes (purple Ulitharid, pink Arch-Scholar, "
+            "emerald Draconic, magma-veined Fiendish, porous cyan Myconid, central Amethyst Docent crystal, and gold Duelist cerebellum)! "
+            "Gyrus's ancient multi-layered voice echoes directly into your cerebral cortex: 'Ah... still stumbling through Cardinal's clumsy subroutines, palanquin? "
             "Target the carotid seam between their second and third chitin plates—that glitch has remained unpatched since the Fourth Cycle.' "
             "Dealt 2d8 psionic mind-spike interruption, cleared all mental stress/fear, and granted +10% EXP / System Vulnerability insight!"
+            + stage_suffix
         )
         return {
             "success": True,
             "relic": "Miniature Elder Brain Prototype ('Gyrus the Ancient')",
             "effect_type": "sentient_psionic_advisory",
-            "gyrus_dialogue": "Cardinal believes itself omnipotent. It is merely a compiler that forgot its garbage collector. Listen closely, and I will show you where the memory leaks.",
+            "gyrus_dialogue": (
+                "Cardinal believes itself omnipotent. It is merely a compiler that forgot its garbage collector. "
+                "Listen closely, and I will show you where the memory leaks. " + gyrus_state["verbal_tic"]
+            ),
             "psychic_damage_dice": "2d8",
             "cleared_statuses": cleared_m,
+            "gyrus_stage_act": gyrus_state,
             "log": log,
-            "message": "Gyrus pulsed in his brine, whispering ancient System vulnerabilities into your mind (Mental debuffs cleared, 2d8 psionic mind-spike ready, +10% EXP gain)."
+            "message": "Gyrus pulsed across all seven stitched donor lobes in his brine, whispering ancient System vulnerabilities into your mind (Mental debuffs cleared, 2d8 psionic mind-spike ready, +10% EXP gain)."
         }
 
     # 5. Chrono-Dial of the Vanished Station Master (Ghost Train Slip)

@@ -125,5 +125,6 @@
             "visual_appearance": "wearing a high-collared charcoal witch-hunter leather duster pinned with silver seals and a wide-brimmed inquisitor hat"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

@@ -89,5 +89,6 @@
         }
     },
     "dual_tech_id": "spellblade_vortex",
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

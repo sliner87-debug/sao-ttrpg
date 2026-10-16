@@ -125,5 +125,6 @@
             "visual_appearance": "clad in gleaming silver-and-azure Falcon Crest scale mail with luminous cyan aether-glider wings extending from the back"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

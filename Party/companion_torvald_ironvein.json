@@ -90,5 +90,6 @@
         }
     },
     "dual_tech_id": "titans_anvil_shockwave",
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

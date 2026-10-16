@@ -125,5 +125,6 @@
             "visual_appearance": "draped in deep indigo Star-Silk robes embroidered with glowing golden constellations"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

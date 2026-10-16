@@ -124,5 +124,6 @@
             "visual_appearance": "wearing an insulated copper-mesh leyline trenchcoat and brass galvanic goggles"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

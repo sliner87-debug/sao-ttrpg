@@ -124,5 +124,6 @@
             "visual_appearance": "draped in a gothic obsidian-and-bone mantle shrouded in dark necrotic mist"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

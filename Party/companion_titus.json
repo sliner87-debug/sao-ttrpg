@@ -130,5 +130,6 @@
             "visual_appearance": "armored in heavy riveted bronze-and-steel boiler plating with a glowing amber chest furnace"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

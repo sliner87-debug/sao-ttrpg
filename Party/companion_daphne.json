@@ -123,5 +123,6 @@
             "visual_appearance": "wearing a flamboyant midnight-velvet skaldic coat with silver brocade and a flowing silver-threaded scarf"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

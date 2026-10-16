@@ -123,5 +123,6 @@
             "visual_appearance": "clad in a polished sun-gold breastplate over white hooded Sol-Templar vestments"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }

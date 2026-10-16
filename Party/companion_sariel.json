@@ -128,5 +128,6 @@
             "visual_appearance": "a leather back-quiver bristles with glowing green aether-tipped broadhead arrows"
         }
     ],
-    "active_debuffs": []
+    "active_debuffs": [],
+    "ac": 16
 }
