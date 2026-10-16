@@ -986,6 +986,14 @@ def resolve_damage_reduction(defender_state: dict, incoming_damage: int, damage_
             is_cold_iron = any("cold iron" in str(p).lower() for p in weapon_properties)
             if not is_cold_iron:
                 incoming_damage = max(1, incoming_damage - 5)
+        # Warlock DR /cold iron (D&D 3.5: DR 1/cold iron at 3, +1 per 4 levels up to DR 5/cold iron)
+        elif "warlock" in str(defender_state.get("class", "")).lower() or "warlock damage reduction" in feats_str:
+            w_lvl = int(defender_state.get("level", 1) or 1)
+            if w_lvl >= 3:
+                is_cold_iron = any("cold iron" in str(p).lower() for p in weapon_properties)
+                if not is_cold_iron:
+                    dr_val = min(5, 1 + (w_lvl - 3) // 4)
+                    incoming_damage = max(1, incoming_damage - dr_val)
 
     return incoming_damage
 
@@ -1174,6 +1182,245 @@ def execute_pixie_polymorph(player_state: dict, target_form: str) -> dict:
         "traits": form_data["traits"],
         "message": f"Polymorphed into {form_data['name']} (Size: {form_data['size']}). Retain your own HP and mental attributes while wielding the new physical form's strength and natural weapons."
     }
+
+
+# =====================================================================
+# D&D 3.5 WARLOCK INVOCATION & ELDRITCH BLAST ENGINE (COMPLETE ARCANE & MAGE)
+# =====================================================================
+
+WARLOCK_BLAST_SHAPES = {
+    "ray": {
+        "name": "Eldritch Ray (Standard)",
+        "grade": "Base",
+        "range_ft": 60,
+        "type": "Ranged Touch Attack",
+        "desc": "Standard 60ft beam of concentrated patron energy targeting touch AC."
+    },
+    "glaive": {
+        "name": "Eldritch Glaive",
+        "grade": "Least (Complete Mage)",
+        "range_ft": 10,
+        "type": "Melee Touch Full Attack (10ft Reach)",
+        "desc": "Creates a 10ft reach polearm of pure crackling eldritch energy that makes full attack iterative melee touch attacks."
+    },
+    "spear": {
+        "name": "Eldritch Spear",
+        "grade": "Least (Complete Arcane)",
+        "range_ft": 250,
+        "type": "Extreme-Range Ranged Touch Attack",
+        "desc": "Extends blast range to 250 feet, transforming Eldritch Blast into a long-distance sniper beam."
+    },
+    "chain": {
+        "name": "Eldritch Chain",
+        "grade": "Lesser (Complete Arcane)",
+        "range_ft": 60,
+        "type": "Arcing Multi-Target Attack",
+        "desc": "Strikes primary target for full damage, then arcs to up to secondary targets within 30ft for half damage."
+    },
+    "cone": {
+        "name": "Eldritch Cone",
+        "grade": "Greater (Complete Arcane)",
+        "range_ft": 30,
+        "type": "30-ft Cone Area Burst (Reflex Half)",
+        "desc": "Projects eldritch energy in a 30ft frontal cone, forcing all caught foes to roll Reflex saving throws."
+    },
+    "doom": {
+        "name": "Eldritch Doom",
+        "grade": "Dark (Complete Arcane)",
+        "range_ft": 20,
+        "type": "20-ft Radius Point-Blank Nova (Reflex Half)",
+        "desc": "Detonates in a 20ft radius point-blank sphere centered on the warlock, engulfing all nearby foes."
+    },
+    "hideous_blow": {
+        "name": "Hideous Blow",
+        "grade": "Least (Complete Arcane)",
+        "range_ft": 5,
+        "type": "Melee Weapon Channel",
+        "desc": "Channels Eldritch Blast into a physical melee weapon strike, dealing base weapon damage + eldritch blast dice."
+    },
+    "claws": {
+        "name": "Eldritch Claws",
+        "grade": "Feat (Dragon #358 / Supplement)",
+        "range_ft": 5,
+        "type": "Natural Claws Touch",
+        "desc": "Manifests razor-sharp eldritch claws from fingertips, dealing unarmed strike + eldritch blast damage as two natural claw attacks."
+    }
+}
+
+WARLOCK_BLAST_ESSENCES = {
+    "raw": {
+        "name": "Raw Eldritch Energy",
+        "grade": "Base",
+        "damage_type": "magical force / untyped",
+        "desc": "Pure raw eldritch patron energy that strikes directly at the creature's soul signature."
+    },
+    "brimstone": {
+        "name": "Brimstone Blast",
+        "grade": "Lesser (Complete Arcane)",
+        "damage_type": "fire",
+        "save_type": "Reflex DC 15",
+        "effect": "ignite",
+        "desc": "Converts damage to Fire; target catches fire, taking 2d6 persistent fire damage each round until extinguished."
+    },
+    "hellrime": {
+        "name": "Hellrime Blast",
+        "grade": "Lesser (Complete Arcane)",
+        "damage_type": "cold",
+        "save_type": "Fortitude DC 15",
+        "effect": "dex_penalty_-4",
+        "desc": "Converts damage to Cold; failed Fortitude save inflicts -4 penalty to DEX for 10 minutes."
+    },
+    "vitriolic": {
+        "name": "Vitriolic Blast",
+        "grade": "Greater (Complete Arcane)",
+        "damage_type": "acid",
+        "effect": "bypass_sr_and_lingering_acid",
+        "desc": "Converts damage to Acid; completely bypasses Spell Resistance (SR) and inflicts 2d6 acid damage on the next 2 rounds."
+    },
+    "utterdark": {
+        "name": "Utterdark Blast",
+        "grade": "Dark (Complete Arcane)",
+        "damage_type": "negative energy",
+        "save_type": "Fortitude DC 18",
+        "effect": "2_negative_levels",
+        "desc": "Converts damage to Negative Energy; failed Fortitude save inflicts 2 negative levels."
+    },
+    "frightful": {
+        "name": "Frightful Blast",
+        "grade": "Least (Complete Arcane)",
+        "damage_type": "force",
+        "save_type": "Will DC 14",
+        "effect": "shaken",
+        "desc": "Target becomes Shaken for 1 minute on a failed Will save."
+    },
+    "sickening": {
+        "name": "Sickening Blast",
+        "grade": "Least (Complete Arcane)",
+        "damage_type": "force",
+        "save_type": "Fortitude DC 14",
+        "effect": "sickened",
+        "desc": "Target becomes Sickened (-2 on attacks, damage, saves) for 1 minute on a failed Fortitude save."
+    },
+    "beshadowed": {
+        "name": "Beshadowed Blast",
+        "grade": "Lesser (Complete Arcane)",
+        "damage_type": "force",
+        "save_type": "Fortitude DC 15",
+        "effect": "blinded_1_round",
+        "desc": "Target is Blinded for 1 round on a failed Fortitude save."
+    },
+    "bewitching": {
+        "name": "Bewitching Blast",
+        "grade": "Greater (Complete Arcane)",
+        "damage_type": "force",
+        "save_type": "Will DC 16",
+        "effect": "confused_1_round",
+        "desc": "Target is Confused for 1 round on a failed Will save."
+    },
+    "repelling": {
+        "name": "Repelling Blast",
+        "grade": "Greater (Complete Arcane)",
+        "damage_type": "force",
+        "save_type": "Reflex DC 16",
+        "effect": "knockback_and_prone",
+        "desc": "Blasts target back 1d6 x 5 feet and knocks them prone on a failed Reflex save."
+    },
+    "hellfire": {
+        "name": "Hellfire Blast",
+        "grade": "Prestige (Fiendish Codex II)",
+        "damage_type": "hellfire (unresistable)",
+        "con_cost": 1,
+        "bonus_dice": "4d6",
+        "desc": "Burns 1 CON point to infuse blast with infernal hellfire (+4d6 damage), ignoring all Fire Resistance and Fire Immunity."
+    },
+    "hindering": {
+        "name": "Hindering Blast",
+        "grade": "Greater (Complete Mage)",
+        "damage_type": "force",
+        "save_type": "Will DC 16",
+        "effect": "slowed_1_round",
+        "desc": "Target is Slowed for 1 round on a failed Will save."
+    },
+    "binding": {
+        "name": "Binding Blast",
+        "grade": "Greater (Complete Mage)",
+        "damage_type": "force",
+        "save_type": "Will DC 17",
+        "effect": "stunned_1_round",
+        "desc": "Target is Stunned for 1 round on a failed Will save."
+    }
+}
+
+
+def calculate_eldritch_blast_dice(player_state: dict) -> int:
+    """
+    Calculates number of d6 damage dice for Eldritch Blast from D&D 3.5 rules:
+    Level 1-2: 1d6
+    Level 3-4: 2d6
+    Level 5-6: 3d6
+    Level 7-8: 4d6
+    Level 9-10: 5d6
+    Level 11-12: 6d6
+    Level 13-14: 7d6
+    Level 15-16: 8d6
+    Level 17-20: 9d6
+    Level 21+: 10d6+
+    """
+    if not isinstance(player_state, dict):
+        return 1
+    lvl = int(player_state.get("level", 1) or 1)
+    base_dice = max(1, 1 + (lvl - 1) // 2)
+    return base_dice
+
+
+def execute_eldritch_blast(actor_state: dict, target_state: dict = None, shape: str = "ray", essence: str = "raw") -> dict:
+    """
+    Executes a D&D 3.5 Warlock Eldritch Blast with full blast shape and eldritch essence modulation.
+    """
+    if not isinstance(actor_state, dict):
+        return {"success": False, "message": "Invalid actor state."}
+
+    lvl = int(actor_state.get("level", 1) or 1)
+    stats = actor_state.get("stats", {})
+    cha_mod = max(0, (stats.get("CHA", 10) - 10) // 2)
+    dex_mod = (stats.get("DEX", 10) - 10) // 2
+
+    clean_shape = str(shape or "ray").strip().lower().replace(" ", "_")
+    shape_data = WARLOCK_BLAST_SHAPES.get(clean_shape, WARLOCK_BLAST_SHAPES["ray"])
+
+    clean_essence = str(essence or "raw").strip().lower().replace(" ", "_")
+    essence_data = WARLOCK_BLAST_ESSENCES.get(clean_essence, WARLOCK_BLAST_ESSENCES["raw"])
+
+    base_dice_count = calculate_eldritch_blast_dice(actor_state)
+    if clean_essence == "hellfire":
+        dice_count = base_dice_count + 4
+        con_cost = essence_data.get("con_cost", 1)
+    else:
+        dice_count = base_dice_count
+        con_cost = 0
+
+    dice_str = f"{dice_count}d6"
+    dc = 10 + max(1, lvl // 2) + cha_mod
+
+    result = {
+        "success": True,
+        "shape": shape_data["name"],
+        "essence": essence_data["name"],
+        "damage_dice": dice_str,
+        "damage_type": essence_data["damage_type"],
+        "range_ft": shape_data["range_ft"],
+        "attack_mode": shape_data["type"],
+        "save_dc": dc,
+        "con_cost": con_cost,
+        "bypasses_sr": clean_essence == "vitriolic",
+        "touch_attack": "Touch" in shape_data["type"],
+        "message": (
+            f"Fires [{shape_data['name']}] infused with [{essence_data['name']}]! "
+            f"Damage: {dice_str} ({essence_data['damage_type']}) | Range: {shape_data['range_ft']} ft | "
+            f"Attack Mode: {shape_data['type']} | Save DC: {dc} | Cost: 0 Mana (At Will)."
+        )
+    }
+    return result
 
 
 
@@ -2323,6 +2570,7 @@ def normalize_class_key(class_str):
         "bard": "bard",
         "barbarian": "barbarian",
         "monk": "monk",
+        "warlock": "warlock",
     }
     if c_low in canonical_10:
         return canonical_10[c_low]
@@ -2351,6 +2599,11 @@ def normalize_class_key(class_str):
         "virtuoso": "bard",
         "skald": "bard",
         "ascetic": "monk",
+        "invocator": "warlock",
+        "hellfire": "warlock",
+        "eldritch": "warlock",
+        "hellfire_warlock": "warlock",
+        "eldritch_theurge": "warlock",
     }
     if c_low in alias_map:
         return alias_map[c_low]
@@ -2374,6 +2627,8 @@ def normalize_class_key(class_str):
         return "bard"
     if "monk" in c_low or "ascetic" in c_low:
         return "monk"
+    if "warlock" in c_low or "eldritch" in c_low or "invocator" in c_low:
+        return "warlock"
     if "fighter" in c_low or "warrior" in c_low or "vanguard" in c_low:
         return "fighter"
     if "wizard" in c_low or "mage" in c_low or "aether_slinger" in c_low or "slinger" in c_low or "arcanist" in c_low:
@@ -3013,6 +3268,12 @@ def generate_curated_evolutions(player):
                 {"tier": 3, "category": "Prestige Branch", "title": "Enlightened Ascetic", "desc": "Master Ability: Astral Projection (Projects an ethereal duplicate that mirrors all attacks and maneuvers)."},
                 {"tier": 3, "category": "Prestige Branch", "title": "Adamantine Avatar", "desc": "Master Ability: Diamond Body Perfected (Permanent immunity to all non-magical physical damage and status ailments)."}
             ]
+        elif any(k in c_title_low for k in ("warlock", "invocator", "hellfire", "eldritch", "pact")):
+            return [
+                {"tier": 3, "category": "Prestige Branch", "title": "Hellfire Archon Sovereign", "desc": "Master Ability: Apocalyptic Hellfire Cataclysm (Inescapable hellfire eruption dealing 10d10 damage and stripping all fire immunity)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Eldritch Theurge Ascendant", "desc": "Master Ability: Greatreach Spellblast (Channels high-tier area spells through Eldritch Spear at 250 ft with zero cooldown)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Void-Born Invocator Prime", "desc": "Master Ability: Utterdark Doom Cataclysm (40ft radius dark blast draining 4 negative levels and permanently blinding foes)."}
+            ]
         else:
             return [
                 {"tier": 3, "category": "Prestige Branch", "title": "Grand Blade-Commander", "desc": "Master Ability: Warlord's Decreed Onslaught (Party acts simultaneously with guaranteed critical threat ranges)."},
@@ -3157,6 +3418,13 @@ def generate_curated_evolutions(player):
             c1 = {"title": "Whirlwind Staff-Master", "desc": "Spins quarterstaff with ultrasonic velocity, deflecting incoming arrows and sweeping enemies prone."}
         else:
             c1 = {"title": "Flowing Gale Strikemaster", "desc": "Channels ki into wind-cutting pressure waves that strike enemies beyond melee reach."}
+    elif c_key == "warlock":
+        if dom_w in ("swords", "daggers", "unarmed", "glaive", "polearms"):
+            c1 = {"title": "Eldritch Glaive-Master", "desc": "Manifests sweeping reach blades of pure crackling eldritch energy, making rapid full-attack touch strikes that shred armor."}
+        elif dom_w in ("bows", "focus", "staff"):
+            c1 = {"title": "Eldritch Sniper", "desc": "Extends blast range to 250 ft with Eldritch Spear, chaining arcing lightning-like beams across multiple distant foes."}
+        else:
+            c1 = {"title": "Eldritch Theurge Spell-Weaver", "desc": "Fuses eldritch blast into standard weapon attacks and spellcasting, imbuing wide-area spells with eldritch essences."}
     elif c_key == "engineer":
         c1 = {"title": "Cyber-Mancer Mechanist", "desc": "Deploys multi-turret defensive grids and overrides robotic/golem neural links."}
     elif c_key == "psion":
@@ -3184,6 +3452,8 @@ def generate_curated_evolutions(player):
             c2 = {"title": "Sun-Forged Zealot Protector", "desc": "Rages with holy fervor, cloaking greataxe strikes in searing radiant fire."}
         elif c_key == "monk":
             c2 = {"title": "Radiant Fist Ascetic", "desc": "Focuses inner ki into blinding solar strikes that purify tainted souls and dispel curses."}
+        elif c_key == "warlock":
+            c2 = {"title": "Enlightened Spirit Celestial Emissary", "desc": "Purifies patron pact with celestial grace; manifests feathered wings, aura of light, and Healing Blast."}
         else:
             c2 = {"title": "Radiant Beacon Protector", "desc": "Shines as an incorruptible lighthouse in the darkness, shielding the innocent."}
     elif profile["alignment_track"] == "necrotic":
@@ -3205,6 +3475,8 @@ def generate_curated_evolutions(player):
             c2 = {"title": "Dread Dirge-Chanter", "desc": "Chants funeral elegies that shatter enemy will to fight and drain their life-force."}
         elif c_key == "monk":
             c2 = {"title": "Shadow-Strike Deathknight Ascetic", "desc": "Infuses martial pressure points with lethal necrotic chill, withering internal organs."}
+        elif c_key == "warlock":
+            c2 = {"title": "Hellfire Warlock of the Pit", "desc": "Unlocks forbidden Hellfire Blasts dealing massive unholy damage that ignores all fire immunity."}
         else:
             c2 = {"title": "Deathknight Sovereign of Dread", "desc": "Commands the chilling void of extinction, crushing all opposition without mercy."}
     else:
@@ -3216,6 +3488,8 @@ def generate_curated_evolutions(player):
             c2 = {"title": "Survivalist Operative", "desc": "Relies strictly on practical survival, opportunistic traps, and self-preservation."}
         elif c_key in ("cleric", "paladin", "druid"):
             c2 = {"title": "Neutral Arbiter of the Balance", "desc": "Maintains cold equilibrium between order and chaos, favoring neither god nor devil."}
+        elif c_key == "warlock":
+            c2 = {"title": "Fey-Pact Deceiver", "desc": "Masters at-will optical glamours, dimension-hopping misdirection, and retributive invisibility."}
         else:
             c2 = {"title": "Mercenary Captain Pragmatist", "desc": "Commands tactical engagements with professional detachment and maximum return on investment."}
 
@@ -3322,6 +3596,7 @@ def apply_class_evolution(player, evolution_choice):
     player["feats"].append(evo_feat)
 
     return {
+        "success": True,
         "new_class": new_title,
         "new_tier": new_tier,
         "evolved_resource": res,
@@ -11748,6 +12023,29 @@ BASE_CHARACTER_ANATOMY = {
 }
 
 CANONICAL_ITEM_CATALOG = {
+    # --- D&D 3.5 WARLOCK ITEMS ---
+    "eldritch focus rod": {
+        "name": "Eldritch Focus Rod",
+        "slot": "main_hand",
+        "rarity": "Uncommon",
+        "desc": "A slender midnight-lacquered wand-rod carved from the petrified bone of a planar fiend, bound in cold-iron filigree. Channels at-will Eldritch Blasts and Invocations with +1 on ranged touch attack rolls and +1 damage per blast die.",
+        "visual_appearance": "wielding a slender midnight-black bone focus rod bound in etched cold-iron filigree that crackles with purple-and-crimson eldritch sparks"
+    },
+    "tome of the forbidden pact": {
+        "name": "Tome of the Forbidden Pact",
+        "slot": "off_hand",
+        "rarity": "Uncommon",
+        "desc": "An ancient grimoire bound in supple abyss-leather and fastened with an iron skull clasp. Its vellum pages whisper patron invocations, granting +2 on Intimidate and Arcana checks and +1 DC to all Eldritch Essence saving throws.",
+        "visual_appearance": "carrying an ancient abyss-leather grimoire with glowing crimson script and an ornate iron clasp"
+    },
+    "warlock's patinated robes": {
+        "name": "Warlock's Patinated Robes",
+        "slot": "chest",
+        "rarity": "Uncommon",
+        "desc": "Supple charcoal-grey tailored vestments lined with dark silk and reinforced with secret cold-iron threads (+3 AC). Designed specifically for warlocks to channel invocations freely with zero arcane spell failure.",
+        "visual_appearance": "draped in high-collared charcoal-grey warlock vestments with trailing dark silk tails and subtle violet arcane trim"
+    },
+
     # --- PLAYER WEAPONS & OFF-HANDS ---
     "enchanted bearded axe": {
         "name": "Enchanted Bearded Axe",
@@ -13613,6 +13911,663 @@ CANONICAL_SPELLS_AND_POWERS = {
         "range": "Self",
         "description": "Tiny stature provides tremendous evasive agility, a diminutive hit profile, and unparalleled stealth.",
         "mechanics": "• Size Modifiers: +2 size bonus to AC, +2 on attack rolls, +8 bonus on Stealth checks.\n• Movement: Can freely slip through occupied enemy spaces and narrow crevices."
+    },
+
+    # --- D&D 3.5 WARLOCK INVOCATIONS & SUPERNATURAL POWERS (COMPLETE ARCANE & COMPLETE MAGE) ---
+    "eldritch blast": {
+        "name": "Eldritch Blast",
+        "category": "D&D 3.5 Warlock Core Ability (At Will)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "60 ft (Ranged Touch Attack)",
+        "description": (
+            "An unerring ray of raw, crackling patron aether unleashed from the warlock's fingertips or focus. "
+            "Strikes as a ranged touch attack (bypassing physical armor and shields) and scales in power as the warlock levels up "
+            "(1d6 at Level 1, up to 9d6+ at Level 20). Can be freely shaped and imbued with eldritch essences."
+        ),
+        "mechanics": (
+            "• Action: Standard Action (Usable At Will, all day without expending spell slots).\n"
+            "• Targeting: Ranged Touch Attack within 60 ft (ignores target armor and shield bonuses to AC).\n"
+            "• Damage: 1d6 force damage, scaling +1d6 every 2 character levels (2d6 at 3, 3d6 at 5, etc.).\n"
+            "• Synergy: Can be combined with one Blast Shape (e.g. Glaive, Spear, Chain) and one Eldritch Essence (e.g. Brimstone, Vitriolic, Utterdark)."
+        )
+    },
+    "eldritch blast (at will)": {
+        "name": "Eldritch Blast (At Will)",
+        "category": "D&D 3.5 Warlock Core Ability (At Will)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "60 ft (Ranged Touch)",
+        "description": "At-will ray of pure patron aether striking touch AC for scaling d6 force damage.",
+        "mechanics": "• At Will | Ranged Touch Attack 60 ft | Scales 1d6 to 9d6+ | Compatible with Shapes & Essences."
+    },
+    "eldritch glaive": {
+        "name": "Eldritch Glaive",
+        "category": "D&D 3.5 Warlock Blast Shape (Least - Complete Mage)",
+        "action_type": "Full-Round Action / Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "Melee Reach (10 ft Touch)",
+        "description": (
+            "Concentrates eldritch energy into the shape of a reach polearm/glaive of crackling violet-black plasma. "
+            "Allows the warlock to make a full attack of iterative melee touch attacks against any foe within 10-ft reach, "
+            "dealing full Eldritch Blast damage on each strike."
+        ),
+        "mechanics": (
+            "• Blast Shape: Transforms Eldritch Blast into a 10-ft reach melee weapon.\n"
+            "• Attack Mode: Resolves as Melee Touch Attacks (ignores armor & shield bonuses to AC).\n"
+            "• Iterative Attacks: High-BAB warlocks make multiple touch attacks per turn.\n"
+            "• Essence Compatible: Fully conveys attached Eldritch Essence effects on every connecting strike."
+        )
+    },
+    "eldritch glaive (at will)": {
+        "name": "Eldritch Glaive (At Will)",
+        "category": "D&D 3.5 Warlock Blast Shape (Least - Complete Mage)",
+        "action_type": "Standard / Full Attack",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "10 ft Melee Reach",
+        "description": "Manifests a reach weapon of pure eldritch plasma making iterative melee touch attacks.",
+        "mechanics": "• Blast Shape (Least) | 10 ft Reach Melee Touch Attack | Delivers full Eldritch Blast damage per strike."
+    },
+    "eldritch spear": {
+        "name": "Eldritch Spear",
+        "category": "D&D 3.5 Warlock Blast Shape (Least - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "250 ft (Extreme Range)",
+        "description": (
+            "Focuses the eldritch beam into an extraordinarily tight, piercing lance of long-distance plasma, "
+            "extending the maximum range of Eldritch Blast from 60 feet out to 250 feet."
+        ),
+        "mechanics": (
+            "• Blast Shape: Extends blast range to 250 ft.\n"
+            "• Tactical Sniper: Enables extreme-range engagement and anti-materiel turret/scout elimination before hostiles close distance."
+        )
+    },
+    "eldritch spear (at will)": {
+        "name": "Eldritch Spear (At Will)",
+        "category": "D&D 3.5 Warlock Blast Shape (Least - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "250 ft",
+        "description": "Extends Eldritch Blast range to 250 ft for extreme-distance sniper strikes.",
+        "mechanics": "• Blast Shape (Least) | Range: 250 ft | Ranged Touch Attack."
+    },
+    "eldritch chain": {
+        "name": "Eldritch Chain",
+        "category": "D&D 3.5 Warlock Blast Shape (Lesser - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "60 ft (Arcs to Secondary Foes)",
+        "description": (
+            "Causes Eldritch Blast to arc between multiple hostile targets. Strikes the primary target for full damage, "
+            "then arcs to secondary targets within 30 ft, dealing half damage to each secondary victim."
+        ),
+        "mechanics": (
+            "• Blast Shape: Primary target takes full damage; secondary targets take half damage.\n"
+            "• Targets: Can strike 1 secondary target at Level 5, 2 at Level 10, 3 at Level 15, and 4 at Level 20."
+        )
+    },
+    "eldritch chain (at will)": {
+        "name": "Eldritch Chain (At Will)",
+        "category": "D&D 3.5 Warlock Blast Shape (Lesser - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "60 ft",
+        "description": "Eldritch beam arcs from primary victim to multiple secondary targets within 30 ft.",
+        "mechanics": "• Blast Shape (Lesser) | Full damage to primary, half damage to up to 4 chained targets."
+    },
+    "eldritch cone": {
+        "name": "Eldritch Cone",
+        "category": "D&D 3.5 Warlock Blast Shape (Greater - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "30-ft Cone Spread",
+        "description": (
+            "Projects eldritch destruction outward in a wide 30-foot cone, engulfing hordes of enemies. "
+            "Caught creatures must roll a Reflex save (DC 10 + half Level + CHA mod) for half damage."
+        ),
+        "mechanics": (
+            "• Blast Shape: 30-ft cone area of effect.\n"
+            "• Save: Reflex half (DC 10 + half Level + CHA mod).\n"
+            "• Area Denial: Conveys any attached Eldritch Essence across all targets in the cone."
+        )
+    },
+    "eldritch cone (at will)": {
+        "name": "Eldritch Cone (At Will)",
+        "category": "D&D 3.5 Warlock Blast Shape (Greater - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "30-ft Cone",
+        "description": "Erupts in a 30-ft cone of eldritch energy catching all foes in a frontal swath.",
+        "mechanics": "• Blast Shape (Greater) | 30 ft Cone | Reflex save for half damage."
+    },
+    "eldritch doom": {
+        "name": "Eldritch Doom",
+        "category": "D&D 3.5 Warlock Blast Shape (Dark - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "20-ft Radius Point-Blank Nova",
+        "description": (
+            "Unleashes an apocalyptic detonation of patron energy centered directly on the warlock, "
+            "scouring everything within a 20-foot radius with devastating eldritch fury while leaving the caster unharmed."
+        ),
+        "mechanics": (
+            "• Blast Shape: 20-ft radius sphere centered on warlock.\n"
+            "• Save: Reflex half | Warlock is completely immune to their own blast.\n"
+            "• High Impact: Imbues all caught targets with the attached Dark Essence."
+        )
+    },
+    "eldritch doom (at will)": {
+        "name": "Eldritch Doom (At Will)",
+        "category": "D&D 3.5 Warlock Blast Shape (Dark - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "20-ft Radius Sphere",
+        "description": "Point-blank 20-ft radius cataclysm centered on the warlock dealing full blast damage to all enemies.",
+        "mechanics": "• Blast Shape (Dark) | 20-ft sphere | Reflex half | Warlock is immune."
+    },
+    "hideous blow": {
+        "name": "Hideous Blow",
+        "category": "D&D 3.5 Warlock Blast Shape (Least - Complete Arcane)",
+        "action_type": "Standard Action / Attack",
+        "cost": "At Will",
+        "range": "Melee Weapon Reach",
+        "description": "Channels Eldritch Blast into a physical weapon strike, dealing normal weapon damage + full blast dice.",
+        "mechanics": "• Blast Shape (Least) | Melee Attack | Deals full weapon damage + Eldritch Blast dice + Essence effect."
+    },
+    "eldritch claws": {
+        "name": "Eldritch Claws",
+        "category": "D&D 3.5 Warlock Feat (Dragon #358)",
+        "action_type": "Free Action / Natural Attack",
+        "cost": "Passive / At Will",
+        "range": "Melee Unarmed Reach",
+        "description": "Forms razor-sharp beast-like claws of eldritch energy over hands, dealing unarmed damage + Eldritch Blast damage on natural claw attacks.",
+        "mechanics": "• Feat (Dragon #358) | Natural Weapons | Deals Unarmed Base Damage + Eldritch Blast damage as two claw attacks."
+    },
+    "brimstone blast": {
+        "name": "Brimstone Blast",
+        "category": "D&D 3.5 Warlock Eldritch Essence (Lesser - Complete Arcane)",
+        "action_type": "Standard Action (Modifier)",
+        "cost": "At Will",
+        "range": "Applied to Eldritch Blast",
+        "description": (
+            "Infuses the Eldritch Blast with the brimstone sulfur of the lower planes. Converts damage into Fire "
+            "and ignites target; failed Reflex save causes target to burn for 2d6 fire damage per round for rounds equal to CHA mod."
+        ),
+        "mechanics": (
+            "• Eldritch Essence: Converts blast damage to Fire.\n"
+            "• Ignite: Target must pass Reflex save (DC 10 + half Level + CHA mod) or burn for 2d6 fire damage each round."
+        )
+    },
+    "brimstone blast (at will)": {
+        "name": "Brimstone Blast (At Will)",
+        "category": "D&D 3.5 Warlock Eldritch Essence (Lesser - Complete Arcane)",
+        "action_type": "Essence Modifier",
+        "cost": "At Will",
+        "range": "Blast",
+        "description": "Converts Eldritch Blast to Fire damage and sets foes ablaze for 2d6 fire per round.",
+        "mechanics": "• Essence (Lesser) | Fire Damage | Target catches fire on failed Reflex save."
+    },
+    "hellrime blast": {
+        "name": "Hellrime Blast",
+        "category": "D&D 3.5 Warlock Eldritch Essence (Lesser - Complete Arcane)",
+        "action_type": "Standard Action (Modifier)",
+        "cost": "At Will",
+        "range": "Applied to Eldritch Blast",
+        "description": (
+            "Infuses Eldritch Blast with the freezing gelid chill of Stygia. Converts damage into Cold; "
+            "failed Fortitude save inflicts a -4 penalty to Dexterity for 10 minutes."
+        ),
+        "mechanics": (
+            "• Eldritch Essence: Converts blast damage to Cold.\n"
+            "• Frostbite: Failed Fortitude save inflicts -4 DEX penalty (reduces AC, Reflex, and ranged attacks) for 10 minutes."
+        )
+    },
+    "hellrime blast (at will)": {
+        "name": "Hellrime Blast (At Will)",
+        "category": "D&D 3.5 Warlock Eldritch Essence (Lesser - Complete Arcane)",
+        "action_type": "Essence Modifier",
+        "cost": "At Will",
+        "range": "Blast",
+        "description": "Converts Eldritch Blast to Cold damage and inflicts -4 DEX penalty on failed Fortitude save.",
+        "mechanics": "• Essence (Lesser) | Cold Damage | -4 DEX penalty for 10 minutes on failed Fortitude save."
+    },
+    "vitriolic blast": {
+        "name": "Vitriolic Blast",
+        "category": "D&D 3.5 Warlock Eldritch Essence (Greater - Complete Arcane)",
+        "action_type": "Standard Action (Modifier)",
+        "cost": "At Will",
+        "range": "Applied to Eldritch Blast",
+        "description": (
+            "Infuses Eldritch Blast with virulent, bubbling planar vitriol. Converts damage to Acid and completely ignores "
+            "Spell Resistance (SR). The acid clings to the victim, dealing an additional 2d6 acid damage on each of the next 2 rounds."
+        ),
+        "mechanics": (
+            "• Eldritch Essence: Converts blast damage to Acid.\n"
+            "• Spell Resistance Bypass: Completely ignores and bypasses enemy Spell Resistance (SR).\n"
+            "• Persistent Acid: Target automatically takes 2d6 acid damage on round 2, and 2d6 acid damage on round 3."
+        )
+    },
+    "vitriolic blast (at will)": {
+        "name": "Vitriolic Blast (At Will)",
+        "category": "D&D 3.5 Warlock Eldritch Essence (Greater - Complete Arcane)",
+        "action_type": "Essence Modifier",
+        "cost": "At Will",
+        "range": "Blast",
+        "description": "Converts blast to Acid, completely ignores Spell Resistance, and deals lingering 2d6 acid for 2 rounds.",
+        "mechanics": "• Essence (Greater) | Acid Damage | Completely bypasses SR | Lingering 2d6 acid damage."
+    },
+    "utterdark blast": {
+        "name": "Utterdark Blast",
+        "category": "D&D 3.5 Warlock Eldritch Essence (Dark - Complete Arcane)",
+        "action_type": "Standard Action (Modifier)",
+        "cost": "At Will",
+        "range": "Applied to Eldritch Blast",
+        "description": (
+            "Infuses blast with primordial negative energy from the deepest void. Converts damage to Negative Energy "
+            "(healing undead, withering the living) and bestows 2 negative levels on failed Fortitude save."
+        ),
+        "mechanics": (
+            "• Eldritch Essence: Converts damage to Negative Energy.\n"
+            "• Energy Drain: Living targets failing Fortitude save suffer 2 Negative Levels (-2 to all checks, saves, attacks, and -10 max HP)."
+        )
+    },
+    "utterdark blast (at will)": {
+        "name": "Utterdark Blast (At Will)",
+        "category": "D&D 3.5 Warlock Eldritch Essence (Dark - Complete Arcane)",
+        "action_type": "Essence Modifier",
+        "cost": "At Will",
+        "range": "Blast",
+        "description": "Converts blast to Negative Energy, draining 2 negative levels on failed Fortitude save.",
+        "mechanics": "• Essence (Dark) | Negative Energy | Inflicts 2 negative levels on failed Fortitude save."
+    },
+    "hellfire blast": {
+        "name": "Hellfire Blast",
+        "category": "D&D 3.5 Hellfire Warlock Power (Fiendish Codex II)",
+        "action_type": "Standard Action (Modifier)",
+        "cost": "1 CON Strain",
+        "range": "Applied to Eldritch Blast",
+        "description": (
+            "Taps into the molten heart of Mephistopheles's Cania or Dis. By suffering 1 Constitution point of strain, "
+            "the warlock adds +4d6 Hellfire damage to their Eldritch Blast. Hellfire is unearthly and completely bypasses "
+            "all fire resistance and fire immunity."
+        ),
+        "mechanics": (
+            "• Fiendish Codex II Power: Infuses blast with unholy Hellfire.\n"
+            "• Bonus Damage: Adds +4d6 damage to the blast.\n"
+            "• Absolute Piercing: Completely ignores Fire Resistance and Fire Immunity (deals full damage to red dragons and fire elementals).\n"
+            "• Strain: Costs 1 CON point temporarily."
+        )
+    },
+    "frightful blast": {
+        "name": "Frightful Blast",
+        "category": "D&D 3.5 Warlock Eldritch Essence (Least - Complete Arcane)",
+        "action_type": "Essence Modifier",
+        "cost": "At Will",
+        "range": "Blast",
+        "description": "Target becomes Shaken (-2 on attacks, saves, checks) for 1 minute on a failed Will save.",
+        "mechanics": "• Essence (Least) | Save: Will DC 10 + Level/2 + CHA mod | Status: Shaken (1 min)."
+    },
+    "sickening blast": {
+        "name": "Sickening Blast",
+        "category": "D&D 3.5 Warlock Eldritch Essence (Least - Complete Arcane)",
+        "action_type": "Essence Modifier",
+        "cost": "At Will",
+        "range": "Blast",
+        "description": "Target becomes Sickened (-2 on attacks, damage, saves) for 1 minute on a failed Fortitude save.",
+        "mechanics": "• Essence (Least) | Save: Fortitude DC 10 + Level/2 + CHA mod | Status: Sickened (1 min)."
+    },
+    "beshadowed blast": {
+        "name": "Beshadowed Blast",
+        "category": "D&D 3.5 Warlock Eldritch Essence (Lesser - Complete Arcane)",
+        "action_type": "Essence Modifier",
+        "cost": "At Will",
+        "range": "Blast",
+        "description": "Target is Blinded for 1 round on a failed Fortitude save.",
+        "mechanics": "• Essence (Lesser) | Save: Fortitude DC 10 + Level/2 + CHA mod | Status: Blinded (1 round)."
+    },
+    "bewitching blast": {
+        "name": "Bewitching Blast",
+        "category": "D&D 3.5 Warlock Eldritch Essence (Greater - Complete Arcane)",
+        "action_type": "Essence Modifier",
+        "cost": "At Will",
+        "range": "Blast",
+        "description": "Target is Confused for 1 round on a failed Will save.",
+        "mechanics": "• Essence (Greater) | Save: Will DC 10 + Level/2 + CHA mod | Status: Confused (1 round)."
+    },
+    "repelling blast": {
+        "name": "Repelling Blast",
+        "category": "D&D 3.5 Warlock Eldritch Essence (Greater - Complete Arcane)",
+        "action_type": "Essence Modifier",
+        "cost": "At Will",
+        "range": "Blast",
+        "description": "Blasts target back 1d6 x 5 feet and knocks them prone on a failed Reflex save.",
+        "mechanics": "• Essence (Greater) | Save: Reflex DC 10 + Level/2 + CHA mod | Knockback 5-30 ft and Prone."
+    },
+    "dark one's own luck": {
+        "name": "Dark One's Own Luck",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Arcane)",
+        "action_type": "Standard Action (24-Hour Buff)",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "Self",
+        "description": (
+            "Entreats the patron for mercurial otherworldly fortune. Adds the warlock's Charisma modifier as an untyped "
+            "luck bonus to all saving throws (Fortitude, Reflex, and Will) for 24 hours."
+        ),
+        "mechanics": (
+            "• Invocation (Least): 24-hour duration, usable At Will.\n"
+            "• Effect: Add Charisma modifier as an untyped luck bonus to all Fortitude, Reflex, and Will saves."
+        )
+    },
+    "dark one's own luck (at will)": {
+        "name": "Dark One's Own Luck (At Will)",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Arcane)",
+        "action_type": "24-Hour Buff",
+        "cost": "At Will",
+        "range": "Self",
+        "description": "Adds Charisma modifier as a luck bonus to all saving throws for 24 hours.",
+        "mechanics": "• Invocation (Least) | Adds +CHA mod to Fortitude, Reflex, and Will saves for 24h."
+    },
+    "devil's sight": {
+        "name": "Devil's Sight",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Arcane)",
+        "action_type": "Passive / At Will",
+        "cost": "At Will",
+        "range": "Self (30 ft)",
+        "description": "Grants the warlock the ability to see perfectly in both non-magical and magical darkness up to 30 feet.",
+        "mechanics": "• Invocation (Least) | Duration: 24 hours | Completely penetrates magical Darkness spells."
+    },
+    "devil's sight (at will)": {
+        "name": "Devil's Sight (At Will)",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Arcane)",
+        "action_type": "24-Hour Buff",
+        "cost": "At Will",
+        "range": "Self",
+        "description": "See normally in all magical and non-magical darkness up to 30 ft.",
+        "mechanics": "• Invocation (Least) | Penetrates magical darkness up to 30 ft."
+    },
+    "see the unseen": {
+        "name": "See the Unseen",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Arcane)",
+        "action_type": "24-Hour Buff",
+        "cost": "At Will",
+        "range": "Self (60 ft)",
+        "description": "Grants Darkvision 60 ft and the continuous ability to see invisible and ethereal creatures for 24 hours.",
+        "mechanics": "• Invocation (Least) | Duration: 24 hours | Darkvision 60 ft + See Invisibility 60 ft."
+    },
+    "see the unseen (at will)": {
+        "name": "See the Unseen (At Will)",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Arcane)",
+        "action_type": "24-Hour Buff",
+        "cost": "At Will",
+        "range": "Self",
+        "description": "Grants Darkvision 60ft and See Invisibility for 24 hours.",
+        "mechanics": "• Invocation (Least) | See invisible and ethereal creatures + Darkvision 60 ft."
+    },
+    "spiderwalk": {
+        "name": "Spiderwalk",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Arcane)",
+        "action_type": "24-Hour Buff",
+        "cost": "At Will",
+        "range": "Self",
+        "description": "Grants the ability to walk on vertical walls and ceilings freely at base land speed, plus complete immunity to web spells and webbing.",
+        "mechanics": "• Invocation (Least) | Duration: 24 hours | Spider Climb at full speed + Web Immunity."
+    },
+    "spiderwalk (at will)": {
+        "name": "Spiderwalk (At Will)",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Arcane)",
+        "action_type": "24-Hour Buff",
+        "cost": "At Will",
+        "range": "Self",
+        "description": "Walk walls and ceilings freely at land speed; immune to webs.",
+        "mechanics": "• Invocation (Least) | Spider Climb + Web Immunity."
+    },
+    "baleful utterance": {
+        "name": "Baleful Utterance",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "60 ft",
+        "description": "Speaks a syllable of Dark Speech that shatters non-magical brittle objects or dazes crystalline creatures dealing 1d6 sonic damage.",
+        "mechanics": "• Invocation (Least) | Shatter object or daze crystalline foes (Fort save negates) | Deals 1d6 sonic."
+    },
+    "baleful utterance (at will)": {
+        "name": "Baleful Utterance (At Will)",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "60 ft",
+        "description": "Shatters objects or dazes crystalline foes with dark speech.",
+        "mechanics": "• Invocation (Least) | Shatter / Daze + 1d6 sonic damage."
+    },
+    "entropic warding": {
+        "name": "Entropic Warding",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Arcane)",
+        "action_type": "24-Hour Buff",
+        "cost": "At Will",
+        "range": "Self",
+        "description": "Wreathes the warlock in chaotic winds that impose a 20% miss chance on all incoming ranged attacks and erases tracks and scent.",
+        "mechanics": "• Invocation (Least) | 20% miss chance vs ranged attacks | Immune to scent tracking | Leaves no footprints."
+    },
+    "beguiling influence": {
+        "name": "Beguiling Influence",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Arcane)",
+        "action_type": "24-Hour Buff",
+        "cost": "At Will",
+        "range": "Self",
+        "description": "Infuses the warlock's voice with seductive patron glamour, granting a +6 bonus on Bluff, Diplomacy, and Intimidate checks.",
+        "mechanics": "• Invocation (Least) | Duration: 24 hours | +6 bonus on Bluff, Diplomacy, and Intimidate."
+    },
+    "otherworldly whispers": {
+        "name": "Otherworldly Whispers",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Mage)",
+        "action_type": "24-Hour Buff",
+        "cost": "At Will",
+        "range": "Self",
+        "description": "Spectral patron whispers grant a +6 bonus on Knowledge (Arcana), Knowledge (Religion), and Knowledge (The Planes).",
+        "mechanics": "• Invocation (Least) | +6 bonus on Arcana, Religion, and The Planes knowledge checks."
+    },
+    "all-seeing eyes": {
+        "name": "All-Seeing Eyes",
+        "category": "D&D 3.5 Warlock Invocation (Least - Complete Mage)",
+        "action_type": "24-Hour Buff",
+        "cost": "At Will",
+        "range": "Self",
+        "description": "Grants comprehend languages on written glyphs and +6 bonus on Search and Spot checks for 24 hours.",
+        "mechanics": "• Invocation (Least) | Comprehend written script + +6 bonus to Search and Spot."
+    },
+    "fell flight": {
+        "name": "Fell Flight",
+        "category": "D&D 3.5 Warlock Invocation (Lesser - Complete Arcane)",
+        "action_type": "24-Hour Buff",
+        "cost": "At Will",
+        "range": "Self",
+        "description": "Summons a cloak of billowing dark shadows or leathery wings, granting fly speed equal to land speed with Good maneuverability.",
+        "mechanics": "• Invocation (Lesser) | Duration: 24 hours | Flight at base land speed (Good maneuverability)."
+    },
+    "fell flight (at will)": {
+        "name": "Fell Flight (At Will)",
+        "category": "D&D 3.5 Warlock Invocation (Lesser - Complete Arcane)",
+        "action_type": "24-Hour Buff",
+        "cost": "At Will",
+        "range": "Self",
+        "description": "Manifests shadow wings granting flight at land speed with Good maneuverability.",
+        "mechanics": "• Invocation (Lesser) | Fly at land speed (Good maneuverability) for 24 hours."
+    },
+    "flee the scene": {
+        "name": "Flee the Scene",
+        "category": "D&D 3.5 Warlock Invocation (Lesser - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "50 ft (Dimension Door)",
+        "description": "Instantly teleports up to 50 ft to any unoccupied visible space, leaving behind an illusory Major Image decoy that lasts 1 round.",
+        "mechanics": "• Invocation (Lesser) | Teleport up to 50 ft | Leaves decoy illusion behind to confuse enemies."
+    },
+    "flee the scene (at will)": {
+        "name": "Flee the Scene (At Will)",
+        "category": "D&D 3.5 Warlock Invocation (Lesser - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "50 ft",
+        "description": "Short-range Dimension Door leaving behind an illusory decoy.",
+        "mechanics": "• Invocation (Lesser) | Teleport 50 ft + Major Image decoy."
+    },
+    "voracious dispelling": {
+        "name": "Voracious Dispelling",
+        "category": "D&D 3.5 Warlock Invocation (Lesser - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "60 ft",
+        "description": "Dispels magical effects from target creature or object, dealing 1 damage per spell level dispelled to the target.",
+        "mechanics": "• Invocation (Lesser) | Dispel Magic check (1d20 + Caster Level vs DC 11 + Spell Level) | Deals 1 damage per dispelled level."
+    },
+    "walk in shadow": {
+        "name": "Walk in Shadow",
+        "category": "D&D 3.5 Warlock Invocation (Lesser - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "Self",
+        "description": "Grants Invisibility for 24 hours (or until attacking) and +5 bonus to Move Silently checks.",
+        "mechanics": "• Invocation (Lesser) | Invisibility for 24 hours + +5 Move Silently."
+    },
+    "curse of despair": {
+        "name": "Curse of Despair",
+        "category": "D&D 3.5 Warlock Invocation (Lesser - Complete Mage)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "Touch / 30 ft",
+        "description": "Bestows an enduring curse upon a target (Bestow Curse, DC 15 Will save) or inflicts -2 penalty on attack rolls and saves.",
+        "mechanics": "• Invocation (Lesser) | Save: Will DC 15 | Bestow Curse effect or -2 on attacks and saves."
+    },
+    "chilling tentacles": {
+        "name": "Chilling Tentacles",
+        "category": "D&D 3.5 Warlock Invocation (Greater - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "100 ft (20-ft Radius)",
+        "description": (
+            "Summons a field of rubbery black tentacles in a 20-ft radius. Tentacles grapple all caught foes (Black Tentacles) "
+            "while a frigid sub-zero mist deals 2d6 cold damage each round to every creature in the area."
+        ),
+        "mechanics": (
+            "• Invocation (Greater) | Area: 20-ft radius spread.\n"
+            "• Grapple: Tentacles roll grapple checks with bonus equal to Level + 8.\n"
+            "• Cold Damage: All creatures in the area take 2d6 cold damage automatically every round."
+        )
+    },
+    "chilling tentacles (at will)": {
+        "name": "Chilling Tentacles (At Will)",
+        "category": "D&D 3.5 Warlock Invocation (Greater - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "100 ft (20-ft Radius)",
+        "description": "Black tentacles grapple foes while freezing them for 2d6 cold damage each round.",
+        "mechanics": "• Invocation (Greater) | Black Tentacles grapple + 2d6 cold damage per round."
+    },
+    "wall of perilous flame": {
+        "name": "Wall of Perilous Flame",
+        "category": "D&D 3.5 Warlock Invocation (Greater - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "60 ft (Wall up to 40 ft long)",
+        "description": "Creates a curtain of violet-and-black fire; creatures passing through take 2d6 fire + 2d6 unholy damage (ignoring fire resistance).",
+        "mechanics": "• Invocation (Greater) | 2d6 Fire + 2d6 Unholy Damage (unresistable) | Duration: Concentration + 1 round."
+    },
+    "devour magic": {
+        "name": "Devour Magic",
+        "category": "D&D 3.5 Warlock Invocation (Greater - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "Touch",
+        "description": "Touch Dispel Magic that consumes the dispelled spell, granting the warlock 5 temporary hit points per spell level dispelled.",
+        "mechanics": "• Invocation (Greater) | Touch Dispel Magic | Gain +5 temp HP per spell level dispelled."
+    },
+    "caustic mire": {
+        "name": "Caustic Mire",
+        "category": "D&D 3.5 Warlock Invocation (Greater - Complete Mage)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "100 ft (20-ft Radius)",
+        "description": "Coats ground in acidic mire that reduces movement to 5 ft, deals 1d6 acid damage per move, and detonates for 2d6 fire if ignited.",
+        "mechanics": "• Invocation (Greater) | Movement capped at 5 ft | 1d6 acid per move | Ignitable for 2d6 fire."
+    },
+    "retributive invisibility": {
+        "name": "Retributive Invisibility",
+        "category": "D&D 3.5 Warlock Invocation (Dark - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "Self",
+        "description": (
+            "Grants Greater Invisibility (remains invisible even when making attacks or casting invocations). "
+            "If dispelled by an enemy, the shroud detonates in a 20-ft sonic explosion dealing 4d6 sonic damage and stunning foes for 1 round."
+        ),
+        "mechanics": (
+            "• Invocation (Dark) | Greater Invisibility (duration: 24 hours or until dispelled).\n"
+            "• Retributive Detonation: If dispelled, detonates in 20-ft burst for 4d6 sonic damage + Stun (Fortitude save negates stun)."
+        )
+    },
+    "retributive invisibility (at will)": {
+        "name": "Retributive Invisibility (At Will)",
+        "category": "D&D 3.5 Warlock Invocation (Dark - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "Self",
+        "description": "Greater Invisibility that explodes into 4d6 sonic damage and stun if dispelled.",
+        "mechanics": "• Invocation (Dark) | Greater Invisibility + 4d6 sonic explosion/stun if dispelled."
+    },
+    "dark foresight": {
+        "name": "Dark Foresight",
+        "category": "D&D 3.5 Warlock Invocation (Dark - Complete Arcane)",
+        "action_type": "24-Hour Buff",
+        "cost": "At Will",
+        "range": "Self / 1 Ally",
+        "description": "Patron whispers alert the warlock to immediate peril, granting continuous Foresight (+2 AC/Reflex, immune to surprise and flat-footedness).",
+        "mechanics": "• Invocation (Dark) | Foresight effect | +2 AC and Reflex | Cannot be surprised or caught flat-footed."
+    },
+    "word of changing": {
+        "name": "Word of Changing",
+        "category": "D&D 3.5 Warlock Invocation (Dark - Complete Arcane)",
+        "action_type": "Standard Action",
+        "cost": "At Will",
+        "range": "60 ft",
+        "description": "Utters a primordial syllable that forces a target into a harmless toad or beetle (Baleful Polymorph, DC 18 Fortitude save).",
+        "mechanics": "• Invocation (Dark) | Baleful Polymorph (DC 10 + Level/2 + CHA mod Fort save negates) | Transforms foe into harmless vermin."
+    },
+    "fiendish resilience": {
+        "name": "Fiendish Resilience",
+        "category": "D&D 3.5 Warlock Supernatural Ability (Complete Arcane)",
+        "action_type": "Free Action (1/Day)",
+        "cost": "1/Day Usage",
+        "range": "Self",
+        "description": "Taps into fiendish regenerative endurance, gaining Fast Healing (2 to 5 HP per round) for 20 rounds (2 minutes).",
+        "mechanics": "• Fast Healing: Restores 2 HP/round (scaling to 5 HP/round at level 18) for 20 rounds.\n• Stabilizes dying condition automatically."
+    },
+    "warlock cold iron damage reduction": {
+        "name": "Warlock Cold Iron Damage Reduction",
+        "category": "D&D 3.5 Warlock Class Trait (Complete Arcane)",
+        "action_type": "Passive Trait",
+        "cost": "Passive",
+        "range": "Self",
+        "description": "Innate patron protection grants Damage Reduction /cold iron, reducing physical weapon damage unless forged from pure Cold Iron.",
+        "mechanics": "• DR 1/cold iron at Level 3, increasing by +1 every 4 levels (DR 2 at 7, DR 3 at 11, DR 4 at 15, DR 5 at 19)."
+    },
+    "deceive item": {
+        "name": "Deceive Item",
+        "category": "D&D 3.5 Warlock Class Feature (Complete Arcane)",
+        "action_type": "Passive",
+        "cost": "Passive",
+        "range": "Self",
+        "description": "Allows the warlock to Take 10 on all Use Magic Device checks, even when under direct attack or distracted in combat.",
+        "mechanics": "• Take 10 on Use Magic Device checks reliably in combat."
+    },
+    "imbue item": {
+        "name": "Imbue Item",
+        "category": "D&D 3.5 Warlock Class Feature (Complete Arcane)",
+        "action_type": "Passive Crafting",
+        "cost": "Passive",
+        "range": "Self",
+        "description": "Allows the warlock to craft any magic item without meeting spell prerequisites by substituting a Use Magic Device check.",
+        "mechanics": "• Substitute UMD check (DC 15 + Spell Level) in place of required crafting spells."
     }
 }
 

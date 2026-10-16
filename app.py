@@ -931,10 +931,10 @@ def render_character_calibration_wizard():
         st.markdown("### ⚔️ Stage 4: Combat Doctrine & Class Path")
         st.write("Choose your philosophical approach to surviving the death-game. Structured classes provide specialized tactical frameworks, while the Pathless walk an unconstrained anomaly path.")
         
-        # Classic 10 Base Classes + Pathless (+ non-breaking legacy classes if in registry)
+        # Classic 10 Base Classes + Warlock (D&D 3.5) + Pathless (+ non-breaking legacy classes if in registry)
         classic_10_keys = [
             "fighter", "wizard", "rogue", "cleric", "ranger",
-            "paladin", "druid", "bard", "barbarian", "monk"
+            "paladin", "druid", "bard", "barbarian", "monk", "warlock"
         ]
         roster_order = classic_10_keys + ["pathless"]
         class_keys = [k for k in roster_order if k in cg.CLASS_PATHS]
@@ -2322,6 +2322,40 @@ def render_game_hud():
                             clean_mode = "sleep" if "sleep" in dust_mode.lower() else ("memory_loss" if "memory" in dust_mode.lower() else "confusion")
                             st.session_state.pending_dev_command = f"I scatter [Pixie Dust] ({dust_mode}) in a 15-ft burst! Target must roll DC 15 Will save vs {clean_mode} or suffer full effect."
                             st.rerun()
+
+                    if "eldritch blast" in sp.get("name", "").lower() and hasattr(mechanics, "execute_eldritch_blast"):
+                        st.markdown("---")
+                        st.markdown("⚡ **Eldritch Blast Modulation (D&D 3.5 Shapes & Essences):**")
+                        eb_col_shape, eb_col_ess = st.columns(2)
+                        
+                        shapes_dict = getattr(mechanics, "WARLOCK_BLAST_SHAPES", {})
+                        shape_keys = list(shapes_dict.keys())
+                        shape_labels = [f"{shapes_dict[k]['name']} [{shapes_dict[k]['grade']}]" for k in shape_keys]
+                        with eb_col_shape:
+                            sel_shape_idx = st.selectbox("Blast Shape", range(len(shape_keys)), format_func=lambda i: shape_labels[i], key=f"eb_shape_{sp_idx}")
+                            chosen_shape_key = shape_keys[sel_shape_idx] if shape_keys else "ray"
+                        
+                        essences_dict = getattr(mechanics, "WARLOCK_BLAST_ESSENCES", {})
+                        essence_keys = list(essences_dict.keys())
+                        essence_labels = [f"{essences_dict[k]['name']} [{essences_dict[k]['grade']}]" for k in essence_keys]
+                        with eb_col_ess:
+                            sel_ess_idx = st.selectbox("Eldritch Essence", range(len(essence_keys)), format_func=lambda i: essence_labels[i], key=f"eb_ess_{sp_idx}")
+                            chosen_ess_key = essence_keys[sel_ess_idx] if essence_keys else "raw"
+                        
+                        eb_calc = mechanics.execute_eldritch_blast(player, shape=chosen_shape_key, essence=chosen_ess_key)
+                        st.caption(f"💥 **Damage Output:** `{eb_calc['damage_dice']}` ({eb_calc['damage_type']}) | 🎯 **Range:** `{eb_calc['range_ft']} ft` | 🛡️ **Save DC:** `DC {eb_calc['save_dc']}` | ⚡ **Attack:** `{eb_calc['attack_mode']}`")
+                        if eb_calc.get("con_cost", 0) > 0:
+                            st.warning(f"⚠️ **Hellfire Sacrifice:** Costs {eb_calc['con_cost']} Constitution point upon invocation!")
+
+                        if st.button("⚡ Fire Modulated Eldritch Blast", key=f"btn_fire_eb_{sp_idx}", use_container_width=True):
+                            st.session_state.pending_dev_command = (
+                                f"I invoke [Eldritch Blast] shaped as [{shapes_dict[chosen_shape_key]['name']}] "
+                                f"and infused with [{essences_dict[chosen_ess_key]['name']}]! "
+                                f"Strikes for {eb_calc['damage_dice']} {eb_calc['damage_type']} damage "
+                                f"(Range: {eb_calc['range_ft']} ft, Mode: {eb_calc['attack_mode']}, DC {eb_calc['save_dc']})."
+                            )
+                            st.rerun()
+
 
                     sp_col1, sp_col2 = st.columns(2)
                     with sp_col1:

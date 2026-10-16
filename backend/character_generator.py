@@ -2454,6 +2454,25 @@ CLASS_PATHS = {
         "native_armor": ["Unarmored"],
         "favored_skills": ["Unarmed Combat", "Tactical Reflexes", "Acrobatics", "Meditation & Ki"]
     },
+    # 11. Warlock (D&D 3.5 Eldritch Invocator)
+    "warlock": {
+        "title": "Warlock (Eldritch Invocator)",
+        "description": "Pact-bound channeler of otherworldly fiendish, fey, or void patron aether from D&D 3.5 / Complete Arcane. Wields unlimited at-will Eldritch Blasts, customizable eldritch shapes and essences, persistent invocations, and cold iron damage reduction.",
+        "starting_feats": ["Eldritch Blast", "Dark One's Own Luck"],
+        "starting_spells": [
+            "Eldritch Blast (At Will)",
+            "Eldritch Glaive (At Will)",
+            "Dark One's Own Luck (At Will)",
+            "Devil's Sight (At Will)",
+            "See the Unseen (At Will)",
+            "Brimstone Blast (At Will)"
+        ],
+        "combat_resource": {"name": "Eldritch Aether & Patron Flux", "max": 100, "current": 100, "type": "eldritch"},
+        "base_hp": 85,
+        "hp_per_lvl": 22,
+        "native_armor": ["Light", "Cloth"],
+        "favored_skills": ["Aether-Weaving", "Arcana", "Intimidation", "Tactical Reflexes"]
+    },
 
     # --- LEGACY ANCHOR & SCI-FI HYBRID CLASSES (PRESERVED FOR SAVES & TESTS) ---
     "engineer": {
@@ -2514,6 +2533,12 @@ CLASS_PATHS["wilderness_ranger"]["title"] = "Wilderness Ranger"
 
 CLASS_PATHS["magi_saboteur"] = dict(CLASS_PATHS["engineer"])
 CLASS_PATHS["magi_saboteur"]["title"] = "Magi-Tech Saboteur"
+
+CLASS_PATHS["invocator"] = dict(CLASS_PATHS["warlock"])
+CLASS_PATHS["invocator"]["title"] = "Invocator (Eldritch Channeler)"
+
+CLASS_PATHS["hellfire_warlock"] = dict(CLASS_PATHS["warlock"])
+CLASS_PATHS["hellfire_warlock"]["title"] = "Hellfire Warlock"
 
 
 # --- CLASS WEAPONS LOADOUTS ---
@@ -2578,6 +2603,12 @@ CLASS_WEAPONS = {
         "off_hand": "None",
         "desc": "Dense iron-studded leather striking wraps designed for high-impact unarmed martial arts and ki flow."
     },
+    # 11. Warlock
+    "warlock": {
+        "main_hand": "Eldritch Focus Rod",
+        "off_hand": "Tome of the Forbidden Pact",
+        "desc": "A midnight-lacquered bone focus rod etched with patron sigils paired with an ancient leather-bound pact grimoire."
+    },
 
     # --- Legacy Classes ---
     "engineer": {
@@ -2606,6 +2637,8 @@ CLASS_WEAPONS["thief"] = CLASS_WEAPONS["rogue"]
 CLASS_WEAPONS["infiltrator"] = CLASS_WEAPONS["rogue"]
 CLASS_WEAPONS["wilderness_ranger"] = CLASS_WEAPONS["ranger"]
 CLASS_WEAPONS["magi_saboteur"] = CLASS_WEAPONS["engineer"]
+CLASS_WEAPONS["invocator"] = CLASS_WEAPONS["warlock"]
+CLASS_WEAPONS["hellfire_warlock"] = CLASS_WEAPONS["warlock"]
 
 
 # --- EXPANDED STARTER WEAPON OPTIONS ---
@@ -3648,6 +3681,11 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
     # Add Class Feats
     for f in chosen_class.get("starting_feats", []):
         feats_list.append(f)
+
+    # Add Class Starting Invocations / Spells (e.g. D&D 3.5 Warlock Invocations)
+    for csp in chosen_class.get("starting_spells", []):
+        if csp not in lifestyle_spells:
+            lifestyle_spells.append(csp)
 
     # Add Racial Innate Spells (e.g. D&D 3.0 Pixie Spell-Like Abilities, Polymorph Self, etc.)
     for rsp in race.get("innate_spells", []):
