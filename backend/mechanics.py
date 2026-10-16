@@ -2856,7 +2856,7 @@ def normalize_class_key(class_str):
         "tactician": "tactician",
         "cryptic": "cryptic",
         "dread": "dread",
-        "marksman": "marksman",
+        "psychic_marksman": "marksman",
     }
     if c_low in psionic_canon:
         return psionic_canon[c_low]
@@ -2872,6 +2872,7 @@ def normalize_class_key(class_str):
         "wilderness_ranger": "ranger",
         "magi_saboteur": "engineer",
         "hunter": "ranger",
+        "marksman": "ranger",
         "templar": "cleric",
         "priest": "cleric",
         "arcanist": "wizard",
@@ -2924,8 +2925,10 @@ def normalize_class_key(class_str):
         return "cryptic"
     if "dread" in c_low:
         return "dread"
-    if "marksman" in c_low:
+    if "psychic marksman" in c_low or "psionic marksman" in c_low or "psychic_marksman" in c_low:
         return "marksman"
+    if "marksman" in c_low:
+        return "ranger"
     if "barbarian" in c_low or "berserker" in c_low:
         return "barbarian"
     if "paladin" in c_low or "crusader" in c_low:
@@ -3297,12 +3300,12 @@ def check_evolution_eligibility(player):
     except (ValueError, TypeError):
         current_tier = 1
 
-    if current_tier >= 10:
+    if current_tier >= 4:
         return {
             "eligible": False,
-            "target_tier": 10,
-            "current_tier": 10,
-            "reasons": ["Maximum class evolution tier (Tier 10 Transcendent) reached."],
+            "target_tier": current_tier,
+            "current_tier": current_tier,
+            "reasons": ["Maximum class evolution tier reached."],
             "unmet_conditions": [],
             "top_skill": top_skill,
             "top_mastery": max_mastery
