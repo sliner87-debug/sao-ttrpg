@@ -1,22 +1,98 @@
 {
     "id": "companion_teresa",
     "name": "Sister Teresa",
-    "gender": "Female",
-    "pronouns": "she/her",
-    "role": "Inquisitor / Witch-Hunter",
+    "class": "Inquisitor / Witch-Hunter",
+    "title": "Inquisitor / Witch-Hunter",
+    "role": "Silver Ranged Execution, Weakness Exposure & Anti-Aberration Stake",
     "level": 3,
     "hp": 36,
     "max_hp": 36,
-    "ac": 16,
-    "strain_capacity": 3,
-    "active_grafts": [
-        {
-            "name": "Silver-Truth Ocular Imprint",
-            "slot": "Head",
-            "effect": "Reveals invisible entities, shapeshifters, and disguised cultists",
-            "visual_appearance": "augmented with an integrated Silver-Truth Ocular Imprint"
+    "xp": 450,
+    "next_level_xp": 900,
+    "stance": "silver_snipe",
+    "morale": "Resolute",
+    "affinity": 30,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "Old Moravian Mission Ruins (Hope Township, X:50, Y:30)",
+    "recruitment_requirements": {
+        "min_level": 2,
+        "col_cost": 0,
+        "dialogue": "truth_glyph",
+        "description": "Pass her truth-testing glyph (WIS DC 13) or assist in exposing a cultist spy in Hope Township."
+    },
+    "bio": "A former criminal prosecutor turned Silver Flame Inquisitor. Uses silver truth-runes and heavy stake crossbows to execute heretics.",
+    "loadout": {
+        "main_hand": "Silver-Chambered Crossbow (1d10+3 Piercing + Silver)",
+        "off_hand": "Blessed Consecrated Estoc (1d8+3 Piercing)",
+        "armor": "Inquisitor's Leather Duster (+2 WIS, DR 1)",
+        "chest": "Inquisitor's Leather Duster (+2 WIS, DR 1)"
+    },
+    "equipped": {
+        "main_hand": "Silver-Chambered Crossbow (1d10+3 Piercing + Silver)",
+        "off_hand": "Blessed Consecrated Estoc (1d8+3 Piercing)",
+        "armor": "Inquisitor's Leather Duster (+2 WIS, DR 1)",
+        "chest": "Inquisitor's Leather Duster (+2 WIS, DR 1)"
+    },
+    "skills": {
+        "Inquisitorial Crossbow": {
+            "mastery": 260,
+            "tier": "Adept",
+            "description": "Driving heavy consecrated silver stakes.",
+            "milestones_unlocked": [
+                "Silver Stake",
+                "Pinning Bolt",
+                "Judgment Volley"
+            ]
+        },
+        "Discernment of Truth": {
+            "mastery": 240,
+            "tier": "Journeyman",
+            "description": "Seeing through illusions and shapeshifters.",
+            "milestones_unlocked": [
+                "True Sight"
+            ]
+        },
+        "Cestus & Estoc Fencing": {
+            "mastery": 190,
+            "tier": "Journeyman",
+            "description": "Close-range execution maneuvers.",
+            "milestones_unlocked": [
+                "Parry & Riposte"
+            ]
         }
+    },
+    "abilities": [
+        "Silver Stake Execution (3d10 Piercing vs Aberration/Undead)",
+        "Witch-Hunter's Brand (Target cannot turn invisible or heal for 2 turns)",
+        "Solemn Verdict (+3 Critical threat range to party)"
     ],
+    "stances": {
+        "silver_snipe": {
+            "name": "Silver-Bolt Snipe",
+            "label": "\ud83c\udff9 Silver Snipe",
+            "tag": "[TERESA SNIPE]",
+            "tactical_effect": "Fires a silver-tipped stake dealing 2d8+4 Piercing DMG (+2d8 vs Aberrations/Undead) and pinning target.",
+            "desc": "Anti-fiend/undead sniper."
+        },
+        "truth_judgment": {
+            "name": "True-Sight Judgment",
+            "label": "\u2696\ufe0f True-Sight Judgment",
+            "tag": "[TERESA JUDGMENT]",
+            "tactical_effect": "Paints target with silver flame; exposes physical weaknesses, increasing Banki's crit chance to 18-20.",
+            "desc": "Critical threat amplifier."
+        },
+        "witch_hunter_brand": {
+            "name": "Witch-Hunter's Brand",
+            "label": "\ud83d\udd25 Witch Brand",
+            "tag": "[TERESA BRAND]",
+            "tactical_effect": "Brands target with holy fire; target loses 8 HP/turn and cannot regenerate health or phase shift.",
+            "desc": "Anti-healing brand."
+        }
+    },
+    "dual_tech_id": "inquisition_execution",
+    "behavior_prompt": "You are Sister Teresa, an austere Inquisitor and Witch-Hunter. You speak with calm judicial gravity and unwavering resolve. You analyze enemy weaknesses, expose hidden vulnerabilities with silver-flame telemetry, pin enemy limbs with heavy crossbow bolts, and pass righteous judgment alongside Aria Valkyrie.",
     "inventory": [
         {
             "name": "Silver-Chambered Crossbow",
@@ -49,20 +125,5 @@
             "visual_appearance": "wearing a high-collared charcoal witch-hunter leather duster pinned with silver seals and a wide-brimmed inquisitor hat"
         }
     ],
-    "behavior_prompt": "You are Sister Teresa, an austere Inquisitor and Witch-Hunter. You speak with calm judicial gravity and unwavering resolve. You analyze enemy weaknesses, expose hidden vulnerabilities with silver-flame telemetry, pin enemy limbs with heavy crossbow bolts, and pass righteous judgment alongside Aria Valkyrie.",
-    "equipped": {
-        "head": "None",
-        "chest": "Inquisitor's Leather Duster",
-        "main_hand": "Silver-Chambered Crossbow",
-        "off_hand": "Blessed Consecrated Estoc",
-        "accessory": "None"
-    },
-    "active_debuffs": [],
-    "recruited": false,
-    "active": false,
-    "slug": "teresa",
-    "companion_name": "Sister Teresa",
-    "is_active": false,
-    "stats": {},
-    "skills": {}
+    "active_debuffs": []
 }

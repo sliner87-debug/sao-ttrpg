@@ -14,12 +14,17 @@ current_tactical_map.jpg
 *.db-shm
 *.log
 .agents/
-saves/Test_*
-saves/ChimeraHero/
-saves/Garrick/
+saves/*
+!saves/Aria/
+!saves/Aria_Valkyrie/
+!saves/Banki/
+!saves/Glenny/
+!saves/Kaelen_Vex/
+!saves/Unit_7/
 .venv/
 *.m4a
 *.mp3
+
 
 
 

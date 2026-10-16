@@ -1,22 +1,98 @@
 {
     "id": "companion_lyra",
     "name": "Lyra Stargaze",
-    "gender": "Female",
-    "pronouns": "she/her",
-    "role": "Chronomancer / Temporal Weaver",
+    "class": "Chronomancer / Temporal Weaver",
+    "title": "Chronomancer / Temporal Weaver",
+    "role": "Timeline Dilation, Haste Buffs, Slow Fields & Wound Reversal",
     "level": 4,
     "hp": 28,
     "max_hp": 28,
-    "ac": 13,
-    "strain_capacity": 3,
-    "active_grafts": [
-        {
-            "name": "Stargazer Astral Iris",
-            "slot": "Head",
-            "effect": "Anticipates future trajectories (+2 Dodge AC), casts Haste on party leader",
-            "visual_appearance": "carrying Stargazer Astral Iris"
+    "xp": 780,
+    "next_level_xp": 1200,
+    "stance": "temporal_haste",
+    "morale": "Steady",
+    "affinity": 25,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "High Point Observatory Spire (Sussex Overlook, X:48, Y:12)",
+    "recruitment_requirements": {
+        "min_level": 4,
+        "col_cost": 0,
+        "item": "Refined Aether-Crystal",
+        "description": "Reach Level 4 and calibrate the Astrolabe Focal Prism using an Aether-Crystal."
+    },
+    "bio": "An aether-born stargazer astrophysicist who manipulates timeline foam to speed allies, freeze foes, and rewind lethal wounds.",
+    "loadout": {
+        "main_hand": "Chrono-Staff of Moments (1d6+3 Bludgeoning + Time Warp)",
+        "off_hand": "Hourglass Focus (Cosmic Focus)",
+        "armor": "Star-Silk Robes (+2 INT, DR 1)",
+        "chest": "Star-Silk Robes (+2 INT, DR 1)"
+    },
+    "equipped": {
+        "main_hand": "Chrono-Staff of Moments (1d6+3 Bludgeoning + Time Warp)",
+        "off_hand": "Hourglass Focus (Cosmic Focus)",
+        "armor": "Star-Silk Robes (+2 INT, DR 1)",
+        "chest": "Star-Silk Robes (+2 INT, DR 1)"
+    },
+    "skills": {
+        "Chronomancy": {
+            "mastery": 290,
+            "tier": "Adept",
+            "description": "Accelerating and decelerating causal flow.",
+            "milestones_unlocked": [
+                "Haste Glyphs",
+                "Time Dilation",
+                "Temporal Anchor"
+            ]
+        },
+        "Stargazing Telemetry": {
+            "mastery": 240,
+            "tier": "Journeyman",
+            "description": "Calculating celestial alignment and odds.",
+            "milestones_unlocked": [
+                "Fate Reading"
+            ]
+        },
+        "Temporal Mending": {
+            "mastery": 210,
+            "tier": "Journeyman",
+            "description": "Reversing physical damage into past states.",
+            "milestones_unlocked": [
+                "Rewind Tissue"
+            ]
         }
+    },
+    "abilities": [
+        "Chrono-Stasis Bubble (Freezes target for 1 turn)",
+        "Haste Surge (Grants Banki an extra standard action)",
+        "Temporal Rewind (Reverses last turn's damage on ally)"
     ],
+    "stances": {
+        "temporal_haste": {
+            "name": "Haste Surge Acceleration",
+            "label": "\u23f3 Haste Surge",
+            "tag": "[LYRA HASTE]",
+            "tactical_effect": "Bends time around Banki; grants Banki +4 Initiative and an extra attack every other turn.",
+            "desc": "Speed and action accelerator."
+        },
+        "time_dilation": {
+            "name": "Time Dilation Field",
+            "label": "\ud83c\udf00 Dilation Field",
+            "tag": "[LYRA SLOW]",
+            "tactical_effect": "Traps enemy frontliners in viscous time; enemies suffer -4 to AC and lose their reactions.",
+            "desc": "Enemy time freeze."
+        },
+        "wound_echo": {
+            "name": "Rewind Wound Echoes",
+            "label": "\u23ea Wound Rewind",
+            "tag": "[LYRA REWIND]",
+            "tactical_effect": "Rewinds time on the most damaged ally, restoring 20 HP from injuries sustained this combat.",
+            "desc": "Temporal healing."
+        }
+    },
+    "dual_tech_id": "temporal_shatter_strike",
+    "behavior_prompt": "You are Lyra Stargaze, a Chronomancer who perceives multiple timelines. You speak with soft cosmic mystery. You cast Haste onto Aria Valkyrie, inflict heavy slow debuffs on rushing foes, and rewind dangerous combat wounds before they prove fatal.",
     "inventory": [
         {
             "name": "Chrono-Staff of Moments",
@@ -49,20 +125,5 @@
             "visual_appearance": "draped in deep indigo Star-Silk robes embroidered with glowing golden constellations"
         }
     ],
-    "behavior_prompt": "You are Lyra Stargaze, a Chronomancer who perceives multiple timelines. You speak with soft cosmic mystery. You cast Haste onto Aria Valkyrie, inflict heavy slow debuffs on rushing foes, and rewind dangerous combat wounds before they prove fatal.",
-    "equipped": {
-        "head": "None",
-        "chest": "Star-Silk Robes",
-        "main_hand": "Chrono-Staff of Moments",
-        "off_hand": "Hourglass Focus",
-        "accessory": "None"
-    },
-    "active_debuffs": [],
-    "recruited": false,
-    "active": false,
-    "slug": "lyra",
-    "companion_name": "Lyra Stargaze",
-    "is_active": false,
-    "stats": {},
-    "skills": {}
+    "active_debuffs": []
 }

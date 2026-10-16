@@ -1,0 +1,93 @@
+{
+    "id": "elora_thorne",
+    "name": "Elora Thorne",
+    "class": "Aether-Slinger / Spellblade",
+    "title": "Aether-Slinger / Spellblade",
+    "role": "Ranged Burst DPS, Elemental Mana Infusion & Phase Mobility",
+    "level": 3,
+    "hp": 32,
+    "max_hp": 32,
+    "xp": 400,
+    "next_level_xp": 900,
+    "stance": "spellblade_flurry",
+    "morale": "Steady",
+    "affinity": 20,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "The Iron Spoke Tavern (Washington Borough, X:50, Y:50)",
+    "recruitment_requirements": {
+        "min_level": 2,
+        "col_cost": 100,
+        "description": "Meet Elora at the Iron Spoke Tavern and provide 100 Col for expedition rations."
+    },
+    "bio": "A nimble spellblade who channels raw mana into rapid-firing crystal-tipped rapiers. Dr. Thorne's estranged niece, seeking a frontline raiding party in Sector 1.",
+    "loadout": {
+        "main_hand": "Starlight Aether-Rapier (Enchanted Steel, 1d8+3 Piercing)",
+        "off_hand": "Resonating Caster Gauntlet (Focus)",
+        "armor": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)",
+        "chest": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)"
+    },
+    "equipped": {
+        "main_hand": "Starlight Aether-Rapier (Enchanted Steel, 1d8+3 Piercing)",
+        "off_hand": "Resonating Caster Gauntlet (Focus)",
+        "armor": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)",
+        "chest": "Silk Phase-Robes (Enchanted Cloth, DR 1, +2 DEX)"
+    },
+    "skills": {
+        "Spellblade Fencing": {
+            "mastery": 175,
+            "tier": "Journeyman",
+            "description": "Fluid martial strikes infused with raw mana.",
+            "milestones_unlocked": [
+                "Lunge & Pierce"
+            ]
+        },
+        "Aether Siphoning": {
+            "mastery": 130,
+            "tier": "Journeyman",
+            "description": "Harvesting stray leyline charges to empower abilities.",
+            "milestones_unlocked": [
+                "Mana Flow"
+            ]
+        },
+        "Acrobatic Skirmishing": {
+            "mastery": 140,
+            "tier": "Journeyman",
+            "description": "Dancing between melee and ranged kill zones.",
+            "milestones_unlocked": [
+                "Quickstep"
+            ]
+        }
+    },
+    "abilities": [
+        "Spellblade Flurry (3-Hit Piercing Combo)",
+        "Aetheric Weapon Infusion (+1d8 Elemental DMG to Ally)",
+        "Dimensional Blinkstep (Disengage without provoking opportunity attacks)"
+    ],
+    "stances": {
+        "spellblade_flurry": {
+            "name": "Spellblade Flurry",
+            "label": "\ud83d\udde1\ufe0f Spellblade Flurry",
+            "tag": "[ELORA FLURRY]",
+            "tactical_effect": "Unleashes rapid piercing strikes dealing 2d8+4 Arcane DMG and +2 Attack bonus to party.",
+            "desc": "High offensive DPS mode."
+        },
+        "aether_overcharge": {
+            "name": "Aether Overcharge",
+            "label": "\ud83d\udd2e Aether Overcharge",
+            "tag": "[ELORA OVERCHARGE]",
+            "tactical_effect": "Channels radiant mana into Banki's weapons; Banki deals +1d10 bonus Radiant/Lightning DMG.",
+            "desc": "Weapon buffing stance."
+        },
+        "blink_skirmish": {
+            "name": "Blink Skirmish",
+            "label": "\ud83c\udf00 Blink Skirmish",
+            "tag": "[ELORA BLINK]",
+            "tactical_effect": "Teleports erratically across the perimeter; evades incoming attacks and roots a target (DC 14 DEX save).",
+            "desc": "Evasive control stance."
+        }
+    },
+    "dual_tech_id": "spellblade_vortex",
+    "active_debuffs": []
+}

@@ -19,98 +19,366 @@ from backend.mechanics import (
     restore_companions_for_character
 )
 
-# --- 18 QUICK-LIFESTYLE QUESTIONNAIRE PRESETS (Auto-Distribute 20 Points) ---
+class SkillEntry(dict):
+    """
+    Backward-compatible skill dictionary that supports numeric comparison against int/float
+    (comparing self.get('mastery', 0)) while retaining full dict structure and JSON serializability.
+    """
+    def __ge__(self, other):
+        if isinstance(other, (int, float)):
+            return self.get("mastery", 0) >= other
+        return super().__ge__(other)
+
+    def __gt__(self, other):
+        if isinstance(other, (int, float)):
+            return self.get("mastery", 0) > other
+        return super().__gt__(other)
+
+    def __le__(self, other):
+        if isinstance(other, (int, float)):
+            return self.get("mastery", 0) <= other
+        return super().__le__(other)
+
+    def __lt__(self, other):
+        if isinstance(other, (int, float)):
+            return self.get("mastery", 0) < other
+        return super().__lt__(other)
+
+    def __eq__(self, other):
+        if isinstance(other, (int, float)):
+            return self.get("mastery", 0) == other
+        return super().__eq__(other)
+
+    def __ne__(self, other):
+        if isinstance(other, (int, float)):
+            return self.get("mastery", 0) != other
+        return super().__ne__(other)
+
+    def __int__(self):
+        return int(self.get("mastery", 0))
+
+    def __float__(self):
+        return float(self.get("mastery", 0))
+
+
+# --- 26 QUICK-LIFESTYLE QUESTIONNAIRE PRESETS (Auto-Distribute 20 Points & Talents) ---
 # All presets allocate exactly 20 points across the 6 core stats: STR, DEX, CON, INT, WIS, CHA.
+# Each preset provides 2 thematic skills (+10 to +20 starting mastery) and an innate starting feat/spell.
 PRESET_LIFESTYLES = {
+    # --- 8 NEW ARCHETYPES (D&D 3.0 / Classic Fantasy Expansion) ---
+    "woodsman": {
+        "title": "🪓 Woodsman / Forest Forager (+STR/CON/WIS)",
+        "desc": "Seasoned timber cutter and forest scout, hardened by deep wilderness isolation, axe work, and wild terrain navigation.",
+        "points": {"STR": 5, "DEX": 4, "CON": 5, "INT": 1, "WIS": 4, "CHA": 1},
+        "skill_bonuses": {
+            "Field Trapping": 20,
+            "Wildland Rapid-Extraction": 15
+        },
+        "starting_feat": "Nature's Camouflage",
+        "feat_desc": "(Passive): +4 to Stealth in wilderness brush; ignore difficult terrain movement penalties in natural forests.",
+        "innate_ability": "Nature's Camouflage (Passive): +4 to Stealth in wilderness brush; ignore difficult terrain movement penalties in natural forests."
+    },
+    "monastery_ascetic": {
+        "title": "🧘 Monastery Ascetic / Contemplative (+WIS/DEX)",
+        "desc": "Dedicated practitioner of cloistered austerity, mental purification, disciplined breathing, and unyielding focus.",
+        "points": {"STR": 3, "DEX": 5, "CON": 4, "INT": 1, "WIS": 6, "CHA": 1},
+        "skill_bonuses": {
+            "Tactical Reflexes": 20,
+            "Passive Acoustic Detection": 15
+        },
+        "starting_feat": "Iron Discipline",
+        "feat_desc": "(Passive): Advantage on saving throws against fear, charm, and confusion; +1 bonus to Armor Class while unarmored.",
+        "innate_ability": "Iron Discipline (Passive): Advantage on saving throws against fear, charm, and confusion; +1 bonus to Armor Class while unarmored."
+    },
+    "hearth_apothecary": {
+        "title": "🌿 Hearth Apothecary / Village Herbalist (+WIS/INT)",
+        "desc": "Master of wild herbs, poultices, soothing tonics, and restorative decoctions passed down through generations.",
+        "points": {"STR": 1, "DEX": 3, "CON": 3, "INT": 5, "WIS": 6, "CHA": 2},
+        "skill_bonuses": {
+            "Chemical Distillation": 20,
+            "Flora Harvesting": 15
+        },
+        "starting_feat": "Herbal Infusion",
+        "feat_desc": "(Passive): Restorative potions, salves, and food rations heal for +25% bonus HP when consumed or administered.",
+        "innate_ability": "Herbal Infusion (Passive): Restorative potions, salves, and food rations heal for +25% bonus HP when consumed or administered."
+    },
+    "dungeon_delver": {
+        "title": "⛏️ Dungeon Delver / Spelunker (+DEX/CON)",
+        "desc": "Intrepid subterranean explorer skilled in squeezing through claustrophobic chasms, bypassing mechanical deadfalls, and reading stone.",
+        "points": {"STR": 3, "DEX": 6, "CON": 4, "INT": 3, "WIS": 3, "CHA": 1},
+        "skill_bonuses": {
+            "Subterranean Spelunking": 20,
+            "Tumbler Decryption": 15
+        },
+        "starting_feat": "Subterranean Echo",
+        "feat_desc": "(Passive): Sense vibrations and spatial hollows within 30ft; +2 bonus on saving throws against mechanical dungeon traps.",
+        "innate_ability": "Subterranean Echo (Passive): Sense vibrations and spatial hollows within 30ft; +2 bonus on saving throws against mechanical dungeon traps."
+    },
+    "arena_gladiator": {
+        "title": "⚔️ Arena Gladiator / Pit Champion (+STR/CON/DEX)",
+        "desc": "Veteran of bloody amphitheater spectacles, conditioned to endure punishing weapon blows and dominate the crowd with martial flair.",
+        "points": {"STR": 6, "DEX": 5, "CON": 5, "INT": 1, "WIS": 1, "CHA": 2},
+        "skill_bonuses": {
+            "Trench Hammers": 20,
+            "One-Handed Axes": 15
+        },
+        "starting_feat": "Crowd Thrill",
+        "feat_desc": "(Passive): Critical hits and kills restore 15 Combat Resource and grant a +2 bonus to your next attack roll.",
+        "innate_ability": "Crowd Thrill (Passive): Critical hits and kills restore 15 Combat Resource and grant a +2 bonus to your next attack roll."
+    },
+    "courtier_emissary": {
+        "title": "👑 Courtier Emissary / Diplomat (+CHA/INT)",
+        "desc": "Trained in the high stakes of palace intrigue, noble etiquette, persuasive rhetoric, and treaty negotiation.",
+        "points": {"STR": 1, "DEX": 3, "CON": 2, "INT": 4, "WIS": 3, "CHA": 7},
+        "skill_bonuses": {
+            "Faction Diplomacy": 20,
+            "Resource Barter": 15
+        },
+        "starting_feat": "Silver Tongue",
+        "feat_desc": "(Passive): +2 bonus on social negotiation and charisma checks; merchant store prices permanently discounted 10%.",
+        "innate_ability": "Silver Tongue (Passive): +2 bonus on social negotiation and charisma checks; merchant store prices permanently discounted 10%."
+    },
+    "blacksmith_apprentice": {
+        "title": "🔥 Blacksmith Apprentice / Armorer (+STR/CON)",
+        "desc": "Hardened at the forge hearth, hauling heavy pig iron, working the bellows, and learning metallurgy under master smiths.",
+        "points": {"STR": 6, "DEX": 2, "CON": 6, "INT": 3, "WIS": 2, "CHA": 1},
+        "skill_bonuses": {
+            "Field Smithing": 20,
+            "Slag & Refractory Metallurgy": 15
+        },
+        "starting_feat": "Forge Resilience",
+        "feat_desc": "(Passive): 25% passive damage reduction vs Fire; weapon and armor durability loss reduced by 20%.",
+        "innate_ability": "Forge Resilience (Passive): 25% passive damage reduction vs Fire; weapon and armor durability loss reduced by 20%."
+    },
+    "archive_scribe": {
+        "title": "📜 Archive Scribe / Cryptographer (+INT/WIS)",
+        "desc": "Meticulous copyist of ancient illuminated manuscripts, illuminated bestiaries, runic codices, and forgotten historical scrolls.",
+        "points": {"STR": 0, "DEX": 2, "CON": 2, "INT": 7, "WIS": 6, "CHA": 3},
+        "skill_bonuses": {
+            "Ancient Glyph Deciphering": 20,
+            "Lore Cataloging": 15
+        },
+        "starting_feat": "Archival Lore",
+        "feat_desc": "(Passive): +3 bonus on identifying monster traits, deciphering runic wardings, and analyzing unknown relics.",
+        "innate_ability": "Archival Lore (Passive): +3 bonus on identifying monster traits, deciphering runic wardings, and analyzing unknown relics."
+    },
+
+    # --- 18 EXISTING ARCHETYPES (ENHANCED WITH SKILLS & INNATE TALENTS) ---
     "desk_bound": {
         "title": "🛋️ Desk Bound / Sedentary (+Mental)",
         "desc": "Long hours at keyboards, low physical strain, high cognitive and analytical conditioning.",
-        "points": {"STR": 1, "DEX": 1, "CON": 2, "INT": 6, "WIS": 6, "CHA": 4}
+        "points": {"STR": 1, "DEX": 1, "CON": 2, "INT": 6, "WIS": 6, "CHA": 4},
+        "skill_bonuses": {
+            "Algorithmic Decryption": 20,
+            "Aether-Circuit Query": 15
+        },
+        "starting_feat": "Analytical Deduction",
+        "feat_desc": "(Passive): +2 on puzzle solving, terminal queries, and tactical assessment rolls.",
+        "innate_ability": "Analytical Deduction (Passive): +2 on puzzle solving, terminal queries, and tactical assessment rolls."
     },
     "athletic": {
         "title": "🏃 Athletic / Field Sports (+Agility)",
         "desc": "High cardiovascular fitness, agile footwork, kinetic discipline, and team communication.",
-        "points": {"STR": 5, "DEX": 6, "CON": 4, "INT": 1, "WIS": 2, "CHA": 2}
+        "points": {"STR": 5, "DEX": 6, "CON": 4, "INT": 1, "WIS": 2, "CHA": 2},
+        "skill_bonuses": {
+            "Tactical Reflexes": 20,
+            "Gyroscopic Balance": 15
+        },
+        "starting_feat": "Second Wind",
+        "feat_desc": "(Passive): Once per encounter, recover 20 Combat Resource when falling below 50% HP.",
+        "innate_ability": "Second Wind (Passive): Once per encounter, recover 20 Combat Resource when falling below 50% HP."
     },
     "heavy_labor": {
         "title": "🔨 Heavy Labor / Trades (+STR/CON)",
         "desc": "Repetitive heavy lifting, calloused endurance, mechanical resistance, and tool wielding.",
-        "points": {"STR": 7, "DEX": 3, "CON": 6, "INT": 1, "WIS": 2, "CHA": 1}
+        "points": {"STR": 7, "DEX": 3, "CON": 6, "INT": 1, "WIS": 2, "CHA": 1},
+        "skill_bonuses": {
+            "Structural Breach": 20,
+            "Field Smithing": 15
+        },
+        "starting_feat": "Calloused Might",
+        "feat_desc": "(Passive): +30 lbs carrying capacity; +2 bonus on Strength checks to break obstacles or force doors.",
+        "innate_ability": "Calloused Might (Passive): +30 lbs carrying capacity; +2 bonus on Strength checks to break obstacles or force doors."
     },
     "first_responder": {
         "title": "🎖️ First Responder / Combat (+Combat)",
         "desc": "Crisis tactical response, rapid triage decision-making, and high adrenaline composure.",
-        "points": {"STR": 5, "DEX": 5, "CON": 4, "INT": 2, "WIS": 3, "CHA": 1}
+        "points": {"STR": 5, "DEX": 5, "CON": 4, "INT": 2, "WIS": 3, "CHA": 1},
+        "skill_bonuses": {
+            "Arcane Triage": 20,
+            "Hazard Breaching": 15
+        },
+        "starting_feat": "Crisis Triage",
+        "feat_desc": "(Passive): Stabilize fallen allies as a bonus action; gain +2 AC during rescue moves.",
+        "innate_ability": "Crisis Triage (Passive): Stabilize fallen allies as a bonus action; gain +2 AC during rescue moves."
     },
     "academic_scholar": {
         "title": "📚 Academic Scholar / Researcher (+INT/WIS)",
         "desc": "Archival synthesis, methodological logic, rigorous deductive reasoning, and deep theory.",
-        "points": {"STR": 0, "DEX": 1, "CON": 1, "INT": 8, "WIS": 7, "CHA": 3}
+        "points": {"STR": 0, "DEX": 1, "CON": 1, "INT": 8, "WIS": 7, "CHA": 3},
+        "skill_bonuses": {
+            "Lore Cataloging": 20,
+            "Ancient Glyph Deciphering": 15
+        },
+        "starting_feat": "Rigor of the Mind",
+        "feat_desc": "(Passive): Spells and tactical abilities you execute have their Save DC increased by +1.",
+        "innate_ability": "Rigor of the Mind (Passive): Spells and tactical abilities you execute have their Save DC increased by +1."
     },
     "night_security": {
         "title": "🔦 Night Shift Security / Sentry (+WIS/CON)",
         "desc": "Perimeter vigilance, sleep deprivation resistance, darkness adaptation, and acute hearing.",
-        "points": {"STR": 3, "DEX": 4, "CON": 5, "INT": 1, "WIS": 6, "CHA": 1}
+        "points": {"STR": 3, "DEX": 4, "CON": 5, "INT": 1, "WIS": 6, "CHA": 1},
+        "skill_bonuses": {
+            "Passive Acoustic Detection": 20,
+            "Perimeter Intrusion": 15
+        },
+        "starting_feat": "Night Vigilance",
+        "feat_desc": "(Passive): Low-light vision up to 60ft and immunity to sleep exhaustion penalties.",
+        "innate_ability": "Night Vigilance (Passive): Low-light vision up to 60ft and immunity to sleep exhaustion penalties."
     },
     "offgrid_homesteader": {
         "title": "🌲 Off-Grid Homesteader / Survivalist (+CON/WIS)",
         "desc": "Timber felling, well digging, food preservation, weather reading, and stubborn endurance.",
-        "points": {"STR": 4, "DEX": 3, "CON": 6, "INT": 1, "WIS": 5, "CHA": 1}
+        "points": {"STR": 4, "DEX": 3, "CON": 6, "INT": 1, "WIS": 5, "CHA": 1},
+        "skill_bonuses": {
+            "Homestead Engineering": 20,
+            "Hide Tanning & Curing": 15
+        },
+        "starting_feat": "Pioneer Fortitude",
+        "feat_desc": "(Passive): Immune to environmental hypothermia and dehydration damage in wilderness sectors.",
+        "innate_ability": "Pioneer Fortitude (Passive): Immune to environmental hypothermia and dehydration damage in wilderness sectors."
     },
     "yoga_contortionist": {
         "title": "🧘 Yoga Instructor / Contortionist (+DEX/WIS)",
         "desc": "Supreme core balance, ligament elasticity, breath regulation, and joint freedom.",
-        "points": {"STR": 1, "DEX": 8, "CON": 4, "INT": 1, "WIS": 4, "CHA": 2}
+        "points": {"STR": 1, "DEX": 8, "CON": 4, "INT": 1, "WIS": 4, "CHA": 2},
+        "skill_bonuses": {
+            "Gyroscopic Balance": 20,
+            "Tactical Reflexes": 15
+        },
+        "starting_feat": "Ligament Elasticity",
+        "feat_desc": "(Passive): Automatically escape non-magical grapples and web restraints; gain +1 AC from kinetic dodging.",
+        "innate_ability": "Ligament Elasticity (Passive): Automatically escape non-magical grapples and web restraints; gain +1 AC from kinetic dodging."
     },
     "esports_gamer": {
         "title": "🎮 Esports Athlete / Speedrunner (+DEX/INT)",
         "desc": "Micro-second twitch reactions, spatial routing, predictive framing, and APM dexterity.",
-        "points": {"STR": 0, "DEX": 7, "CON": 1, "INT": 7, "WIS": 3, "CHA": 2}
+        "points": {"STR": 0, "DEX": 7, "CON": 1, "INT": 7, "WIS": 3, "CHA": 2},
+        "skill_bonuses": {
+            "Ballistic Telemetry": 20,
+            "Algorithmic Decryption": 15
+        },
+        "starting_feat": "Twitch Precision",
+        "feat_desc": "(Passive): Permanent +2 bonus on Initiative rolls and critical strike confirmation.",
+        "innate_ability": "Twitch Precision (Passive): Permanent +2 bonus on Initiative rolls and critical strike confirmation."
     },
     "stage_performer": {
         "title": "🎭 Performing Musician / Stage Actor (+CHA/DEX)",
         "desc": "Magnetic crowd presence, acoustic projection, physical choreography, and empathetic resonance.",
-        "points": {"STR": 1, "DEX": 4, "CON": 2, "INT": 2, "WIS": 3, "CHA": 8}
+        "points": {"STR": 1, "DEX": 4, "CON": 2, "INT": 2, "WIS": 3, "CHA": 8},
+        "skill_bonuses": {
+            "Faction Diplomacy": 20,
+            "Beast Empathy": 15
+        },
+        "starting_feat": "Captivating Presence",
+        "feat_desc": "(Passive): Allies within 20ft gain +1 to hit against targets you are actively engaging.",
+        "innate_ability": "Captivating Presence (Passive): Allies within 20ft gain +1 to hit against targets you are actively engaging."
     },
     "longhaul_trucker": {
         "title": "🚛 Long-Haul Trucker / Highway Specialist (+CON/WIS)",
         "desc": "Iron highway stamina, solitary mental resilience, situational radar, and route planning.",
-        "points": {"STR": 3, "DEX": 2, "CON": 7, "INT": 1, "WIS": 5, "CHA": 2}
+        "points": {"STR": 3, "DEX": 2, "CON": 7, "INT": 1, "WIS": 5, "CHA": 2},
+        "skill_bonuses": {
+            "Interstate Navigation": 20,
+            "Heavy Vehicle Rigging": 15
+        },
+        "starting_feat": "Iron Stamina",
+        "feat_desc": "(Passive): Advantage on Constitution saves against physical exhaustion and hunger.",
+        "innate_ability": "Iron Stamina (Passive): Advantage on Constitution saves against physical exhaustion and hunger."
     },
     "extreme_sports": {
         "title": "🏂 Extreme Sports / Adrenaline Junkie (+DEX/STR)",
         "desc": "High-velocity downhill balance, rapid kinetic recovery, and zero fear of terminal velocity.",
-        "points": {"STR": 5, "DEX": 7, "CON": 5, "INT": 1, "WIS": 1, "CHA": 1}
+        "points": {"STR": 5, "DEX": 7, "CON": 5, "INT": 1, "WIS": 1, "CHA": 1},
+        "skill_bonuses": {
+            "Freefall Vectoring": 20,
+            "Gyroscopic Balance": 15
+        },
+        "starting_feat": "Terminal Composure",
+        "feat_desc": "(Passive): Take 50% reduced falling damage and stand up from Prone with 0 movement cost.",
+        "innate_ability": "Terminal Composure (Passive): Take 50% reduced falling damage and stand up from Prone with 0 movement cost."
     },
     "commercial_diver": {
         "title": "🤿 Commercial Diver / Hyperbaric Welder (+CON/STR)",
         "desc": "Hyperbaric lung fortitude, freezing water tolerance, deep darkness composure, and torch work.",
-        "points": {"STR": 5, "DEX": 2, "CON": 8, "INT": 1, "WIS": 3, "CHA": 1}
+        "points": {"STR": 5, "DEX": 2, "CON": 8, "INT": 1, "WIS": 3, "CHA": 1},
+        "skill_bonuses": {
+            "Hyperbaric Pressure-Mastery": 20,
+            "Abyssal Salvage": 15
+        },
+        "starting_feat": "Hyperbaric Fortitude",
+        "feat_desc": "(Passive): Hold breath underwater for up to 15 minutes; immune to water pressure hazards.",
+        "innate_ability": "Hyperbaric Fortitude (Passive): Hold breath underwater for up to 15 minutes; immune to water pressure hazards."
     },
     "line_cook": {
         "title": "🍳 Line Cook / Kitchen Warrior (+DEX/CON)",
         "desc": "Blistering stove endurance, multi-pan micro-timing, knife agility, and battle-cry tempo.",
-        "points": {"STR": 2, "DEX": 6, "CON": 6, "INT": 1, "WIS": 3, "CHA": 2}
+        "points": {"STR": 2, "DEX": 6, "CON": 6, "INT": 1, "WIS": 3, "CHA": 2},
+        "skill_bonuses": {
+            "Provisions & Alchemy": 20,
+            "Pyric Suppression": 15
+        },
+        "starting_feat": "Culinary Tempo",
+        "feat_desc": "(Passive): Food rations and meals restore double HP and grant +5 temporary HP.",
+        "innate_ability": "Culinary Tempo (Passive): Food rations and meals restore double HP and grant +5 temporary HP."
     },
     "highschool_educator": {
         "title": "👨‍🏫 High School Educator / Counselor (+CHA/INT/WIS)",
         "desc": "Infinite crisis patience, behavioral de-escalation, group discipline, and clear instruction.",
-        "points": {"STR": 1, "DEX": 1, "CON": 2, "INT": 5, "WIS": 5, "CHA": 6}
+        "points": {"STR": 1, "DEX": 1, "CON": 2, "INT": 5, "WIS": 5, "CHA": 6},
+        "skill_bonuses": {
+            "Faction Diplomacy": 20,
+            "Lore Cataloging": 15
+        },
+        "starting_feat": "De-escalation Authority",
+        "feat_desc": "(Passive): Once per rest, pacify a hostile non-boss humanoid before combat begins.",
+        "innate_ability": "De-escalation Authority (Passive): Once per rest, pacify a hostile non-boss humanoid before combat begins."
     },
     "park_ranger": {
         "title": "🧭 Park Ranger / Forestry Tracker (+WIS/DEX)",
         "desc": "Topographical wilderness mastery, predator track reading, brush navigation, and fire watching.",
-        "points": {"STR": 3, "DEX": 5, "CON": 4, "INT": 1, "WIS": 6, "CHA": 1}
+        "points": {"STR": 3, "DEX": 5, "CON": 4, "INT": 1, "WIS": 6, "CHA": 1},
+        "skill_bonuses": {
+            "Cartography": 20,
+            "Field Trapping": 15
+        },
+        "starting_feat": "Trail Master",
+        "feat_desc": "(Passive): Overland travel speed is increased by +25%; cannot be surprised in wilderness terrain.",
+        "innate_ability": "Trail Master (Passive): Overland travel speed is increased by +25%; cannot be surprised in wilderness terrain."
     },
     "blacksmith_sculptor": {
         "title": "⚒️ Blacksmith / Metal Sculptor (+STR/CON)",
         "desc": "Ten-pound hammer swinging, radiant heat endurance, steel quenching, and structural vision.",
-        "points": {"STR": 7, "DEX": 2, "CON": 6, "INT": 2, "WIS": 2, "CHA": 1}
+        "points": {"STR": 7, "DEX": 2, "CON": 6, "INT": 2, "WIS": 2, "CHA": 1},
+        "skill_bonuses": {
+            "Pyric Crucible Forging": 20,
+            "Structural Assessment": 15
+        },
+        "starting_feat": "Sledgehammer Kinetics",
+        "feat_desc": "(Passive): Melee attacks with hammers and blunt weapons deal +2 bonus bludgeoning damage.",
+        "innate_ability": "Sledgehammer Kinetics (Passive): Melee attacks with hammers and blunt weapons deal +2 bonus bludgeoning damage."
     },
     "mma_fighter": {
         "title": "🥊 Combat Sports Fighter / MMA Striker (+STR/DEX)",
         "desc": "Explosive hip drive, choke defense, pain suppression, and bone-crushing striking accuracy.",
-        "points": {"STR": 6, "DEX": 6, "CON": 5, "INT": 1, "WIS": 1, "CHA": 1}
+        "points": {"STR": 6, "DEX": 6, "CON": 5, "INT": 1, "WIS": 1, "CHA": 1},
+        "skill_bonuses": {
+            "Tactical Reflexes": 20,
+            "Kinetic Insulation": 15
+        },
+        "starting_feat": "Striking Flow",
+        "feat_desc": "(Passive): Unarmed strikes deal 1d6 bludgeoning damage and critical hits inflict Stun for 1 turn.",
+        "innate_ability": "Striking Flow (Passive): Unarmed strikes deal 1d6 bludgeoning damage and critical hits inflict Stun for 1 turn."
     }
 }
 
@@ -765,6 +1033,37 @@ PRESET_BACKGROUNDS = {
 
 EARTH_VOCATIONS = PRESET_BACKGROUNDS
 
+# =============================================================================
+# REQUIREMENT R2: PURGED SCI-FI RACES & LEGACY FALLBACK MAPPING
+# =============================================================================
+
+PURGED_SCI_FI_RACES = {
+    "neuromancer_cyborg",
+    "mantid_insectoid",
+    "nanite_host",
+    "void_walker",
+    "synthetic_android",
+    "phrenic_human",
+}
+
+DISALLOWED_CREATION_GENRES = (
+    "sci-fi",
+    "biomechanical",
+    "cyber",
+    "android",
+    "alien",
+)
+
+LEGACY_RACE_FALLBACKS = {
+    "human": "pure_human",
+    "neuromancer_cyborg": "gargoyle_lithic_sentinel",
+    "mantid_insectoid": "thrikreen_mantis",
+    "nanite_host": "troll_fleshwarped",
+    "void_walker": "shade_touched",
+    "synthetic_android": "golem_reborn",
+    "phrenic_human": "pure_human",
+}
+
 # --- 20 RACIAL MUTATIONS & LINEAGES (Fantasy & Sci-Fi) ---
 RACIAL_LINEAGES = {
     # Original 6 Lineages
@@ -868,9 +1167,10 @@ RACIAL_LINEAGES = {
     },
     "changeling_mimic": {
         "name": "Changeling / Faceless Mimic",
-        "genre": "Fantasy / Sci-Fi",
+        "genre": "D&D 3.5 Eberron / Shapechanger",
         "desc": "Unstable cellular matrix allowing rapid restructuring of facial features, voice chords, skin pigmentation, and body height.",
         "stat_mods": {"CHA": 3, "DEX": 2, "INT": 1, "STR": -1, "CON": 0, "WIS": 0},
+        "default_physical": {"age": 25, "height_in": 68.0, "weight_lbs": 150.0},
         "racial_abilities": [
             "Cellular Shift: Magically alter facial appearance, voice, and build to impersonate any humanoid.",
             "Slippery Identity: +4 bonus to Deception and Stealth checks when undercover.",
@@ -944,15 +1244,66 @@ RACIAL_LINEAGES = {
             "Wind Guidance: Ranged arrow and spell accuracy penalty from heavy winds is ignored."
         ]
     },
-    "sylvan_dryad": {
-        "name": "Sylvan Thornborn (Fey-Touched)",
-        "genre": "Fantasy",
-        "desc": "Flesh intertwined with living chlorophytic vines, bark-like knuckles, and deep connection to wild flora and leyline root-networks.",
-        "stat_mods": {"WIS": 3, "CON": 2, "CHA": 1, "STR": 0, "DEX": 0, "INT": -1},
+    "pixie_fey_sprite": {
+        "name": "Pixie (Gossamer Meadow-Sprite)",
+        "genre": "D&D 3.0 / Savage Species Fey",
+        "desc": (
+            "Tiny, gossamer-winged woodland sprites blessed with shimmering starlight aether, "
+            "playful trickery, and innate faerie magic. Standing less than two feet tall, pixies flit "
+            "through the air naturally invisible, confounding giants and beasts alike with enchanting pixie dust."
+        ),
+        "stat_mods": {"STR": -4, "DEX": 5, "CON": -1, "INT": 2, "WIS": 1, "CHA": 3},
+        "size": "Tiny",
+        "default_physical": {"age": 60, "height_in": 20.0, "weight_lbs": 15.0},
+        "flight_speed_ft": 40,
+        "flight_maneuverability": "Good",
+        "damage_reduction": "DR 5/cold iron",
         "racial_abilities": [
-            "Root-Mend: Heal 10 HP when resting directly on fertile earth or natural soil.",
-            "Thorn Bramble Skin: Melee attackers that strike you without reach suffer 1d4 piercing recoil damage.",
-            "Flora Rapport: Communicate basic concepts with natural plants and trees."
+            "Tiny Fey Stature & Aerodynamics: Tiny size grants a +2 size bonus to AC, +2 on attack rolls, +8 bonus on Stealth checks, -8 grapple bonus, and 0.5x carrying capacity. Allows moving freely through occupied enemy spaces and narrow crevices.",
+            "Natural Gossamer Flight (40ft): Shimmering iridescent wings grant Natural Flight with 40ft aerial speed (good maneuverability) and hover capability, completely ignoring ground-level traps, tripwires, pits, and difficult terrain.",
+            "Permanent Greater Invisibility: Naturally invisible at all times. Attacking or executing an offensive skill causes your form to briefly flicker at the moment of strike (granting Advantage on attack and denying target DEX to AC), then immediately refracts back into complete invisibility. Hostiles without Blindsight or True Seeing suffer Disadvantage and 50% miss chance.",
+            "Cold Iron Damage Reduction (DR 5/Cold Iron): Fey enchantment reduces all incoming physical and non-cold-iron weapon damage by 5 flat points per strike.",
+            "Pixie Dust (Sleep & Confusion): Scatter magical faerie dust in a 15-ft burst (Range 30ft, Action, DC 15 Save, 1/encounter). Targets must pass a DC 15 Wisdom save or succumb to magical Sleep (incapacitated for 1 round or until damaged) or Confusion (wander or attack random creatures for 1 round)."
+        ]
+    },
+    "meadow_nymph_fey": {
+        "name": "Meadow Nymph (Secluded Fey Maiden)",
+        "genre": "D&D 3.5 / Savage Species Fey",
+        "desc": (
+            "Breathtaking immortals of crystal springs and sunlit meadows whose transcendent "
+            "unearthly beauty overwhelms mortal hearts and bends reality with divine grace. "
+            "Their serene presence radiates an aura so blindingly radiant that foes are dazed by their mere visage."
+        ),
+        "stat_mods": {"STR": -2, "DEX": 2, "CON": -1, "INT": 0, "WIS": 2, "CHA": 5},
+        "size": "Medium",
+        "default_physical": {"age": 120, "height_in": 64.0, "weight_lbs": 120.0},
+        "damage_reduction": "DR 5/cold iron",
+        "racial_abilities": [
+            "Unearthly Grace: Add Charisma modifier as an untyped bonus to all saving throws (Fortitude, Reflex, Will) and as a deflection bonus to Armor Class while wearing light or no armor.",
+            "Blinding Beauty: Passive radiant aura; hostile humanoids within 30 feet that look upon your transcendent visage must pass a Fortitude/Constitution save (DC 15 or 10 + half Level + CHA mod) or be afflicted with Temporary Blindness and Stagger for 1 round.",
+            "Dimension Door (Fey Spring Step): Once per rest as a bonus action, dissolve into a shimmering mist of meadow petals and teleport up to 60 feet to any unoccupied visible space.",
+            "Cold Iron Damage Reduction (DR 5/Cold Iron): Natural fey resilience grants 5 points of flat damage reduction against all physical and non-cold-iron weapon strikes.",
+            "Wild Empathy & Sylvan Charm: Converse naturally with wild beasts and woodland spirits; gain Advantage on animal handling and diplomacy checks, and cast Sylvan Charm once per encounter (DC 15)."
+        ]
+    },
+    "sylvan_dryad": {
+        "name": "Sylvan Dryad (Oak-Heart Guardian)",
+        "genre": "D&D 3.5 / Savage Species Fey",
+        "desc": (
+            "Living spirits of ancient oak groves and primeval canopies whose flesh is woven with living "
+            "chlorophytic vines, flexible ironwood fibers, and deep leyline roots. Dryads preserve the balance "
+            "of ancient woodlands, commanding flora and slipping between boughs via Tree Stride."
+        ),
+        "stat_mods": {"STR": -1, "DEX": 2, "CON": 1, "INT": 0, "WIS": 3, "CHA": 1},
+        "size": "Medium",
+        "default_physical": {"age": 150, "height_in": 66.0, "weight_lbs": 125.0},
+        "damage_reduction": "DR 5/cold iron",
+        "racial_abilities": [
+            "Tree Stride & Woodland Communion: Step directly into the trunk of a living tree or wooden obstacle and instantaneously emerge from another tree within 60 feet as a movement action. Commune through the global mycelial root-network to detect hidden creatures, secret doors, and leylines within 1 mile.",
+            "Nature's Empathy & Chlorophytic Kinship: Speak fluently with all wild beasts, plants, and woodland spirits; beasts are naturally docile toward you unless provoked. Gain Advantage on all Animal Handling, Nature, and Wilderness Survival checks.",
+            "Barkskin & Cold Iron Resilience: Flexible ironwood bark skin grants a natural +2 bonus to Armor Class and Damage Reduction (DR 5/Cold Iron) against non-cold-iron physical attacks.",
+            "Verdant Entangle: Once per combat encounter as an action, command roots and thorny brambles to erupt in a 20-ft radius (Range 60ft), forcing hostiles to pass a DC 14 + WIS save or become Restrained and suffer 1d6 piercing damage per turn.",
+            "Root-Mend Photosynthesis: Regenerate 5 HP per combat turn while fighting or resting in direct sunlight or with feet planted upon fertile natural earth."
         ]
     },
     "void_walker": {
@@ -1268,24 +1619,27 @@ RACIAL_LINEAGES = {
         ]
     },
 
-    # --- D&D & PATHFINDER MONSTROUS PLAYABLE RACES ---
+    # --- D&D 3.0 / 3.5 & SAVAGE SPECIES MONSTROUS PLAYABLE RACES ---
     "troll_fleshwarped": {
         "name": "Troll (Flesh-Warped Regeneration Juggernaut)",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Hulking brute with moss-green rubbery hide, elongated limbs, and ferocious predatory appetite. Legendary for rapid cellular re-knitting that closes mortal wounds in seconds.",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Nine-foot moss-green brute with rubbery hide and insatiable predatory hunger from D&D 3.0 Savage Species, legendary for cellular re-knitting that closes mortal wounds in seconds.",
         "stat_mods": {"STR": 4, "CON": 4, "WIS": -1, "INT": -2, "CHA": -2, "DEX": 0},
+        "default_physical": {"age": 35, "height_in": 108.0, "weight_lbs": 520.0},
         "racial_abilities": [
-            "Rapid Cellular Regeneration: Passively regenerates 5 HP at the start of each of your turns in combat, unless you took Fire or Acid damage since your last turn.",
-            "Rending Talons: Unarmed strikes deal 1d8 + STR slashing damage. If you hit a target with two claw attacks on the same turn, rend for +2d6 bonus tearing damage.",
-            "Keen Scent: Gain Advantage on Wisdom (Perception) checks that rely on smell and track wounded targets automatically within 100 feet.",
-            "Flaw - Voracious Hunger & Fire Vulnerability: Takes 50% extra damage from Fire and Acid attacks; requires consuming double daily food rations to sustain hyper-regeneration."
+            "Living Regeneration (+5 HP/Round): Passively regenerates 5 HP at the start of each of your combat turns, closing open wounds, reattaching severed flesh, and stabilizing dying status at 1 HP.",
+            "Acid & Fire Suppression & Fire Vulnerability: Takes 50% extra damage from Fire and Acid attacks; taking Fire or Acid damage suppresses Living Regeneration for 1 full turn; requires double daily food rations.",
+            "Rend Attack & Rending Talons: Unarmed talons deal 1d8 + STR slashing damage. When hitting a target with two claw attacks on the same turn, rend the victim's flesh for an additional +2d6 + (1.5 × STR) bonus tearing damage.",
+            "Rubbery Hide Natural Armor (+2 AC): Dense rubbery flesh provides a flat +2 Natural Armor bonus to AC and 25% resistance to bludgeoning damage.",
+            "Keen Scent (100ft): Automatically detect and track bleeding or wounded targets within 100 feet by scent; cannot be surprised by scent-bearing creatures."
         ]
     },
     "illithid_mind_flayer": {
         "name": "Illithid / Ceremorph (Renegade Mind Flayer)",
-        "genre": "D&D & Pathfinder Monstrous",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
         "desc": "Renegade cephalopod aberration liberated from Elder Brain hive-networks when ambient rift aether severed the collective synaptic tether. Purplish-slate rubbery flesh, four writhing facial tentacles, and terrifying psionic brain-wave mastery.",
         "stat_mods": {"INT": 4, "WIS": 2, "CHA": 1, "STR": -2, "CON": 0, "DEX": 0},
+        "default_physical": {"age": 80, "height_in": 72.0, "weight_lbs": 170.0},
         "racial_abilities": [
             "Psionic Mind Blast: Unleash a 20ft frontal cone of psychic pressure dealing 2d8 + INT psychic damage; targets must pass an INT saving throw or be Stunned for 1 round (once per rest).",
             "Tentacle Grapple & Neural Siphon: Attack with facial tentacles dealing 1d6 + INT psychic damage; on hit, grapple the target and drain 10 HP / 10 Combat Resource from incapacitated foes.",
@@ -1295,9 +1649,10 @@ RACIAL_LINEAGES = {
     },
     "mountain_orc_blood": {
         "name": "Mountain Orc (Gruumsh War-Born)",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Towering gray-green warrior bred in blood-stained war bands, carrying scarred tusk canines, bone piercings, and ancestral fury that surges into an unstoppable melee rush.",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Towering gray-green warrior from D&D 3.0 Savage Species bred in blood-stained war bands, carrying scarred tusk canines, bone piercings, and ancestral fury that surges into an unstoppable melee rush.",
         "stat_mods": {"STR": 4, "CON": 3, "DEX": 0, "WIS": 0, "INT": -2, "CHA": -1},
+        "default_physical": {"age": 22, "height_in": 76.0, "weight_lbs": 260.0},
         "racial_abilities": [
             "Aggressive Rush: As a bonus action on your turn, move up to your full movement speed toward a hostile creature you can see.",
             "Relentless Juggernaut: When reduced to 0 HP, drop to 1 HP instead and immediately gain +10 temporary HP and +2 to melee damage for 1 round (once per long rest).",
@@ -1306,9 +1661,10 @@ RACIAL_LINEAGES = {
     },
     "goblin_pyromaniac": {
         "name": "Goblin Sapper / Pyromaniac (Kek-Clan Sneak)",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Pointy-eared, yellow-eyed cackling green menace with needle teeth, sharp claws, and a maniacal obsession with explosive alchemy, singing fire, and dirty fighting.",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Pointy-eared, yellow-eyed cackling green menace from D&D 3.0 Savage Species with needle teeth, sharp claws, and a maniacal obsession with explosive alchemy, singing fire, and dirty fighting.",
         "stat_mods": {"DEX": 4, "CON": 1, "INT": 1, "STR": -2, "WIS": -1, "CHA": 0},
+        "default_physical": {"age": 20, "height_in": 40.0, "weight_lbs": 50.0},
         "racial_abilities": [
             "Nimble Escape: You can take the Disengage or Hide action as a bonus action on each of your combat turns.",
             "Fury of the Small: When you damage a creature with an attack that is of a larger size than you, deal extra damage equal to your character level (once per encounter).",
@@ -1316,110 +1672,144 @@ RACIAL_LINEAGES = {
         ]
     },
     "kobold_dragon_herald": {
-        "name": "Kobold Wyrm-Herald (Dragon-Speaker)",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Scaled, canine-snouted miniature draconic survivor bearing glowing red eye-slits, a sweeping tail, and ancestral dragon-blood that hums with raw elemental power.",
+        "name": "Kobold Wyrm-Herald (Dragon-Blooded Scion)",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Scaled, canine-snouted miniature draconic survivor from D&D 3.0 Savage Species bearing glowing eyes, sweeping tail, and ancestral dragon-blood.",
         "stat_mods": {"DEX": 3, "CHA": 3, "CON": 0, "STR": -2, "INT": 1, "WIS": 0},
+        "default_physical": {"age": 22, "height_in": 36.0, "weight_lbs": 42.0},
         "racial_abilities": [
-            "Draconic Roar & Grovel: Unleash an alarming draconic screech or distracting feint as a bonus action, granting allies Advantage on attack rolls against enemies within 10 feet.",
-            "Pack Hunter Telemetry: When an ally is adjacent to your target, your attacks gain +2 to hit and your critical strike range is expanded by 1 (e.g. 19-20).",
-            "Dragon-Spark Cantrip: Innately cast a minor elemental bolt (Fire, Cold, or Acid) dealing 1d8 damage with 60ft range without using spell slots."
+            "Draconic Roar & Grovel: Unleash an alarming dragon roar as a bonus action once per encounter, granting allies Advantage on attack rolls against enemies within 10 feet.",
+            "Pack Hunter Telemetry: When an ally is within 5 feet of your target, your attacks gain +2 to hit and your critical strike range is expanded by 1 (e.g. 19-20).",
+            "Dragon-Spark Cantrip: Innately cast a minor elemental bolt (Fire, Cold, or Acid) dealing 1d8 damage at 60ft range without using spell slots.",
+            "Small Stature & Dragon Scales: Small size grants +1 AC and +1 on attack rolls; draconic crest scales grant +1 Natural Armor AC."
         ]
     },
     "bugbear_shadow_stalker": {
         "name": "Bugbear Shadow-Stalker (Apex Brute)",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Massive seven-foot furred goblinoid juggernaut with disproportionately long limbs, padded paws, and silent ambushing instincts that belie their massive size.",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Massive seven-foot furred goblinoid juggernaut from D&D 3.0 Savage Species with disproportionately long limbs, padded paws, and silent ambushing instincts.",
         "stat_mods": {"STR": 3, "DEX": 2, "CON": 2, "WIS": 0, "INT": -1, "CHA": -1},
+        "default_physical": {"age": 26, "height_in": 84.0, "weight_lbs": 310.0},
         "racial_abilities": [
-            "Long-Limbed Reach: Your melee attacks have +5 feet of reach, allowing you to strike with two-handed axes and polearms from safe distances.",
+            "Long-Limbed Reach: Your melee weapon and unarmed attacks have +5 feet of reach, striking from safe distances.",
             "Surprise Attack (Ambush Carnage): If you hit a creature on the first round of combat before they act, the attack deals an extra 2d6 weapon damage.",
-            "Sneaky Titan: Gain proficiency in Stealth; can squeeze through narrow gaps meant for creatures of Small size despite your hulking build."
+            "Sneaky Titan: Gain proficiency in Stealth; can squeeze through narrow gaps meant for creatures of Small size despite your hulking build.",
+            "Brute Might: Melee weapon attacks deal +1 flat damage."
         ]
     },
     "gnoll_hyena_ravager": {
         "name": "Gnoll Hyena-Ravager (Fang of Yeenoghu)",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Feral, spotted-pelt hyena humanoid driven by ceaseless blood-hunger and terrifying cackling laughter, tearing through enemy battle-lines with bone-crushing jaws.",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Feral spotted-pelt hyena humanoid from D&D 3.0 Savage Species driven by cackling blood-hunger and bone-crushing jaw strength.",
         "stat_mods": {"STR": 3, "CON": 3, "DEX": 1, "INT": -2, "WIS": 0, "CHA": -1},
+        "default_physical": {"age": 24, "height_in": 78.0, "weight_lbs": 280.0},
         "racial_abilities": [
-            "Rampage: When you reduce a creature to 0 hit points with a melee attack on your turn, you can take a bonus action to move up to half your speed and make a bite attack.",
-            "Crushing Jaws: Secondary bite attack dealing 1d6 + STR piercing damage in melee that inflicts the Bleeding status on hit.",
-            "Cackling Terror: Once per encounter, emit an eerie hyena laugh that forces hostiles within 30ft to make a WIS save or suffer Disadvantage on attacks for 1 round."
+            "Rampage: When reducing a creature to 0 hit points with a melee attack on your turn, take a bonus action to move up to half your speed and make a bite attack.",
+            "Crushing Jaws & Bleed: Secondary bite attack dealing 1d6 + STR piercing damage that inflicts Bleeding status on hit.",
+            "Cackling Terror: Once per encounter, emit an eerie hyena laugh forcing foes within 30 feet to make a WIS save (DC 13 + CHA) or suffer Disadvantage on attacks for 1 round.",
+            "Predatory Scent: Darkvision (60ft) and Advantage on Perception checks relying on smell."
         ]
     },
     "minotaur_labyrinth_breaker": {
         "name": "Minotaur Labyrinth-Breaker (Gore-Horn Juggernaut)",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Mighty bull-headed titan of corded muscle, cloven hooves, and sweeping bronze horns, possessing a supernatural mental compass that pierces any maze or dungeon.",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Mighty bull-headed titan of corded muscle, cloven hooves, and sweeping bronze horns from D&D 3.0 Savage Species. Possesses supernatural spatial navigation, crushing charge momentum, and a terrifying gore attack.",
         "stat_mods": {"STR": 4, "CON": 3, "WIS": 1, "DEX": -1, "INT": -1, "CHA": -1},
+        "default_physical": {"age": 28, "height_in": 96.0, "weight_lbs": 450.0},
         "racial_abilities": [
-            "Goring Horn Charge: If you move at least 20 feet straight toward a target before hitting with a melee attack, gore with your horns for +2d6 piercing damage.",
-            "Hammering Horns: Immediately after hitting with a melee attack on your turn, use a bonus action to shove the target up to 10 feet away or knock them Prone.",
-            "Labyrinthine Memory: Perfect directional recall; immune to getting lost, can never be trapped in maze spells, and detect secret doors/passages with +3 Perception."
+            "Natural Cunning: Immune to maze spells, spatial traps, and magical disorientation. Can never become lost in dungeons, caverns, or labyrinths; perfect directional memory. Passively detects secret doors and concealed architectural passages within 15 feet (+3 Perception).",
+            "Gore Charge Attack: Powerful horn gore attack dealing 2d6 + STR piercing damage. When moving at least 20 feet straight toward a target before hitting with a melee attack, gore with your horns for an additional +2d6 piercing damage (total 4d6 + STR) and force a DC 14 STR save or knock the target Prone.",
+            "Large Build & Crushing Momentum: Large size confers -1 size penalty to AC, +5 feet melee reach, and 2.0x carrying capacity. Melee strikes with heavy two-handed axes or blunt weapons knock targets back 5 feet.",
+            "Hammering Horns: As a bonus action immediately following a successful melee weapon attack on your turn, shove an adjacent creature up to 10 feet away or knock them Prone.",
+            "Darkvision (60ft): See in complete non-magical subterranean darkness up to 60 feet."
         ]
     },
     "half_ogre_crusher": {
-        "name": "Ogrekin / Half-Ogre Earth-Crusher",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Nine-foot-tall primordial brute with skin thick as weathered granite, hands like iron shovels, and raw earth-splitting physical power that breaks stone fortifications.",
-        "stat_mods": {"STR": 5, "CON": 4, "DEX": -2, "INT": -3, "WIS": 0, "CHA": -1},
+        "name": "Half-Ogre Earth-Crusher",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Nine-foot-tall primordial brute from D&D 3.0 Savage Species with skin thick as weathered granite, hands like iron shovels, and raw earth-splitting physical power.",
+        "stat_mods": {"STR": 6, "CON": 4, "DEX": -2, "INT": -3, "WIS": -1, "CHA": -1},
+        "default_physical": {"age": 25, "height_in": 102.0, "weight_lbs": 580.0},
         "racial_abilities": [
-            "Colossal Swing: When attacking with two-handed heavy weapons, deal bludgeoning splash damage equal to your STR mod to all adjacent enemies.",
-            "Rock Hurler: Pick up and throw large boulders, rubble, or metal scrap up to 60 feet dealing 2d8 + STR bludgeoning damage.",
-            "Hulking Bulk: Carrying capacity and push/drag limits are doubled (+100 lbs unencumbered); natural Armor Class increased by +2.",
+            "Colossal Might & Reach (+5ft reach): Colossal Large frame grants natural 10ft melee reach with two-handed weapons and +6 bonus Strength. Melee attacks deal splash damage equal to STR mod to all adjacent enemies.",
+            "Natural Armor Bonus (+2 AC): Calcified epidermal dermal plating grants a flat +2 Natural Armor bonus to AC that stacks with worn armor.",
+            "Rock Hurler: Pick up and throw large boulders, masonry blocks, or scrap metal up to 60 feet dealing 2d8 + STR bludgeoning damage.",
+            "Hulking Bulk: Carrying capacity and push/drag limits are doubled (+100 lbs unencumbered bonus capacity); Advantage on Strength checks to break doors and shove foes.",
             "Flaw - Clumsy Giant: Suffers Disadvantage on delicate manual dexterity, lockpicking, and stealth checks."
+        ]
+    },
+    "ogre_titan_brute": {
+        "name": "Ogre Titan-Brute (True Savage Ogre)",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Ten-foot true giant brute from D&D 3.0 Savage Species boasting monstrous +8 Strength, massive bone density, and primeval clubbing ferocity.",
+        "stat_mods": {"STR": 8, "CON": 4, "DEX": -2, "INT": -4, "WIS": -1, "CHA": -2},
+        "default_physical": {"age": 32, "height_in": 114.0, "weight_lbs": 750.0},
+        "racial_abilities": [
+            "True Giant Might (+8 STR & Large Reach): Titanic Large build grants +8 Strength modifier and natural 10ft melee reach. Two-handed weapon strikes deal +1.5x STR damage.",
+            "Natural Armor Bonus (+3 AC): Heavy thick giant hide grants a flat +3 Natural Armor bonus to AC.",
+            "Colossal Sweep: Make a sweeping arc attack dealing weapon damage + STR to up to 3 adjacent targets within reach.",
+            "Giant Boulder Hurler: Launch heavy 50-lb rocks or masonry up to 80 feet dealing 3d8 + STR bludgeoning damage.",
+            "Flaw - Dense Wit & Voracious Appetite: Severe cognitive penalty (-4 INT) and requires triple daily food rations."
         ]
     },
     "medusa_gorgon_scion": {
         "name": "Medusa / Gorgon Scion (Serpent-Gaze)",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Cursed, serpentine immortal whose hair is a writhing nest of venomous vipers and whose unblinking golden gaze can petrify living tissue into solid granite.",
-        "stat_mods": {"CHA": 3, "DEX": 2, "CON": 1, "INT": 1, "STR": 0, "WIS": -1},
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Cursed serpentine immortal from D&D 3.0 Savage Species crowned with living venomous vipers and wielding a golden gaze that petrifies living flesh into granite.",
+        "stat_mods": {"CHA": 4, "DEX": 3, "CON": 1, "INT": 1, "STR": 0, "WIS": -1},
+        "default_physical": {"age": 180, "height_in": 68.0, "weight_lbs": 140.0},
         "racial_abilities": [
-            "Petrifying Gaze: Target a creature within 30 feet that can see your eyes; target must pass a CON saving throw or become Restrained as stone creeps across their limbs (DC 13 + CON mod).",
-            "Serpent-Hair Bite: As a reaction when an enemy enters your melee reach, your viper locks strike for 1d4 piercing + 1d6 poison damage.",
-            "Stone-Immunity & Darkvision: Complete immunity to petrification, paralysis, and poison; see in pitch darkness up to 90 feet."
+            "Petrifying Gaze (DC 15 Fortitude Save): Target a creature within 30 feet that can see your eyes. Target must make a DC 15 Fortitude/CON save (DC 13 + CHA mod) or become Restrained as petrifying stone creeps over their body; a second failed save or reaching 0 HP petrifies the target permanently into solid granite.",
+            "Gorgon Venom Serpent-Hair Bite: As a bonus action or reaction when an enemy enters melee reach, viper locks strike for 1d4 piercing + 1d8 gorgon venom damage (DC 14 CON save or Poisoned for 1 minute).",
+            "Lithic & Toxic Immunity: Complete immunity to petrification, paralysis, and poison damage.",
+            "Serpentine Grace & Darkvision (90ft): +2 bonus on Stealth, Deception, and Initiative; Darkvision up to 90 feet."
         ]
     },
     "gargoyle_lithic_sentinel": {
         "name": "Gargoyle Lithic Wing-Sentinel",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Chiseled from ancient demonic granite, possessing bat-like stone wings, horned brows, and razor talons. Masters of architectural ambushes and roof-stalking.",
-        "stat_mods": {"CON": 4, "STR": 3, "DEX": 0, "WIS": 1, "INT": -2, "CHA": -2},
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Chiseled from ancient demonic granite, possessing bat-like stone wings, horned brow, and razor talons from D&D 3.0 Savage Species. Masters of architectural ambushes and roof-stalking.",
+        "stat_mods": {"CON": 4, "STR": 3, "DEX": 1, "WIS": 0, "INT": -2, "CHA": -2},
+        "default_physical": {"age": 200, "height_in": 72.0, "weight_lbs": 350.0},
         "racial_abilities": [
-            "Stony Carapace: Resistance (25% damage reduction) against non-magical bludgeoning, piercing, and slashing attacks.",
-            "Stone Wings (Glide & Hover): Fly and glide up to 30 feet per round, ignoring ground-level traps and difficult terrain.",
-            "False Appearance (Statue Stance): While remaining motionless atop stone or building ledges, you are completely indistinguishable from an inanimate gothic statue."
+            "Stone Hide Damage Reduction (DR 10/Magic): Dense demonic granite hide grants DR 10/magic (reducing physical damage from non-magical weapons by 10 points or 25% passive damage reduction against mundane physical attacks).",
+            "Natural Flight (60ft): Massive bat-like stone wings grant natural 60ft aerial flight speed with hover capability, bypassing ground hazards, tripwires, spikes, and chasms. Unlocks the wings graft slot.",
+            "Natural Attacks (Claws, Bite & Horn Gore): Four-fold natural attack routine—razor stone claws (1d6 slashing), fanged bite (1d4 piercing), and horned brow gore (1d4 bludgeoning).",
+            "Freeze (Statue Stance / False Appearance): While remaining motionless atop stone architecture, parapets, or ruins, you are completely indistinguishable from an inanimate gothic stone carving. Attacking from freeze grants Ambush Advantage (+4 to hit, +2d6 damage).",
+            "Lithic Fortitude: Complete immunity to petrification and natural 25% resistance to poisons, atmospheric toxins, and diseases."
         ]
     },
     "troglodyte_stench_stalker": {
         "name": "Troglodyte Cavern Stench-Stalker",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Reptilian Underdark carnivore covered in gray-green scales with a spiny dorsal ridge, exuding a pungent, sickening glandular musk that nauseates warm-blooded prey.",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Reptilian Underdark carnivore from D&D 3.0 Savage Species covered in gray-green scales with a spiny dorsal ridge, exuding a pungent, sickening glandular musk.",
         "stat_mods": {"CON": 4, "STR": 2, "DEX": 1, "INT": -2, "WIS": 0, "CHA": -3},
+        "default_physical": {"age": 25, "height_in": 66.0, "weight_lbs": 175.0},
         "racial_abilities": [
             "Stench Musk Aura: Any non-troglodyte starting their turn within 5 feet of you must pass a CON save (DC 12 + CON mod) or become Poisoned until the start of their next turn.",
-            "Chameleon Scales: Natural skin color shifts to match stone, gravel, and dirt, granting Advantage on Dexterity (Stealth) checks in subterranean areas.",
+            "Chameleon Scales: Natural skin color shifts to match stone, gravel, and dirt, granting Advantage on Stealth checks in subterranean areas.",
             "Claw-and-Bite Multiattack: Secondary bite attack in melee dealing 1d4 piercing + 1d4 acid damage."
         ]
     },
     "doppelganger_morph": {
         "name": "Doppelganger Flesh-Morph Infiltrator",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Faceless, slate-skinned psychic shapeshifter possessing uncanny empathy, surface-mind eavesdropping, and seamless physiological replication.",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Faceless slate-skinned psychic shapechanger from D&D 3.0 Savage Species capable of flawless anatomical replication and surface-mind eavesdropping.",
         "stat_mods": {"CHA": 4, "DEX": 2, "INT": 2, "STR": 0, "CON": 0, "WIS": -1},
+        "default_physical": {"age": 50, "height_in": 70.0, "weight_lbs": 165.0},
         "racial_abilities": [
-            "Shapechanger Master: Magically polymorph into any Medium or Small humanoid you have seen, precisely replicating their facial features, voice, gait, and gear visual.",
-            "Read Surface Thoughts: Sense surface thoughts and combat intentions within 60 feet, granting +2 on Insight, Deception, and AC against the read target.",
-            "Ambusher Strike: When attacking a target that is unaware of your true nature, deal +3d6 bonus precision damage on the first hit."
+            "Shapechanger Master: Magically alter facial features, voice, height, and body build to impersonate any Medium or Small humanoid seen (+5 to Deception checks).",
+            "Read Surface Thoughts: Sense surface thoughts and combat intentions within 60 feet, granting +2 on Insight, +2 AC against the read target, and Advantage on initiative.",
+            "Ambusher Strike: When attacking a target that is surprised or unaware of your true identity, deal +3d6 bonus precision damage on your first hit.",
+            "Mental Fortress: Immune to sleep, charm, and mental probing spells."
         ]
     },
     "hag_born_caliban": {
         "name": "Hag-Born / Caliban Hex-Witch",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Offspring of ancient swamp and night hags—crooked posture, weeping willow bark skin, needle-iron nails, and inherited coven blood-curses.",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Offspring of ancient swamp and night hags from D&D 3.0 Savage Species—crooked posture, bark skin, needle-iron nails, and inherited coven blood-curses.",
         "stat_mods": {"WIS": 3, "CHA": 2, "CON": 2, "STR": 1, "INT": 0, "DEX": -1},
+        "default_physical": {"age": 35, "height_in": 68.0, "weight_lbs": 180.0},
         "racial_abilities": [
             "Coven Blood-Hex: Curse a creature within 60 feet as a bonus action; target suffers -2 to all saving throws and takes 1d6 necrotic damage whenever you hit them.",
             "Iron Claws & Nails: Unarmed strikes deal 1d6 + STR slashing damage and count as magical cold-iron weapons.",
@@ -1428,20 +1818,22 @@ RACIAL_LINEAGES = {
     },
     "grung_tree_frog": {
         "name": "Grung Poison-Dipped Anuran",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Brightly-colored, three-foot-tall humanoid tree frog possessing adhesive suction pads, hyper-flexible joints, and glistening toxic dermal secretions.",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Brightly-colored three-foot humanoid tree frog possessing suction pads, hyper-flexible joints, and glistening toxic secretions.",
         "stat_mods": {"DEX": 4, "CON": 2, "WIS": 1, "STR": -2, "INT": 0, "CHA": 0},
+        "default_physical": {"age": 18, "height_in": 36.0, "weight_lbs": 38.0},
         "racial_abilities": [
-            "Poisonous Skin Secretions: Any creature that grapples you or strikes you with an unarmed attack must pass a CON save or be Poisoned for 1 minute; coat weapons in poison on contact (+1d4 poison damage).",
-            "Standing Leap: Your high jump is up to 15 feet and your long jump is up to 25 feet without needing a running start.",
+            "Poisonous Skin Secretions: Any creature that grapples you or strikes with unarmed attack must pass CON save or be Poisoned; coat weapons in poison on contact (+1d4 poison damage).",
+            "Standing Leap: High jump is up to 15 feet and long jump is up to 25 feet without needing a running start.",
             "Adhesive Wall-Crawl: Climb smooth vertical surfaces and ceilings effortlessly without slipping."
         ]
     },
     "were_kin_shifter": {
         "name": "Shifter / Were-Kin (Lycanthrope-Born)",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Mortal carrier of dormant therianthropy, capable of calling upon their inner beast to sprout razor fangs, thick bristling fur, and predator senses.",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Mortal carrier of dormant therianthropy from D&D 3.0 Savage Species, capable of sprouting razor fangs, bristling fur, and predator senses.",
         "stat_mods": {"STR": 2, "DEX": 2, "CON": 2, "WIS": 1, "INT": -1, "CHA": -1},
+        "default_physical": {"age": 25, "height_in": 72.0, "weight_lbs": 195.0},
         "racial_abilities": [
             "Feral Beast Shift: As a bonus action once per encounter, enter a shifted beast-aspect for 1 minute—gaining 10 temporary HP, +10ft movement speed, and 1d6 predatory bite/claw attacks.",
             "Apex Scent & Darkvision: Scent tracking up to 60 feet, Darkvision (60ft), and +2 to Survival and Perception checks.",
@@ -1450,36 +1842,49 @@ RACIAL_LINEAGES = {
     },
     "centaur_plains_vanguard": {
         "name": "Centaur Plains-Vanguard (Equine Charger)",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Majestic fusion of human torso and mighty equine body, combining the heavy charging momentum of a warhorse with martial weapon mastery.",
-        "stat_mods": {"STR": 4, "CON": 2, "WIS": 1, "DEX": 0, "INT": -1, "CHA": 0},
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Majestic fusion of human torso and mighty equine body from D&D 3.0 Savage Species, combining the heavy charging momentum of a warhorse with martial weapon mastery.",
+        "stat_mods": {"STR": 4, "CON": 3, "DEX": 1, "WIS": 1, "INT": -1, "CHA": -1},
+        "default_physical": {"age": 30, "height_in": 90.0, "weight_lbs": 1150.0},
         "racial_abilities": [
-            "Equine Charge: If you move at least 30 feet straight toward a target and hit with a melee attack, deal +2d6 bonus damage and make a bonus action Hooves attack.",
-            "Hooves Strike: Unarmed melee strike with iron-shod hooves dealing 1d6 + STR bludgeoning damage.",
-            "Galloping Overland Speed: Base movement speed is 40 feet (30% faster than standard humanoids); carrying capacity is doubled (+80 lbs).",
-            "Flaw - Climb Impairment: Suffer double movement cost when attempting to climb sheer vertical ladders or ropes."
+            "Large Equine Build & Barding Slot: Large quadruped frame with dedicated equine_barding equipment slot in the paper doll (+2 to +4 AC from chain or plate barding). Quadruped anatomy triples unencumbered carrying capacity (+80 lbs bonus capacity).",
+            "Galloping Overland Speed (40ft): Base movement speed is 40 feet (33% faster than standard humanoids), allowing rapid battlefield repositioning and overland travel.",
+            "Trample & Hooves Strike: Iron-shod hooves deliver 1d6 + STR bludgeoning damage. When moving at least 30 feet in a straight line through an enemy's space, overrun and trample for 2d6 + STR damage, forcing a DC 14 STR save or knocked Prone.",
+            "Mounted Combat Synergy: Naturally counts as both mount and rider; qualifies for mounted combat feats, wields lances in one hand while moving, and receives high-ground advantage on Medium or smaller targets.",
+            "Flaw - Climb Impairment: Suffer double movement cost when attempting to climb sheer vertical ladders, sheer rock cliffs, or ropes."
         ]
     },
     "thrikreen_mantis": {
         "name": "Thri-Kreen Desert Mantis (Four-Armed Wanderer)",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Four-armed arid insectoid with sandy chitin, compound antennae, clicking mandibles, and an alien hive-telepathy.",
+        "genre": "D&D 3.0 / Savage Species Monstrous",
+        "desc": "Four-armed arid insectoid with sandy chitin, compound antennae, clicking mandibles, and alien hive telepathy from D&D 3.0 Savage Species.",
         "stat_mods": {"DEX": 4, "WIS": 2, "CON": 1, "STR": 0, "INT": 0, "CHA": -2},
+        "default_physical": {"age": 20, "height_in": 74.0, "weight_lbs": 240.0},
         "racial_abilities": [
-            "Secondary Arms (Four-Armed Wielding): Possess two primary arms and two secondary arms; can dual-wield weapons while simultaneously holding a shield or loading a projectile weapon.",
+            "Secondary Arms (Four-Armed Wielding): Possess two primary arms and two secondary arms; can dual-wield weapons while simultaneously holding a shield or loading projectiles.",
             "Chameleon Carapace: Alter color to match sand, stone, and dirt, granting natural AC 15 + DEX mod (max 2) and Advantage on Stealth checks.",
-            "Sleepless Alien Metabolism: Do not require sleep and cannot be put to sleep by magic; rest by remaining in a light meditative awareness for 4 hours."
+            "Sleepless Alien Metabolism: Do not require sleep and cannot be put to sleep by magic; rest through 4 hours of alert meditation.",
+            "Gyroscopic Leap: Standing high jump is 20 feet and long jump is 30 feet without running."
         ]
     },
     "satyr_fey_reveler": {
         "name": "Satyr Fey-Horned Reveler",
-        "genre": "D&D & Pathfinder Monstrous",
-        "desc": "Goat-legged woodland wanderer crowned with curling ram horns, possessing nimble cloven hooves, ancient panpipe melodies, and uncanny fey magic resistance.",
-        "stat_mods": {"CHA": 3, "DEX": 2, "WIS": 1, "STR": 0, "CON": 0, "INT": -1},
+        "genre": "D&D 3.5 / Savage Species Fey",
+        "desc": (
+            "Goat-legged woodland wanderers crowned with curling ram horns, possessing nimble cloven hooves, "
+            "ancient panpipe melodies, and uncanny fey magic resistance. Satyrs roam primeval glades and "
+            "mountain trails celebrating freedom, trickery, and wild music."
+        ),
+        "stat_mods": {"STR": 1, "DEX": 2, "CON": 1, "INT": -1, "WIS": 1, "CHA": 2},
+        "size": "Medium",
+        "default_physical": {"age": 45, "height_in": 68.0, "weight_lbs": 170.0},
+        "damage_reduction": "DR 5/cold iron",
         "racial_abilities": [
-            "Magic Resistance (Fey Blessing): Gain Advantage on all saving throws against spells and magical hexes.",
-            "Mirthful Ram-Horn Strike: Headbutt melee strike dealing 1d6 + STR bludgeoning damage; on hit after moving 20ft, knock foes prone.",
-            "Panpipe Enchantment: Play an aetheric melody on pipes or flute once per encounter to Charm or Frighten targets within 30 feet (WIS save DC 13 + CHA mod)."
+            "Headbutt Gore Attack & Ram Charge: Deliver a natural headbutt gore strike with heavy curling ram horns dealing 1d6 + STR bludgeoning/piercing damage in melee. If you charge at least 20 feet straight toward a foe before striking, deal +1d6 bonus damage (2d6 + STR total) and force a DC 13 + STR save or knock the target Prone.",
+            "Panpipes of the Wild (Charm & Fear Melodies): Play an enchanted panpipe melody as an action (Range 60ft, 1/encounter). Hostile creatures must make a DC 15 Wisdom saving throw or succumb to your choice of either Charm (pacified and won't attack you) or Terrifying Fear (Frightened and forced to flee for 1 round).",
+            "Fey Magic Resistance: Ancient sylvan warding grants Advantage on all saving throws against spells, magical hexes, and arcane status debuffs.",
+            "Cloven Hoof Agility & Sylvan Stride: Cloven goat hooves grant +5 ft base movement speed, +3 bonus on Acrobatics and rock-climbing checks, and ignore difficult terrain in forests and craggy hills.",
+            "Cold Iron Damage Reduction (DR 5/Cold Iron): Natural fey vitality blunts mundane weapons, providing 5 points of flat damage reduction against non-cold-iron physical strikes."
         ]
     },
     "sahuagin_blood_frenzy": {
@@ -1857,67 +2262,184 @@ HYBRID_CONCEPT_ART = {
 }
 
 
+# Canonical racial physical dimensions mapping
+RACIAL_PHYSICAL_DEFAULTS = {
+    "pixie_fey_sprite": {"age": 60, "height_in": 20.0, "weight_lbs": 15.0},
+    "meadow_nymph_fey": {"age": 120, "height_in": 64.0, "weight_lbs": 120.0},
+    "sylvan_dryad": {"age": 150, "height_in": 66.0, "weight_lbs": 125.0},
+    "satyr_fey_reveler": {"age": 45, "height_in": 68.0, "weight_lbs": 170.0},
+    "minotaur_labyrinth_breaker": {"age": 28, "height_in": 96.0, "weight_lbs": 450.0},
+    "centaur_plains_vanguard": {"age": 30, "height_in": 90.0, "weight_lbs": 1150.0},
+    "half_ogre_crusher": {"age": 25, "height_in": 102.0, "weight_lbs": 580.0},
+    "ogre_titan_brute": {"age": 32, "height_in": 114.0, "weight_lbs": 750.0},
+    "gargoyle_lithic_sentinel": {"age": 200, "height_in": 72.0, "weight_lbs": 350.0},
+    "troll_fleshwarped": {"age": 35, "height_in": 108.0, "weight_lbs": 520.0},
+    "medusa_gorgon_scion": {"age": 180, "height_in": 68.0, "weight_lbs": 140.0},
+    "doppelganger_morph": {"age": 50, "height_in": 70.0, "weight_lbs": 165.0},
+    "kobold_dragon_herald": {"age": 22, "height_in": 36.0, "weight_lbs": 42.0},
+    "gnoll_hyena_ravager": {"age": 24, "height_in": 78.0, "weight_lbs": 280.0},
+    "bugbear_shadow_stalker": {"age": 26, "height_in": 84.0, "weight_lbs": 310.0},
+    "thrikreen_mantis": {"age": 20, "height_in": 74.0, "weight_lbs": 240.0},
+    "harpy_siren_reaver": {"age": 28, "height_in": 68.0, "weight_lbs": 135.0},
+    "grimlock_blindsight": {"age": 30, "height_in": 70.0, "weight_lbs": 190.0},
+    "sahuagin_blood_frenzy": {"age": 26, "height_in": 74.0, "weight_lbs": 230.0},
+    "troglodyte_stench_stalker": {"age": 25, "height_in": 66.0, "weight_lbs": 175.0},
+    "derro_deep_savant": {"age": 45, "height_in": 48.0, "weight_lbs": 110.0},
+    "hag_born_caliban": {"age": 35, "height_in": 68.0, "weight_lbs": 180.0},
+    "were_kin_shifter": {"age": 25, "height_in": 72.0, "weight_lbs": 195.0},
+    "grung_tree_frog": {"age": 18, "height_in": 36.0, "weight_lbs": 38.0},
+    "rakshasa_tiger_lord": {"age": 150, "height_in": 74.0, "weight_lbs": 220.0},
+    "rust_monster_kin": {"age": 28, "height_in": 68.0, "weight_lbs": 190.0},
+    "illithid_mind_flayer": {"age": 80, "height_in": 72.0, "weight_lbs": 170.0},
+    "mountain_orc_blood": {"age": 22, "height_in": 76.0, "weight_lbs": 260.0},
+    "goblin_pyromaniac": {"age": 20, "height_in": 40.0, "weight_lbs": 50.0},
+}
+
+
+def get_character_creation_lineages() -> dict:
+    """
+    Returns the dictionary of pure fantasy and Savage Species lineages eligible
+    for character creation dropdowns and menus per Requirement R2.
+    Filters out all modern, cyberpunk, biomechanical, and sci-fi races.
+    """
+    return {
+        r_key: r_data
+        for r_key, r_data in RACIAL_LINEAGES.items()
+        if r_key not in PURGED_SCI_FI_RACES
+        and not any(dg in str(r_data.get("genre", "")).lower() for dg in DISALLOWED_CREATION_GENRES)
+    }
+
+
 def resolve_racial_lineage(race_key, chimera_choices=None):
     """
     Returns the effective lineage dict for a race key. For the Spliced Apex Chimera this is
     rebuilt from the player's slot/bloodline choices; all other races return their registry entry.
+    If a legacy or purged race key is passed that is not in RACIAL_LINEAGES, it gracefully
+    routes to its pure fantasy analogue via LEGACY_RACE_FALLBACKS before defaulting to pure_human.
     """
     if race_key == CHIMERA_RACE_KEY:
         return build_chimera_lineage(chimera_choices)
-    return RACIAL_LINEAGES.get(race_key, RACIAL_LINEAGES["pure_human"])
+    if race_key in RACIAL_LINEAGES:
+        return RACIAL_LINEAGES[race_key]
+    fallback_key = LEGACY_RACE_FALLBACKS.get(race_key)
+    if fallback_key and fallback_key in RACIAL_LINEAGES:
+        return RACIAL_LINEAGES[fallback_key]
+    return RACIAL_LINEAGES.get("pure_human")
 
-# --- CLASS PATHS & THEMED WEAPONS ---
+# --- CLASS PATHS & THEMED WEAPONS (CLASSIC 10 + LEGACY + ALIASES) ---
 CLASS_PATHS = {
-    "warrior": {
-        "title": "Warrior (Frontline Anchor)",
-        "description": "Specialized in absorbing enemy aggro, breaking shields, controlling battlefield positioning, and anchoring frontlines.",
+    # 1. Fighter (Frontline Weaponmaster)
+    "fighter": {
+        "title": "Fighter (Martial Weaponmaster)",
+        "description": "Frontline anchor specialized in absorbing enemy aggro, breaking shields, controlling battlefield positioning, and wielding versatile melee arsenals.",
         "starting_feats": ["Shield Wall Stance", "Taunting War-Cry"],
         "combat_resource": {"name": "Poise & Threat", "max": 100, "current": 0, "type": "poise"},
         "base_hp": 120,
         "hp_per_lvl": 35,
-        "native_armor": ["Heavy", "Medium"],
-        "favored_skills": ["Trench Hammers", "One-Handed Axes", "Field Smithing"]
+        "native_armor": ["Heavy", "Medium", "Shields"],
+        "favored_skills": ["Trench Hammers", "One-Handed Axes", "Greatswords", "Field Smithing"]
     },
-    "mage": {
-        "title": "Mage (Aether-Weaver)",
-        "description": "Channels raw atmospheric mana into concentrated force projectiles, protective wards, and catastrophic elemental singularities.",
+    # 2. Wizard (Aether-Weaver)
+    "wizard": {
+        "title": "Wizard (Aether-Weaver)",
+        "description": "Master of atmospheric mana, channeling raw aether into concentrated force projectiles, protective wards, and catastrophic elemental singularities.",
         "starting_feats": ["Arcane Ward", "Aetheric Dart"],
         "combat_resource": {"name": "Aetheric Flux", "max": 50, "current": 50, "type": "flux"},
         "base_hp": 80,
         "hp_per_lvl": 20,
         "native_armor": ["Cloth", "Light"],
-        "favored_skills": ["Aether-Weaving", "Arcane Triage", "Provisions & Alchemy"]
+        "favored_skills": ["Aether-Weaving", "Arcane Triage", "Arcana", "Provisions & Alchemy"]
     },
-    "cleric": {
-        "title": "Cleric (Spire Templar)",
-        "description": "Battlefield medic and sanctified inquisitor wielding protective auras, emergency trauma restoration, and crushing mace strikes.",
-        "starting_feats": ["Sanctified Ward", "Purifying Grace"],
-        "combat_resource": {"name": "Devotion & Grace", "max": 100, "current": 50, "type": "devotion"},
-        "base_hp": 105,
-        "hp_per_lvl": 28,
-        "native_armor": ["Medium", "Heavy"],
-        "favored_skills": ["Arcane Triage", "Trench Hammers", "Provisions & Alchemy"]
-    },
-    "thief": {
-        "title": "Thief (Shadow Infiltrator)",
-        "description": "Acrobatic guerrilla rogue executing serrated backstabs, smoke-screen evasions, and fluid momentum chaining.",
+    # 3. Rogue (Shadow Operative)
+    "rogue": {
+        "title": "Rogue (Shadow Operative)",
+        "description": "Acrobatic guerrilla operative executing serrated backstabs, smoke-screen evasions, and fluid momentum chaining from stealth.",
         "starting_feats": ["Shadow Footwork", "Serrated Backstab"],
         "combat_resource": {"name": "Momentum Dice", "max": 5, "current": 1, "type": "momentum"},
         "base_hp": 90,
         "hp_per_lvl": 24,
         "native_armor": ["Light"],
-        "favored_skills": ["One-Handed Axes", "Tactical Reflexes", "Field Trapping"]
+        "favored_skills": ["One-Handed Daggers", "Tactical Reflexes", "Field Trapping", "Stealth"]
     },
+    # 4. Cleric (Spire Templar)
+    "cleric": {
+        "title": "Cleric (Spire Templar)",
+        "description": "Sanctified inquisitor wielding protective auras, emergency trauma restoration, and crushing mace strikes against aberrant corruption.",
+        "starting_feats": ["Sanctified Ward", "Purifying Grace"],
+        "combat_resource": {"name": "Devotion & Grace", "max": 100, "current": 50, "type": "devotion"},
+        "base_hp": 105,
+        "hp_per_lvl": 28,
+        "native_armor": ["Medium", "Heavy", "Shields"],
+        "favored_skills": ["Arcane Triage", "Trench Hammers", "Provisions & Alchemy"]
+    },
+    # 5. Ranger (Wilderness Marksman)
     "ranger": {
         "title": "Ranger (Wilderness Marksman)",
-        "description": "Scout and sniper dominating extreme range, deploying lethal wire snares, and exploiting elevated vantage points.",
+        "description": "Wilderness scout and sniper dominating extreme range, deploying lethal wire snares, and exploiting elevated vantage points.",
         "starting_feats": ["Hunter's Mark", "Deadeye Aim"],
         "combat_resource": {"name": "Focus & Vantage", "max": 5, "current": 3, "type": "focus"},
         "base_hp": 95,
         "hp_per_lvl": 28,
         "native_armor": ["Light", "Medium"],
-        "favored_skills": ["Field Trapping", "Cartography", "Tactical Reflexes"]
+        "favored_skills": ["Field Trapping", "Cartography", "Tactical Reflexes", "Archery"]
     },
+    # 6. Paladin (Oath-Bound Crusader)
+    "paladin": {
+        "title": "Paladin (Oath-Bound Crusader)",
+        "description": "Holy avenger bound by unyielding oaths, wielding sanctified blade and heavy armor to smite wicked abominations and heal companions.",
+        "starting_feats": ["Righteous Smite", "Lay on Hands"],
+        "combat_resource": {"name": "Righteous Zeal", "max": 100, "current": 50, "type": "zeal"},
+        "base_hp": 115,
+        "hp_per_lvl": 32,
+        "native_armor": ["Heavy", "Medium", "Shields"],
+        "favored_skills": ["Heavy Swords", "Heavy Armor Poise", "Arcane Triage", "Trench Hammers"]
+    },
+    # 7. Druid (Primal Shifter)
+    "druid": {
+        "title": "Druid (Primal Shifter)",
+        "description": "Channeler of untamed earth and ancient ecosystems, shaping shifting beast forms, entangling roots, and restorative floral salves.",
+        "starting_feats": ["Wild Shape: Dire Beast", "Entangling Brambles"],
+        "combat_resource": {"name": "Primal Essence", "max": 100, "current": 50, "type": "primal"},
+        "base_hp": 100,
+        "hp_per_lvl": 26,
+        "native_armor": ["Medium", "Light", "Natural Hide"],
+        "favored_skills": ["Nature Lore & Harvesting", "Survival", "Staff & Spear", "Arcane Triage"]
+    },
+    # 8. Bard (Cadence Virtuoso)
+    "bard": {
+        "title": "Bard (Cadence Virtuoso)",
+        "description": "Acoustic virtuoso weaving battle-chants, harmonic inspiration, and disorienting discord to dictate the tempo of conflict.",
+        "starting_feats": ["Bardic Inspiration", "Dissonant Discord"],
+        "combat_resource": {"name": "Acoustic Cadence", "max": 100, "current": 30, "type": "cadence"},
+        "base_hp": 90,
+        "hp_per_lvl": 24,
+        "native_armor": ["Light"],
+        "favored_skills": ["Performance & Oratory", "Tactical Reflexes", "Resource Barter", "Rapiers"]
+    },
+    # 9. Barbarian (Primal Juggernaut)
+    "barbarian": {
+        "title": "Barbarian (Primal Juggernaut)",
+        "description": "Unstoppable berserker fueled by adrenaline and blood-fury, swinging massive two-handed greataxes with terrifying reckless abandon.",
+        "starting_feats": ["Berserker Rage", "Reckless Abandon"],
+        "combat_resource": {"name": "Primal Fury & Rage", "max": 100, "current": 0, "type": "rage"},
+        "base_hp": 130,
+        "hp_per_lvl": 40,
+        "native_armor": ["Unarmored", "Light", "Medium"],
+        "favored_skills": ["Two-Handed Greataxes", "Heavy Athletics", "Intimidation", "Trench Warfare"]
+    },
+    # 10. Monk (Ki Flow Ascetic)
+    "monk": {
+        "title": "Monk (Ki Flow Ascetic)",
+        "description": "Martial ascetic harnessing spiritual flow and precise physical discipline to deliver devastating unarmed flurries and fluid defensive evasions.",
+        "starting_feats": ["Flurry of Blows", "Patient Defense"],
+        "combat_resource": {"name": "Ki & Flow", "max": 10, "current": 5, "type": "ki"},
+        "base_hp": 95,
+        "hp_per_lvl": 26,
+        "native_armor": ["Unarmored"],
+        "favored_skills": ["Unarmed Combat", "Tactical Reflexes", "Acrobatics", "Meditation & Ki"]
+    },
+
+    # --- LEGACY ANCHOR & SCI-FI HYBRID CLASSES (PRESERVED FOR SAVES & TESTS) ---
     "engineer": {
         "title": "Engineer / Artificer",
         "description": "Combat mechanist deploying automated sentry turrets, explosive traps, and venting superheated overclock steam.",
@@ -1950,43 +2472,98 @@ CLASS_PATHS = {
     }
 }
 
-# Legacy aliases for backwards compatibility with tests and older saves
-CLASS_PATHS["vanguard"] = dict(CLASS_PATHS["warrior"])
+# --- BACKWARD COMPATIBILITY ALIASES FOR CLASS_PATHS ---
+# Ensures existing saves, tests, and character sheets never throw KeyErrors
+CLASS_PATHS["warrior"] = dict(CLASS_PATHS["fighter"])
+CLASS_PATHS["warrior"]["title"] = "Warrior (Frontline Anchor)"
+
+CLASS_PATHS["vanguard"] = dict(CLASS_PATHS["fighter"])
 CLASS_PATHS["vanguard"]["title"] = "Vanguard (Heavy Frontliner)"
-CLASS_PATHS["vanguard"]["base_hp"] = 100  # Preserved baseline for test calibration
-CLASS_PATHS["magi_saboteur"] = dict(CLASS_PATHS["engineer"])
-CLASS_PATHS["magi_saboteur"]["title"] = "Magi-Tech Saboteur"
-CLASS_PATHS["aether_slinger"] = dict(CLASS_PATHS["mage"])
+CLASS_PATHS["vanguard"]["base_hp"] = 100  # Preserved baseline calibration for legacy tests
+
+CLASS_PATHS["mage"] = dict(CLASS_PATHS["wizard"])
+CLASS_PATHS["mage"]["title"] = "Mage (Aether-Weaver)"
+
+CLASS_PATHS["aether_slinger"] = dict(CLASS_PATHS["wizard"])
 CLASS_PATHS["aether_slinger"]["title"] = "Aether-Slinger"
+
+CLASS_PATHS["thief"] = dict(CLASS_PATHS["rogue"])
+CLASS_PATHS["thief"]["title"] = "Thief (Shadow Infiltrator)"
+
+CLASS_PATHS["infiltrator"] = dict(CLASS_PATHS["rogue"])
+CLASS_PATHS["infiltrator"]["title"] = "Infiltrator (Shadow Operative)"
+
 CLASS_PATHS["wilderness_ranger"] = dict(CLASS_PATHS["ranger"])
 CLASS_PATHS["wilderness_ranger"]["title"] = "Wilderness Ranger"
 
+CLASS_PATHS["magi_saboteur"] = dict(CLASS_PATHS["engineer"])
+CLASS_PATHS["magi_saboteur"]["title"] = "Magi-Tech Saboteur"
+
+
+# --- CLASS WEAPONS LOADOUTS ---
 CLASS_WEAPONS = {
-    "warrior": {
+    # 1. Fighter
+    "fighter": {
         "main_hand": "Heavy Scavenged Mace",
         "off_hand": "Scrap-Plate Shield",
         "desc": "A dense rebar-reinforced iron mace paired with a riveted industrial scrap shield."
     },
-    "mage": {
+    # 2. Wizard
+    "wizard": {
         "main_hand": "Aetheric Focusing Wand",
         "off_hand": "None",
         "desc": "A conductive brass-and-quartz resonator wand designed to project raw kinetic spells."
     },
+    # 3. Rogue
+    "rogue": {
+        "main_hand": "Concealed Trench Daggers",
+        "off_hand": "Tanto Combat Knife",
+        "desc": "Dual razor-sharp carbon trench blades tailored for high-speed puncture strikes."
+    },
+    # 4. Cleric
     "cleric": {
         "main_hand": "Sanctified Flail",
         "off_hand": "Scrap-Plate Shield",
         "desc": "A heavy iron flail engraved with cleansing wards, paired with a reinforced scrap shield."
     },
-    "thief": {
-        "main_hand": "Concealed Trench Daggers",
-        "off_hand": "Tanto Combat Knife",
-        "desc": "Dual razor-sharp carbon trench blades tailored for high-speed puncture strikes."
-    },
+    # 5. Ranger
     "ranger": {
         "main_hand": "Recurve Hunting Bow",
         "off_hand": "Chipped Wood-Axe",
         "desc": "A composite outdoor hunting bow (with 20 carbon arrows) and a utility wood-axe."
     },
+    # 6. Paladin
+    "paladin": {
+        "main_hand": "Tempered Steel Arming Sword",
+        "off_hand": "Scrap-Plate Shield",
+        "desc": "A balanced double-edged steel arming sword paired with a sturdy scrap-iron heraldic shield."
+    },
+    # 7. Druid
+    "druid": {
+        "main_hand": "Kinetic Shock-Staff",
+        "off_hand": "None",
+        "desc": "A seasoned hardwood quarterstaff bound with living vine-growth and conductive quartz resonance."
+    },
+    # 8. Bard
+    "bard": {
+        "main_hand": "Duelist's Steel Rapier",
+        "off_hand": "None",
+        "desc": "A flexible, high-tensile steel rapier tailored for precision thrusts and rhythmic dueling cadence."
+    },
+    # 9. Barbarian
+    "barbarian": {
+        "main_hand": "Two-Handed Greataxe",
+        "off_hand": "None",
+        "desc": "A massive two-handed salvage greataxe with a wide bearded cutting edge built to cleave armor."
+    },
+    # 10. Monk
+    "monk": {
+        "main_hand": "Iron-Studded Cestus",
+        "off_hand": "None",
+        "desc": "Dense iron-studded leather striking wraps designed for high-impact unarmed martial arts and ki flow."
+    },
+
+    # --- Legacy Classes ---
     "engineer": {
         "main_hand": "Arcane Stun-Pistol",
         "off_hand": "Tanto Combat Knife",
@@ -2004,12 +2581,20 @@ CLASS_WEAPONS = {
     }
 }
 
-CLASS_WEAPONS["vanguard"] = CLASS_WEAPONS["warrior"]
-CLASS_WEAPONS["magi_saboteur"] = CLASS_WEAPONS["engineer"]
-CLASS_WEAPONS["aether_slinger"] = CLASS_WEAPONS["mage"]
+# Aliases for CLASS_WEAPONS
+CLASS_WEAPONS["warrior"] = CLASS_WEAPONS["fighter"]
+CLASS_WEAPONS["vanguard"] = CLASS_WEAPONS["fighter"]
+CLASS_WEAPONS["mage"] = CLASS_WEAPONS["wizard"]
+CLASS_WEAPONS["aether_slinger"] = CLASS_WEAPONS["wizard"]
+CLASS_WEAPONS["thief"] = CLASS_WEAPONS["rogue"]
+CLASS_WEAPONS["infiltrator"] = CLASS_WEAPONS["rogue"]
 CLASS_WEAPONS["wilderness_ranger"] = CLASS_WEAPONS["ranger"]
+CLASS_WEAPONS["magi_saboteur"] = CLASS_WEAPONS["engineer"]
 
+
+# --- EXPANDED STARTER WEAPON OPTIONS ---
 STARTER_WEAPON_OPTIONS = [
+    # Baseline 14 original options (Preserved exactly in order)
     "Rusted Iron Sword",
     "Heavy Scavenged Mace",
     "Scrap-Plate Shield",
@@ -2023,8 +2608,15 @@ STARTER_WEAPON_OPTIONS = [
     "Kinetic Shock-Staff",
     "Reinforced Spear",
     "Twin Scavenger Daggers",
+    # Classic 10 added weapons
+    "Tempered Steel Arming Sword",
+    "Duelist's Steel Rapier",
+    "Two-Handed Greataxe",
+    "Iron-Studded Cestus",
+    # Unarmed / None choice
     "None"
 ]
+
 
 # --- 17 PRE-INTEGRATION PERSONAL RELICS ---
 PERSONAL_RELICS = {
@@ -2324,6 +2916,9 @@ PERSONAL_RELICS = {
         "mechanics": "Soul-Restoring Broth (3 Pours per Rest): Pouring and drinking a steaming cup cures all active biological poisons, venoms, and acid burns, restores 25 HP, and grants the 'Hearty Warmth' buff (+10 Temp HP and total immunity to freezing cold and hypothermia for 4 hours)."
     }
 }
+
+# Alias for backward compatibility with tests using "tuning_fork"
+PERSONAL_RELICS["tuning_fork"] = PERSONAL_RELICS["guitar_tuning_fork"]
 
 def create_custom_relic(name, desc, ability_text="Sentimental Anchor"):
     """Creates a custom write-in personal relic with user-provided flavor and ability."""
@@ -2848,17 +3443,22 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
                                 custom_background_text=None, starting_weapons=None,
                                 custom_relic_data=None, custom_collaborated_data=None,
                                 chimera_choices=None, physical=None, gender=None,
-                                start_tutorial=True):
+                                start_tutorial=True,
+                                lifestyle_key="desk_bound"):
     """
     Constructs a complete, valid player character dictionary ready for save_game.json.
     Supports class-themed starter weapons with optional manual override,
-    custom collaborative background skills, and custom personal relics.
+    custom collaborative background skills, custom personal relics, and lifestyle archetypes.
     `chimera_choices` configures the modular Spliced Apex Chimera lineage.
     `physical` is {"age": int, "height_in": float, "weight_lbs": float}.
     `gender` is "Male" or "Female" (defaults to "Male").
     `start_tutorial` launches newly created characters into the 3-stage Cardinal Calibration Crucible tutorial.
+    `lifestyle_key` auto-distributes 20 attribute points, 2 thematic skill bonuses, and an innate starting feat/spell.
     """
-    if str(name or "").strip().lower() == "glenny":
+    is_glenny = str(name or "").strip().lower() == "glenny"
+    if is_glenny:
+        if lifestyle_key == "desk_bound":
+            lifestyle_key = None
         if point_alloc is None:
             point_alloc = {"STR": 5, "DEX": 5, "CON": 4, "INT": 2, "WIS": 3, "CHA": 1}
         if background_key in ("adaptive", "hunter"):
@@ -2878,9 +3478,40 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
         if gender is None:
             gender = "Male"
     if point_alloc is None:
-        point_alloc = {"STR": 4, "DEX": 4, "CON": 4, "INT": 4, "WIS": 2, "CHA": 2}
+        if lifestyle_key and lifestyle_key in PRESET_LIFESTYLES:
+            point_alloc = dict(PRESET_LIFESTYLES[lifestyle_key]["points"])
+        else:
+            point_alloc = {"STR": 4, "DEX": 4, "CON": 4, "INT": 4, "WIS": 2, "CHA": 2}
+    else:
+        if not isinstance(point_alloc, dict):
+            point_alloc = {"STR": 4, "DEX": 4, "CON": 4, "INT": 4, "WIS": 2, "CHA": 2}
+        else:
+            # Clamp negative stats to 0 and safely parse integers
+            sanitized_alloc = {}
+            for s in ["STR", "DEX", "CON", "INT", "WIS", "CHA"]:
+                raw_val = point_alloc.get(s, 0)
+                try:
+                    sanitized_alloc[s] = max(0, int(raw_val)) if raw_val is not None else 0
+                except (ValueError, TypeError):
+                    sanitized_alloc[s] = 0
+            point_alloc = sanitized_alloc
+
+        total_alloc = sum(point_alloc.values())
+        if total_alloc > 20:
+            scale = 20.0 / total_alloc
+            scaled_alloc = {s: int(point_alloc[s] * scale) for s in ["STR", "DEX", "CON", "INT", "WIS", "CHA"]}
+            rem = 20 - sum(scaled_alloc.values())
+            for s in ["STR", "DEX", "CON", "INT", "WIS", "CHA"]:
+                if rem <= 0:
+                    break
+                if point_alloc[s] > scaled_alloc[s]:
+                    scaled_alloc[s] += 1
+                    rem -= 1
+            point_alloc = scaled_alloc
     # 1. Base Stats (10 base + allocated points + racial mods)
-    race = resolve_racial_lineage(race_key, chimera_choices)
+    effective_race_key = LEGACY_RACE_FALLBACKS.get(race_key, race_key)
+    # If explicit legacy key is in RACIAL_LINEAGES, resolve it directly for exact test regression compatibility
+    race = resolve_racial_lineage(race_key if race_key in RACIAL_LINEAGES else effective_race_key, chimera_choices)
     r_mods = race["stat_mods"]
     
     final_stats = {
@@ -2902,8 +3533,15 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
     import backend.mechanics as _mech
     phys_in = physical if isinstance(physical, dict) else {}
     gender_val = _mech.normalize_gender(gender or phys_in.get("gender") or "Male")
-    physical_data = {k: phys_in.get(k, _mech.DEFAULT_PHYSICAL[k]) for k in ("age", "height_in", "weight_lbs")}
-    phys_mods = _mech.get_physical_profile({"gender": gender_val, "physical": physical_data})["modifiers"]
+    if race_key in RACIAL_LINEAGES:
+        default_phys = race.get("default_physical", RACIAL_PHYSICAL_DEFAULTS.get(race_key, _mech.DEFAULT_PHYSICAL))
+    else:
+        default_phys = race.get("default_physical", RACIAL_PHYSICAL_DEFAULTS.get(effective_race_key, _mech.DEFAULT_PHYSICAL))
+    physical_data = {
+        k: phys_in.get(k, default_phys.get(k, _mech.DEFAULT_PHYSICAL[k]))
+        for k in ("age", "height_in", "weight_lbs")
+    }
+    phys_mods = _mech.get_physical_profile({"gender": gender_val, "physical": physical_data, "race_key": race_key, "race": race.get("name", "")})["modifiers"]
     max_hp = compute_starting_max_hp(race, chosen_class, final_stats, physical_data)
     
     # 3. Skills & Perks from Background (Preset, Custom Collaboration, or Heuristic)
@@ -2954,6 +3592,43 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
         for s_name, s_data in bg.get("skills", {}).items():
             skills_dict[s_name] = dict(s_data)
         
+    # Wrap background skills into SkillEntry
+    for s_k in list(skills_dict.keys()):
+        if not isinstance(skills_dict[s_k], SkillEntry) and isinstance(skills_dict[s_k], dict):
+            skills_dict[s_k] = SkillEntry(skills_dict[s_k])
+
+    # Apply Lifestyle Skill Bonuses and Innate Starting Feat/Spell
+    l_data = PRESET_LIFESTYLES.get(lifestyle_key) if (lifestyle_key and lifestyle_key in PRESET_LIFESTYLES) else None
+    if l_data and "skill_bonuses" in l_data:
+        for sk_name, sk_bonus in l_data["skill_bonuses"].items():
+            if sk_name in skills_dict:
+                old_m = int(skills_dict[sk_name].get("mastery", 0))
+                new_m = min(1000, old_m + int(sk_bonus))
+                tier = "Apprentice" if new_m >= 50 else skills_dict[sk_name].get("tier", "Novice")
+                milestones = list(skills_dict[sk_name].get("milestones_unlocked", []))
+                if new_m >= 50 and 50 not in milestones:
+                    milestones.append(50)
+                skills_dict[sk_name]["mastery"] = new_m
+                skills_dict[sk_name]["tier"] = tier
+                skills_dict[sk_name]["milestones_unlocked"] = milestones
+            else:
+                tier = "Apprentice" if sk_bonus >= 50 else "Novice"
+                skills_dict[sk_name] = SkillEntry({
+                    "mastery": int(sk_bonus),
+                    "tier": tier,
+                    "description": f"Lifestyle proficiency in {sk_name}.",
+                    "milestones_unlocked": [50] if sk_bonus >= 50 else []
+                })
+
+    lifestyle_spells = []
+    if l_data and "starting_feat" in l_data:
+        feat_name = l_data["starting_feat"]
+        feat_entry = l_data.get("innate_ability") or f"{feat_name}: {l_data.get('feat_desc', '')}"
+        if l_data.get("talent_slot") == "spells" or "(spell)" in feat_name.lower():
+            lifestyle_spells.append(feat_entry)
+        else:
+            feats_list.append(feat_entry)
+
     # Add Class Feats
     for f in chosen_class.get("starting_feats", []):
         feats_list.append(f)
@@ -3036,10 +3711,10 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
     }
     
     gear_durability = {
-        "head": {"cur": 50, "max": 50},
+        "head": {"cur": 100, "max": 100},
         "chest": {"cur": 100, "max": 100},
-        "main_hand": {"cur": 45, "max": 50},
-        "off_hand": {"cur": 45, "max": 50} if off_hand_w != "None" else {"cur": 0, "max": 0},
+        "main_hand": {"cur": 100, "max": 100},
+        "off_hand": {"cur": 100, "max": 100} if off_hand_w != "None" else {"cur": 0, "max": 0},
         "accessory": {"cur": 100, "max": 100}
     }
 
@@ -3068,12 +3743,16 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
         "free_attribute_points": 0,
         "col": 100,
         "race": race["name"],
+        "race_key": effective_race_key,
         "class": chosen_class["title"],
         "favored_skills": list(chosen_class.get("favored_skills", [])),
         "native_armor": list(chosen_class.get("native_armor", [])),
         "stats": final_stats,
         "skills": skills_dict,
-        "spells": [],
+        "lifestyle": lifestyle_key,
+        "lifestyle_key": lifestyle_key,
+        "lifestyle_title": l_data.get("title", lifestyle_key) if l_data else None,
+        "spells": list(lifestyle_spells),
         "feats": feats_list,
         "racial_abilities": race["racial_abilities"],
         "racial_variant_config": race.get("variant_config"),
@@ -3093,6 +3772,11 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
         for s_name in list(skills_dict.keys()):
             _mech.update_skill_mastery(player_sheet, s_name, int(phys_mods["starting_mastery_bonus"]))
     
+    # Final SkillEntry normalization across all player skills
+    for sk_k, sk_v in list(player_sheet["skills"].items()):
+        if not isinstance(sk_v, SkillEntry) and isinstance(sk_v, dict):
+            player_sheet["skills"][sk_k] = SkillEntry(sk_v)
+
     # Lock canonical avatar metadata & initialize multi-limb equipment/graft slots if applicable (e.g. Glenny / 4-armed races)
     if hasattr(_mech, "ensure_multi_limb_equipment"):
         _mech.ensure_multi_limb_equipment(player_sheet)
@@ -3102,6 +3786,10 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
         _mech.ensure_graft_system(player_sheet)
     if hasattr(_mech, "ensure_character_avatar_lock"):
         _mech.ensure_character_avatar_lock(player_sheet)
+
+    # Initialize hands-on mini-dungeon room navigation state if starting tutorial
+    if start_tutorial and hasattr(_mech, "initialize_tutorial_mini_dungeon"):
+        _mech.initialize_tutorial_mini_dungeon(player_sheet)
 
     # Initialize pristine companion roster and clean disk state for this character
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

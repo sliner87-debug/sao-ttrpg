@@ -1,22 +1,98 @@
 {
     "id": "companion_malakor",
     "name": "Malakor",
-    "gender": "Male",
-    "pronouns": "he/him",
-    "role": "Eldritch Hexblade / Void-Pact Siphon",
+    "class": "Eldritch Hexblade / Void-Pact Siphon",
+    "title": "Eldritch Hexblade / Void-Pact Siphon",
+    "role": "Anti-Mage Execution, Resource Siphon & Shadow Teleportation",
     "level": 4,
     "hp": 42,
     "max_hp": 42,
-    "ac": 16,
-    "strain_capacity": 4,
-    "active_grafts": [
-        {
-            "name": "Void-Symbiote Heart Valve",
-            "slot": "Torso",
-            "effect": "Siphons 10% enemy mana/resource on hit to empower dark smites",
-            "visual_appearance": "carrying Void-Symbiote Heart Valve"
+    "xp": 800,
+    "next_level_xp": 1200,
+    "stance": "void_edge",
+    "morale": "Steady",
+    "affinity": 20,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "Decommissioned Limestone Caverns (Pohatcong Sinkholes, X:42, Y:56)",
+    "recruitment_requirements": {
+        "min_level": 3,
+        "col_cost": 0,
+        "item": "Corrupted Void-Shard",
+        "description": "Deliver a Corrupted Void-Shard from an Elite Abyssal mob to seal a blood-oath binding pact."
+    },
+    "bio": "A void-touched tiefling whose Greatsword 'Scourge-Drinker' drains enemy mana, active spell slots, and kinetic shielding.",
+    "loadout": {
+        "main_hand": "Void-Etched Greatsword (2d6+4 Slashing + Void Siphon)",
+        "off_hand": "Null-Glyph Buckler (+2 AC, Spell Absorber)",
+        "armor": "Shadow-Steel Hauberk (DR 2, Magic Resist)",
+        "chest": "Shadow-Steel Hauberk (DR 2, Magic Resist)"
+    },
+    "equipped": {
+        "main_hand": "Void-Etched Greatsword (2d6+4 Slashing + Void Siphon)",
+        "off_hand": "Null-Glyph Buckler (+2 AC, Spell Absorber)",
+        "armor": "Shadow-Steel Hauberk (DR 2, Magic Resist)",
+        "chest": "Shadow-Steel Hauberk (DR 2, Magic Resist)"
+    },
+    "skills": {
+        "Hexblade Greatsword": {
+            "mastery": 280,
+            "tier": "Adept",
+            "description": "Heavy two-handed strikes imbued with void.",
+            "milestones_unlocked": [
+                "Void Cleave",
+                "Severing Arc",
+                "Soul Drinker"
+            ]
+        },
+        "Eldritch Invocation": {
+            "mastery": 240,
+            "tier": "Journeyman",
+            "description": "Channelling dark patronage from beyond.",
+            "milestones_unlocked": [
+                "Armor of Agathys"
+            ]
+        },
+        "Anti-Magic Severing": {
+            "mastery": 210,
+            "tier": "Journeyman",
+            "description": "Dispelling magical barriers and shields.",
+            "milestones_unlocked": [
+                "Nullify Matrix"
+            ]
         }
+    },
+    "abilities": [
+        "Void-Blade Smite (3d10 Void DMG + drains 20% enemy resource)",
+        "Spell-Eater Ward (Absorbs 1 spell and converts to 15 HP)",
+        "Shadow Step (Teleports 30ft behind target)"
     ],
+    "stances": {
+        "void_edge": {
+            "name": "Void-Edge Siphon",
+            "label": "\ud83c\udf0c Void-Edge Siphon",
+            "tag": "[MALAKOR VOID]",
+            "tactical_effect": "Cleaves through target for 2d6+5 Void DMG, draining enemy combat resources and buffing Banki.",
+            "desc": "Anti-resource damage."
+        },
+        "spell_eater": {
+            "name": "Spell-Eater Ward",
+            "label": "\ud83d\udd2e Spell-Eater Ward",
+            "tag": "[MALAKOR WARD]",
+            "tactical_effect": "Raises void buckler; absorbs all magical projectile damage directed at the party this turn.",
+            "desc": "Magic damage negation."
+        },
+        "shadow_rend": {
+            "name": "Abyssal Step Execution",
+            "label": "\ud83d\udc64 Abyssal Step",
+            "tag": "[MALAKOR SHADOW]",
+            "tactical_effect": "Blinks through reality into the backline, executing an unblockable strike dealing 3d8+4 Critical DMG.",
+            "desc": "Backline assassin strike."
+        }
+    },
+    "dual_tech_id": "void_abyss_cleave",
+    "behavior_prompt": "You are Malakor, an Eldritch Hexblade who feeds on the magical essence of his foes. You speak with aristocratic disdain, razor-sharp intellect, and cynical fatalism. You target enemy spellcasters, siphon their mana, and carve darkness into enemy lines.",
     "inventory": [
         {
             "name": "Void-Etched Greatsword",
@@ -49,20 +125,5 @@
             "visual_appearance": "clad in matte-black Shadow-Steel scale mail beneath a tattered dark-matter warlock cloak"
         }
     ],
-    "behavior_prompt": "You are Malakor, an Eldritch Hexblade who feeds on the magical essence of his foes. You speak with aristocratic disdain, razor-sharp intellect, and cynical fatalism. You target enemy spellcasters, siphon their mana, and carve darkness into enemy lines.",
-    "equipped": {
-        "head": "None",
-        "chest": "Shadow-Steel Hauberk",
-        "main_hand": "Void-Etched Greatsword",
-        "off_hand": "Null-Glyph Buckler",
-        "accessory": "None"
-    },
-    "active_debuffs": [],
-    "recruited": false,
-    "active": false,
-    "slug": "malakor",
-    "companion_name": "Malakor",
-    "is_active": false,
-    "stats": {},
-    "skills": {}
+    "active_debuffs": []
 }

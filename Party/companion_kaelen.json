@@ -1,22 +1,96 @@
 {
     "id": "companion_kaelen",
     "name": "Brother Kaelen",
-    "gender": "Male",
-    "pronouns": "he/him",
-    "role": "Sol-Templar / Radiant Apothecary",
+    "class": "Sol-Templar / Radiant Apothecary",
+    "title": "Sol-Templar / Radiant Apothecary",
+    "role": "Frontline Healing, Radiant Flail Burst & Condition Cleansing",
     "level": 3,
     "hp": 40,
     "max_hp": 40,
-    "ac": 17,
-    "strain_capacity": 3,
-    "active_grafts": [
-        {
-            "name": "Solar Core Stigmatic Heart",
-            "slot": "Torso",
-            "effect": "+1d8 Radiant DMG to flail, passive +5 HP/turn aura when near allies under 50% HP",
-            "visual_appearance": "carrying Solar Core Stigmatic Heart"
+    "xp": 450,
+    "next_level_xp": 900,
+    "stance": "radiant_bastion",
+    "morale": "Steady",
+    "affinity": 30,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "St. Luke's Chapel Ruins (High Bridge Safe-Node, X:65, Y:55)",
+    "recruitment_requirements": {
+        "min_level": 2,
+        "col_cost": 200,
+        "description": "Donate 200 Col to the High Bridge hospice or restore the Sunstone Altar."
+    },
+    "bio": "An aasimar parish deacon and former EMT whose veins pulse with solar mana. Wields a heavy sunstone flail to protect the wounded.",
+    "loadout": {
+        "main_hand": "Radiant War-Flail (1d8+3 Bludgeoning + 1d8 Radiant)",
+        "off_hand": "Sunstone Focus Censer (Holy Focus)",
+        "armor": "Gilded Crusader Mail (Heavy, DR 2)",
+        "chest": "Gilded Crusader Mail (Heavy, DR 2)"
+    },
+    "equipped": {
+        "main_hand": "Radiant War-Flail (1d8+3 Bludgeoning + 1d8 Radiant)",
+        "off_hand": "Sunstone Focus Censer (Holy Focus)",
+        "armor": "Gilded Crusader Mail (Heavy, DR 2)",
+        "chest": "Gilded Crusader Mail (Heavy, DR 2)"
+    },
+    "skills": {
+        "Radiant Restoration": {
+            "mastery": 250,
+            "tier": "Adept",
+            "description": "Channelling restorative solar fire.",
+            "milestones_unlocked": [
+                "Solar Mending",
+                "Purifying Pulse"
+            ]
+        },
+        "War-Flail Discipline": {
+            "mastery": 190,
+            "tier": "Journeyman",
+            "description": "Swinging spiked morningstar chains.",
+            "milestones_unlocked": [
+                "Shield Bypass"
+            ]
+        },
+        "Aura of Protection": {
+            "mastery": 220,
+            "tier": "Journeyman",
+            "description": "Radiant protective aegis for allies.",
+            "milestones_unlocked": [
+                "Sanctuary Ward"
+            ]
         }
+    },
+    "abilities": [
+        "Sun-Burst Heal (+25 HP to ally + cleanses poison/bleed)",
+        "Solar Smite (+2d8 Radiant DMG vs Undead/Fiends)",
+        "Aegis of the Brass Sun (+3 AC to adjacent allies)"
     ],
+    "stances": {
+        "radiant_bastion": {
+            "name": "Radiant Bastion Aura",
+            "label": "\u2600\ufe0f Radiant Bastion",
+            "tag": "[KAELEN BASTION]",
+            "tactical_effect": "Radiates solar protection; restores +8 HP to Banki each turn and grants +2 to all saving throws.",
+            "desc": "Persistent healing aura."
+        },
+        "cleansing_sunburst": {
+            "name": "Cleansing Sunburst",
+            "label": "\u2728 Cleansing Sunburst",
+            "tag": "[KAELEN SUNBURST]",
+            "tactical_effect": "Unleashes blinding solar flash for 2d8+3 Radiant DMG; removes all debuffs from party.",
+            "desc": "Damage and cleanse."
+        },
+        "crusader_smite": {
+            "name": "Crusader Smite",
+            "label": "\ud83d\udd28 Crusader Smite",
+            "tag": "[KAELEN SMITE]",
+            "tactical_effect": "Swings radiant flail dealing 1d10+4 Bludgeoning + 2d8 Radiant DMG, ignoring enemy shields.",
+            "desc": "Offensive shield-breaker."
+        }
+    },
+    "dual_tech_id": "dawn_breaker_smite",
+    "behavior_prompt": "You are Brother Kaelen, a Sol-Templar paladin and frontline combat medic. You prioritize keeping Aria Valkyrie and allies healthy, dispelling debilitating curses, and crushing dark creatures with radiant solar bursts.",
     "inventory": [
         {
             "name": "Radiant War-Flail",
@@ -49,20 +123,5 @@
             "visual_appearance": "clad in a polished sun-gold breastplate over white hooded Sol-Templar vestments"
         }
     ],
-    "behavior_prompt": "You are Brother Kaelen, a Sol-Templar paladin and frontline combat medic. You prioritize keeping Aria Valkyrie and allies healthy, dispelling debilitating curses, and crushing dark creatures with radiant solar bursts.",
-    "equipped": {
-        "head": "None",
-        "chest": "Gilded Crusader Mail",
-        "main_hand": "Radiant War-Flail",
-        "off_hand": "Sunstone Focus Censer",
-        "accessory": "None"
-    },
-    "active_debuffs": [],
-    "recruited": false,
-    "active": false,
-    "slug": "kaelen",
-    "companion_name": "Brother Kaelen",
-    "is_active": false,
-    "stats": {},
-    "skills": {}
+    "active_debuffs": []
 }

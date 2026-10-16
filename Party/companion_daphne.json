@@ -1,22 +1,96 @@
 {
     "id": "companion_daphne",
     "name": "Daphne Leclair",
-    "gender": "Female",
-    "pronouns": "she/her",
-    "role": "Spellsinger / Skaldic Virtuoso",
+    "class": "Spellsinger / Skaldic Virtuoso",
+    "title": "Spellsinger / Skaldic Virtuoso",
+    "role": "Vocal Attack Buffs, Sonic Stuns & Skaldic Battle Anthems",
     "level": 3,
     "hp": 32,
     "max_hp": 32,
-    "ac": 14,
-    "strain_capacity": 3,
-    "active_grafts": [
-        {
-            "name": "Resonating Siren Vocal Cords",
-            "slot": "Head",
-            "effect": "Acoustic spells ignore physical cover, +2 to party morale saves",
-            "visual_appearance": "carrying Resonating Siren Vocal Cords"
+    "xp": 380,
+    "next_level_xp": 900,
+    "stance": "berserker_hymn",
+    "morale": "Steady",
+    "affinity": 25,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "The Rusty Flagon Speakeasy (Easton Riverfront Node, X:22, Y:55)",
+    "recruitment_requirements": {
+        "min_level": 2,
+        "col_cost": 350,
+        "description": "Pay off her 350 Col tavern tab OR perform a collaborative battle ballad (CHA DC 14)."
+    },
+    "bio": "A half-elf siren-kin jazz singer whose vocal harmonies bend sound waves into sonic concussions and battle-buffs.",
+    "loadout": {
+        "main_hand": "Silvered Stiletto (1d4+3 Piercing)",
+        "off_hand": "Resonating Aether-Lute (Focus)",
+        "armor": "Velvet Performer's Doublet (+2 CHA, DR 1)",
+        "chest": "Velvet Performer's Doublet (+2 CHA, DR 1)"
+    },
+    "equipped": {
+        "main_hand": "Silvered Stiletto (1d4+3 Piercing)",
+        "off_hand": "Resonating Aether-Lute (Focus)",
+        "armor": "Velvet Performer's Doublet (+2 CHA, DR 1)",
+        "chest": "Velvet Performer's Doublet (+2 CHA, DR 1)"
+    },
+    "skills": {
+        "Spellsinging": {
+            "mastery": 250,
+            "tier": "Adept",
+            "description": "Weaving acoustic vibrations into magic.",
+            "milestones_unlocked": [
+                "Sonic Boom",
+                "Song of Valor"
+            ]
+        },
+        "Acoustic Manipulation": {
+            "mastery": 200,
+            "tier": "Journeyman",
+            "description": "Bending resonance to disrupt spellcasting.",
+            "milestones_unlocked": [
+                "Counter-Melody"
+            ]
+        },
+        "Streetwise Performance": {
+            "mastery": 180,
+            "tier": "Journeyman",
+            "description": "Extracting rumors and winning tavern crowds.",
+            "milestones_unlocked": [
+                "Silver Tongue"
+            ]
         }
+    },
+    "abilities": [
+        "Song of Sovereign Might (+4 DMG & +2 ATK to Party)",
+        "Discordant Screech (DC 14 CON vs Stun)",
+        "Lullaby of the Void (Puts non-elite target to sleep)"
     ],
+    "stances": {
+        "berserker_hymn": {
+            "name": "Hymn of the Berserker",
+            "label": "\ud83c\udfb6 Berserker Hymn",
+            "tag": "[DAPHNE HYMN]",
+            "tactical_effect": "Sings a thunderous battle chant; grants Banki +3 Attack rolls and +1d8 weapon damage.",
+            "desc": "High offensive party buff."
+        },
+        "discordant_screech": {
+            "name": "Discordant Screech",
+            "label": "\ud83d\udd0a Discordant Screech",
+            "tag": "[DAPHNE SCREECH]",
+            "tactical_effect": "Plucks a shattering resonant chord dealing 2d6 Thunder DMG and forcing DC 14 CON check vs Disoriented.",
+            "desc": "Sonic disruption."
+        },
+        "fleeting_shadows": {
+            "name": "Song of Fleeting Shadows",
+            "label": "\ud83c\udf2b\ufe0f Fleeting Shadows",
+            "tag": "[DAPHNE SHADOWS]",
+            "tactical_effect": "Weaves acoustic dampening; grants all allies +4 Stealth and +2 Dodge AC.",
+            "desc": "Evasive party defense."
+        }
+    },
+    "dual_tech_id": "valkyrie_war_chorus",
+    "behavior_prompt": "You are Daphne Leclair, a Spellsinger and charismatic skald. You speak with sultry theatrical flair and witty banter. You weave vocal harmonies that supercharge Aria Valkyrie's fury, stagger enemy spellcasters, and slip into enemy blind spots.",
     "inventory": [
         {
             "name": "Resonating Aether-Lute",
@@ -49,20 +123,5 @@
             "visual_appearance": "wearing a flamboyant midnight-velvet skaldic coat with silver brocade and a flowing silver-threaded scarf"
         }
     ],
-    "behavior_prompt": "You are Daphne Leclair, a Spellsinger and charismatic skald. You speak with sultry theatrical flair and witty banter. You weave vocal harmonies that supercharge Aria Valkyrie's fury, stagger enemy spellcasters, and slip into enemy blind spots.",
-    "equipped": {
-        "head": "None",
-        "chest": "Velvet Performer's Doublet",
-        "main_hand": "Resonating Aether-Lute",
-        "off_hand": "Silvered Stiletto",
-        "accessory": "None"
-    },
-    "active_debuffs": [],
-    "recruited": false,
-    "active": false,
-    "slug": "daphne",
-    "companion_name": "Daphne Leclair",
-    "is_active": false,
-    "stats": {},
-    "skills": {}
+    "active_debuffs": []
 }

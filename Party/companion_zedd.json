@@ -1,22 +1,97 @@
 {
     "id": "companion_zedd",
     "name": "Zeddicus Volt-Spark",
-    "gender": "Male",
-    "pronouns": "he/him",
-    "role": "Plasma-Mage / Galvanic Dynamo",
+    "class": "Plasma-Mage / Galvanic Dynamo",
+    "title": "Plasma-Mage / Galvanic Dynamo",
+    "role": "Chain-Lightning AOE, Superconductor Field & Armor Splicing",
     "level": 3,
     "hp": 30,
     "max_hp": 30,
-    "ac": 13,
-    "strain_capacity": 4,
-    "active_grafts": [
-        {
-            "name": "Dorsal Capacitor Rig & Dynamo",
-            "slot": "Spine",
-            "effect": "Stores 100 Galvanic Charge, releases chain lightning shocks",
-            "visual_appearance": "clad in Dorsal Capacitor Rig & Dynamo torso armor"
+    "xp": 420,
+    "next_level_xp": 900,
+    "stance": "plasma_arc",
+    "morale": "Steady",
+    "affinity": 25,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "Decommissioned Edison Substation (Belvidere Junction, X:30, Y:50)",
+    "recruitment_requirements": {
+        "min_level": 3,
+        "col_cost": 0,
+        "puzzle": "substation_grid",
+        "description": "Solve the Substation Power-Grid puzzle (INT DC 13) or deliver 2 Voltaic Cores."
+    },
+    "bio": "A high-voltage lineman who survived a 500kV discharge when the Crucible hit. Fused with dorsal capacitors, he commands plasma arcs.",
+    "loadout": {
+        "main_hand": "Galvanic Arc Staff (1d6+3 Bludgeoning + 2d6 Lightning)",
+        "off_hand": "Capacitor Battery Rig (Focus)",
+        "armor": "Spark-Shield Coat (Cloth, DR 1, Lightning Immune)",
+        "chest": "Spark-Shield Coat (Cloth, DR 1, Lightning Immune)"
+    },
+    "equipped": {
+        "main_hand": "Galvanic Arc Staff (1d6+3 Bludgeoning + 2d6 Lightning)",
+        "off_hand": "Capacitor Battery Rig (Focus)",
+        "armor": "Spark-Shield Coat (Cloth, DR 1, Lightning Immune)",
+        "chest": "Spark-Shield Coat (Cloth, DR 1, Lightning Immune)"
+    },
+    "skills": {
+        "Galvanic Sorcery": {
+            "mastery": 240,
+            "tier": "Journeyman",
+            "description": "Channelling high-voltage aetheric arcs.",
+            "milestones_unlocked": [
+                "Chain Lightning",
+                "Static Overload"
+            ]
+        },
+        "Capacitor Engineering": {
+            "mastery": 210,
+            "tier": "Journeyman",
+            "description": "Storing and regulating energetic voltage.",
+            "milestones_unlocked": [
+                "Overcharge Valve"
+            ]
+        },
+        "Dielectric Piercing": {
+            "mastery": 180,
+            "tier": "Journeyman",
+            "description": "Melting metal armor with plasma heat.",
+            "milestones_unlocked": [
+                "Arc Weld"
+            ]
         }
+    },
+    "abilities": [
+        "Ball Lightning Discharge (3d8 Lightning AOE)",
+        "Static Overcharge (Weapon buff: +1d10 Shock DMG to Banki)",
+        "Dielectric EMP (Stuns constructs for 1 turn)"
     ],
+    "stances": {
+        "plasma_arc": {
+            "name": "Overcharge Plasma Arc",
+            "label": "\u26a1 Plasma Arc",
+            "tag": "[ZEDD PLASMA]",
+            "tactical_effect": "Discharges chain lightning dealing 2d10+4 Shock DMG that arcs across up to 3 targets.",
+            "desc": "Multi-target lightning assault."
+        },
+        "superconductor_field": {
+            "name": "Superconductor Field",
+            "label": "\ud83c\udf10 Superconductor Field",
+            "tag": "[ZEDD FIELD]",
+            "tactical_effect": "Deploys crackling electric perimeter; any enemy entering melee takes 1d8 Shock DMG and loses 10ft movement.",
+            "desc": "Defensive area denial."
+        },
+        "capacitive_burst": {
+            "name": "Static Discharge Burst",
+            "label": "\ud83d\udca5 Static Burst",
+            "tag": "[ZEDD BURST]",
+            "tactical_effect": "Vents all dorsal capacitors into a single concussive shockwave dealing 3d8 Force/Lightning DMG and knocking foes back 15ft.",
+            "desc": "Point-blank peel."
+        }
+    },
+    "dual_tech_id": "volt_tempest_detonation",
+    "behavior_prompt": "You are Zeddicus Volt-Spark, an eccentric electrical plasma-evoker. You speak fast with manic excitement. You fry clusters of enemies with chain lightning, zap armored constructs with targeted dielectric breakdown, and charge Aria Valkyrie's weapons with crackling lightning buffs.",
     "inventory": [
         {
             "name": "Galvanic Arc Staff",
@@ -49,20 +124,5 @@
             "visual_appearance": "wearing an insulated copper-mesh leyline trenchcoat and brass galvanic goggles"
         }
     ],
-    "behavior_prompt": "You are Zeddicus Volt-Spark, an eccentric electrical plasma-evoker. You speak fast with manic excitement. You fry clusters of enemies with chain lightning, zap armored constructs with targeted dielectric breakdown, and charge Aria Valkyrie's weapons with crackling lightning buffs.",
-    "equipped": {
-        "head": "None",
-        "chest": "Spark-Shield Coat",
-        "main_hand": "Galvanic Arc Staff",
-        "off_hand": "Capacitor Battery Rig",
-        "accessory": "None"
-    },
-    "active_debuffs": [],
-    "recruited": false,
-    "active": false,
-    "slug": "zedd",
-    "companion_name": "Zeddicus Volt-Spark",
-    "is_active": false,
-    "stats": {},
-    "skills": {}
+    "active_debuffs": []
 }

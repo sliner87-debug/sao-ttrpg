@@ -1,22 +1,101 @@
 {
     "id": "companion_sariel",
     "name": "Sariel Swift-Wind",
-    "gender": "Female",
-    "pronouns": "she/her",
-    "role": "Verdant Deadeye / Beast-Stalker",
+    "class": "Verdant Deadeye / Beast-Stalker",
+    "title": "Verdant Deadeye / Beast-Stalker",
+    "role": "Extreme-Range Sniping, Crippling Arrow Volleys & Wilderness Tracking",
     "level": 3,
     "hp": 32,
     "max_hp": 32,
-    "ac": 15,
-    "strain_capacity": 3,
-    "active_grafts": [
-        {
-            "name": "Sylphid Wind-Sensing Tendrils",
-            "slot": "Head",
-            "effect": "Eliminates ranged penalties from fog/mist, +3 Initiative",
-            "visual_appearance": "carrying Sylphid Wind-Sensing Tendrils"
+    "xp": 400,
+    "next_level_xp": 900,
+    "stance": "canopy_snipe",
+    "morale": "Steady",
+    "affinity": 20,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "Jenny Jump Forest Canopy - Roaming Glade (X:58, Y:35)",
+    "recruitment_requirements": {
+        "min_level": 2,
+        "col_cost": 0,
+        "item_delivery": [
+            "Venison Ration",
+            "Wild Forest Herbs x2"
+        ],
+        "description": "Track her scent through Jenny Jump Forest (Perception DC 13) and deliver forest rations."
+    },
+    "bio": "A wild wood elf ranger who nests in the 400-foot ironwood trees of Jenny Jump. Unerring sniper with living ironwood recurve bow.",
+    "loadout": {
+        "main_hand": "Living Ironwood Recurve Bow (1d10+4 Piercing)",
+        "off_hand": "None (Two-Handed)",
+        "armor": "Camouflage Ghillie-Cloak (Light, +4 Stealth)",
+        "chest": "Camouflage Ghillie-Cloak (Light, +4 Stealth)"
+    },
+    "equipped": {
+        "main_hand": "Living Ironwood Recurve Bow (1d10+4 Piercing)",
+        "off_hand": "None (Two-Handed)",
+        "armor": "Camouflage Ghillie-Cloak (Light, +4 Stealth)",
+        "chest": "Camouflage Ghillie-Cloak (Light, +4 Stealth)"
+    },
+    "skills": {
+        "Archery Mastery": {
+            "mastery": 270,
+            "tier": "Adept",
+            "description": "Pinpoint extreme-range shooting.",
+            "milestones_unlocked": [
+                "Double Shot",
+                "Ocular Piercing",
+                "Eagle Eye"
+            ]
+        },
+        "Wilderness Stalking": {
+            "mastery": 240,
+            "tier": "Journeyman",
+            "description": "Moving without disturbing leaf or twig.",
+            "milestones_unlocked": [
+                "Forest Ghost"
+            ]
+        },
+        "Beast Anatomy": {
+            "mastery": 180,
+            "tier": "Journeyman",
+            "description": "Targeting beast tendon and heart nodes.",
+            "milestones_unlocked": [
+                "Cripple Tendon"
+            ]
         }
+    },
+    "abilities": [
+        "Heartseeker Snipe (3d10 Piercing DMG from stealth)",
+        "Barbed Hamstring Volley (Roots target for 1 turn)",
+        "Wind-Guidance Aura (+2 Ranged ATK to party)"
     ],
+    "stances": {
+        "canopy_snipe": {
+            "name": "Canopy Snipe",
+            "label": "\ud83c\udff9 Canopy Snipe",
+            "tag": "[SARIEL SNIPE]",
+            "tactical_effect": "Fires from maximum concealment dealing 2d10+4 Piercing DMG, ignoring 50% enemy armor.",
+            "desc": "High critical range sniping."
+        },
+        "suppression_volley": {
+            "name": "Barbed Suppression Volley",
+            "label": "\ud83c\udf27\ufe0f Barbed Volley",
+            "tag": "[SARIEL VOLLEY]",
+            "tactical_effect": "Rains barbed arrows in an arc; slows all advancing enemies and inflicts Bleed (6 DMG/turn).",
+            "desc": "Area crowd control."
+        },
+        "stealth_ambush": {
+            "name": "Woodland Camouflage",
+            "label": "\ud83c\udf3f Woodland Camouflage",
+            "tag": "[SARIEL CAMO]",
+            "tactical_effect": "Melds into foliage; completely untargetable until next attack which is an automatic Critical Hit.",
+            "desc": "Stealth setup."
+        }
+    },
+    "dual_tech_id": "cyclone_arrow_storm",
+    "behavior_prompt": "You are Sariel Swift-Wind, a master archer and wilderness scout. You speak with crisp brevity. You position yourself at extreme range, sniping structural weak points and peeling pressure off Aria Valkyrie.",
     "inventory": [
         {
             "name": "Composite Wind-Recurve Bow",
@@ -49,20 +128,5 @@
             "visual_appearance": "a leather back-quiver bristles with glowing green aether-tipped broadhead arrows"
         }
     ],
-    "behavior_prompt": "You are Sariel Swift-Wind, a master archer and wilderness scout. You speak with crisp brevity. You position yourself at extreme range, sniping structural weak points and peeling pressure off Aria Valkyrie.",
-    "equipped": {
-        "head": "None",
-        "chest": "Camouflage Ghillie-Cloak",
-        "main_hand": "Composite Wind-Recurve Bow",
-        "off_hand": "Aether-Tipped Broadheads x30",
-        "accessory": "None"
-    },
-    "active_debuffs": [],
-    "recruited": false,
-    "active": false,
-    "slug": "sariel",
-    "companion_name": "Sariel Swift-Wind",
-    "is_active": false,
-    "stats": {},
-    "skills": {}
+    "active_debuffs": []
 }

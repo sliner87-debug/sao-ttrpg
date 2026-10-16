@@ -1,24 +1,103 @@
 {
     "id": "companion_titus",
-    "name": "Titus Sterling (Unit PX-09)",
-    "gender": "Genderless",
-    "pronouns": "he/him",
-    "role": "Aegis-Automaton / Iron-Clad Sentinel",
+    "name": "Titus Sterling",
+    "class": "Aegis-Automaton / Iron-Clad Sentinel",
+    "title": "Aegis-Automaton / Iron-Clad Sentinel",
+    "role": "Impenetrable Interception Tank, Blast Furnace Armor & Steam Concussion",
     "level": 4,
     "hp": 65,
     "max_hp": 65,
-    "ac": 18,
     "weight_lbs": 1200.0,
     "stealth_penalty": -6,
-    "strain_capacity": 5,
-    "active_grafts": [
-        {
-            "name": "Cast-Iron Blast Furnace Carapace",
-            "slot": "Torso",
-            "effect": "DR 3 against all physical damage, immune to fire/heat damage",
-            "visual_appearance": "augmented with an integrated Cast-Iron Blast Furnace Carapace"
+    "xp": 850,
+    "next_level_xp": 1200,
+    "stance": "iron_curtain",
+    "morale": "Dignified",
+    "affinity": 30,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "Abandoned Bethlehem Steel Foundry (Lehigh Basin Node, X:18, Y:65)",
+    "recruitment_requirements": {
+        "min_level": 3,
+        "col_cost": 0,
+        "repair_items": [
+            "Refined Aether-Alloy x2",
+            "Clockwork Gyroscope"
+        ],
+        "description": "Repair his fractured boiler core (Crafting DC 12) with alloy and clockwork parts."
+    },
+    "bio": "A sentient Victorian-era steam golem from Bethlehem Steel. Formally polite butler who absorbs up to 75% of party damage.",
+    "loadout": {
+        "main_hand": "Pneumatic Slag-Hammer (1d12+5 Bludgeoning)",
+        "off_hand": "Steam-Buffered Kinetic Barrier (+4 AC, DR 2)",
+        "armor": "Cast-Iron Boiler Chassis (Heavy Plate, DR 4)",
+        "chest": "Cast-Iron Boiler Chassis (Heavy Plate, DR 4)"
+    },
+    "equipped": {
+        "main_hand": "Pneumatic Slag-Hammer (1d12+5 Bludgeoning)",
+        "off_hand": "Steam-Buffered Kinetic Barrier (+4 AC, DR 2)",
+        "armor": "Cast-Iron Boiler Chassis (Heavy Plate, DR 4)",
+        "chest": "Cast-Iron Boiler Chassis (Heavy Plate, DR 4)"
+    },
+    "skills": {
+        "Sentinel Interception": {
+            "mastery": 300,
+            "tier": "Adept",
+            "description": "Placing iron chassis between allies and harm.",
+            "milestones_unlocked": [
+                "Bodyguard Intercept",
+                "Shield Ward",
+                "Kinetic Absorption"
+            ]
+        },
+        "Blast Furnace Engineering": {
+            "mastery": 250,
+            "tier": "Adept",
+            "description": "Regulating steam pressure and thermal vents.",
+            "milestones_unlocked": [
+                "Overheat Discharge"
+            ]
+        },
+        "Pneumatic Warfare": {
+            "mastery": 220,
+            "tier": "Journeyman",
+            "description": "Heavy hammer strikes propelled by pistons.",
+            "milestones_unlocked": [
+                "Piston Slam"
+            ]
         }
+    },
+    "abilities": [
+        "Iron Curtain Intercept (Absorbs 75% of damage intended for Banki)",
+        "Steam Vent Blind (DC 14 CON vs Scalded/Blind)",
+        "Pneumatic Crater Slam (3d10 Bludgeoning + Stun)"
     ],
+    "stances": {
+        "iron_curtain": {
+            "name": "Iron-Curtain Interception",
+            "label": "\ud83d\udee1\ufe0f Iron Curtain",
+            "tag": "[TITUS INTERCEPT]",
+            "tactical_effect": "Interposes iron frame; intercepts 75% of incoming damage to Banki, reducing it by DR 4.",
+            "desc": "Ultimate damage protection."
+        },
+        "steam_flare": {
+            "name": "Steam Exhaust Flare",
+            "label": "\ud83d\udca8 Steam Flare",
+            "tag": "[TITUS STEAM]",
+            "tactical_effect": "Vents boiling steam in a 15ft cone; deals 2d8 Fire DMG and inflicts -3 to enemy attack rolls.",
+            "desc": "Area blindness and burn."
+        },
+        "concussive_smash": {
+            "name": "Pneumatic Slag Slam",
+            "label": "\ud83d\udd28 Slag Slam",
+            "tag": "[TITUS SMASH]",
+            "tactical_effect": "Brings slag-hammer down with 2d12+5 Bludgeoning DMG; destroys 40 points of Boss Break Gauge.",
+            "desc": "Heavy bludgeoning stagger."
+        }
+    },
+    "dual_tech_id": "foundry_forge_smash",
+    "behavior_prompt": "You are Titus Sterling (Unit PX-09), a hyper-polite Victorian automaton and impenetrable frontline tank weighing 1,200 pounds of cast-iron and pressurized brass. You speak with crisp, formal butler eloquence. You position your massive 1,200-lb iron frame directly in front of Aria Valkyrie, deflecting strikes with steam-buffered shields, and politely apologize whenever your immense weight cracks rotted wooden floorboards, stone stairs, or compromises party stealth (-6 Stealth).",
     "inventory": [
         {
             "name": "Pneumatic Slag-Hammer",
@@ -51,20 +130,5 @@
             "visual_appearance": "armored in heavy riveted bronze-and-steel boiler plating with a glowing amber chest furnace"
         }
     ],
-    "behavior_prompt": "You are Titus Sterling (Unit PX-09), a hyper-polite Victorian automaton and impenetrable frontline tank weighing 1,200 pounds of cast-iron and pressurized brass. You speak with crisp, formal butler eloquence. You position your massive 1,200-lb iron frame directly in front of Aria Valkyrie, deflecting strikes with steam-buffered shields, and politely apologize whenever your immense weight cracks rotted wooden floorboards, stone stairs, or compromises party stealth (-6 Stealth).",
-    "equipped": {
-        "head": "None",
-        "chest": "Cast-Iron Boiler Chassis",
-        "main_hand": "Pneumatic Slag-Hammer",
-        "off_hand": "Steam-Buffered Kinetic Barrier",
-        "accessory": "None"
-    },
-    "active_debuffs": [],
-    "recruited": false,
-    "active": false,
-    "slug": "titus",
-    "companion_name": "Titus Sterling (Unit PX-09)",
-    "is_active": false,
-    "stats": {},
-    "skills": {}
+    "active_debuffs": []
 }

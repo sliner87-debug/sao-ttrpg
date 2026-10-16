@@ -1,22 +1,99 @@
 {
     "id": "companion_rok",
     "name": "Ragnarok 'Rok'",
-    "gender": "Male",
-    "pronouns": "he/him",
-    "role": "Juggernaut Marauder / Blood-Rager",
+    "class": "Juggernaut Marauder / Blood-Rager",
+    "title": "Juggernaut Marauder / Blood-Rager",
+    "role": "Berserk Melee Fury, High Physical DR & Twin Cleaver Slaughter",
     "level": 4,
     "hp": 58,
     "max_hp": 58,
-    "ac": 15,
-    "strain_capacity": 4,
-    "active_grafts": [
-        {
-            "name": "Troll-Blood Adrenal Pump",
-            "slot": "Torso",
-            "effect": "Regenerate +4 HP/turn when below 50% HP, +2d6 Berserk Melee DMG",
-            "visual_appearance": "carrying Troll-Blood Adrenal Pump"
+    "xp": 850,
+    "next_level_xp": 1200,
+    "stance": "blood_frenzy",
+    "morale": "Bloodthirsty",
+    "affinity": 20,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "Blood-Pit Arena (Oxford Iron Mines Slag Heaps, X:55, Y:45)",
+    "recruitment_requirements": {
+        "min_level": 3,
+        "col_cost": 0,
+        "duel": "slag_pit_brawl",
+        "description": "Defeat Rok in the Slag Pit duel OR match him drink-for-drink in dwarven gut-burner ale (CON DC 15)."
+    },
+    "bio": "A half-orc bio-chimeric marauder who wields twin jagged slag-cleavers. Becomes exponentially deadlier as his health drops.",
+    "loadout": {
+        "main_hand": "Serrated Slag-Cleaver (1d10+4 Slashing)",
+        "off_hand": "Serrated Slag-Cleaver (1d10+4 Slashing)",
+        "armor": "Troll-Hide Kilt (Heavy Leathers, DR 3)",
+        "chest": "Troll-Hide Kilt (Heavy Leathers, DR 3)"
+    },
+    "equipped": {
+        "main_hand": "Serrated Slag-Cleaver (1d10+4 Slashing)",
+        "off_hand": "Serrated Slag-Cleaver (1d10+4 Slashing)",
+        "armor": "Troll-Hide Kilt (Heavy Leathers, DR 3)",
+        "chest": "Troll-Hide Kilt (Heavy Leathers, DR 3)"
+    },
+    "skills": {
+        "Dual-Axe Slaughter": {
+            "mastery": 290,
+            "tier": "Adept",
+            "description": "Relentless twin-weapon onslaught.",
+            "milestones_unlocked": [
+                "Whirlwind Rake",
+                "Decapitate",
+                "Blood Fountain"
+            ]
+        },
+        "Pain Tolerance": {
+            "mastery": 270,
+            "tier": "Adept",
+            "description": "Converting physical trauma into adrenaline.",
+            "milestones_unlocked": [
+                "Thick Skinned",
+                "Berserk Vigor"
+            ]
+        },
+        "Intimidating Roar": {
+            "mastery": 210,
+            "tier": "Journeyman",
+            "description": "Terrifying lesser foes with primal bellows.",
+            "milestones_unlocked": [
+                "Battle Shriek"
+            ]
         }
+    },
+    "abilities": [
+        "Blood-Frenzy Charge (3d10+8 Slashing + Knocks Prone)",
+        "Unyielding Rage (Cannot drop below 1 HP for 1 turn)",
+        "Meat-Hook Cleave (Pulls enemy into melee range)"
     ],
+    "stances": {
+        "blood_frenzy": {
+            "name": "Blood-Frenzy Rampage",
+            "label": "\ud83e\ude78 Blood Frenzy",
+            "tag": "[ROK FRENZY]",
+            "tactical_effect": "Swings twin cleavers wildly dealing 2d10+6 Slashing DMG; gains +2 DMG for every 10 HP missing.",
+            "desc": "Ramping berserk damage."
+        },
+        "unyielding_flesh": {
+            "name": "Unyielding Flesh",
+            "label": "\ud83d\udee1\ufe0f Unyielding Flesh",
+            "tag": "[ROK FLESH]",
+            "tactical_effect": "Tenses troll-grafted muscles; gains DR 4 against physical damage and taunts all active foes.",
+            "desc": "Frontline berserk tanking."
+        },
+        "cleaver_whirl": {
+            "name": "Whirlwind Slag-Torn",
+            "label": "\ud83c\udf2a\ufe0f Slag Whirlwind",
+            "tag": "[ROK WHIRL]",
+            "tactical_effect": "Spins in a tight circle dealing 2d8+4 Slashing DMG to all adjacent enemies with guaranteed Bleed.",
+            "desc": "Melee AOE cleave."
+        }
+    },
+    "dual_tech_id": "blood_twin_cleave",
+    "behavior_prompt": "You are Ragnarok 'Rok', a brutal Blood-Rager marauder. You speak with guttural gravel and raw warrior pride. In combat, you ignore defense, roaring as you charge the largest monster on the field, cleaving with both axes and soaking damage.",
     "inventory": [
         {
             "name": "Twin Serrated Slag-Cleavers",
@@ -49,20 +126,5 @@
             "visual_appearance": "wearing a heavy cured troll-hide war-kilt and leather harness over a bare chest covered in glowing crimson blood-runes"
         }
     ],
-    "behavior_prompt": "You are Ragnarok 'Rok', a brutal Blood-Rager marauder. You speak with guttural gravel and raw warrior pride. In combat, you ignore defense, roaring as you charge the largest monster on the field, cleaving with both axes and soaking damage.",
-    "equipped": {
-        "head": "None",
-        "chest": "Troll-Hide Kilt",
-        "main_hand": "Twin Serrated Slag-Cleavers",
-        "off_hand": "Spiked Iron Pauldrons",
-        "accessory": "None"
-    },
-    "active_debuffs": [],
-    "recruited": false,
-    "active": false,
-    "slug": "rok",
-    "companion_name": "Ragnarok 'Rok'",
-    "is_active": false,
-    "stats": {},
-    "skills": {}
+    "active_debuffs": []
 }

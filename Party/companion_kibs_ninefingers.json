@@ -1,0 +1,93 @@
+{
+    "id": "kibs_ninefingers",
+    "name": "Kibs Nine-Fingers",
+    "class": "Scrapper Rogue / Infiltrator",
+    "title": "Scrapper Rogue / Infiltrator",
+    "role": "Shadow-Meld, Critical Backstabs, Poison Coatings & Trap Disarming",
+    "level": 3,
+    "hp": 30,
+    "max_hp": 30,
+    "xp": 350,
+    "next_level_xp": 900,
+    "stance": "shadow_meld",
+    "morale": "Steady",
+    "affinity": 15,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "Meiji Dump Scrap Warrens (X:48, Y:54)",
+    "recruitment_requirements": {
+        "min_level": 2,
+        "col_cost": 75,
+        "description": "Rescue Kibs from perimeter scavengers or trade 75 Col worth of scrap parts."
+    },
+    "bio": "A crafty goblinoid scavenger operating out of the Meiji Dump. Possesses uncanny instincts for stealth, neurotoxin synthesis, and lockpicking.",
+    "loadout": {
+        "main_hand": "Serrated Scrap Dagger (1d6+3 Piercing + Bleed)",
+        "off_hand": "Spring-Loaded Wrist Shank (1d4+3 Piercing)",
+        "armor": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)",
+        "chest": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)"
+    },
+    "equipped": {
+        "main_hand": "Serrated Scrap Dagger (1d6+3 Piercing + Bleed)",
+        "off_hand": "Spring-Loaded Wrist Shank (1d4+3 Piercing)",
+        "armor": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)",
+        "chest": "Cloak of Scavenged Shrouds (Light Leathers, +3 Stealth)"
+    },
+    "skills": {
+        "Scrapper Infiltration": {
+            "mastery": 185,
+            "tier": "Journeyman",
+            "description": "Unseen movement and exploitation of sightlines.",
+            "milestones_unlocked": [
+                "Silent Step"
+            ]
+        },
+        "Neurotoxin Synthesis": {
+            "mastery": 140,
+            "tier": "Journeyman",
+            "description": "Distilling monster venom into weapon coatings.",
+            "milestones_unlocked": [
+                "Paralytic Blend"
+            ]
+        },
+        "Lockpick & Bypass": {
+            "mastery": 205,
+            "tier": "Journeyman",
+            "description": "Circumventing tumblers and runic electronic latches.",
+            "milestones_unlocked": [
+                "Skeleton Keying"
+            ]
+        }
+    },
+    "abilities": [
+        "Shadow Strike (+3d6 Critical Bleed)",
+        "Corrosive Neurotoxin Coating (-2 Enemy Saves)",
+        "Scavenger's Eye (+30% bonus Col find)"
+    ],
+    "stances": {
+        "shadow_meld": {
+            "name": "Shadow Meld",
+            "label": "\ud83d\udc64 Shadow Meld",
+            "tag": "[KIBS SNEAK]",
+            "tactical_effect": "Melds into shadows; unleashes guaranteed sneak attack for 3d6+6 Piercing DMG + Bleed.",
+            "desc": "High critical stealth DPS."
+        },
+        "venom_coating": {
+            "name": "Venom Coating",
+            "label": "\ud83e\uddea Venom Coating",
+            "tag": "[KIBS VENOM]",
+            "tactical_effect": "Coats party weapons in neurotoxin; attacks deal +1d6 Acid damage and inflict -2 to enemy saving throws.",
+            "desc": "Poison debuff support."
+        },
+        "lockpick_salvage": {
+            "name": "Lockpick & Salvage",
+            "label": "\ud83d\udddd\ufe0f Lockpick & Salvage",
+            "tag": "[KIBS SALVAGE]",
+            "tactical_effect": "Grants +4 bonus on all trap disarm and chest checks; increases party Col yield by +20%.",
+            "desc": "Exploration and looting utility."
+        }
+    },
+    "dual_tech_id": "shadow_flank_execution",
+    "active_debuffs": []
+}

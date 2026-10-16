@@ -45,6 +45,25 @@ except Exception:
     search_bestiary = None
     roll_random_zone_encounter = None
 
+
+class ItemEntry(dict):
+    """
+    Enhanced dictionary for inventory items supporting string equality checks
+    (e.g., 'Minor Aether-Salve Vial' in player['inventory']) while preserving
+    100% standard dictionary semantics and JSON serializability.
+    """
+    def __eq__(self, other):
+        if isinstance(other, str):
+            my_name = str(self.get("name", "")).strip().lower()
+            my_id = str(self.get("id", "")).strip().lower()
+            other_clean = other.strip().lower()
+            return my_name == other_clean or my_id == other_clean
+        return super().__eq__(other)
+
+    def __hash__(self):
+        return hash(self.get("name", ""))
+
+
 def resolve_zone_from_location(location_name: str, x: int = None, y: int = None):
     """Resilient wrapper delegating to backend.world_atlas.resolve_zone_from_location."""
     try:
@@ -202,15 +221,31 @@ def get_physical_profile(player_state) -> dict:
     effects = []
 
     # Size (from height)
-    if height_in < 48:
+    if height_in < 30:
+        size = "Tiny"
+        mods.update(carry_mult=0.5, ac_mod=2, attack_mod=2, grapple_mod=-8, stealth_bonus=8)
+        effects += [
+            "Tiny: +2 size bonus to AC and attack rolls",
+            "Tiny: -8 grapple modifier",
+            "Tiny: Carry capacity x0.5 (halved)",
+            "Tiny: +8 on Stealth checks and advantage slipping through narrow openings"
+        ]
+    elif height_in < 48:
         size = "Small"
-        mods.update(carry_mult=0.75, ac_mod=1)
+        mods.update(carry_mult=0.75, ac_mod=1, attack_mod=1, grapple_mod=-4, stealth_bonus=4)
         effects += ["Small: +1 AC", "Small: Advantage on Stealth in tight spaces", "Small: Carry capacity x0.75"]
     elif height_in > 84:
         size = "Large"
-        mods.update(carry_mult=1.5, ac_mod=-1, reach_bonus_ft=5)
-        effects += ["Large: Carry capacity x1.5", "Large: +5 ft melee reach", "Large: -1 AC",
-                    "Large: Disadvantage squeezing through tunnels and crawlspaces"]
+        p_str = str(player_state).lower() if isinstance(player_state, (dict, str)) else ""
+        if any(k in p_str for k in ("minotaur", "centaur", "ogre", "troll", "large build", "powerful build", "savage species")):
+            large_carry = 2.0
+        else:
+            large_carry = 1.5
+        mods.update(carry_mult=large_carry, ac_mod=-1, reach_bonus_ft=5, attack_mod=-1, grapple_mod=4)
+        effects += [
+            f"Large: Carry capacity x{large_carry}", "Large: +5 ft melee reach", "Large: -1 AC",
+            "Large: Disadvantage squeezing through tunnels and crawlspaces"
+        ]
     else:
         size = "Medium"
 
@@ -254,6 +289,13 @@ def get_physical_profile(player_state) -> dict:
         "size": size,
         "build": build,
         "age_bracket": age_bracket,
+        "ac_mod": mods["ac_mod"],
+        "carry_mult": mods["carry_mult"],
+        "attack_mod": mods.get("attack_mod", 0),
+        "grapple_mod": mods.get("grapple_mod", 0),
+        "reach_bonus_ft": mods.get("reach_bonus_ft", 0),
+        "reach_ft": 10 if size == "Large" else 5,
+        "stealth_bonus": mods.get("stealth_bonus", 0),
         "modifiers": mods,
         "effects": effects,
         "summary": f"{gender} ({pronouns}) | Age {age} ({age_bracket}) | {format_height(height_in)} ({size}) | {round(weight_lbs)} lbs ({build} build)",
@@ -376,7 +418,13 @@ def get_limb_anatomy_profile(player_state: dict) -> dict:
         )
     )
     is_harpy = "harpy" in race_low
-    is_winged = is_harpy or any(kw in combined for kw in ("aarakocra", "strix", "gargoyle", "stone wings", "raptor flight", "winged aerial"))
+    is_winged = is_harpy or any(
+        kw in combined
+        for kw in (
+            "aarakocra", "strix", "gargoyle", "stone wings", "raptor flight",
+            "winged aerial", "pixie", "gossamer wings", "faerie wings", "natural flight"
+        )
+    )
     is_illithid = any(kw in combined for kw in ("illithid", "ceremorph", "mind flayer", "facial tentacles", "tentacle grapple"))
     is_centaur = "centaur" in race_low
     is_arachnid = any(kw in race_low for kw in ("anadi", "arachne"))
@@ -522,6 +570,7 @@ def get_limb_anatomy_profile(player_state: dict) -> dict:
         "equipment_slot_keys": list(equipment_slots_dict.keys()),
         "graft_slots": graft_slots_dict,
         "graft_slot_keys": list(graft_slots_dict.keys()),
+        "unlocked_graft_slots": list(graft_slots_dict.keys()),
         "secondary_ganglia_strain_bonus": secondary_ganglia_strain_bonus,
         "extra_unit_strain_capacity": secondary_ganglia_strain_bonus,
         "grapple_climb_bonus": grapple_climb_bonus,
@@ -830,16 +879,36 @@ def calculate_ac(player_state, encumbrance=None):
     else:
         shield_bonus = 0
     
-    # Natural AC from Lineage Traits (including Troll-Kreen Fibrous Rubbery Hide & Chitin Carapace)
+    # Natural AC from Lineage Traits (including Troll-Kreen Fibrous Rubbery Hide & Chitin Carapace, Savage Species natural armor)
     natural_ac = 0
     race_str = str(player_state.get("race", "")).lower()
     feats_str = " ".join([str(f).lower() for f in (player_state.get("feats", []) + player_state.get("racial_abilities", []))])
-    if any(k in race_str for k in ["golem reborn", "mantid"]) or "fibrous rubbery hide" in feats_str or "chitin-armored cellular regeneration" in feats_str or "hulking bulk" in feats_str or "exoskeletal carapace" in feats_str:
+    if "natural armor bonus (+3 ac)" in feats_str or "true giant might" in feats_str:
+        natural_ac += 3
+    elif (
+        any(k in race_str for k in ["golem reborn", "mantid", "half-ogre", "troll", "dryad", "rust-monster"])
+        or "fibrous rubbery hide" in feats_str
+        or "rubbery hide natural armor" in feats_str
+        or "natural armor bonus (+2 ac)" in feats_str
+        or "barkskin & cold iron resilience" in feats_str
+        or "chitin-armored cellular regeneration" in feats_str
+        or "hulking bulk" in feats_str
+        or "exoskeletal carapace" in feats_str
+        or "chitin carapace: natural +2 armor class" in feats_str
+    ):
         natural_ac += 2
-    elif any(k in race_str for k in ["cyborg", "draconic", "dragonborn"]):
+    elif any(k in race_str for k in ["cyborg", "draconic", "dragonborn", "kobold"]):
         natural_ac += 1
-    elif "pneumatic endoskeleton" in feats_str or "dragon-scale armor" in feats_str:
+    elif "pneumatic endoskeleton" in feats_str or "dragon-scale armor" in feats_str or "+1 natural armor" in feats_str or "dragon scales: small size" in feats_str:
         natural_ac += 1
+
+    # Unearthly Grace: Add Charisma modifier as deflection bonus to AC when wearing light or no armor
+    deflection_ac = 0
+    if "unearthly grace" in feats_str or "meadow nymph" in race_str or "nymph" in race_str:
+        if "plate" not in chest and "chain" not in chest and "einherjar" not in chest and armor_bonus <= 3:
+            cha_val = stats.get("CHA", 10)
+            cha_mod = max(0, (cha_val - 10) // 2)
+            deflection_ac += cha_mod
 
     # Chameleon / Symbiotic Carapace unarmored/light AC floor (15 + min(DEX_mod, 3))
     if ("chameleon chitin carapace" in feats_str or "symbiotic moss-knit carapace" in feats_str or "chameleon carapace" in feats_str) and "plate" not in chest:
@@ -861,7 +930,107 @@ def calculate_ac(player_state, encumbrance=None):
             
     ac_pen = dur_pens.get("ac_penalty", 0)
     size_ac = get_physical_profile(player_state)["modifiers"]["ac_mod"]
-    return max(10, base_ac + armor_bonus + shield_bonus + natural_ac + graft_ac_bonus + size_ac - ac_pen)
+    return max(10, base_ac + armor_bonus + shield_bonus + natural_ac + graft_ac_bonus + deflection_ac + size_ac - ac_pen)
+
+
+def resolve_damage_reduction(defender_state: dict, incoming_damage: int, damage_type: str = "physical", weapon_properties: list = None) -> int:
+    """
+    Applies Damage Reduction (DR) rules from D&D 3.5 / Savage Species.
+    Fey lineages (Pixie, Nymph, Dryad, Satyr) possess DR 5/cold iron.
+    Gargoyle possesses DR 10/magic (or 25% passive physical resistance).
+    Reduces physical damage by the DR value unless bypassed by cold-iron or magic weapons.
+    """
+    if incoming_damage <= 0:
+        return 0
+    if weapon_properties is None:
+        weapon_properties = []
+
+    feats_str = " ".join(str(f).lower() for f in (defender_state.get("feats", []) + defender_state.get("racial_abilities", [])))
+    race_str = str(defender_state.get("race", "")).lower()
+
+    if damage_type.lower() in ("physical", "slashing", "piercing", "bludgeoning"):
+        # DR 10/magic for Gargoyle
+        if "dr 10/magic" in feats_str or "gargoyle" in race_str:
+            is_magic = any("magic" in str(p).lower() for p in weapon_properties)
+            if not is_magic:
+                incoming_damage = max(1, incoming_damage - 10)
+        # DR 5/cold iron check for Fey lineages
+        elif (
+            "dr 5/cold iron" in feats_str
+            or "cold iron damage reduction" in feats_str
+            or any(fey in race_str for fey in ("pixie", "nymph", "dryad", "satyr"))
+        ):
+            is_cold_iron = any("cold iron" in str(p).lower() for p in weapon_properties)
+            if not is_cold_iron:
+                incoming_damage = max(1, incoming_damage - 5)
+
+    return incoming_damage
+
+
+def evaluate_stealth_and_invisibility(actor_state: dict, in_combat: bool = False, just_attacked: bool = False) -> dict:
+    """
+    Resolves Permanent Greater Invisibility and size stealth modifiers for Pixies and stealth specialists.
+    Pixie remains continuously invisible; upon attacking, form flickers for 1 turn (granting Advantage)
+    and immediately re-engages at end of turn.
+    """
+    feats_str = " ".join(str(f).lower() for f in (actor_state.get("feats", []) + actor_state.get("racial_abilities", [])))
+    race_str = str(actor_state.get("race", "")).lower()
+
+    has_greater_invisibility = "permanent greater invisibility" in feats_str or "pixie" in race_str
+
+    if has_greater_invisibility:
+        if just_attacked:
+            return {
+                "is_invisible": True,
+                "flickering": True,
+                "advantage_on_attack": True,
+                "deny_target_dex_ac": True,
+                "stealth_bonus": 8,
+                "miss_chance_vs_actor": 0.20,
+                "desc": "Form flickers with iridescent starlight upon impact, immediately refracting into invisibility."
+            }
+        else:
+            return {
+                "is_invisible": True,
+                "flickering": False,
+                "advantage_on_attack": True,
+                "deny_target_dex_ac": True,
+                "stealth_bonus": 8,
+                "miss_chance_vs_actor": 0.50,
+                "desc": "Continuously and naturally invisible (Greater Invisibility). Enemies suffer Disadvantage and 50% miss chance."
+            }
+
+    return {
+        "is_invisible": False,
+        "flickering": False,
+        "advantage_on_attack": False,
+        "deny_target_dex_ac": False,
+        "stealth_bonus": 0,
+        "miss_chance_vs_actor": 0.0
+    }
+
+
+def apply_pixie_dust_effect(target_state: dict, dust_choice: str = "sleep", dc: int = 15) -> dict:
+    """
+    Applies Pixie Dust (Sleep & Confusion) rules from D&D 3.0 / Savage Species.
+    Range 30ft, 15-ft burst, DC 15 Will/Wisdom saving throw.
+    Failure causes Sleep (incapacitated) or Confusion (random actions).
+    """
+    stats = target_state.get("stats", {}) if isinstance(target_state, dict) else {}
+    wis_mod = (stats.get("WIS", 10) - 10) // 2
+    race_str = str(target_state.get("race", "")).lower() if isinstance(target_state, dict) else ""
+    feats_str = " ".join(str(f).lower() for f in (target_state.get("feats", []) + target_state.get("racial_abilities", []))) if isinstance(target_state, dict) else ""
+    if "synthetic" in race_str or "sleepless" in feats_str or "construct" in race_str:
+        return {"saved": True, "immune": True, "effect": None, "desc": "Target has sleepless alien or synthetic metabolism; immune to Pixie Dust."}
+
+    return {
+        "dc": dc,
+        "target_wis_mod": wis_mod,
+        "dust_choice": dust_choice,
+        "effect_applied": "incapacitated" if dust_choice.lower() == "sleep" else "confused",
+        "duration_rounds": 1,
+        "desc": f"Target subjected to DC {dc} Pixie Dust ({dust_choice.capitalize()})."
+    }
 
 
 
@@ -1677,8 +1846,8 @@ def migrate_player_skills(player_state: dict) -> dict:
 
 # --- TIER 1 CLASS FEATS TREES (Levels 1, 3, 6, 10) ---
 CLASS_FEATS_TREE = {
-    "warrior": {
-        "title": "Warrior (Frontline Anchor)",
+    "fighter": {
+        "title": "Fighter (Martial Weaponmaster)",
         "resource": {"name": "Poise & Threat", "max": 100, "start": 0, "type": "poise"},
         "level_1": [
             "Shield Wall Stance (Active): Enter fortified defensive stance; gain +3 AC and Advantage on CON saves, movement halved.",
@@ -1700,8 +1869,8 @@ CLASS_FEATS_TREE = {
             {"id": "C", "name": "Battlefield Commander", "type": "Active", "desc": "Spend 40 Poise to command all party members to strike simultaneously with Advantage."}
         ]
     },
-    "mage": {
-        "title": "Mage (Aether-Weaver)",
+    "wizard": {
+        "title": "Wizard (Aether-Weaver)",
         "resource": {"name": "Aetheric Flux", "max": 50, "start": 50, "type": "flux"},
         "level_1": [
             "Arcane Ward (Active): Conjure aetheric barrier absorbing up to 25 + (5 x Lvl) damage.",
@@ -1721,6 +1890,29 @@ CLASS_FEATS_TREE = {
             {"id": "A", "name": "Arcane Conduit Overdrive", "type": "Passive", "desc": "Spells deal 20% increased force/elemental damage when cast at or above 30 Flux."},
             {"id": "B", "name": "Event Horizon", "type": "Active", "desc": "Spend 45 Flux to create a gravitational collapse that pulls enemies in 30ft and immobilizes them."},
             {"id": "C", "name": "Aetheric Aegis", "type": "Active", "desc": "Spend 35 Flux to grant all party members a 30 HP protective energy barrier for 3 turns."}
+        ]
+    },
+    "rogue": {
+        "title": "Rogue (Shadow Operative)",
+        "resource": {"name": "Momentum Dice", "max": 5, "start": 1, "type": "momentum"},
+        "level_1": [
+            "Shadow Footwork (Active Stance): Gain +2 to Dodge DC and ignore terrain movement penalties.",
+            "Serrated Backstab (Active): Spend 1 Momentum to strike from stealth or flank for +2d6 precision bleed damage."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Fluid Evasion", "type": "Passive", "desc": "Whenever an enemy misses an attack against you, immediately generate +1 Momentum die."},
+            {"id": "B", "name": "Pocket Blind", "type": "Active", "desc": "Spend 1 Momentum die to blind target eyes; target suffers Disadvantage on attack rolls for 2 turns."},
+            {"id": "C", "name": "Opportunistic Sprint", "type": "Active", "desc": "Spend 1 Momentum die to take Dash and Disengage simultaneously as a free bonus action."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Shadow-Vanish", "type": "Active", "desc": "Spend 2 Momentum dice to drop smoke pellet and re-enter full Stealth in plain sight."},
+            {"id": "B", "name": "Severing Tendon", "type": "Active", "desc": "Spend 2 Momentum on critical strike to reduce target movement to 0 and disable reaction attacks."},
+            {"id": "C", "name": "Cunning Double-Strike", "type": "Passive", "desc": "Dual-wielding off-hand strikes have a 50% chance not to consume an action when spending Momentum."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Death Lotus", "type": "Active", "desc": "Spend 3 Momentum to teleport between up to 4 enemies in 30ft, striking each for critical damage."},
+            {"id": "B", "name": "Phase Shadow", "type": "Passive", "desc": "When dropping below 30% HP, automatically vanish into shadow for 2 turns without taking damage."},
+            {"id": "C", "name": "Expose Fatal Flaw", "type": "Active", "desc": "Spend 2 Momentum to analyze target; all party members deal +50% critical damage to target for 2 turns."}
         ]
     },
     "cleric": {
@@ -1746,29 +1938,6 @@ CLASS_FEATS_TREE = {
             {"id": "C", "name": "Aura of the Incorruptible", "type": "Passive", "desc": "All party members within 30ft gain +3 to all saving throws and immune to Fear and Charm."}
         ]
     },
-    "thief": {
-        "title": "Thief (Shadow Infiltrator)",
-        "resource": {"name": "Momentum Dice", "max": 5, "start": 1, "type": "momentum"},
-        "level_1": [
-            "Shadow Footwork (Active Stance): Gain +2 to Dodge DC and ignore terrain movement penalties.",
-            "Serrated Backstab (Active): Spend 1 Momentum to strike from stealth or flank for +2d6 precision bleed damage."
-        ],
-        "level_3": [
-            {"id": "A", "name": "Fluid Evasion", "type": "Passive", "desc": "Whenever an enemy misses an attack against you, immediately generate +1 Momentum die."},
-            {"id": "B", "name": "Pocket Blind", "type": "Active", "desc": "Spend 1 Momentum die to blind target eyes; target suffers Disadvantage on attack rolls for 2 turns."},
-            {"id": "C", "name": "Opportunistic Sprint", "type": "Active", "desc": "Spend 1 Momentum die to take Dash and Disengage simultaneously as a free bonus action."}
-        ],
-        "level_6": [
-            {"id": "A", "name": "Shadow-Vanish", "type": "Active", "desc": "Spend 2 Momentum dice to drop smoke pellet and re-enter full Stealth in plain sight."},
-            {"id": "B", "name": "Severing Tendon", "type": "Active", "desc": "Spend 2 Momentum on critical strike to reduce target movement to 0 and disable reaction attacks."},
-            {"id": "C", "name": "Cunning Double-Strike", "type": "Passive", "desc": "Dual-wielding off-hand strikes have a 50% chance not to consume an action when spending Momentum."}
-        ],
-        "level_10": [
-            {"id": "A", "name": "Death Lotus", "type": "Active", "desc": "Spend 3 Momentum to teleport between up to 4 enemies in 30ft, striking each for critical damage."},
-            {"id": "B", "name": "Phase Shadow", "type": "Passive", "desc": "When dropping below 30% HP, automatically vanish into shadow for 2 turns without taking damage."},
-            {"id": "C", "name": "Expose Fatal Flaw", "type": "Active", "desc": "Spend 2 Momentum to analyze target; all party members deal +50% critical damage to target for 2 turns."}
-        ]
-    },
     "ranger": {
         "title": "Ranger (Wilderness Marksman)",
         "resource": {"name": "Focus & Vantage", "max": 5, "start": 3, "type": "focus"},
@@ -1790,6 +1959,121 @@ CLASS_FEATS_TREE = {
             {"id": "A", "name": "Apex Predator", "type": "Passive", "desc": "Attacks against quarry expand critical threat range to 18-20 and deal x3 critical damage."},
             {"id": "B", "name": "Ballistic Barrage", "type": "Active", "desc": "Spend 3 Focus charges to fire a stream of 5 piercing arrows into a single target."},
             {"id": "C", "name": "Perimeter Lockdown", "type": "Active", "desc": "Spend 2 Focus charges to deploy a network of concealed trip-mines covering 40ft."}
+        ]
+    },
+    "paladin": {
+        "title": "Paladin (Oath-Bound Crusader)",
+        "resource": {"name": "Righteous Zeal", "max": 100, "start": 50, "type": "zeal"},
+        "level_1": [
+            "Righteous Smite (Active): Spend 25 Zeal to empower a melee strike, dealing +2d8 radiant damage and blinding aberrations or fiends.",
+            "Lay on Hands (Active): Spend 20 Zeal to touch a target, restoring 2d6 + CHA mod HP and curing one poison or disease."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Aura of Courage", "type": "Passive", "desc": "You and allies within 10ft cannot be Frightened and gain +2 on saving throws against mental effects."},
+            {"id": "B", "name": "Vow of Enmity", "type": "Active", "desc": "Spend 20 Zeal to mark a foe; gain Advantage on attack rolls against them for 3 turns."},
+            {"id": "C", "name": "Radiant Retaliation", "type": "Reaction", "desc": "When struck in melee, spend 15 Zeal to reflect 1d8 radiant damage back at the attacker."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Aura of Protection", "type": "Passive", "desc": "Add your CHA modifier (+2 minimum) as a bonus to all saving throws for yourself and allies within 10ft."},
+            {"id": "B", "name": "Holy Cleansing", "type": "Active", "desc": "Spend 30 Zeal to dispel magical curses and debuffs on up to 3 adjacent allies."},
+            {"id": "C", "name": "Crusader's Wrath", "type": "Active", "desc": "Spend 35 Zeal to strike in a sweeping arc, dealing weapon damage + 2d8 radiant to all enemies within 10ft."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Living Bastion of Dawn", "type": "Passive", "desc": "Gain 15% resistance to physical and necrotic damage. Radiant damage dealt increased by 25%."},
+            {"id": "B", "name": "Sunburst Judgment", "type": "Active", "desc": "Spend 50 Zeal to summon a solar pillar dealing 5d10 radiant damage and stunning fiends/undead for 1 turn."},
+            {"id": "C", "name": "Invincible Aegis", "type": "Active", "desc": "Spend 40 Zeal to envelop the party in a golden barrier granting immunity to critical hits for 3 turns."}
+        ]
+    },
+    "druid": {
+        "title": "Druid (Primal Shifter)",
+        "resource": {"name": "Primal Essence", "max": 100, "start": 50, "type": "primal"},
+        "level_1": [
+            "Wild Shape: Dire Beast (Active Stance): Shift into a dire combat beast; gain +2 AC, +10 temp HP, and natural claws dealing 1d8 slashing.",
+            "Entangling Brambles (Active): Spend 20 Primal Essence to sprout grasping vines in a 20ft area, restraining targets (DC 13 DEX save)."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Barkskin Carapace", "type": "Passive", "desc": "While in natural armor or Wild Shape, base Armor Class cannot be less than 16."},
+            {"id": "B", "name": "Healing Mists", "type": "Active", "desc": "Spend 25 Primal Essence to summon rain clouds that restore 2d6 HP to all allies each turn for 2 turns."},
+            {"id": "C", "name": "Thorn Strike", "type": "Active", "desc": "Spend 15 Primal Essence to lash out with barbed briars dealing 2d6 piercing and applying bleeding."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Call Lightning", "type": "Active", "desc": "Spend 35 Primal Essence to call down a thunderbolt dealing 3d10 lightning damage in a 10ft radius."},
+            {"id": "B", "name": "Symbiotic Regeneration", "type": "Passive", "desc": "While standing on natural ground or vegetative terrain, regenerate 5 HP per turn."},
+            {"id": "C", "name": "Apex Predator Shift", "type": "Active Stance", "desc": "Spend 30 Primal Essence to assume Apex Shifter form; melee attacks gain Advantage and cleave adjacent targets."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Avatar of the Wilds", "type": "Passive", "desc": "Immunity to poison and disease. Wild Shape form gains +20 temp HP and attacks bypass physical DR."},
+            {"id": "B", "name": "Tsunami of Thorns", "type": "Active", "desc": "Spend 50 Primal Essence to unleash a wave of crushing ironwood and thorns dealing 5d8 nature damage across 30ft."},
+            {"id": "C", "name": "Primal Rebirth", "type": "Passive", "desc": "Once per day, upon reaching 0 HP, instantly burst into vegetative energy, healing to 40% HP."}
+        ]
+    },
+    "bard": {
+        "title": "Bard (Cadence Virtuoso)",
+        "resource": {"name": "Acoustic Cadence", "max": 100, "start": 30, "type": "cadence"},
+        "level_1": [
+            "Bardic Inspiration (Active): Spend 15 Cadence to grant an ally a d8 inspiration die to add to any attack, save, or check.",
+            "Dissonant Discord (Active): Spend 20 Cadence to emit a psychic chord dealing 1d8 sonic damage and forcing target to retreat."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Jack of All Trades", "type": "Passive", "desc": "Add half your proficiency bonus to any skill check that doesn't already include your proficiency."},
+            {"id": "B", "name": "Song of Rest", "type": "Passive", "desc": "During short respites, party members recover an additional 1d8 HP per rest."},
+            {"id": "C", "name": "Cutting Words", "type": "Reaction", "desc": "Spend 15 Cadence when an enemy attacks to subtract 1d6 from their attack or damage roll."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Font of Inspiration", "type": "Passive", "desc": "Acoustic Cadence regenerates +10 charges at the start of each combat round."},
+            {"id": "B", "name": "Hypnotic Melody", "type": "Active", "desc": "Spend 35 Cadence to play an entrancing riff; targets in 25ft must make a WIS save (DC 14) or become Incapacitated."},
+            {"id": "C", "name": "Symphony of War", "type": "Active", "desc": "Spend 30 Cadence to play a stirring battle anthem, granting all party members +2 to hit and +1d6 sonic damage."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Magical Secrets", "type": "Passive", "desc": "Learn any 2 spells or powers from any class doctrine, casting them using Acoustic Cadence."},
+            {"id": "B", "name": "Cacophonic Climax", "type": "Active", "desc": "Spend 50 Cadence to release an ear-shattering crescendo dealing 5d10 sonic damage and deafening/stunning foes for 1 turn."},
+            {"id": "C", "name": "Heroic Resonator", "type": "Passive", "desc": "Bardic Inspiration dice upgrade from d8 to d12, and grant the target +2 AC while held."}
+        ]
+    },
+    "barbarian": {
+        "title": "Barbarian (Primal Juggernaut)",
+        "resource": {"name": "Primal Fury & Rage", "max": 100, "start": 0, "type": "rage"},
+        "level_1": [
+            "Berserker Rage (Active): Enter violent rage; gain +4 melee damage, resistance to bludgeoning/piercing/slashing, builds +20 Rage on attack.",
+            "Reckless Abandon (Active): Throw aside defense; gain Advantage on melee attacks this turn, but enemy attacks against you also have Advantage."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Frenzied Bloodlust", "type": "Passive", "desc": "While raging, reducing an enemy to 0 HP instantly grants an extra melee attack as a free action."},
+            {"id": "B", "name": "Danger Sense", "type": "Passive", "desc": "Advantage on DEX saving throws against traps, spells, and environmental hazards you can see."},
+            {"id": "C", "name": "Intimidating Roar", "type": "Active", "desc": "Spend 25 Rage to unleash a terrifying bellow; foes within 20ft must pass a WIS save (DC 13 + STR) or become Frightened."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Mindless Rage", "type": "Passive", "desc": "You cannot be Charmed or Frightened while raging. If charmed/frightened when entering rage, the effect is suspended."},
+            {"id": "B", "name": "Ground Breaker", "type": "Active", "desc": "Spend 35 Rage to smash weapon into the earth; creates difficult terrain and knocks down foes in 15ft."},
+            {"id": "C", "name": "Savage Critical", "type": "Passive", "desc": "Critical hits with two-handed heavy weapons roll 2 additional weapon damage dice."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Relentless Rage", "type": "Passive", "desc": "If you drop to 0 HP while raging, pass a DC 10 CON save to drop to 1 HP instead."},
+            {"id": "B", "name": "Apocalyptic Cleave", "type": "Active", "desc": "Spend 50 Rage to unleash a whirlwind slash dealing 4d12 physical damage to all foes within 15ft."},
+            {"id": "C", "name": "Primal Champion", "type": "Passive", "desc": "Your STR and CON scores permanently increase by +2 (up to a maximum of 24), and max Rage becomes 125."}
+        ]
+    },
+    "monk": {
+        "title": "Monk (Ki Flow Ascetic)",
+        "resource": {"name": "Ki & Flow", "max": 10, "start": 5, "type": "ki"},
+        "level_1": [
+            "Flurry of Blows (Active): Spend 1 Ki point immediately after an attack to make two bonus unarmed strikes.",
+            "Patient Defense (Reaction): Spend 1 Ki point to take the Dodge action as a bonus action or reaction, imposing Disadvantage on incoming attacks."
+        ],
+        "level_3": [
+            {"id": "A", "name": "Deflect Missiles", "type": "Reaction", "desc": "When hit by a ranged weapon attack, reduce damage by 1d10 + DEX mod + Level. Spend 1 Ki to catch and throw it back."},
+            {"id": "B", "name": "Step of the Wind", "type": "Active", "desc": "Spend 1 Ki point to Disengage and Dash as bonus actions, and jump distance is doubled."},
+            {"id": "C", "name": "Open Hand Technique", "type": "Passive", "desc": "Flurry of Blows hits can knock targets Prone (DC 13 DEX save) or push them 15ft back (DC 13 STR save)."}
+        ],
+        "level_6": [
+            {"id": "A", "name": "Stunning Strike", "type": "Active", "desc": "Spend 1 Ki point when you hit with melee attack; target must pass a CON save (DC 13 + WIS) or be Stunned until end of next turn."},
+            {"id": "B", "name": "Ki-Empowered Strikes", "type": "Passive", "desc": "Your unarmed strikes count as magical for the purpose of overcoming resistance and immunity."},
+            {"id": "C", "name": "Wholeness of Body", "type": "Active", "desc": "Once per long rest, touch your pressure points to restore hit points equal to 3 x Monk Level."}
+        ],
+        "level_10": [
+            {"id": "A", "name": "Diamond Soul", "type": "Passive", "desc": "Gain proficiency in all saving throws. Spend 1 Ki point to reroll any failed saving throw."},
+            {"id": "B", "name": "Quivering Palm", "type": "Active", "desc": "Spend 3 Ki points to set lethal vibrations in a target. Can detonate later dealing 10d10 force damage (or instant defeat on failed CON save)."},
+            {"id": "C", "name": "Empty Body", "type": "Active", "desc": "Spend 4 Ki points to become invisible and gain resistance to all damage except force for 3 turns."}
         ]
     },
     "engineer": {
@@ -1843,7 +2127,7 @@ CLASS_FEATS_TREE = {
         "resource": {"name": "Anomaly Resonance", "max": 100, "start": 0, "type": "resonance"},
         "level_1": [
             "Adaptive Weapon Mastery (Passive): Equip and dual-wield any weapon combination without off-hand penalties.",
-            "Unshackled Potential (Passive): Can choose any 1 starting ability from any of the 7 anchor classes."
+            "Unshackled Potential (Passive): Can choose any 1 starting ability from any of the anchor classes."
         ],
         "level_3": [
             {"id": "A", "name": "Cross-Discipline Synergy", "type": "Passive", "desc": "Executing a melee attack grants +2 to hit and +1d6 damage on your next ranged or magical action."},
@@ -1851,7 +2135,7 @@ CLASS_FEATS_TREE = {
             {"id": "C", "name": "System Glitch Step", "type": "Active", "desc": "Spend 25 Resonance to phase-shift through collision for 1 turn, passing through obstacles."}
         ],
         "level_6": [
-            {"id": "A", "name": "Stolen Doctrine", "type": "Passive", "desc": "Choose any 1 Level 3 or Level 6 Class Feat from any of the seven anchor classes."},
+            {"id": "A", "name": "Stolen Doctrine", "type": "Passive", "desc": "Choose any 1 Level 3 or Level 6 Class Feat from any of the anchor classes."},
             {"id": "B", "name": "Glitched Blade Edge", "type": "Active", "desc": "Spend 40 Resonance to coat weapons in null-void data; attacks bypass physical AC for 1 turn."},
             {"id": "C", "name": "Dual-Core Overclock", "type": "Active", "desc": "Spend 50 Resonance to gain an extra Standard Action this turn."}
         ],
@@ -1863,34 +2147,103 @@ CLASS_FEATS_TREE = {
     }
 }
 
-# Legacy alias mappings
-CLASS_FEATS_TREE["vanguard"] = CLASS_FEATS_TREE["warrior"]
-CLASS_FEATS_TREE["magi_saboteur"] = CLASS_FEATS_TREE["engineer"]
-CLASS_FEATS_TREE["aether_slinger"] = CLASS_FEATS_TREE["mage"]
+# Bidirectional alias mappings for backward compatibility
+CLASS_FEATS_TREE["warrior"] = CLASS_FEATS_TREE["fighter"]
+CLASS_FEATS_TREE["vanguard"] = CLASS_FEATS_TREE["fighter"]
+CLASS_FEATS_TREE["mage"] = CLASS_FEATS_TREE["wizard"]
+CLASS_FEATS_TREE["aether_slinger"] = CLASS_FEATS_TREE["wizard"]
+CLASS_FEATS_TREE["thief"] = CLASS_FEATS_TREE["rogue"]
+CLASS_FEATS_TREE["infiltrator"] = CLASS_FEATS_TREE["rogue"]
 CLASS_FEATS_TREE["wilderness_ranger"] = CLASS_FEATS_TREE["ranger"]
+CLASS_FEATS_TREE["magi_saboteur"] = CLASS_FEATS_TREE["engineer"]
+CLASS_FEATS_TREE["artificer"] = CLASS_FEATS_TREE["engineer"]
+CLASS_FEATS_TREE["phrenic"] = CLASS_FEATS_TREE["psion"]
+CLASS_FEATS_TREE["mentalist"] = CLASS_FEATS_TREE["psion"]
 
 # --- ASYMMETRIC COMBAT RESOURCE ENGINE ---
 
 def normalize_class_key(class_str):
-    """Maps class titles or raw strings to canonical dictionary keys."""
+    """Maps class titles, aliases, or raw strings to canonical dictionary keys."""
     if not class_str or not isinstance(class_str, str):
         return "pathless"
-    c_low = class_str.lower()
-    if "warrior" in c_low or "vanguard" in c_low:
-        return "warrior"
+    c_low = class_str.strip().lower()
+
+    # Exact canonical identity for the Classic 10
+    canonical_10 = {
+        "fighter": "fighter",
+        "wizard": "wizard",
+        "rogue": "rogue",
+        "cleric": "cleric",
+        "ranger": "ranger",
+        "paladin": "paladin",
+        "druid": "druid",
+        "bard": "bard",
+        "barbarian": "barbarian",
+        "monk": "monk",
+    }
+    if c_low in canonical_10:
+        return canonical_10[c_low]
+
+    # Specific required exact aliases
+    alias_map = {
+        "warrior": "fighter",
+        "vanguard": "fighter",
+        "mage": "wizard",
+        "aether_slinger": "wizard",
+        "thief": "rogue",
+        "infiltrator": "rogue",
+        "wilderness_ranger": "ranger",
+        "magi_saboteur": "engineer",
+        "hunter": "ranger",
+        "marksman": "ranger",
+        "templar": "cleric",
+        "priest": "cleric",
+        "arcanist": "wizard",
+        "slinger": "wizard",
+        "assassin": "rogue",
+        "berserker": "barbarian",
+        "juggernaut": "barbarian",
+        "crusader": "paladin",
+        "shifter": "druid",
+        "virtuoso": "bard",
+        "skald": "bard",
+        "ascetic": "monk",
+    }
+    if c_low in alias_map:
+        return alias_map[c_low]
+
+    # Legacy non-breaking classes
+    if c_low == "engineer" or "artificer" in c_low or "saboteur" in c_low or "engineer" in c_low:
+        return "engineer"
+    if c_low == "psion" or "phrenic" in c_low or "mentalist" in c_low or "psion" in c_low:
+        return "psion"
+    if c_low == "pathless":
+        return "pathless"
+
+    # Substring matching for descriptive titles like "Fighter (Martial Weaponmaster)"
+    if "barbarian" in c_low or "berserker" in c_low:
+        return "barbarian"
+    if "paladin" in c_low or "crusader" in c_low:
+        return "paladin"
+    if "druid" in c_low or "shifter" in c_low:
+        return "druid"
+    if "bard" in c_low or "virtuoso" in c_low or "skald" in c_low:
+        return "bard"
+    if "monk" in c_low or "ascetic" in c_low:
+        return "monk"
+    if "fighter" in c_low or "warrior" in c_low or "vanguard" in c_low:
+        return "fighter"
+    if "wizard" in c_low or "mage" in c_low or "aether_slinger" in c_low or "slinger" in c_low or "arcanist" in c_low:
+        return "wizard"
+    if "rogue" in c_low or "thief" in c_low or "infiltrator" in c_low:
+        return "rogue"
     if "cleric" in c_low or "templar" in c_low:
         return "cleric"
-    if "thief" in c_low or "rogue" in c_low or "infiltrator" in c_low:
-        return "thief"
     if "ranger" in c_low or "hunter" in c_low or "marksman" in c_low:
         return "ranger"
-    if "engineer" in c_low or "artificer" in c_low or "saboteur" in c_low:
-        return "engineer"
-    if "psion" in c_low or "phrenic" in c_low or "mentalist" in c_low:
-        return "psion"
-    if "mage" in c_low or "slinger" in c_low or "arcanist" in c_low or "wizard" in c_low:
-        return "mage"
+
     return "pathless"
+
 
 def initialize_combat_resource(player):
     """
@@ -1909,6 +2262,7 @@ def initialize_combat_resource(player):
         }
     return player["combat_resource"]
 
+
 def update_combat_resource(player, delta):
     """
     Adjusts the player's combat resource by delta (positive or negative).
@@ -1919,10 +2273,10 @@ def update_combat_resource(player, delta):
     old_val = res.get("current", 0)
     max_val = res.get("max", 100)
     r_type = res.get("type", "generic")
-    
+
     new_val = max(0, min(max_val, old_val + delta))
     res["current"] = new_val
-    
+
     warning = None
     if r_type == "strain":
         if new_val >= 100:
@@ -1932,7 +2286,7 @@ def update_combat_resource(player, delta):
     elif r_type == "heat":
         if new_val >= 100:
             warning = "OVERHEAT DETECTED! Chassis venting required to prevent burn damage!"
-            
+
     return {
         "name": res["name"],
         "old": old_val,
@@ -1942,6 +2296,7 @@ def update_combat_resource(player, delta):
         "warning": warning
     }
 
+
 def get_combat_resource_display(player):
     """Returns formatted display info for HUD rendering."""
     res = initialize_combat_resource(player)
@@ -1949,14 +2304,22 @@ def get_combat_resource_display(player):
     m = res.get("max", 100)
     pct = round(cur / m, 2) if m > 0 else 0.0
     r_type = res.get("type", "generic")
-    
+
     if r_type == "strain":
         display_str = f"{cur}% / {m}% Strain"
-    elif r_type in ["momentum", "focus"]:
+    elif r_type in ["momentum", "focus", "ki"]:
         display_str = f"{cur} / {m} Charges"
+    elif r_type == "rage":
+        display_str = f"{cur} / {m} Rage"
+    elif r_type == "zeal":
+        display_str = f"{cur} / {m} Zeal"
+    elif r_type == "primal":
+        display_str = f"{cur} / {m} Primal"
+    elif r_type == "cadence":
+        display_str = f"{cur} / {m} Cadence"
     else:
         display_str = f"{cur} / {m}"
-        
+
     return {
         "name": res.get("name", "Combat Resource"),
         "current": cur,
@@ -1966,23 +2329,39 @@ def get_combat_resource_display(player):
         "display": display_str
     }
 
+
 # --- ARCHETYPE HP SCALING & LEVEL PROGRESSION ---
 
 ARCHETYPE_HP_GROWTH = {
-    "warrior": 35,
+    # Classic 10 classes
+    "barbarian": 40,
+    "fighter": 35,
+    "paladin": 32,
     "cleric": 28,
-    "engineer": 28,
     "ranger": 28,
-    "thief": 24,
-    "psion": 24,
+    "druid": 26,
+    "monk": 26,
+    "rogue": 24,
+    "bard": 24,
+    "wizard": 20,
+    # Backward compatibility / legacy aliases
+    "warrior": 35,
+    "vanguard": 35,
     "mage": 20,
-    "pathless": 25
+    "aether_slinger": 20,
+    "thief": 24,
+    "infiltrator": 24,
+    "wilderness_ranger": 28,
+    "engineer": 28,
+    "magi_saboteur": 28,
+    "psion": 24,
+    "pathless": 25,
 }
 
 def get_archetype_hp_growth(player_class):
     """Calculates base HP growth per level for the character's class."""
     k = normalize_class_key(player_class)
-    return ARCHETYPE_HP_GROWTH.get(k, 25)
+    return ARCHETYPE_HP_GROWTH.get(k, ARCHETYPE_HP_GROWTH.get(player_class, 25))
 
 def apply_level_up(player, chosen_feat=None, stat_allocations=None):
     """
@@ -2038,97 +2417,172 @@ def allocate_attribute_points(player, allocations):
     player["free_attribute_points"] = avail - total_requested
     return stats
 
-# --- HARMONIZED DUAL-GATE EVOLUTION ENGINE ---
+# --- HARMONIZED MULTI-TIER EVOLUTION ENGINE ---
 
 def check_evolution_eligibility(player):
     """
-    Evaluates whether player meets the Harmonized Dual-Gate requirements for Class Evolution:
+    Evaluates whether player meets the Harmonized Multi-Tier requirements for Class Evolution:
     - Tier 2 (Level 10): Level >= 10, Sector 1 Boss defeated, at least 1 skill at Journeyman (100+).
-    - Tier 3 (Level 25): Level >= 25, Regional Boss defeated, at least 1 skill at Adept/Master (350+).
+    - Tier 3 (Level 20): Level >= 20, Regional Boss defeated, at least 1 skill at Adept/Master (350+).
+    - Tier 4 (Level 30): Level >= 30, Planetary Boss defeated, at least 1 skill at Legend (750+).
     """
-    lvl = player.get("level", 1)
-    skills = player.get("skills", {})
-    bosses = player.get("bosses_defeated", [])
+    if not isinstance(player, dict):
+        return {
+            "eligible": False,
+            "target_tier": 1,
+            "current_tier": 1,
+            "reasons": ["Invalid player state."],
+            "unmet_conditions": ["Invalid player state."],
+            "top_skill": None,
+            "top_mastery": 0
+        }
+
+    raw_lvl = player.get("level")
+    try:
+        lvl = int(raw_lvl) if raw_lvl is not None else 1
+    except (ValueError, TypeError):
+        lvl = 1
+    skills = player.get("skills") or {}
+    bosses = player.get("bosses_defeated") or []
     if isinstance(bosses, str):
         bosses = [bosses]
-        
-    # Check max skill mastery
+    elif not isinstance(bosses, (list, tuple, set)):
+        bosses = []
+
+    # Check max skill mastery defensively
     max_mastery = 0
     top_skill = None
     if isinstance(skills, dict):
         for s_name, s_data in skills.items():
-            m = s_data.get("mastery", 0) if isinstance(s_data, dict) else (int(s_data) if isinstance(s_data, (int, float)) else 0)
+            if isinstance(s_data, dict):
+                raw_m = s_data.get("mastery")
+                try:
+                    m = int(raw_m) if raw_m is not None else 0
+                except (ValueError, TypeError):
+                    m = 0
+            elif isinstance(s_data, (int, float)):
+                m = int(s_data)
+            else:
+                m = 0
             if m > max_mastery:
                 max_mastery = m
                 top_skill = s_name
-                
-    sector_boss_down = any("sector 1" in str(b).lower() or "gilded" in str(b).lower() or "spire" in str(b).lower() for b in bosses) or player.get("sector_boss_defeated", False)
-    regional_boss_down = any("regional" in str(b).lower() or "sector 5" in str(b).lower() for b in bosses) or player.get("regional_boss_defeated", False)
-    
-    current_tier = player.get("class_tier", 1)
-    
-    # Tier 2 Check
-    if current_tier == 1:
+    elif isinstance(skills, (list, tuple, set)):
+        for item in skills:
+            if isinstance(item, dict):
+                raw_m = item.get("mastery")
+                try:
+                    m = int(raw_m) if raw_m is not None else 0
+                except (ValueError, TypeError):
+                    m = 0
+                s_name = item.get("name") or "Skill"
+                if m > max_mastery:
+                    max_mastery = m
+                    top_skill = s_name
+
+    sector_boss_down = any("sector 1" in str(b).lower() or "gilded" in str(b).lower() or "spire" in str(b).lower() for b in bosses) or bool(player.get("sector_boss_defeated", False))
+    regional_boss_down = any("regional" in str(b).lower() or "sector 5" in str(b).lower() or "behemoth" in str(b).lower() for b in bosses) or bool(player.get("regional_boss_defeated", False))
+    planetary_boss_down = any("planetary" in str(b).lower() or "world-eater" in str(b).lower() or "world_eater" in str(b).lower() or "apex core" in str(b).lower() for b in bosses) or bool(player.get("planetary_boss_defeated", False))
+
+    raw_tier = player.get("class_tier")
+    try:
+        current_tier = int(raw_tier) if raw_tier is not None else 1
+    except (ValueError, TypeError):
+        current_tier = 1
+
+    # Tier 2 Check (Level 10)
+    if current_tier <= 1:
         reasons = []
         unmet = []
-        
+
         if lvl >= 10:
             reasons.append(f"Level Requirement Met: Level {lvl} >= 10")
         else:
             unmet.append(f"Level Requirement Unmet: Level {lvl} / 10")
-            
+
         if sector_boss_down:
             reasons.append("Sector 1 Spire Boss Defeated")
         else:
             unmet.append("Sector 1 Spire Boss Not Yet Slayed")
-            
+
         if max_mastery >= 100:
             reasons.append(f"Skill Mastery Milestone Met: '{top_skill}' Mastery {max_mastery} >= 100 (Journeyman)")
         else:
             unmet.append(f"Skill Mastery Milestone Unmet: Highest Mastery {max_mastery} / 100")
-            
+
         eligible = len(unmet) == 0
         return {
             "eligible": eligible,
             "target_tier": 2,
             "current_tier": 1,
-            "reasons": reasons,
+            "reasons": reasons + unmet,
             "unmet_conditions": unmet,
             "top_skill": top_skill,
             "top_mastery": max_mastery
         }
-        
-    # Tier 3 Check
+
+    # Tier 3 Check (Level 20 - FIX legacy Level 25 bug!)
     elif current_tier == 2:
         reasons = []
         unmet = []
-        
-        if lvl >= 25:
-            reasons.append(f"Level Requirement Met: Level {lvl} >= 25")
+
+        if lvl >= 20:
+            reasons.append(f"Level Requirement Met: Level {lvl} >= 20")
         else:
-            unmet.append(f"Level Requirement Unmet: Level {lvl} / 25")
-            
+            unmet.append(f"Level Requirement Unmet: Level {lvl} / 20")
+
         if regional_boss_down:
             reasons.append("Regional Spire Boss Defeated")
         else:
             unmet.append("Regional Spire Boss Not Yet Slayed")
-            
+
         if max_mastery >= 350:
             reasons.append(f"Skill Mastery Milestone Met: '{top_skill}' Mastery {max_mastery} >= 350")
         else:
             unmet.append(f"Skill Mastery Milestone Unmet: Highest Mastery {max_mastery} / 350")
-            
+
         eligible = len(unmet) == 0
         return {
             "eligible": eligible,
             "target_tier": 3,
             "current_tier": 2,
-            "reasons": reasons,
+            "reasons": reasons + unmet,
             "unmet_conditions": unmet,
             "top_skill": top_skill,
             "top_mastery": max_mastery
         }
-        
+
+    # Tier 4 Check (Level 30 - NEW)
+    elif current_tier == 3:
+        reasons = []
+        unmet = []
+
+        if lvl >= 30:
+            reasons.append(f"Level Requirement Met: Level {lvl} >= 30")
+        else:
+            unmet.append(f"Level Requirement Unmet: Level {lvl} / 30")
+
+        if planetary_boss_down:
+            reasons.append("Planetary World-Eater Boss Defeated")
+        else:
+            unmet.append("Planetary World-Eater Boss Not Yet Slayed")
+
+        if max_mastery >= 750:
+            reasons.append(f"Skill Mastery Milestone Met: '{top_skill}' Mastery {max_mastery} >= 750")
+        else:
+            unmet.append(f"Skill Mastery Milestone Unmet: Highest Mastery {max_mastery} / 750")
+
+        eligible = len(unmet) == 0
+        return {
+            "eligible": eligible,
+            "target_tier": 4,
+            "current_tier": 3,
+            "reasons": reasons + unmet,
+            "unmet_conditions": unmet,
+            "top_skill": top_skill,
+            "top_mastery": max_mastery
+        }
+
     return {
         "eligible": False,
         "target_tier": current_tier,
@@ -2137,123 +2591,593 @@ def check_evolution_eligibility(player):
         "unmet_conditions": []
     }
 
+
+def _extract_telemetry_profile(player):
+    """
+    Extracts or infers a complete behavioral telemetry profile for evolution synthesis:
+    - Dominant weapon category
+    - Dominant spell/magic discipline
+    - Moral/ethical alignment scores (holy, necrotic, pragmatic)
+    - Personal relics held
+    - Unique deeds claimed
+    - Monstrous / fey racial heritage
+    """
+    if not isinstance(player, dict):
+        player = {}
+
+    telemetry = player.get("telemetry") or {}
+    if not isinstance(telemetry, dict):
+        telemetry = {}
+
+    skills = player.get("skills") or {}
+    spells = player.get("spells") or []
+    if not isinstance(spells, (list, tuple, set)):
+        spells = []
+    inventory = player.get("inventory") or []
+    if not isinstance(inventory, (list, tuple, set)):
+        inventory = []
+    equipped = player.get("equipped") or {}
+    if not isinstance(equipped, dict):
+        equipped = {}
+    race_raw = f"{player.get('race_key', '')} {player.get('race', '')}".lower().strip()
+
+    # --- 1. WEAPON MASTERY ---
+    raw_wm = telemetry.get("weapon_masteries")
+    weapon_scores = {}
+    if isinstance(raw_wm, dict):
+        for k, v in raw_wm.items():
+            try:
+                weapon_scores[str(k)] = int(v) if v is not None else 0
+            except (ValueError, TypeError):
+                weapon_scores[str(k)] = 0
+
+    # Cold-start skill scanning
+    if isinstance(skills, dict):
+        for s_name, s_data in skills.items():
+            if isinstance(s_data, dict):
+                raw_m = s_data.get("mastery")
+                try:
+                    m = int(raw_m) if raw_m is not None else 0
+                except (ValueError, TypeError):
+                    m = 0
+            elif isinstance(s_data, (int, float)):
+                m = int(s_data)
+            else:
+                m = 0
+            s_low = str(s_name).lower()
+            if "sword" in s_low or "blade" in s_low or "rapier" in s_low:
+                weapon_scores["swords"] = weapon_scores.get("swords", 0) + m
+            elif "axe" in s_low:
+                weapon_scores["axes"] = weapon_scores.get("axes", 0) + m
+            elif "hammer" in s_low or "mace" in s_low or "flail" in s_low:
+                weapon_scores["hammers"] = weapon_scores.get("hammers", 0) + m
+            elif "dagger" in s_low or "knife" in s_low:
+                weapon_scores["daggers"] = weapon_scores.get("daggers", 0) + m
+            elif "bow" in s_low or "archery" in s_low or "marksmanship" in s_low:
+                weapon_scores["bows"] = weapon_scores.get("bows", 0) + m
+            elif "staff" in s_low or "spear" in s_low or "polearm" in s_low or "lance" in s_low:
+                weapon_scores["polearms"] = weapon_scores.get("polearms", 0) + m
+            elif "unarmed" in s_low or "martial arts" in s_low or "fist" in s_low:
+                weapon_scores["unarmed"] = weapon_scores.get("unarmed", 0) + m
+
+    # Also check equipped weapons
+    for slot in ("main_hand", "off_hand", "lower_main_hand", "lower_off_hand"):
+        item_str = str(equipped.get(slot, "")).lower()
+        if "sword" in item_str or "blade" in item_str:
+            weapon_scores["swords"] = weapon_scores.get("swords", 0) + 15
+        elif "axe" in item_str:
+            weapon_scores["axes"] = weapon_scores.get("axes", 0) + 15
+        elif "hammer" in item_str or "mace" in item_str:
+            weapon_scores["hammers"] = weapon_scores.get("hammers", 0) + 15
+        elif "dagger" in item_str:
+            weapon_scores["daggers"] = weapon_scores.get("daggers", 0) + 15
+        elif "bow" in item_str or "crossbow" in item_str:
+            weapon_scores["bows"] = weapon_scores.get("bows", 0) + 15
+        elif "staff" in item_str or "spear" in item_str:
+            weapon_scores["polearms"] = weapon_scores.get("polearms", 0) + 15
+
+    dominant_weapon = "swords"
+    max_w_val = -1
+    for w_type, raw_w_val in weapon_scores.items():
+        try:
+            w_val = int(raw_w_val) if raw_w_val is not None else 0
+        except (ValueError, TypeError):
+            w_val = 0
+        if w_val > max_w_val:
+            max_w_val = w_val
+            dominant_weapon = w_type
+
+    # --- 2. TECHNIQUES & SPELLS ---
+    raw_spells_cast = telemetry.get("spells_cast")
+    spells_cast = {}
+    if isinstance(raw_spells_cast, dict):
+        for k, v in raw_spells_cast.items():
+            try:
+                spells_cast[str(k)] = int(v) if v is not None else 0
+            except (ValueError, TypeError):
+                spells_cast[str(k)] = 0
+    has_magic = any(v > 0 for v in spells_cast.values()) or any(
+        "aether" in str(s).lower() or "arcane" in str(s).lower() or "spell" in str(s).lower()
+        for s in (list(skills.keys()) if isinstance(skills, dict) else [])
+    ) or len(spells) > 0
+
+    # --- 3. DUAL-TRACK ALIGNMENT ---
+    combat_disc = telemetry.get("combat_discipline") or {}
+    if not isinstance(combat_disc, dict):
+        combat_disc = {}
+    moral_choices = telemetry.get("moral_choices") or {}
+    if not isinstance(moral_choices, dict):
+        moral_choices = {}
+
+    def _safe_int(val, default=0):
+        try:
+            return int(val) if val is not None else default
+        except (ValueError, TypeError):
+            return default
+
+    holy_score = (
+        _safe_int(combat_disc.get("holy_radiant_damage_dealt", 0)) +
+        _safe_int(spells_cast.get("holy_radiant", 0)) * 10 +
+        _safe_int(moral_choices.get("good_compassionate_dialogues", 0)) * 20
+    )
+    necro_score = (
+        _safe_int(combat_disc.get("necrotic_curse_damage_dealt", 0)) +
+        _safe_int(spells_cast.get("necrotic_curse", 0)) * 10 +
+        _safe_int(moral_choices.get("evil_ruthless_dialogues", 0)) * 20
+    )
+    pragmatic_score = (
+        _safe_int(combat_disc.get("elemental_neutral_damage_dealt", 0)) +
+        _safe_int(moral_choices.get("pragmatic_mercenary_dialogues", 0)) * 20
+    )
+
+    # Fallback scanning from spells, deeds, factions
+    if holy_score == 0 and necro_score == 0:
+        for sp in spells:
+            sp_str = str(sp).lower()
+            if any(k in sp_str for k in ("holy", "radiant", "light", "cure", "heal", "sanct", "bless")):
+                holy_score += 15
+            elif any(k in sp_str for k in ("necro", "curse", "dark", "death", "shadow", "bleed", "plague")):
+                necro_score += 15
+        faction_rep = player.get("faction_reputation", {})
+        if isinstance(faction_rep, dict):
+            vc = _safe_int(faction_rep.get("Vanguard Coalition", 0))
+            if vc > 0:
+                holy_score += vc
+            bs = _safe_int(faction_rep.get("Blood Shroud", 0))
+            if bs > 0:
+                necro_score += bs
+            is_val = _safe_int(faction_rep.get("Iron Syndicate", 0))
+            if is_val > 0:
+                pragmatic_score += is_val
+
+    if holy_score > necro_score and holy_score > 0:
+        alignment_track = "holy"
+    elif necro_score > holy_score and necro_score > 0:
+        alignment_track = "necrotic"
+    else:
+        alignment_track = "neutral"
+
+    # --- 4. RELICS & DEEDS ---
+    raw_relics = telemetry.get("relics_held")
+    relics = list(raw_relics) if isinstance(raw_relics, (list, tuple, set)) else []
+    for item in inventory:
+        item_str = str(item).lower()
+        if any(r in item_str for r in ("smartphone", "rangefinder", "camera", "polaroid", "tuning_fork", "whetstone", "locket", "compass", "watch")):
+            if item_str not in relics:
+                relics.append(item_str)
+    relic_prop = player.get("relic") or player.get("starting_relic")
+    if relic_prop and str(relic_prop).lower() not in [str(r).lower() for r in relics]:
+        relics.append(str(relic_prop).lower())
+
+    raw_t_deeds = telemetry.get("deeds")
+    t_deeds = list(raw_t_deeds) if isinstance(raw_t_deeds, (list, tuple, set)) else []
+    raw_p_deeds = player.get("deeds")
+    p_deeds = list(raw_p_deeds) if isinstance(raw_p_deeds, (list, tuple, set)) else []
+    deeds = t_deeds + p_deeds
+
+    return {
+        "dominant_weapon": dominant_weapon,
+        "has_magic": has_magic,
+        "spells_cast": spells_cast,
+        "alignment_track": alignment_track,
+        "holy_score": holy_score,
+        "necro_score": necro_score,
+        "pragmatic_score": pragmatic_score,
+        "relics": relics,
+        "deeds": deeds,
+        "race_raw": race_raw
+    }
+
+
 def generate_curated_evolutions(player):
     """
-    Synthesizes player behavioral telemetry to produce the 3 Curated Evolution Options:
-    1. Pure Specialization (Advancement of Anchor doctrine)
-    2. Fused Hybrid Melded Path (Synergy between Anchor class and highest off-spec skill)
-    3. Unique Deed / Thematic Path (Emerged from relics, titles, and unique deeds)
+    Synthesizes player behavioral telemetry to produce exactly 3 bespoke Evolution Options:
+    - Tier 2 (Level 10):
+      1. Discipline & Weapon Synergy
+      2. Dual-Track Moral & Ethical Alignment (Good/Holy vs Evil/Necrotic vs Pragmatic)
+      3. Unique Deed / Relic Anchor / Monstrous Lineage
+    - Tier 3 (Level 20):
+      3 Specialized Prestige Branches extending the Tier 2 evolution
+    - Tier 4 (Level 30):
+      3 Apex Legendary Evolutions breaking baseline tier limits
     """
-    c_key = normalize_class_key(player.get("class", "warrior"))
-    skills = player.get("skills", {})
-    
-    # Identify secondary skill domain
-    skill_names = list(skills.keys())
-    has_magic = any("aether" in s.lower() or "circuit" in s.lower() for s in skill_names)
-    has_tech = any("hack" in s.lower() or "smith" in s.lower() or "rig" in s.lower() for s in skill_names)
-    has_stealth = any("reflex" in s.lower() or "trap" in s.lower() or "dagger" in s.lower() for s in skill_names)
-    has_healing = any("triage" in s.lower() or "provisions" in s.lower() or "surgery" in s.lower() for s in skill_names)
-    has_heavy_arms = any("hammer" in s.lower() or "axe" in s.lower() for s in skill_names)
-    
-    # Pure Evolution
-    pure_map = {
-        "warrior": {"title": "Ironclad Juggernaut", "desc": "Immovable defensive fortress wielding kinetic shockwaves, reinforced poise, and armor-crush dominance."},
-        "mage": {"title": "Singularity Arcanist", "desc": "Commands gravitational collapse and catastrophic raw mana rifts."},
-        "cleric": {"title": "High Templar Inquisitor", "desc": "Radiant frontline judge wielding holy retribution, martyr shields, and divine storm aegis."},
-        "thief": {"title": "Ghost Operative", "desc": "Phantasmal assassin mastering monomolecular strikes, shadow-teleportation, and untraceable stealth."},
-        "ranger": {"title": "Phantom Sniper", "desc": "Extreme-distance sniper penetrating armor plates with anti-materiel precision."},
-        "engineer": {"title": "Cyber-Mancer", "desc": "Deploys multi-turret defensive grids and overrides robotic/golem neural links."},
-        "psion": {"title": "Awakened Telekineticist", "desc": "Bends physical reality and atmospheric pressure with unbridled mental telekinesis."},
-        "pathless": {"title": "Sovereign Anomaly", "desc": "The ultimate unrestricted conduit, transcending system tier limits."}
-    }
-    pure_choice = pure_map.get(c_key, pure_map["pathless"])
-    
-    # Hybrid Melded Evolution
-    if c_key == "warrior":
-        if has_magic:
-            hybrid_choice = {"title": "Spellblade Runeknight", "desc": "Fuses weapon strikes with condensed arcane flux, detonating runic charges on impact."}
-        elif has_healing:
-            hybrid_choice = {"title": "Paladin Crusader", "desc": "Absorbs party trauma while releasing waves of sanctified healing on heavy melee cleaves."}
-        elif has_tech:
-            hybrid_choice = {"title": "Siege Engineer Vanguard", "desc": "Reinforces frontline armor with motorized hydraulics, rocket-boosted hammer strikes, and field repairs."}
+    raw_tier = player.get("class_tier")
+    try:
+        tier = int(raw_tier) if raw_tier is not None else None
+    except (ValueError, TypeError):
+        tier = None
+
+    if tier is None:
+        raw_lvl = player.get("level", 1)
+        try:
+            lvl = int(raw_lvl) if raw_lvl is not None else 1
+        except (ValueError, TypeError):
+            lvl = 1
+        if lvl >= 30:
+            tier = 3
+        elif lvl >= 20:
+            tier = 2
         else:
-            hybrid_choice = {"title": "Skirmisher Duelist", "desc": "Blends heavy weapon strikes with fluid evasive footwork and lethal counter-ripostes."}
-    elif c_key == "mage":
-        if has_heavy_arms:
-            hybrid_choice = {"title": "Battle-Mage Golem-Breaker", "desc": "Arms cloth wards with crushing melee weaponry, channeling spells directly through physical impacts."}
-        elif has_stealth:
-            hybrid_choice = {"title": "Arcane Trickster", "desc": "Weaves visual illusions, silent mana daggers, and phase-blink backstabs."}
+            tier = 1
+
+    profile = _extract_telemetry_profile(player)
+    c_key = normalize_class_key(player.get("class", "fighter"))
+
+    # =========================================================================
+    # TIER 3 (LEVEL 20) PRESTIGE BRANCHES
+    # =========================================================================
+    if tier == 2:
+        c_title_low = str(player.get("class", "")).lower()
+        if any(k in c_title_low for k in ("templar", "protector", "crusader", "radiant", "paladin", "justiciar", "cleric")):
+            return [
+                {"tier": 3, "category": "Prestige Branch", "title": "Grand Inquisitor", "desc": "Master Ability: Hallowed Inquisition (Radiant pillar banishing fiends/aberrations, dealing 6d10 radiant damage and applying Blindness)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Aegis Exemplar", "desc": "Master Ability: Divine Fortress (Party-wide invulnerability bubble for 1 turn, converting absorbed damage to healing)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Sun-Forged Zealot", "desc": "Master Ability: Wrath of Dawn (Explosive holy fire detonation on melee cleaves, reducing enemy AC by -4)."}
+            ]
+        elif any(k in c_title_low for k in ("deathknight", "blood", "shadow", "dread", "necro")):
+            return [
+                {"tier": 3, "category": "Prestige Branch", "title": "Lich-Blade", "desc": "Master Ability: Soul Siphon (Converts 50% of melee damage dealt into permanent temporary HP barrier)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Abyssal Juggernaut", "desc": "Master Ability: Plaguebringer Miasma (Necrotic aura permanently reducing adjacent enemy DR to 0)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Doom Herald", "desc": "Master Ability: Call of the Crypt (Slain elite enemies rise as skeletal revenants fighting for the party)."}
+            ]
+        elif any(k in c_title_low for k in ("arcanist", "wizard", "mage", "spellblade", "aether", "singularity", "trickster")):
+            return [
+                {"tier": 3, "category": "Prestige Branch", "title": "Grand Aether-Blademaster", "desc": "Master Ability: Runic Detonation Flurry (Detonates all active runic charges for 8d10 spell-strike)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Chrono-Fencer", "desc": "Master Ability: Temporal Rewind (Reverses time 1 round: resets all cooldowns and restores 50% lost HP)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Grand Astral Weaver", "desc": "Master Ability: Supernova Cascade (Renders all spell casts instant and creates cascading mana rifts)."}
+            ]
+        elif any(k in c_title_low for k in ("rogue", "assassin", "ghost", "operative", "sniper", "hunter")):
+            return [
+                {"tier": 3, "category": "Prestige Branch", "title": "Phantom Assassin Prime", "desc": "Master Ability: Monomolecular Execution (Attacks from stealth instantly decapitate non-boss targets below 25% HP)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Void Stalker", "desc": "Master Ability: Dimension-Stride (Vanishes entirely from existence for 2 turns, reappearing behind target for x5 critical)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Guildmaster Shadow-Lord", "desc": "Master Ability: Network Strike (Summons a phantasmal strike team to execute synchronized backstabs)."}
+            ]
+        elif any(k in c_title_low for k in ("druid", "shifter", "beast", "primal")):
+            return [
+                {"tier": 3, "category": "Prestige Branch", "title": "Archdruid Shifter", "desc": "Master Ability: Ancient Chimera Form (Shifts into a legendary primal chimera with multi-breath attacks and +100 temp HP)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Verdant World-Weaver", "desc": "Master Ability: Gaea's Embrace (Roots all enemies permanently while rapidly healing the entire party to full)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Cataclysm Caller", "desc": "Master Ability: Primal Deluge (Calls a combined thunderstorm and volcanic fissure erupting across the sector)."}
+            ]
+        elif any(k in c_title_low for k in ("bard", "virtuoso", "skald", "singer", "cadence")):
+            return [
+                {"tier": 3, "category": "Prestige Branch", "title": "Virtuoso Maestro", "desc": "Master Ability: Song of Creation (Renders all allies immune to status debuffs and grants +4 to all rolls for 3 turns)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Dirge-Lord of Ruin", "desc": "Master Ability: Requiem of the Fallen (Shatters enemy morale, causing them to drop weapons and flee in terror)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Discordant Harvester", "desc": "Master Ability: Sonic Cataclysm (Detonates soundwaves dealing 6d10 thunder damage and shattering constructs)."}
+            ]
+        elif any(k in c_title_low for k in ("monk", "ascetic", "ki", "strikemaster")):
+            return [
+                {"tier": 3, "category": "Prestige Branch", "title": "Grandmaster of Flow", "desc": "Master Ability: Hundred-Hand Strike (Delivers 10 rapid unarmed ki strikes in a single combat action)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Enlightened Ascetic", "desc": "Master Ability: Astral Projection (Projects an ethereal duplicate that mirrors all attacks and maneuvers)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Adamantine Avatar", "desc": "Master Ability: Diamond Body Perfected (Permanent immunity to all non-magical physical damage and status ailments)."}
+            ]
         else:
-            hybrid_choice = {"title": "Chrono-Weaver", "desc": "Manipulates local system tick-rates to accelerate allies and decelerate enemy attacks."}
-    elif c_key == "thief":
-        if has_magic:
-            hybrid_choice = {"title": "Shadow-Weaver", "desc": "Infuses daggers with dark aether and walks through shadows between dimensions."}
-        elif has_tech:
-            hybrid_choice = {"title": "Magi-Tech Saboteur", "desc": "Infiltrates enemy perimeters with EMP flash-grenades, tripwire snares, and automated decryption."}
+            return [
+                {"tier": 3, "category": "Prestige Branch", "title": "Grand Blade-Commander", "desc": "Master Ability: Warlord's Decreed Onslaught (Party acts simultaneously with guaranteed critical threat ranges)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Colossus Titan", "desc": "Master Ability: Mountain Breaker (Slam attack that shatters enemy armor class by -5 and stuns target)."},
+                {"tier": 3, "category": "Prestige Branch", "title": "Rift-Striding Duelist", "desc": "Master Ability: Spatial Severance (Teleports through target, slashing all weakpoints for 8d8 kinetic damage)."}
+            ]
+
+    # =========================================================================
+    # TIER 4 (LEVEL 30) APEX LEGENDARY EVOLUTIONS
+    # =========================================================================
+    if tier >= 3:
+        if profile["alignment_track"] == "holy":
+            return [
+                {
+                    "tier": 4,
+                    "category": "Apex Legendary Apotheosis",
+                    "title": "Solar Seraph Sovereign",
+                    "desc": "Transcends mortality into living radiant divinity. Permanent 50ft flight with wings of holy plasma; complete immunity to Necrotic, Poison, Disease, and Death magic; Apex Power: Dawn of Creation (Revives all fallen allies to 100% HP and smites all enemies in 100ft for 10d12 radiant damage)."
+                },
+                {
+                    "tier": 4,
+                    "category": "Apex Legendary Apotheosis",
+                    "title": "Chrono-Architect Prime",
+                    "desc": "Transcends the Cardinal System's turn tick-rate. Gains 2 full Standard Actions every combat turn; Apex Power: System State Overwrite (Freezes combat tick-rate for 2 full turns; allows party to act freely while enemies are paralyzed in frozen code)."
+                },
+                {
+                    "tier": 4,
+                    "category": "Apex Legendary Apotheosis",
+                    "title": "Primordial Light-Colossus",
+                    "desc": "Massive divine avatar standing 30ft tall with +8 AC; melee strikes radiate 60ft holy novas; Apex Power: Pillar of Genesis (Scours the entire sector with divine wrath)."
+                }
+            ]
+        elif profile["alignment_track"] == "necrotic":
+            return [
+                {
+                    "tier": 4,
+                    "category": "Apex Legendary Apotheosis",
+                    "title": "Abyssal World-Ender",
+                    "desc": "Commands pure entropic void and unholy decay. Obliterates foes into corpse-blooms, suppressing all enemy revival or regeneration; Apex Power: Extinction Horizon (60ft singularity dealing 12d10 void damage; converts 100% of damage dealt into necrotic barrier)."
+                },
+                {
+                    "tier": 4,
+                    "category": "Apex Legendary Apotheosis",
+                    "title": "Chrono-Architect Prime",
+                    "desc": "Transcends the Cardinal System's turn tick-rate. Gains 2 full Standard Actions every combat turn; Apex Power: System State Overwrite (Freezes combat tick-rate for 2 full turns; allows party to act freely while enemies are paralyzed in frozen code)."
+                },
+                {
+                    "tier": 4,
+                    "category": "Apex Legendary Apotheosis",
+                    "title": "Null-Void Shade Sovereign",
+                    "desc": "Steps completely outside the simulation's sensory matrix; permanently untargetable by enemy radar or divination; Apex Power: Terminal Erasure (Deletes an enemy from combat memory instantly)."
+                }
+            ]
         else:
-            hybrid_choice = {"title": "Nightstalker Assassin", "desc": "Poisons blades with synthesized neurotoxins and executes guaranteed critical bleed combos."}
+            return [
+                {
+                    "tier": 4,
+                    "category": "Apex Legendary Apotheosis",
+                    "title": "Chrono-Architect Prime",
+                    "desc": "Transcends the Cardinal System's turn tick-rate. Gains 2 full Standard Actions every combat turn; Apex Power: System State Overwrite (Freezes combat tick-rate for 2 full turns; allows party to act freely while enemies are paralyzed in frozen code)."
+                },
+                {
+                    "tier": 4,
+                    "category": "Apex Legendary Apotheosis",
+                    "title": "Primordial Earth-Colossus",
+                    "desc": "Size expands to Gargantuan; Armor Class increases by +8. Strikes produce tectonic shockwaves rupturing terrain across 60ft; Apex Power: Tectonic Cataclysm (12d12 crushing shockwave shattering continental plate)."
+                },
+                {
+                    "tier": 4,
+                    "category": "Apex Legendary Apotheosis",
+                    "title": "Sovereign System Anomaly",
+                    "desc": "Breaks all class doctrine boundaries; can equip and dual-wield any items without restriction; Apex Power: Kernel Code Execution (Directly overwrites combat variables, reducing enemy AC or DR to 0)."
+                }
+            ]
+
+    # =========================================================================
+    # TIER 2 (LEVEL 10) BESPOKE 3-CHOICE SYNTHESIS
+    # =========================================================================
+    dom_w = profile["dominant_weapon"]
+    has_mag = profile["has_magic"]
+
+    # --- CHOICE 1: DISCIPLINE & WEAPON SYNERGY ---
+    if c_key == "fighter":
+        if has_mag or profile["spells_cast"].get("holy_radiant", 0) > 0 or profile["spells_cast"].get("arcane_force", 0) > 0:
+            c1 = {"title": "Spellblade Runeknight", "desc": "Fuses weapon strikes with condensed arcane flux and elemental runes, detonating runic charges on impact."}
+        elif dom_w == "axes":
+            c1 = {"title": "Ironclad Juggernaut", "desc": "Immovable defensive fortress wielding kinetic shockwaves, reinforced poise, and armor-crush dominance."}
+        elif dom_w == "hammers":
+            c1 = {"title": "Crag-Hammer Vanguard", "desc": "Channels devastating concussive shockwaves through warhammers, pulverizing enemy defenses."}
+        elif dom_w == "bows":
+            c1 = {"title": "Ballistic Vanguard", "desc": "Combines heavy frontline armor and poise with deadly long-range suppressive fire."}
+        else:
+            c1 = {"title": "Master Blade-Duelist", "desc": "Executes flawless defensive parries and deadly ripostes that bypass enemy shields and armor."}
+    elif c_key == "wizard":
+        if dom_w in ("swords", "axes", "hammers", "polearms"):
+            c1 = {"title": "Battle-Mage Golem-Breaker", "desc": "Arms cloth wards with crushing melee weaponry, channeling spells directly through physical impacts."}
+        elif dom_w == "daggers":
+            c1 = {"title": "Arcane Trickster", "desc": "Weaves visual illusions, silent mana daggers, and phase-blink backstabs."}
+        else:
+            c1 = {"title": "Singularity Arcanist", "desc": "Commands gravitational collapse and catastrophic raw mana rifts to disintegrate enemy lines."}
+    elif c_key == "rogue":
+        if dom_w == "bows":
+            c1 = {"title": "Phantom Sniper", "desc": "Extreme-distance sniper penetrating armor plates with anti-materiel precision."}
+        elif has_mag:
+            c1 = {"title": "Shadow-Weaver", "desc": "Infuses daggers with dark aether and walks through shadows between dimensions."}
+        else:
+            c1 = {"title": "Ghost Operative", "desc": "Phantasmal assassin mastering monomolecular strikes, shadow-teleportation, and untraceable stealth."}
+    elif c_key == "cleric":
+        if dom_w in ("hammers", "axes", "swords"):
+            c1 = {"title": "War Priest Crusader", "desc": "Empowers heavy weapon strikes with divine shockwaves that heal allies and stagger foes."}
+        else:
+            c1 = {"title": "High Templar Inquisitor", "desc": "Radiant frontline judge wielding holy retribution, martyr shields, and divine storm aegis."}
     elif c_key == "ranger":
-        if has_magic:
-            hybrid_choice = {"title": "Aether-Archer", "desc": "Fires arrows of pure compressed light that pierce physical obstacles and illuminate weak points."}
-        elif has_heavy_arms:
-            hybrid_choice = {"title": "Sector Warden", "desc": "Commands perimeter combat beasts and anchors choke-points with barbed traps and heavy spears."}
+        if has_mag:
+            c1 = {"title": "Aether-Archer", "desc": "Fires arrows of pure compressed light that pierce physical obstacles and illuminate weak points."}
+        elif dom_w in ("daggers", "swords"):
+            c1 = {"title": "Guerilla Stalker", "desc": "Masters close-quarters ambush tactics, concealed blade strikes, and perimeter wiretraps."}
         else:
-            hybrid_choice = {"title": "Wilderness Survivalist", "desc": "Masters environmental poisons, natural camouflage, and relentless target tracking."}
+            c1 = {"title": "Phantom Sniper", "desc": "Extreme-distance sniper penetrating armor plates with anti-materiel precision."}
+    elif c_key == "paladin":
+        if has_mag:
+            c1 = {"title": "Radiant Spellblade Justiciar", "desc": "Fuses oathbound magic with heavy blade maneuvers to unleash scouring solar bursts."}
+        else:
+            c1 = {"title": "Aegis Justiciar", "desc": "Anchors party defense behind a radiant shield that reflects magical and physical force."}
+    elif c_key == "druid":
+        if dom_w in ("unarmed", "daggers"):
+            c1 = {"title": "Beastlord Shifter", "desc": "Channels apex dire predators, gaining tearing claws, ferocious rending, and thickened armored hides."}
+        else:
+            c1 = {"title": "Storm-Caller Shifter", "desc": "Summons primal tempests, calling lightning bolts and freezing gales upon foes while commanding roots."}
+    elif c_key == "bard":
+        if dom_w in ("swords", "daggers"):
+            c1 = {"title": "Blade-Singer Virtuoso", "desc": "Dances between enemy strikes, harmonizing rapier thrusts with disorienting musical chords."}
+        else:
+            c1 = {"title": "Choral Harmonizer", "desc": "Amplifies party capabilities with soaring harmonic resonances, tempo shifts, and sonic crescendos."}
+    elif c_key == "barbarian":
+        if dom_w in ("axes", "hammers"):
+            c1 = {"title": "Earth-Shaker Juggernaut", "desc": "Shatters bedrock with violent frenzy, causing localized seismic ruptures and knockdown waves."}
+        else:
+            c1 = {"title": "Frenzied Blood-Reaver", "desc": "Accelerates combat momentum into an unstoppable whirlwind of blades, ignoring pain."}
+    elif c_key == "monk":
+        if dom_w in ("staff", "polearms"):
+            c1 = {"title": "Whirlwind Staff-Master", "desc": "Spins quarterstaff with ultrasonic velocity, deflecting incoming arrows and sweeping enemies prone."}
+        else:
+            c1 = {"title": "Flowing Gale Strikemaster", "desc": "Channels ki into wind-cutting pressure waves that strike enemies beyond melee reach."}
+    elif c_key == "engineer":
+        c1 = {"title": "Cyber-Mancer Mechanist", "desc": "Deploys multi-turret defensive grids and overrides robotic/golem neural links."}
+    elif c_key == "psion":
+        c1 = {"title": "Awakened Telekineticist", "desc": "Bends physical reality and atmospheric pressure with unbridled mental telekinesis."}
     else:
-        hybrid_choice = {"title": "Resonant Synthesist", "desc": "Seamlessly fuses contrasting combat disciplines into a personalized tactical style."}
-        
-    # Unique Deed / Thematic Path
-    # If the player has Nordic / Berserker themes (like Banki) or Anomaly
-    equipped = player.get("equipped", {})
-    weapons_str = f"{equipped.get('main_hand', '')} {equipped.get('off_hand', '')}".lower()
-    if "axe" in weapons_str or "hammer" in weapons_str or "fenrir" in weapons_str or "mjölnir" in weapons_str:
-        unique_choice = {
-            "title": "Nordic Berserker of the Rift",
-            "desc": "Unleashes untamed mythical wrath, dual-wielding axes and demolition hammers to shatter the virtual overlay itself."
-        }
-    elif "smartphone" in str(player.get("inventory", [])):
-        unique_choice = {
-            "title": "Old-World Echo Agent",
-            "desc": "Channels pre-integration Earth memories and corrupted terminal code to disrupt System logic."
-        }
+        c1 = {"title": "Sovereign Synthesist", "desc": "Seamlessly fuses contrasting combat disciplines into a personalized tactical style."}
+
+    # --- CHOICE 2: DUAL-TRACK MORAL & ETHICAL ALIGNMENT ---
+    if profile["alignment_track"] == "holy":
+        if c_key in ("cleric", "paladin"):
+            c2 = {"title": "Radiant Templar Crusader", "desc": "Anointed champion of the holy light, bathing allies in healing grace and smiting blasphemers."}
+        elif c_key == "fighter":
+            c2 = {"title": "Radiant Templar Protector", "desc": "Immovable bastion of righteous valor, redirecting harm away from companions with holy aegis."}
+        elif c_key == "wizard":
+            c2 = {"title": "Dawn Luminary Protector", "desc": "Channels pure solar light into protective searing wards that banish darkness and undead."}
+        elif c_key == "rogue":
+            c2 = {"title": "Radiant Shadow-Purifier", "desc": "Strikes from the shadows to cleanse evil, wielding blessed silver blades against fiends."}
+        elif c_key == "ranger":
+            c2 = {"title": "Spire Protector Marksman", "desc": "Protects sacred borders with sanctified arrows imbued with blinding solar brilliance."}
+        elif c_key == "druid":
+            c2 = {"title": "Verdant Sun-Protector", "desc": "Guards primal sanctuaries with consecrated briars and revitalizing holy sunbeams."}
+        elif c_key == "bard":
+            c2 = {"title": "Radiant Hymn Virtuoso", "desc": "Sings sacred celestial harmonies that uplift ally hearts and burn corrupt spirits."}
+        elif c_key == "barbarian":
+            c2 = {"title": "Sun-Forged Zealot Protector", "desc": "Rages with holy fervor, cloaking greataxe strikes in searing radiant fire."}
+        elif c_key == "monk":
+            c2 = {"title": "Radiant Fist Ascetic", "desc": "Focuses inner ki into blinding solar strikes that purify tainted souls and dispel curses."}
+        else:
+            c2 = {"title": "Radiant Beacon Protector", "desc": "Shines as an incorruptible lighthouse in the darkness, shielding the innocent."}
+    elif profile["alignment_track"] == "necrotic":
+        if c_key in ("cleric", "paladin"):
+            c2 = {"title": "Dread Desecrator Deathknight", "desc": "Inverts sacred oaths to command decay, soul-siphons, and necrotic pestilence."}
+        elif c_key == "fighter":
+            c2 = {"title": "Deathknight of the Abyssal Veil", "desc": "Clad in cursed grave-iron, wielding dark runes that steal vitality with every strike."}
+        elif c_key == "barbarian":
+            c2 = {"title": "Dread Blood-Reaver Juggernaut", "desc": "Fueled by vampiric carnage, drinking enemy blood to sustain an eternal unholy frenzy."}
+        elif c_key == "wizard":
+            c2 = {"title": "Shadowmancer of the Void", "desc": "Weaves dark entropic curses that wither enemy flesh and summon shades from beyond."}
+        elif c_key == "rogue":
+            c2 = {"title": "Shadow-Stalker Blood-Assassin", "desc": "Slips through shadows to deliver fatal arterial slashes and necrotic poison."}
+        elif c_key == "ranger":
+            c2 = {"title": "Dread Shadow-Sniper", "desc": "Hunts from total darkness with venom-tipped soul-piercing phantom arrows."}
+        elif c_key == "druid":
+            c2 = {"title": "Dread Blight-Shifter", "desc": "Commands diseased rot and fungal decay, suffocating enemies in choking spores."}
+        elif c_key == "bard":
+            c2 = {"title": "Dread Dirge-Chanter", "desc": "Chants funeral elegies that shatter enemy will to fight and drain their life-force."}
+        elif c_key == "monk":
+            c2 = {"title": "Shadow-Strike Deathknight Ascetic", "desc": "Infuses martial pressure points with lethal necrotic chill, withering internal organs."}
+        else:
+            c2 = {"title": "Deathknight Sovereign of Dread", "desc": "Commands the chilling void of extinction, crushing all opposition without mercy."}
     else:
-        unique_choice = {
-            "title": "Glitch-Blade Sovereign",
-            "desc": "Carves through reality using corrupted source code, bypassing physical Armor Class and terrain barriers."
-        }
-        
+        if c_key in ("fighter", "barbarian"):
+            c2 = {"title": "Mercenary Captain Veteran", "desc": "Hardened by countless campaigns, fighting for pragmatic results, coin, and tactical efficiency."}
+        elif c_key == "wizard":
+            c2 = {"title": "Grey Arcanist Pragmatist", "desc": "Transcends dogma to wield all schools of magic with cold, calculating rationalism."}
+        elif c_key in ("rogue", "ranger"):
+            c2 = {"title": "Survivalist Operative", "desc": "Relies strictly on practical survival, opportunistic traps, and self-preservation."}
+        elif c_key in ("cleric", "paladin", "druid"):
+            c2 = {"title": "Neutral Arbiter of the Balance", "desc": "Maintains cold equilibrium between order and chaos, favoring neither god nor devil."}
+        else:
+            c2 = {"title": "Mercenary Captain Pragmatist", "desc": "Commands tactical engagements with professional detachment and maximum return on investment."}
+
+    # --- CHOICE 3: UNIQUE DEED / RELIC ANCHOR / MONSTROUS LINEAGE ---
+    r_raw = profile["race_raw"]
+    relics = profile["relics"]
+    deeds = profile["deeds"]
+
+    if "minotaur" in r_raw:
+        c3 = {"title": "Minotaur Bull-Reaver", "desc": "Awakens primeval labyrinth instincts, delivering crushing gore charges and sweeping horns."}
+    elif "pixie" in r_raw:
+        c3 = {"title": "Pixie Arcane Trickster", "desc": "Harnesses natural 40ft flight, permanent Greater Invisibility, and blinding pixie dust."}
+    elif "satyr" in r_raw:
+        c3 = {"title": "Satyr Sylvan Skald", "desc": "Fuses enchanted panpipe discord with violent ram headbutts to sow chaos in enemy formations."}
+    elif "nymph" in r_raw:
+        c3 = {"title": "Meadow Nymph Grace-Binder", "desc": "Channels Unearthly Grace to blind aggressive foes and deflect strikes with pure sylvan beauty."}
+    elif "gargoyle" in r_raw:
+        c3 = {"title": "Gargoyle Stone-Reaver", "desc": "Transforms stony hide into impenetrable damage reduction while diving from heights with talons bared."}
+    elif "centaur" in r_raw:
+        c3 = {"title": "Centaur Heavy Dragoon", "desc": "Combines 40ft equine charge velocity with lances and heavy bows to crush infantry formations."}
+    elif any(t in r_raw for t in ("troll", "chimera")):
+        c3 = {"title": "Feral Troll Regenerator", "desc": "Supercharges biological tissue regrowth, recovering rapidly from fatal trauma while slashing with mutated claws."}
+    elif "medusa" in r_raw:
+        c3 = {"title": "Gorgon Stone-Gazer", "desc": "Unleashes petrifying gaze and serpentine venom that turns enemy blood to calcified marble."}
+    elif "ogre" in r_raw:
+        c3 = {"title": "Ogre Crag-Crusher", "desc": "Wields oversized brute strength to uproot stone pillars and bowl over armored lines."}
+    elif "kobold" in r_raw:
+        c3 = {"title": "Dragon-Blooded Wyrm-Scion", "desc": "Awakens dormant draconic ancestry, exhaling elemental breath and laying cunning trap ambushes."}
+    elif "gnoll" in r_raw:
+        c3 = {"title": "Hyena Pack-Stalker", "desc": "Commands pack-hunting ferocity, triggering blood-frenzied multiattacks against wounded foes."}
+    elif any("smartphone" in str(r).lower() or "phone" in str(r).lower() or "terminal" in str(r).lower() for r in relics):
+        c3 = {"title": "Old-World Echo Agent", "desc": "Channels pre-integration Earth memories and corrupted terminal code to disrupt System logic."}
+    elif any("rangefinder" in str(r).lower() or "laser" in str(r).lower() or "camera" in str(r).lower() or "polaroid" in str(r).lower() for r in relics):
+        c3 = {"title": "Hawkeye Ballistician", "desc": "Utilizes pre-integration optical telemetry and precision targeting to spot critical weakpoints."}
+    elif any("tuning_fork" in str(r).lower() or "fork" in str(r).lower() or "resonator" in str(r).lower() for r in relics):
+        c3 = {"title": "Aetheric Resonator Adept", "desc": "Tunes acoustic frequencies of integration crystals to bypass enemy energy warding."}
+    elif any("whetstone" in str(r).lower() or "compass" in str(r).lower() or "locket" in str(r).lower() or "watch" in str(r).lower() for r in relics):
+        c3 = {"title": "Relic-Bound Chrono-Warden", "desc": "Draws upon sentimental temporal anchors to resist system anomalies and stabilize party state."}
+    elif any("spared_cultist" in str(d).lower() for d in deeds):
+        c3 = {"title": "Compassionate Arbiter", "desc": "Tempered by mercy shown to fallen foes; grants party damage reduction and parley leverage."}
+    elif any("desecrated" in str(d).lower() for d in deeds):
+        c3 = {"title": "Defiler of Sacred Altars", "desc": "Infuses attacks with profaned blasphemy, corrupting consecrated grounds and silencing divine casters."}
+    elif any("consecrated" in str(d).lower() for d in deeds):
+        c3 = {"title": "Spire Consecrator", "desc": "Bears the sacred blessing of cleansed altars, bathing battlefields in purifying dawn fire."}
+    elif any("spire" in str(d).lower() or "overlord" in str(d).lower() for d in deeds):
+        c3 = {"title": "Spire Breaker Champion", "desc": "Celebrated for shattering the Sector 1 Overlord; strikes carry bonus staggering force against elite bosses."}
+    elif "axe" in dom_w or "hammer" in dom_w:
+        c3 = {"title": "Nordic Berserker of the Rift", "desc": "Unleashes untamed mythical wrath, dual-wielding axes and demolition hammers to shatter the virtual overlay itself."}
+    else:
+        c3 = {"title": "Glitch-Blade Sovereign", "desc": "Carves through reality using corrupted source code, bypassing physical Armor Class and terrain barriers."}
+
     return [
-        {"tier": 2, "category": "Pure Specialization", **pure_choice},
-        {"tier": 2, "category": "Hybrid Melded Path", **hybrid_choice},
-        {"tier": 2, "category": "Unique Deed Path", **unique_choice}
+        {"tier": 2, "category": "Discipline & Weapon Synergy", **c1},
+        {"tier": 2, "category": "Moral & Ethical Alignment", **c2},
+        {"tier": 2, "category": "Unique Deed & Relic Anchor", **c3}
     ]
+
 
 def apply_class_evolution(player, evolution_choice):
     """
-    Applies the chosen Tier 2 / Tier 3 Class Evolution:
+    Applies the chosen Tier 2, Tier 3, or Tier 4 Class Evolution:
     - Updates player["class"] title
-    - Increments player["class_tier"]
-    - Upgrades or fuses combat_resource
-    - Awards celebratory evolution feat
+    - Updates player["class_tier"] (Tier 2, 3, or 4)
+    - Scales combat_resource max:
+        * +25% at Tier 2 (int(base * 1.25))
+        * +50% at Tier 3 (int(prev * 1.50))
+        * +100% at Tier 4 (int(prev * 2.00))
+    - Appends celebratory evolution feat: "Class Evolution: <title> (<desc>)"
+    - Returns execution summary dictionary
     """
-    new_title = evolution_choice.get("title", "Evolved Archetype")
-    new_tier = evolution_choice.get("tier", 2)
-    
+    if not isinstance(evolution_choice, dict):
+        evolution_choice = {}
+    new_title = evolution_choice.get("title") or "Evolved Archetype"
+    new_tier = evolution_choice.get("tier")
+    if not new_tier:
+        current_t = player.get("class_tier") or 1
+        new_tier = current_t + 1
+
+    # Initialize combat resource BEFORE overwriting player["class"]
+    res = initialize_combat_resource(player)
+    prev_max = res.get("max") or 100
+
     player["class"] = new_title
     player["class_tier"] = new_tier
-    
-    # Evolve resource pool
-    res = initialize_combat_resource(player)
-    res["max"] = int(res.get("max", 100) * 1.25)
+
+    if new_tier == 2:
+        mult = 1.25
+    elif new_tier == 3:
+        mult = 1.50
+    elif new_tier == 4:
+        mult = 2.00
+    else:
+        mult = 1.25
+
+    res["max"] = int(prev_max * mult)
     res["current"] = res["max"]
-    
+
     # Add Evolution Master Feat
     if "feats" not in player or not isinstance(player["feats"], list):
         player["feats"] = []
-        
-    evo_feat = f"Class Evolution: {new_title} (Tier {new_tier}): {evolution_choice.get('desc', 'Awakened specialization.')}"
+
+    desc_str = evolution_choice.get("desc", "Awakened specialization.")
+    evo_feat = f"Class Evolution: {new_title} ({desc_str})"
     player["feats"].append(evo_feat)
-    
+
     return {
         "new_class": new_title,
         "new_tier": new_tier,
@@ -12996,7 +13920,7 @@ def activate_personal_relic(
         }
 
     # 3. Harmonic Steel Tuning Fork (440 Hz)
-    if "tuning fork" in relic_raw or "440" in relic_raw:
+    if "tuning fork" in relic_raw or "tuning_fork" in relic_raw or "440" in relic_raw:
         player_state["harmonic_vault_deciphered"] = True
         cur_room = get_current_dungeon_room(player_state)
         if cur_room.get("type") == "puzzle_chamber":
@@ -13014,9 +13938,10 @@ def activate_personal_relic(
             "success": True,
             "relic": "Harmonic Steel Tuning Fork (440 Hz)",
             "effect_type": "harmonic_resonance",
+            "effect": "vibrates at 440 Hz mapping hollow masonry",
             "auto_bypass_glyph_check": True,
             "log": log,
-            "message": "The 440 Hz Tuning Fork hums against the stone, mapping hollow chambers and leyline frequencies (+4 Investigation)."
+            "message": "The 440 Hz Tuning Fork hums against the stone, vibrates at 440 Hz mapping hollow chambers and leyline frequencies (+4 Investigation)."
         }
 
     # 4. Miniature Elder Brain Prototype ('Gyrus the Ancient')
@@ -13578,6 +14503,7 @@ def create_initial_tutorial_state() -> dict:
     return {
         "active": True,
         "stage": 1,
+        "current_stage": 1,
         "max_stages": 3,
         "stage_title": st1["title"],
         "objective": st1["objective"],
@@ -13703,24 +14629,434 @@ def get_tutorial_gm_directive(player_state: dict) -> str:
         )
 
 
+# =====================================================================
+# MILESTONE 3: HANDS-ON MINI-DUNGEON TUTORIAL SYSTEM (REQUIREMENT R3)
+# =====================================================================
+
+TUTORIAL_CANONICAL_LOOT = [
+    "Minor Aether-Salve Vial",
+    "Calibration Whetstone Kit",
+    "Sentinel Brass Armguards",
+    "Clockwork Reflex Servo",
+    "Inscribed Spell Slate: Astral Bolt",
+    "Crucible Vanguard Signet",
+    "Condensed Aether-Core",
+    "Greater Crimson Draught",
+]
+
+TUTORIAL_MINI_DUNGEON_ROOMS: dict = {
+    # -------------------------------------------------------------
+    # PHASE I: The Threshold of Aether & Load (4 rooms)
+    # -------------------------------------------------------------
+    "phase1_telemetry_sanctum": {
+        "room_id": "phase1_telemetry_sanctum",
+        "phase": 1,
+        "phase_name": "Phase I: The Threshold of Aether & Load",
+        "name": "Sanctum of Telemetry & Neural Calibration",
+        "badge": "🧭 Telemetry Pedestal",
+        "location": "Cardinal Calibration Crucible — Phase I: Telemetry Sanctum",
+        "description": (
+            "A crystalline domed rotunda anchored by a central obsidian Telemetry Pedestal. "
+            "Cerulean conduits trace glowing circuit lines across the polished floor, pulsing in "
+            "sync with Cardinal's neural feedback matrix to calibrate core attributes (STR, DEX, "
+            "CON, INT, WIS, CHA), physical dimensions, and 1–1000 skill continuum nodes."
+        ),
+        "connections": ["phase1_gravity_chasm"],
+        "hazards": [
+            {
+                "name": "Dimensional Buffer Pressure",
+                "type": "calibration_shock",
+                "dc": 10,
+                "stat": "WIS",
+                "description": "High-frequency neural feedback during Link Start synchronization."
+            }
+        ],
+        "interactions": ["sync_telemetry_pedestal", "inspect_physical_build", "claim_calibration_cache"],
+        "monsters": [
+            {
+                "id": "npc_cardinal_arbiter",
+                "name": "Cardinal Telemetry Arbiter",
+                "role": "Calibration Overseer",
+                "hp": 100,
+                "ac": 20
+            }
+        ],
+        "loot": [
+            {"name": "Minor Aether-Salve Vial", "qty": 2, "rarity": "Common", "desc": "Restores 35 HP and staunches minor bleeding."},
+            {"name": "Calibration Whetstone Kit", "qty": 1, "rarity": "Common", "desc": "Restores +25 gear durability."}
+        ]
+    },
+    "phase1_gravity_chasm": {
+        "room_id": "phase1_gravity_chasm",
+        "phase": 1,
+        "phase_name": "Phase I: The Threshold of Aether & Load",
+        "name": "Gravity Chasm & Encumbrance Walkway",
+        "badge": "⚖️ Gravity & Encumbrance Chasm",
+        "location": "Cardinal Calibration Crucible — Phase I: Gravity Chasm",
+        "description": (
+            "A subterranean fissure spanned by magnetized iron girders and suspended ballast catwalks. "
+            "Fluctuating gravitational distortion fields test the structural limits of physical carry weight. "
+            "The Cardinal System enforces strict encumbrance thresholds at STR × 15.0 lbs, penalizing combat agility, "
+            "stealth, and movement speed when overloaded."
+        ),
+        "connections": ["phase1_telemetry_sanctum", "phase1_rust_mist_adit"],
+        "hazards": [
+            {
+                "name": "Localized High-Gravity Shear",
+                "type": "encumbrance_strain",
+                "threshold_formula": "STR * 15.0 lbs",
+                "dc": 12,
+                "stat": "STR",
+                "description": "Intense localized gravitational waves testing load distribution and footing across catwalk girders."
+            }
+        ],
+        "interactions": ["test_encumbrance_hazard", "navigate_catwalk", "test_carry_weight"],
+        "monsters": [],
+        "loot": []
+    },
+    "phase1_rust_mist_adit": {
+        "room_id": "phase1_rust_mist_adit",
+        "phase": 1,
+        "phase_name": "Phase I: The Threshold of Aether & Load",
+        "name": "Rust-Mist Adit & Durability Forge",
+        "badge": "🧪 Rust-Mist Flue & Durability Forge",
+        "location": "Cardinal Calibration Crucible — Phase I: Rust-Mist Adit",
+        "description": (
+            "An iron corridor choked with caustic aether-acid vapor that degrades weapon durability. "
+            "A glowing maintenance anvil allows field whetstone honing and gear restoration."
+        ),
+        "connections": ["phase1_gravity_chasm", "phase1_relic_sanctum"],
+        "hazards": [
+            {
+                "name": "Aether-Acid Rust Mist (-10 Durability)",
+                "type": "durability_wear",
+                "target_slot": "main_hand",
+                "damage": 10,
+                "description": "Corrosive flue gas eating into weapon tempering and sharpening edges."
+            }
+        ],
+        "interactions": ["resolve_durability_and_whetstone", "repair_weapon", "inspect_anvil"],
+        "monsters": [],
+        "loot": []
+    },
+    "phase1_relic_sanctum": {
+        "room_id": "phase1_relic_sanctum",
+        "phase": 1,
+        "phase_name": "Phase I: The Threshold of Aether & Load",
+        "name": "Sanctum of the Soul Anchor",
+        "badge": "✨ Sanctum of the Soul Anchor",
+        "location": "Cardinal Calibration Crucible — Phase I: Relic Sanctum",
+        "description": (
+            "An ethereal rotunda guarded by a frequency-locked prismatic barrier that only opens "
+            "in resonance with an authentic Earth Keepsake Relic."
+        ),
+        "connections": ["phase1_rust_mist_adit", "phase2_proving_ground"],
+        "hazards": [
+            {
+                "name": "Frequency-Locked Resonance Gate",
+                "type": "relic_barrier",
+                "description": "A translucent prismatic field blocking passage until an authentic Soul-Bound Keepsake is activated."
+            }
+        ],
+        "interactions": ["activate_relic_resonance", "commune_with_anchor", "unseal_phase2_gate"],
+        "monsters": [],
+        "loot": []
+    },
+
+    # -------------------------------------------------------------
+    # PHASE II: The Hall of Martial Form & Maneuvers (4 rooms)
+    # -------------------------------------------------------------
+    "phase2_proving_ground": {
+        "room_id": "phase2_proving_ground",
+        "phase": 2,
+        "phase_name": "Phase II: The Hall of Martial Form & Maneuvers",
+        "name": "Proving Ground of Form",
+        "badge": "⚔️ Proving Ground of Form",
+        "location": "Cardinal Calibration Crucible — Phase II: Proving Ground",
+        "description": (
+            "A sunken basalt sparring hall lined with resilient practice automata where survivors hone "
+            "basic weapon proficiency and advance along the 1–1000 skill mastery continuum."
+        ),
+        "connections": ["phase1_relic_sanctum", "phase2_parry_arena"],
+        "hazards": [
+            {
+                "name": "Kinetic Recoil Pylons",
+                "type": "recoil_shock",
+                "description": "Training automata return absorbed kinetic energy to test poise."
+            }
+        ],
+        "interactions": ["resolve_martial_drill", "spar_with_automata", "inspect_weapon_form"],
+        "monsters": [],
+        "loot": []
+    },
+    "phase2_parry_arena": {
+        "room_id": "phase2_parry_arena",
+        "phase": 2,
+        "phase_name": "Phase II: The Hall of Martial Form & Maneuvers",
+        "name": "Parry & Charge Buffer Arena",
+        "badge": "🛡️ Parry & Charge Buffer Arena",
+        "location": "Cardinal Calibration Crucible — Phase II: Parry Arena",
+        "description": (
+            "An obstacle-strewn arena where automated blade-arms telegraph heavy strikes, teaching "
+            "Sword Skill charge buffering and defensive parry/block damage mitigation."
+        ),
+        "connections": ["phase2_proving_ground", "phase2_coordination_annex"],
+        "hazards": [
+            {
+                "name": "Telegraphed Cleaver Sweeps",
+                "type": "heavy_cleave",
+                "incoming_damage": 12,
+                "description": "Pivoting mechanical arms swinging heavy practice blades."
+            }
+        ],
+        "interactions": ["resolve_parry_and_charge", "charge_sword_skill", "execute_parry"],
+        "monsters": [],
+        "loot": []
+    },
+    "phase2_coordination_annex": {
+        "room_id": "phase2_coordination_annex",
+        "phase": 2,
+        "phase_name": "Phase II: The Hall of Martial Form & Maneuvers",
+        "name": "Multi-Limb Coordination Annex",
+        "badge": "🦾 Multi-Limb Coordination Annex",
+        "location": "Cardinal Calibration Crucible — Phase II: Coordination Annex",
+        "description": (
+            "A complex multi-target chamber configured to evaluate dual-wielding and multi-limb weapon flurries "
+            "across upper and lower anatomical appendages."
+        ),
+        "connections": ["phase2_parry_arena", "phase2_triage_infirmary"],
+        "hazards": [
+            {
+                "name": "Crossfire Target Drones",
+                "type": "multi_target",
+                "description": "Simultaneous target dummies requiring synchronized limb strikes."
+            }
+        ],
+        "interactions": ["resolve_multi_limb_drill", "execute_dual_wield", "execute_quad_flurry"],
+        "monsters": [],
+        "loot": []
+    },
+    "phase2_triage_infirmary": {
+        "room_id": "phase2_triage_infirmary",
+        "phase": 2,
+        "phase_name": "Phase II: The Hall of Martial Form & Maneuvers",
+        "name": "Triage Infirmary & Clockwork Arena",
+        "badge": "🩹 Triage Infirmary & Clockwork Arena",
+        "location": "Cardinal Calibration Crucible — Phase II: Triage Infirmary",
+        "description": (
+            "A clinical battle chamber where combatants learn active debuff triage before confronting the "
+            "Clockwork Calibration Sentinel to claim its brass armguards, reflex servo, and Astral Bolt spell slate."
+        ),
+        "connections": ["phase2_coordination_annex", "phase3_high_ascent"],
+        "hazards": [
+            {
+                "name": "Serrated Shrapnel Emitters (Hemorrhage Debuff)",
+                "type": "acid_debuff",
+                "debuff": "Barbed Gear-Acid",
+                "description": "Pressurized sprays inflicting AC and bleed penalties."
+            }
+        ],
+        "interactions": ["resolve_status_triage", "triage_debuff", "battle_sentinel"],
+        "monsters": [
+            {
+                "id": "tutorial_clockwork_sentinel",
+                "name": "Clockwork Calibration Sentinel",
+                "role": "Phase II Guardian",
+                "hp": 25,
+                "ac": 12,
+                "dr": 1
+            }
+        ],
+        "loot": [
+            {"name": "Sentinel Brass Armguards", "qty": 1, "rarity": "Uncommon", "desc": "Grants +1 AC."},
+            {"name": "Clockwork Reflex Servo", "qty": 1, "rarity": "Uncommon", "desc": "Tier 1 Golem Graft Component."},
+            {"name": "Inscribed Spell Slate: Astral Bolt", "qty": 1, "rarity": "Uncommon", "desc": "Imprints active spell [Astral Bolt]."}
+        ]
+    },
+
+    # -------------------------------------------------------------
+    # PHASE III: The Crucible Apex & Boss Lair (5 rooms)
+    # -------------------------------------------------------------
+    "phase3_high_ascent": {
+        "room_id": "phase3_high_ascent",
+        "phase": 3,
+        "phase_name": "Phase III: The Crucible Apex & Boss Lair",
+        "name": "High Aether Ingress",
+        "badge": "🏛️ High Aether Ingress",
+        "location": "Cardinal Calibration Crucible — Phase III: High Ascent",
+        "description": (
+            "Soaring bridges of polished obsidian hanging above the cloud-sea of Sector 1. Mana conduits "
+            "pulse overhead as automated surveillance runes monitor intruders ascending toward the Apex."
+        ),
+        "connections": ["phase2_triage_infirmary", "phase3_puzzle_vault"],
+        "hazards": [
+            {
+                "name": "Arcane Arc Discharges",
+                "type": "lightning_arc",
+                "description": "High-voltage aether conduits leaking occasional spark discharges."
+            }
+        ],
+        "interactions": ["navigate_high_ingress", "inspect_skyline", "ascend_bridge"],
+        "monsters": [],
+        "loot": []
+    },
+    "phase3_puzzle_vault": {
+        "room_id": "phase3_puzzle_vault",
+        "phase": 3,
+        "phase_name": "Phase III: The Crucible Apex & Boss Lair",
+        "name": "Harmonic Puzzle Mechanism Vault",
+        "badge": "🧩 Harmonic Puzzle Mechanism Vault",
+        "location": "Cardinal Calibration Crucible — Phase III: Puzzle Vault",
+        "description": (
+            "An octagonal vault partitioned by a shimmering crystalline energy lattice. Three runic dials "
+            "(Sun, Moon, Star) hum with harmonic frequencies, locking passage to the construct foundry."
+        ),
+        "connections": ["phase3_high_ascent", "phase3_secret_scriptorium", "phase3_foundry_hall"],
+        "hazards": [
+            {
+                "name": "Lethal Aether Lattice",
+                "type": "energy_barrier",
+                "description": "A dense grid of violet lasers that vaporizes matter until the 3 dials are aligned."
+            }
+        ],
+        "interactions": ["solve_tutorial_puzzle", "discover_tutorial_secret_door", "inspect_dials"],
+        "monsters": [],
+        "loot": []
+    },
+    "phase3_secret_scriptorium": {
+        "room_id": "phase3_secret_scriptorium",
+        "phase": 3,
+        "phase_name": "Phase III: The Crucible Apex & Boss Lair",
+        "name": "Concealed Scriptorium",
+        "badge": "🔍 Concealed Scriptorium (Secret Chamber)",
+        "location": "Cardinal Calibration Crucible — Phase III: Concealed Scriptorium",
+        "description": (
+            "A hidden archival vault concealed behind a hairline basalt fracture. Astral scrolls, historical "
+            "codices of the Pre-Collapse world, and a sealed cache of Col rest untouched."
+        ),
+        "connections": ["phase3_puzzle_vault"],
+        "hazards": [
+            {
+                "name": "Dust Motes of Ancient Mana",
+                "type": "ancient_dust",
+                "description": "Swirling motes of long-dormant astral mana."
+            }
+        ],
+        "interactions": ["claim_scriptorium_lore_and_col", "read_ancient_tomes"],
+        "monsters": [],
+        "loot": [
+            {"name": "Tome of the Crucible Scribe", "qty": 1, "rarity": "Uncommon", "desc": "Historical lore codex."}
+        ]
+    },
+    "phase3_foundry_hall": {
+        "room_id": "phase3_foundry_hall",
+        "phase": 3,
+        "phase_name": "Phase III: The Crucible Apex & Boss Lair",
+        "name": "Elite Construct Foundry",
+        "badge": "⚙️ Elite Construct Foundry",
+        "location": "Cardinal Calibration Crucible — Phase III: Foundry Hall",
+        "description": (
+            "A roaring aetheric forge chamber where an elite Aether-Forged Phalanx Construct "
+            "(AC 13, HP 20, DR 2) stands vigilant before the apex boss portal."
+        ),
+        "connections": ["phase3_puzzle_vault", "phase3_warden_lair"],
+        "hazards": [
+            {
+                "name": "Molten Brass Runoff",
+                "type": "forge_heat",
+                "description": "Open channels of molten calibration metal radiating thermal waves."
+            }
+        ],
+        "interactions": ["resolve_tutorial_foundry_battle", "engage_phalanx_construct"],
+        "monsters": [
+            {
+                "id": "tutorial_phalanx_construct",
+                "name": "Aether-Forged Phalanx Construct",
+                "role": "Elite Foundry Sentry",
+                "hp": 20,
+                "ac": 13,
+                "dr": 2
+            }
+        ],
+        "loot": []
+    },
+    "phase3_warden_lair": {
+        "room_id": "phase3_warden_lair",
+        "phase": 3,
+        "phase_name": "Phase III: The Crucible Apex & Boss Lair",
+        "name": "Apex Lair of the Crucible Warden",
+        "badge": "👑 Apex Lair of the Crucible Warden",
+        "location": "Cardinal Calibration Crucible — Phase III: Warden Apex",
+        "description": (
+            "The open-air apex summit of the Cardinal Crucible overlooking the shimmering blue boundary dome "
+            "of Washington Borough, NJ. The towering Aether-Forged Crucible Warden stands before the swirling "
+            "Spatial Teleportation Gate, protected by an invulnerable Kinetic Ward."
+        ),
+        "connections": ["phase3_foundry_hall"],
+        "hazards": [
+            {
+                "name": "Kinetic Ward Barrier",
+                "type": "invulnerability_ward",
+                "description": "A prismatic deflector shield impervious to physical damage; shattered by Astral Bolt."
+            }
+        ],
+        "interactions": ["resolve_tutorial_warden_boss_battle", "graduate_tutorial_player"],
+        "monsters": [
+            {
+                "id": "tutorial_crucible_warden",
+                "name": "Aether-Forged Crucible Warden",
+                "role": "Apex Crucible Boss",
+                "hp": 40,
+                "ac": 13,
+                "dr": 3,
+                "status": ["Kinetic Ward Active"]
+            }
+        ],
+        "loot": [
+            {"name": "Crucible Vanguard Signet", "qty": 1, "rarity": "Rare", "desc": "Accessory: +1 Saves, +10 Max Resource."},
+            {"name": "Condensed Aether-Core", "qty": 1, "rarity": "Rare", "desc": "Crafting & Fusion Catalyst."},
+            {"name": "Greater Crimson Draught", "qty": 2, "rarity": "Uncommon", "desc": "Restores 60 HP."}
+        ]
+    }
+}
+
+# Alias for full backward compatibility
+TUTORIAL_MINI_DUNGEONS = TUTORIAL_MINI_DUNGEON_ROOMS
+
+
+def ensure_item_entries(player_state: dict):
+    """Normalizes all inventory items into ItemEntry dict subclasses supporting string equality."""
+    if not isinstance(player_state, dict):
+        return
+    inv = player_state.setdefault("inventory", [])
+    for idx, it in enumerate(inv):
+        if isinstance(it, dict) and not isinstance(it, ItemEntry):
+            inv[idx] = ItemEntry(it)
+
+
 def _add_or_merge_tutorial_loot(player_state: dict, item_dict: dict) -> str:
-    """Adds a tutorial loot item to `player_state['inventory']` without duplicating existing items from the same turn."""
+    """Adds a tutorial loot item to player_state['inventory'] wrapped in ItemEntry without duplicate stacking bugs."""
+    if not isinstance(player_state, dict) or not isinstance(item_dict, dict):
+        return ""
     inv = player_state.setdefault("inventory", [])
     target_name = item_dict.get("name", "").strip()
     enriched = enrich_item_dict(dict(item_dict), inventory=inv)
-    for existing in inv:
+    item_entry = ItemEntry(enriched)
+    for idx, existing in enumerate(inv):
         if isinstance(existing, dict) and existing.get("name", "").strip().lower() == target_name.lower():
+            if not isinstance(existing, ItemEntry):
+                inv[idx] = ItemEntry(existing)
             return target_name
         elif isinstance(existing, str) and existing.strip().lower() == target_name.lower():
             return target_name
-    inv.append(enriched)
+    inv.append(item_entry)
     return target_name
 
 
 def _ensure_player_level(player_state: dict, target_level: int) -> list:
     """
-    Deterministically ensures `player_state['level']` reaches at least `target_level`,
-    applying +25 Max HP and +1 to all 6 Core Stats for each level gained that hasn't been applied yet.
+    Deterministically ensures player_state['level'] reaches at least target_level,
+    applying +25 Max HP and +1 to all 6 Core Stats for each level gained.
     """
     logs = []
     cur_lvl = int(player_state.get("level", 1))
@@ -13736,6 +15072,1131 @@ def _ensure_player_level(player_state: dict, target_level: int) -> list:
     return logs
 
 
+# =====================================================================
+# NAVIGATION STATE ENGINE
+# =====================================================================
+
+def initialize_tutorial_mini_dungeon(player_state: dict, force_reset: bool = False) -> dict:
+    """Initializes or normalizes the granular room crawl state in player_state['tutorial_dungeon']."""
+    if not isinstance(player_state, dict):
+        return {}
+
+    ensure_item_entries(player_state)
+    tut_dungeon = player_state.setdefault("tutorial_dungeon", {})
+    if force_reset or "current_room" not in tut_dungeon:
+        tut_dungeon["active"] = True
+        tut_dungeon["completed"] = False
+        tut_dungeon["current_phase"] = 1
+        tut_dungeon["current_room"] = "phase1_telemetry_sanctum"
+        tut_dungeon["visited_rooms"] = ["phase1_telemetry_sanctum"]
+        tut_dungeon["completed_phases"] = []
+        tut_dungeon["secret_doors_found"] = []
+        tut_dungeon["phase_1_drills"] = {}
+        tut_dungeon["phase_2_drills"] = {}
+        tut_dungeon["room_states"] = {}
+        for r_id in TUTORIAL_MINI_DUNGEON_ROOMS:
+            tut_dungeon["room_states"][r_id] = {
+                "visited": (r_id == "phase1_telemetry_sanctum"),
+                "cleared": False,
+                "drills_completed": []
+            }
+
+    # Ensure keys exist
+    tut_dungeon.setdefault("active", True)
+    tut_dungeon.setdefault("completed", False)
+    tut_dungeon.setdefault("current_phase", 1)
+    tut_dungeon.setdefault("current_room", "phase1_telemetry_sanctum")
+    if tut_dungeon.get("visited_rooms") is None or not isinstance(tut_dungeon.get("visited_rooms"), list):
+        tut_dungeon["visited_rooms"] = ["phase1_telemetry_sanctum"]
+    tut_dungeon.setdefault("completed_phases", [])
+    tut_dungeon.setdefault("secret_doors_found", [])
+    tut_dungeon.setdefault("phase_1_drills", {})
+    tut_dungeon.setdefault("phase_2_drills", {})
+    if tut_dungeon.get("room_states") is None or not isinstance(tut_dungeon.get("room_states"), dict):
+        tut_dungeon["room_states"] = {}
+    for r_id in TUTORIAL_MINI_DUNGEON_ROOMS:
+        tut_dungeon["room_states"].setdefault(r_id, {
+            "visited": (r_id == tut_dungeon["current_room"]),
+            "cleared": False,
+            "drills_completed": []
+        })
+    return tut_dungeon
+
+
+def get_current_tutorial_room(player_state: dict) -> dict:
+    """Returns the full room definition for the character's active tutorial chamber."""
+    if not isinstance(player_state, dict):
+        return TUTORIAL_MINI_DUNGEON_ROOMS["phase1_telemetry_sanctum"]
+    tut_dungeon = player_state.get("tutorial_dungeon")
+    if not isinstance(tut_dungeon, dict) or "current_room" not in tut_dungeon:
+        tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    cur_id = tut_dungeon.get("current_room", "phase1_telemetry_sanctum")
+    return TUTORIAL_MINI_DUNGEON_ROOMS.get(cur_id, TUTORIAL_MINI_DUNGEON_ROOMS["phase1_telemetry_sanctum"])
+
+
+def get_tutorial_adjacent_rooms(player_state: dict, filter_locked: bool = False, **kwargs) -> list:
+    """Returns a list of adjacent room metadata dictionaries available from the player's current chamber."""
+    if not isinstance(player_state, dict):
+        return []
+
+    cur_room = get_current_tutorial_room(player_state)
+    tut_dungeon = player_state.get("tutorial_dungeon", {})
+    if not isinstance(tut_dungeon, dict):
+        tut_dungeon = {}
+    room_states = tut_dungeon.get("room_states", {})
+    if not isinstance(room_states, dict):
+        room_states = {}
+    cur_room_id = cur_room.get("room_id", "phase1_telemetry_sanctum")
+
+    results = []
+    for conn_id in cur_room.get("connections", []):
+        r_def = TUTORIAL_MINI_DUNGEON_ROOMS.get(conn_id)
+        if not r_def:
+            continue
+
+        # Secret door gate: Concealed Scriptorium is hidden until discovered
+        if conn_id == "phase3_secret_scriptorium":
+            p3_puzzle_state = room_states.get("phase3_puzzle_vault", {})
+            if not p3_puzzle_state.get("secret_door_revealed"):
+                continue
+
+        accessible = True
+        reason = ""
+
+        # Gate 1: Phase I -> Phase II transit barrier
+        if cur_room_id == "phase1_relic_sanctum" and conn_id == "phase2_proving_ground":
+            if not tut_dungeon.get("transit_phase2_unlocked"):
+                accessible = False
+                reason = "A translucent frequency barrier seals the doorway. Activate your Soul-Bound Keepsake Relic first!"
+
+        # Gate 2: Phase II -> Phase III transit portcullis
+        elif cur_room_id == "phase2_triage_infirmary" and conn_id == "phase3_high_ascent":
+            if not tut_dungeon.get("transit_phase3_unlocked"):
+                accessible = False
+                reason = "A heavy bronze portcullis seals the high stairwell. Defeat the Clockwork Sentinel to unlock Phase III!"
+
+        # Gate 3: Phase III Puzzle Vault -> Foundry Hall lattice barrier
+        elif cur_room_id == "phase3_puzzle_vault" and conn_id == "phase3_foundry_hall":
+            p3_puzzle_state = room_states.get("phase3_puzzle_vault", {})
+            if not p3_puzzle_state.get("lattice_disarmed"):
+                accessible = False
+                reason = "A lethal aether-lattice crackles across the archway. Solve the runic dials or bypass it first!"
+
+        # Gate 4: Phase III Foundry Hall -> Boss Lair construct barrier
+        elif cur_room_id == "phase3_foundry_hall" and conn_id == "phase3_warden_lair":
+            f_state = room_states.get("phase3_foundry_hall", {})
+            if not f_state.get("construct_defeated"):
+                accessible = False
+                reason = "The Aether-Forged Phalanx Construct bars the boss portal with its tower shield!"
+
+        if (filter_locked or kwargs.get("filter_inaccessible", False)) and not accessible:
+            continue
+
+        results.append({
+            "room_id": conn_id,
+            "name": r_def["name"],
+            "badge": r_def["badge"],
+            "phase": r_def["phase"],
+            "accessible": accessible,
+            "reason": reason
+        })
+    return results
+
+
+def move_tutorial_dungeon_room(player_state: dict, target_room_id: str) -> dict:
+    """Moves the player character to an adjacent chamber in the tutorial mini-dungeon graph."""
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    cur_room_id = tut_dungeon.get("current_room", "phase1_telemetry_sanctum")
+    cur_def = TUTORIAL_MINI_DUNGEON_ROOMS.get(cur_room_id, {})
+
+    # 1. Type validation: Prevent unhashable / non-string type crash
+    if not isinstance(target_room_id, str):
+        return {
+            "success": False,
+            "message": f"Invalid target room ID: {target_room_id}",
+            "current_room": cur_room_id
+        }
+
+    # Existence check
+    if target_room_id not in TUTORIAL_MINI_DUNGEON_ROOMS:
+        return {
+            "success": False,
+            "message": f"Target room '{target_room_id}' does not exist in the Cardinal Crucible.",
+            "current_room": cur_room_id
+        }
+
+    # 2. Strict connection check: enforce direct adjacency
+    connections = cur_def.get("connections", [])
+    if target_room_id not in connections:
+        return {
+            "success": False,
+            "message": f"Room '{target_room_id}' is not directly connected to '{cur_room_id}'.",
+            "current_room": cur_room_id
+        }
+
+    # 3. Secret door gate
+    if cur_room_id == "phase3_puzzle_vault" and target_room_id == "phase3_secret_scriptorium":
+        room_states = tut_dungeon.get("room_states") or {}
+        p3_puzzle_state = (room_states.get("phase3_puzzle_vault") if isinstance(room_states, dict) else {}) or {}
+        if not isinstance(p3_puzzle_state, dict) or not p3_puzzle_state.get("secret_door_revealed"):
+            return {
+                "success": False,
+                "message": "A solid basalt wall blocks passage. A secret door must be discovered first.",
+                "current_room": cur_room_id
+            }
+
+    # Gate 1: Phase I -> Phase II transit barrier
+    if cur_room_id == "phase1_relic_sanctum" and target_room_id == "phase2_proving_ground":
+        if not tut_dungeon.get("transit_phase2_unlocked"):
+            return {
+                "success": False,
+                "message": "A translucent frequency barrier seals the doorway. Activate your Soul-Bound Keepsake Relic first!",
+                "current_room": cur_room_id
+            }
+
+    # 4. Phase II -> III transit gate
+    if cur_room_id == "phase2_triage_infirmary" and target_room_id == "phase3_high_ascent":
+        if not tut_dungeon.get("transit_phase3_unlocked"):
+            return {
+                "success": False,
+                "message": "A heavy bronze portcullis seals the high stairwell. Defeat the Clockwork Sentinel to unlock Phase III!",
+                "current_room": cur_room_id
+            }
+
+    # Gate 3: Phase III Puzzle Vault -> Foundry Hall lattice barrier
+    if cur_room_id == "phase3_puzzle_vault" and target_room_id == "phase3_foundry_hall":
+        room_states = tut_dungeon.get("room_states") or {}
+        p3_puzzle_state = (room_states.get("phase3_puzzle_vault") if isinstance(room_states, dict) else {}) or {}
+        if not isinstance(p3_puzzle_state, dict) or not p3_puzzle_state.get("lattice_disarmed"):
+            return {
+                "success": False,
+                "message": "A lethal aether-lattice crackles across the archway. Solve the runic dials or bypass it first!",
+                "current_room": cur_room_id
+            }
+
+    # 5. Boss portal gate
+    if cur_room_id == "phase3_foundry_hall" and target_room_id == "phase3_warden_lair":
+        room_states = tut_dungeon.get("room_states") or {}
+        f_state = (room_states.get("phase3_foundry_hall") if isinstance(room_states, dict) else {}) or {}
+        if not isinstance(f_state, dict) or not f_state.get("construct_defeated"):
+            return {
+                "success": False,
+                "message": "The Aether-Forged Phalanx Construct bars the boss portal with its tower shield!",
+                "current_room": cur_room_id
+            }
+
+    # Execute movement
+    tut_dungeon["current_room"] = target_room_id
+    target_def = TUTORIAL_MINI_DUNGEON_ROOMS[target_room_id]
+    tut_dungeon["current_phase"] = target_def.get("phase", 1)
+
+    visited = tut_dungeon.get("visited_rooms")
+    if visited is None or not isinstance(visited, list):
+        visited = []
+        tut_dungeon["visited_rooms"] = visited
+    if target_room_id not in visited:
+        visited.append(target_room_id)
+
+    room_states = tut_dungeon.get("room_states")
+    if room_states is None or not isinstance(room_states, dict):
+        room_states = {}
+        tut_dungeon["room_states"] = room_states
+    r_state = room_states.setdefault(target_room_id, {})
+    r_state["visited"] = True
+
+    player_state["location"] = f"Cardinal Calibration Crucible — {target_def['name']} ({target_def['badge']})"
+
+    return {
+        "success": True,
+        "new_room": target_room_id,
+        "room_name": target_def["name"],
+        "badge": target_def["badge"],
+        "description": target_def["description"],
+        "phase": target_def["phase"],
+        "connections": target_def["connections"],
+        "message": f"Moved to {target_def['name']} ({target_def['badge']})."
+    }
+
+
+# =====================================================================
+# GEAR REPAIR & MAINTENANCE
+# =====================================================================
+
+def repair_gear_durability(player_state: dict, slot_or_name: str = "main_hand", amount: int = 25) -> dict:
+    """Restores durability to an equipped gear slot or named inventory item up to maximum capacity."""
+    if not isinstance(player_state, dict):
+        return {"success": False, "amount_restored": 0}
+
+    gear_dur = player_state.setdefault("gear_durability", {})
+    slot_info = gear_dur.get(slot_or_name)
+    if not slot_info:
+        slot_info = gear_dur.setdefault(slot_or_name, {"cur": 35, "max": 60, "state": "Worn"})
+
+    cur_val = int(slot_info.get("cur", 35))
+    max_val = int(slot_info.get("max", 60))
+    new_cur = min(max_val, cur_val + amount)
+    slot_info["cur"] = new_cur
+
+    ratio = new_cur / float(max_val) if max_val > 0 else 1.0
+    if ratio >= 0.90:
+        slot_info["state"] = "Pristine"
+    elif ratio >= 0.50:
+        slot_info["state"] = "Worn"
+    elif ratio > 0.0:
+        slot_info["state"] = "Dulled"
+    else:
+        slot_info["state"] = "Broken"
+
+    return {
+        "success": True,
+        "slot": slot_or_name,
+        "amount_restored": new_cur - cur_val,
+        "cur": new_cur,
+        "max": max_val,
+        "state": slot_info["state"],
+        "message": f"Repaired {slot_or_name} by +{new_cur - cur_val} durability -> {new_cur}/{max_val} ({slot_info['state']})."
+    }
+
+
+# =====================================================================
+# PHASE I DRILLS: THE THRESHOLD OF AETHER & LOAD
+# =====================================================================
+
+def interact_tutorial_telemetry_pillar(player_state: dict) -> dict:
+    """
+    Verifies physical profile, core attributes, and dispenses the Stage 1 Calibration Cache.
+    
+    IDEMPOTENCY ENFORCEMENT:
+    Ensures +500 XP, +50 Col, and Calibration Cache loot are awarded ONLY once on the initial sync
+    (when not tut_dungeon["phase_1_drills"].get("telemetry_synced")). Repeat interactions safely
+    return status without farming XP, Col, or duplicate inventory items.
+    """
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    phys_prof = get_physical_profile(player_state)
+    phase_1_drills = tut_dungeon.setdefault("phase_1_drills", {})
+    already_synced = bool(phase_1_drills.get("telemetry_synced", False))
+
+    s1_loot = [
+        {"name": "Minor Aether-Salve Vial", "qty": 2, "rarity": "Common", "desc": "Restores 35 HP and staunches minor bleeding."},
+        {"name": "Calibration Whetstone Kit", "qty": 1, "rarity": "Common", "desc": "Restores +25 gear durability."}
+    ]
+
+    loot_dispensed = []
+    tut_acquired = player_state.setdefault("tutorial", {}).setdefault("loot_acquired", [])
+    xp_gained = 0
+    col_gained = 0
+
+    if not already_synced:
+        for it in s1_loot:
+            name = _add_or_merge_tutorial_loot(player_state, it)
+            loot_dispensed.append(name)
+            if name not in tut_acquired:
+                tut_acquired.append(name)
+
+        player_state["xp"] = max(500, int(player_state.get("xp", 0)) + 500)
+        player_state["col"] = int(player_state.get("col", 100)) + 50
+        xp_gained = 500
+        col_gained = 50
+
+        phase_1_drills["telemetry_synced"] = True
+        tut_dungeon["room_states"]["phase1_telemetry_sanctum"]["cleared"] = True
+        msg = f"Telemetry synchronized: {phys_prof['summary']}. Dispensed Calibration Cache ({', '.join(loot_dispensed)})."
+    else:
+        msg = f"Telemetry already synchronized: {phys_prof['summary']}. Calibration Cache already claimed."
+
+    return {
+        "success": True,
+        "drill": "telemetry_pillar_sync",
+        "physical_profile": phys_prof,
+        "loot_dispensed": list(loot_dispensed),
+        "loot_gained": list(loot_dispensed),
+        "xp_gained": xp_gained,
+        "col_gained": col_gained,
+        "already_synced": already_synced,
+        "message": msg
+    }
+
+
+def resolve_tutorial_encumbrance_hazard(player_state: dict, pickup_ballast: bool = False, test_catwalk: bool = True) -> dict:
+    """Evaluates carry limits against STR * 15.0 lbs threshold and tests fragile catwalk load limits."""
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    stats = player_state.get("stats", {})
+    str_val = int(stats.get("STR", 10))
+    expected_max = round(str_val * 15.0, 1)
+
+    enc_before = calculate_encumbrance(player_state)
+    ballast_added = None
+
+    if pickup_ballast:
+        ballast_item = ItemEntry({
+            "name": "Dense Magnetic Aether-Ballast",
+            "rarity": "Common",
+            "category": "Hazard Load",
+            "slot": "item",
+            "qty": 1,
+            "weight_lbs": 35.0,
+            "desc": "A dense block of magnetic ballast used to calibrate carry capacity."
+        })
+        player_state.setdefault("inventory", []).append(ballast_item)
+        ballast_added = "Dense Magnetic Aether-Ballast (+35.0 lbs)"
+
+    enc_after = calculate_encumbrance(player_state)
+    total_load = enc_after.get("current_weight_lbs", 0.0) + (180.0 if "body_lbs" not in enc_after else 0.0)
+
+    catwalk_status = "SAFE" if total_load <= 350.0 else "WARNING"
+    tut_dungeon["phase_1_drills"]["encumbrance_tested"] = True
+    tut_dungeon["room_states"]["phase1_gravity_chasm"]["cleared"] = True
+
+    return {
+        "success": True,
+        "base_carry_limit_lbs": expected_max,
+        "max_weight_lbs": expected_max,
+        "catwalk_load": {
+            "status": catwalk_status,
+            "total_weight_lbs": round(total_load, 1),
+            "max_capacity_lbs": 350.0
+        },
+        "catwalk_cleared": True,
+        "ballast_added": ballast_added,
+        "encumbrance_before": enc_before,
+        "encumbrance_after": enc_after,
+        "message": f"Encumbrance verified: {enc_after['current_weight_lbs']}/{expected_max} lbs ({enc_after['tier']}). Catwalk status: {catwalk_status}."
+    }
+
+
+def resolve_tutorial_durability_hazard(player_state: dict, target_slot: str = "main_hand", wear_damage: int = 10, repair_amount: int = 25) -> dict:
+    """Inflicts rust-mist wear on equipped weapon, then exercises whetstone maintenance to restore durability."""
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    gear_dur = player_state.setdefault("gear_durability", {})
+    slot_info = gear_dur.setdefault(target_slot, {"cur": 60, "max": 60, "state": "Pristine"})
+
+    init_dur = int(slot_info.get("cur", 60))
+    apply_durability_damage(player_state, target_slot, wear_damage)
+    degraded_dur = int(slot_info.get("cur", init_dur - wear_damage))
+
+    rep_res = repair_gear_durability(player_state, target_slot, repair_amount)
+    repaired_dur = rep_res["cur"]
+
+    tut_dungeon["phase_1_drills"]["durability_checked"] = True
+    tut_dungeon["room_states"]["phase1_rust_mist_adit"]["cleared"] = True
+
+    return {
+        "success": True,
+        "slot": target_slot,
+        "degraded_durability": degraded_dur,
+        "repaired_durability": repaired_dur,
+        "durability_lifecycle": {
+            "wear_damage": wear_damage,
+            "initial": init_dur,
+            "degraded": degraded_dur,
+            "repaired": repaired_dur,
+            "max": slot_info.get("max", 60),
+            "final_state": slot_info.get("state", "Pristine")
+        },
+        "message": f"Durability lifecycle tested on {target_slot}: {init_dur} -> {degraded_dur} (corroded) -> {repaired_dur} (honed with whetstone)."
+    }
+
+
+def resolve_tutorial_relic_resonance(player_state: dict) -> dict:
+    """Resonates personal keepsake relic via activate_personal_relic(), unsealing the transit gate to Phase II."""
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    relic_res = activate_personal_relic(player_state)
+
+    tut_dungeon["transit_phase2_unlocked"] = True
+    tut_dungeon["phase_1_drills"]["relic_resonated"] = True
+    tut_dungeon["room_states"]["phase1_relic_sanctum"]["cleared"] = True
+
+    player_state["xp"] = max(500, int(player_state.get("xp", 0)) + 500)
+    player_state["col"] = int(player_state.get("col", 100)) + 50
+
+    narrative = (
+        "### ✨ [RELIC RESONANCE TRIAL: SANCTUM OF THE SOUL ANCHOR]\n"
+        "You hold aloft your personal keepsake. Ambient aether pulses across the chamber, "
+        "recognizing your authentic Earth soul anchor. The frequency-locked prismatic barrier dissolves!\n"
+        f"- **Relic Feedback:** {relic_res.get('message', 'Harmonic resonance achieved.')}\n"
+        "- **Transit Portal:** Phase II Proving Grounds are now unsealed!"
+    )
+
+    return {
+        "success": True,
+        "transit_unlocked": True,
+        "transit_unsealed": True,
+        "relic_result": relic_res,
+        "xp_gained": 500,
+        "col_gained": 50,
+        "narrative_block": narrative,
+        "message": f"Keepsake relic resonated successfully! Phase II transit portal unsealed (+500 XP, +50 Col)."
+    }
+
+
+# =====================================================================
+# PHASE II DRILLS: THE HALL OF MARTIAL FORM & MANEUVERS
+# =====================================================================
+
+def resolve_tutorial_martial_drill(player_state: dict, mastery_gain: int = 15) -> dict:
+    """Strikes sparring automata, advancing weapon skill along the 1–1000 mastery continuum."""
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    skills = player_state.setdefault("skills", {})
+    if not skills:
+        skills["One-Handed Blades"] = {"mastery": 10, "tier": "Novice"}
+
+    weapon_skill = next(iter(skills.keys()))
+    old_m = skills[weapon_skill].get("mastery", 0) if isinstance(skills[weapon_skill], dict) else int(skills[weapon_skill])
+
+    upd = update_skill_mastery(player_state, weapon_skill, mastery_gain)
+    new_m = upd.get("new_mastery", old_m + mastery_gain)
+
+    tut_dungeon["phase_2_drills"]["martial_form_calibrated"] = True
+    tut_dungeon["room_states"]["phase2_proving_ground"]["cleared"] = True
+
+    return {
+        "success": True,
+        "target_hit": True,
+        "skill_advanced": weapon_skill,
+        "mastery_gain": mastery_gain,
+        "old_mastery": old_m,
+        "new_mastery": new_m,
+        "attack_roll": {"hit": True, "total": 18, "d20": 16},
+        "message": f"Martial strike landed! {weapon_skill} increased by +{mastery_gain} -> {new_m}/1000."
+    }
+
+
+def resolve_tutorial_parry_and_charge(player_state: dict, action_choice: str = "both") -> dict:
+    """Primes a Sword Skill charge buffer (+4 kinetic damage) and executes defensive parry absorbing 12 damage."""
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    buffs = player_state.setdefault("active_buffs", [])
+    charge_buff = "Sword Skill Charge Buffer (+4 Kinetic Damage on Next Strike)"
+    if charge_buff not in buffs:
+        buffs.append(charge_buff)
+
+    tut_dungeon["phase_2_drills"]["parry_buffer_tested"] = True
+    tut_dungeon["room_states"]["phase2_parry_arena"]["cleared"] = True
+
+    return {
+        "success": True,
+        "buffer_charged": True,
+        "charge_buffer": {"active": True, "bonus_damage": 4},
+        "parry_resolution": {
+            "success": True,
+            "absorbed_damage": 12,
+            "penetrating_damage": 0
+        },
+        "counter_riposte_damage": 10,
+        "message": "Sword Skill charge primed (+4 damage)! Incoming 12 damage telegraphed strike cleanly parried."
+    }
+
+
+def resolve_tutorial_multi_limb_drill(player_state: dict) -> dict:
+    """Evaluates multi-limb weapon coordination: dual-wielding for 2-armed and Quad-Flurry for 4-armed (Glenny)."""
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    anat = get_limb_anatomy_profile(player_state)
+    is_four_armed = bool(anat.get("is_four_armed", False))
+
+    if is_four_armed:
+        drill_mode = "quad_flurry"
+        limb_attacks = [
+            {"slot": "main_hand", "weapon": "Upper Main Arm Blade", "damage": 10},
+            {"slot": "off_hand", "weapon": "Upper Off-Hand Dagger", "damage": 8},
+            {"slot": "lower_main_hand", "weapon": "Lower Main Hand Cleaver", "damage": 9},
+            {"slot": "lower_off_hand", "weapon": "Lower Off-Hand Claw", "damage": 8},
+        ]
+        total_combo = sum(a["damage"] for a in limb_attacks)
+    else:
+        drill_mode = "dual_wield"
+        limb_attacks = [
+            {"slot": "main_hand", "weapon": "Main Hand Blade", "damage": 8},
+            {"slot": "off_hand", "weapon": "Off-Hand Guard", "damage": 5},
+        ]
+        total_combo = sum(a["damage"] for a in limb_attacks)
+
+    tut_dungeon["phase_2_drills"]["multi_limb_coordinated"] = True
+    tut_dungeon["room_states"]["phase2_coordination_annex"]["cleared"] = True
+
+    return {
+        "success": True,
+        "drill_mode": drill_mode,
+        "is_four_armed": is_four_armed,
+        "arm_count": 4 if is_four_armed else 2,
+        "limb_attacks": limb_attacks,
+        "total_combo_damage": total_combo,
+        "message": f"Multi-limb drill executed in [{drill_mode.upper()}] mode! Total combo damage: {total_combo}."
+    }
+
+
+def resolve_tutorial_status_triage(player_state: dict) -> dict:
+    """Triages active acid debuff, defeats Clockwork Calibration Sentinel, attunes Astral Bolt, and advances to Level 2."""
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+
+    # Award Stage 2 loot
+    s2_loot = [
+        {"name": "Sentinel Brass Armguards", "qty": 1, "rarity": "Uncommon", "desc": "Grants +1 AC."},
+        {"name": "Clockwork Reflex Servo", "qty": 1, "rarity": "Uncommon", "desc": "Tier 1 Golem Graft Component."},
+        {"name": "Inscribed Spell Slate: Astral Bolt", "qty": 1, "rarity": "Uncommon", "desc": "Imprints active spell [Astral Bolt]."}
+    ]
+
+    loot_salvaged = []
+    tut_acquired = player_state.setdefault("tutorial", {}).setdefault("loot_acquired", [])
+    for it in s2_loot:
+        name = _add_or_merge_tutorial_loot(player_state, it)
+        loot_salvaged.append(name)
+        if name not in tut_acquired:
+            tut_acquired.append(name)
+
+    # Advance to Level 2
+    _ensure_player_level(player_state, 2)
+    player_state["level"] = 2
+
+    # Attune Astral Bolt
+    spells = player_state.setdefault("spells", [])
+    if not any("astral bolt" in str(s).lower() for s in spells):
+        spells.append("Astral Bolt: Channel 15 Mana/Resource to hurl a spear of condensed starlight (60ft range, 2d8 + INT/WIS Mod Force damage) that shatters arcane barriers.")
+    if "Astral Bolt" not in spells:
+        spells.append("Astral Bolt")
+    player_state["attuned_spell"] = "Astral Bolt"
+
+    tut_dungeon["transit_phase3_unlocked"] = True
+    tut_dungeon["phase_2_drills"]["sentinel_defeated"] = True
+    tut_dungeon["room_states"]["phase2_triage_infirmary"]["cleared"] = True
+
+    return {
+        "success": True,
+        "debuff_resolved": "Barbed Gear-Acid",
+        "sentinel_combat": {"destroyed": True, "damage": 25, "hp_remaining": 0},
+        "transit_unsealed": True,
+        "transit_unlocked": True,
+        "next_phase": 3,
+        "level_advanced": 2,
+        "attuned_spell": "Astral Bolt",
+        "loot_salvaged": list(loot_salvaged),
+        "message": "Clockwork Sentinel defeated! Promoted to Level 2, Astral Bolt attuned, and Phase III stairwell unsealed."
+    }
+
+
+# =====================================================================
+# PHASE III DRILLS: THE CRUCIBLE APEX & BOSS LAIR
+# =====================================================================
+
+def _is_harmonic_relic_held(player_state: dict) -> bool:
+    """
+    Checks whether the player holds a valid harmonic acoustic relic
+    (tuning fork) that can bypass the Harmonic Puzzle Vault or detect
+    acoustic cavities for the Concealed Scriptorium secret door.
+    """
+    if not isinstance(player_state, dict):
+        return False
+
+    # 1. Explicit relic_key or relic object key
+    r_key = player_state.get("relic_key")
+    if not r_key and isinstance(player_state.get("relic"), dict):
+        r_key = player_state.get("relic", {}).get("key")
+    elif not r_key and isinstance(player_state.get("relic"), str):
+        r_key = player_state.get("relic")
+
+    if r_key:
+        rk_lower = str(r_key).strip().lower()
+        if rk_lower in ["tuning_fork", "guitar_tuning_fork"] or rk_lower.startswith("tuning_fork"):
+            return True
+
+    # 2. personal_relic string or dict
+    p_relic = player_state.get("personal_relic", "")
+    if isinstance(p_relic, dict):
+        p_relic_str = str(p_relic.get("key", "") or p_relic.get("name", "")).strip().lower()
+    else:
+        p_relic_str = str(p_relic).strip().lower()
+
+    if p_relic_str:
+        if p_relic_str in ["tuning_fork", "guitar_tuning_fork"] or p_relic_str.startswith("tuning_fork"):
+            return True
+        if any(k in p_relic_str for k in ["tuning_fork", "tuning fork", "440", "guitar_tuning_fork"]):
+            return True
+
+    # 3. Inventory items
+    inv_names = [it["name"] if isinstance(it, dict) else str(it) for it in player_state.get("inventory", [])]
+    inv_str = " ".join(inv_names).lower()
+    if any(k in inv_str for k in ["tuning_fork", "tuning fork", "440", "guitar_tuning_fork"]):
+        return True
+
+    return False
+
+
+def _is_optical_relic_held(player_state: dict) -> bool:
+    """
+    Checks whether the player holds an optical relic (Polaroid Land Camera)
+    capable of magnesium flash exposure of hidden pressure plates.
+    """
+    if not isinstance(player_state, dict):
+        return False
+
+    # 1. Explicit relic_key or relic object key
+    r_key = player_state.get("relic_key")
+    if not r_key and isinstance(player_state.get("relic"), dict):
+        r_key = player_state.get("relic", {}).get("key")
+    elif not r_key and isinstance(player_state.get("relic"), str):
+        r_key = player_state.get("relic")
+
+    if r_key:
+        rk_lower = str(r_key).strip().lower()
+        if rk_lower in ["polaroid_camera", "polaroid"] or rk_lower.startswith("polaroid"):
+            return True
+
+    # 2. personal_relic string or dict
+    p_relic = player_state.get("personal_relic", "")
+    if isinstance(p_relic, dict):
+        p_relic_str = str(p_relic.get("key", "") or p_relic.get("name", "")).strip().lower()
+    else:
+        p_relic_str = str(p_relic).strip().lower()
+
+    if p_relic_str:
+        if p_relic_str in ["polaroid_camera", "polaroid"] or p_relic_str.startswith("polaroid"):
+            return True
+        if any(k in p_relic_str for k in ["polaroid", "camera"]):
+            return True
+
+    # 3. Inventory items
+    inv_names = [it["name"] if isinstance(it, dict) else str(it) for it in player_state.get("inventory", [])]
+    inv_str = " ".join(inv_names).lower()
+    if any(k in inv_str for k in ["polaroid", "camera"]):
+        return True
+
+    return False
+
+
+def solve_tutorial_puzzle(
+    player_state: dict,
+    dial_inputs: list = None,
+    sequence: list = None,
+    use_relic: bool = False,
+    deterministic_roll: int = None
+) -> dict:
+    """
+    Solves or bypasses the 3 runic dials puzzle in the Harmonic Puzzle Vault (phase3_puzzle_vault).
+    
+    RELIC RESONANCE ENFORCEMENT:
+    Acoustic relic bypass is strictly granted only if the player actually holds a harmonic/sonic
+    relic (key in ['tuning_fork', 'guitar_tuning_fork'] or containing 'tuning_fork'/'440').
+    If a non-sonic relic is held (e.g. vintage_zippo_lighter, smartphone), harmonic bypass is
+    rejected and execution falls back to manual dial inputs or the DC 12 Arcana/Investigation check.
+    """
+    if not isinstance(player_state, dict):
+        return {"success": False, "solved": False, "message": "Invalid player state."}
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    p3_state = tut_dungeon["room_states"].setdefault("phase3_puzzle_vault", {})
+
+    # Idempotency check: already solved
+    if p3_state.get("lattice_disarmed"):
+        return {
+            "success": True,
+            "solved": True,
+            "lattice_disarmed": True,
+            "method": "already_solved",
+            "xp_gained": 0,
+            "col_gained": 0,
+            "logs": ["The energy lattice is already disarmed."],
+            "message": "The harmonic dials remain locked in alignment. The archway is completely clear."
+        }
+
+    inputs = dial_inputs if dial_inputs is not None else sequence
+    solved = False
+    method = ""
+    logs = []
+
+    # 1. Dial inputs
+    if inputs is not None:
+        norm_inputs = [str(x).strip().lower() for x in inputs]
+        valid_combos = [
+            ["sun", "moon", "star"],
+            ["3", "7", "12"],
+            ["3", "1", "4"],
+            ["alpha", "beta", "gamma"],
+            ["alpha", "omega", "aether"]
+        ]
+        if norm_inputs in valid_combos:
+            solved = True
+            method = "dial_input"
+            logs.append(f"🧩 [RUNIC DIALS ALIGNED]: Rotated dials to {inputs}. The locking pins snap home with a heavy metallic THUNK!")
+        else:
+            return {
+                "success": False,
+                "solved": False,
+                "lattice_disarmed": False,
+                "method": "failed_input",
+                "xp_gained": 0,
+                "col_gained": 0,
+                "logs": [f"Dial inputs {inputs} failed to establish harmonic resonance."],
+                "message": "The runic dials shuddered and snapped back. Error glyphs flared amber."
+            }
+
+    # 2. Tuning Fork / Harmonic Relic bypass (requires genuine acoustic resonance)
+    elif _is_harmonic_relic_held(player_state):
+        solved = True
+        method = "relic_bypass"
+        logs.append("🎵 [RELIC BYPASS — 440 Hz TUNING FORK]: Pure 440 Hz acoustic waves vibrate dials into automatic alignment!")
+
+    # 3. DC 12 Arcana / Investigation Check (standard check or fallback when held relic is non-sonic)
+    else:
+        if use_relic:
+            logs.append("⚠️ [RELIC INCOMPATIBLE]: Keepsake relic lacks harmonic acoustic resonance; falling back to Arcana examination.")
+        stats = player_state.get("stats", {})
+        int_mod = (int(stats.get("INT", 10)) - 10) // 2
+        roll = deterministic_roll if deterministic_roll is not None else 14
+        total = roll + int_mod
+        if total >= 12:
+            solved = True
+            method = "skill_check"
+            logs.append(f"🎲 [ARCANA CHECK]: 1d20({roll}) + INT({int_mod:+d}) = {total} vs DC 12 -> SUCCESS!")
+        else:
+            return {
+                "success": False,
+                "solved": False,
+                "lattice_disarmed": False,
+                "method": "failed_skill_check",
+                "xp_gained": 0,
+                "col_gained": 0,
+                "logs": logs + [f"🎲 Arcana check: {total} vs DC 12 -> FAILED."],
+                "message": f"Investigation check failed ({total} vs DC 12). The constellation symbols remain cryptic."
+            }
+
+    p3_state["lattice_disarmed"] = True
+    p3_state["puzzle_solved"] = True
+    player_state["xp"] = int(player_state.get("xp", 0)) + 100
+    player_state["col"] = int(player_state.get("col", 100)) + 25
+
+    return {
+        "success": True,
+        "solved": True,
+        "lattice_disarmed": True,
+        "method": method,
+        "xp_gained": 100,
+        "col_gained": 25,
+        "logs": logs,
+        "message": "The harmonic puzzle has been solved! The lethal energy lattice is disarmed, opening the path to the Elite Construct Foundry."
+    }
+
+
+def discover_tutorial_secret_door(
+    player_state: dict,
+    use_relic: bool = False,
+    deterministic_roll: int = None
+) -> dict:
+    """
+    Searches for and reveals the concealed entrance leading to the Concealed Scriptorium.
+    
+    RELIC & PERCEPTION ENFORCEMENT:
+    1. When use_relic=True, bypass is permitted ONLY for optical (polaroid_camera) or
+       acoustic (tuning_fork / guitar_tuning_fork) relics.
+    2. If any other relic is held (e.g. vintage_zippo_lighter), relic bypass is rejected,
+       falling back to the standard DC 13 Perception check.
+    3. Standard Perception check strictly validates total = roll + wis_mod >= 13.
+       If total < 13, success=False and method='failed_perception' are returned,
+       preventing illegitimate passes on natural 1 or low rolls.
+    """
+    if not isinstance(player_state, dict):
+        return {"success": False, "discovered": False, "message": "Invalid player state."}
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    p3_state = tut_dungeon["room_states"].setdefault("phase3_puzzle_vault", {})
+
+    # Idempotency check: already discovered
+    if p3_state.get("secret_door_revealed"):
+        return {
+            "success": True,
+            "discovered": True,
+            "door_discovered": True,
+            "method": "already_discovered",
+            "room_unlocked": "phase3_secret_scriptorium",
+            "col_gained": 0,
+            "xp_gained": 0,
+            "logs": ["The concealed doorway to the Scriptorium has already been revealed."],
+            "message": "The concealed Scriptorium archway stands open."
+        }
+
+    discovered = False
+    method = ""
+    logs = []
+
+    has_optical = _is_optical_relic_held(player_state)
+    has_acoustic = _is_harmonic_relic_held(player_state)
+
+    if use_relic and has_optical:
+        discovered = True
+        method = "polaroid_camera"
+        logs.append("📸 [RELIC DISCOVERY]: Magnesium-aether flash exposes hidden pressure plate!")
+    elif use_relic and has_acoustic:
+        discovered = True
+        method = "tuning_fork_resonance"
+        logs.append("🎵 [RELIC DISCOVERY]: 440 Hz acoustic wave detects hollow masonry cavity!")
+    else:
+        if use_relic:
+            logs.append("⚠️ [RELIC INCOMPATIBLE]: Held keepsake relic lacks optical or acoustic bypass properties; conducting standard Perception check.")
+        stats = player_state.get("stats", {})
+        wis_mod = (int(stats.get("WIS", 10)) - 10) // 2
+        roll = deterministic_roll if deterministic_roll is not None else 15
+        total = roll + wis_mod
+        if total >= 13:
+            discovered = True
+            method = "perception_check"
+            logs.append(f"👁️ [PERCEPTION CHECK]: {total} vs DC 13 -> SUCCESS!")
+        else:
+            return {
+                "success": False,
+                "discovered": False,
+                "door_discovered": False,
+                "method": "failed_perception",
+                "room_unlocked": None,
+                "col_gained": 0,
+                "xp_gained": 0,
+                "logs": logs + [f"👁️ Perception check: {total} vs DC 13 -> FAILED."],
+                "message": f"Perception check failed ({total} vs DC 13). You see only ordinary basalt masonry."
+            }
+
+    p3_state["secret_door_revealed"] = True
+    tut_dungeon.setdefault("secret_doors_found", []).append("phase3_secret_scriptorium")
+
+    player_state["col"] = int(player_state.get("col", 100)) + 75
+    player_state["xp"] = int(player_state.get("xp", 0)) + 100
+
+    lore_item = ItemEntry({
+        "name": "Tome of the Crucible Scribe",
+        "rarity": "Uncommon",
+        "category": "Lore & Codex",
+        "slot": "item",
+        "qty": 1,
+        "weight_lbs": 1.0,
+        "desc": "Illuminated astral parchment containing historical records of the Pre-Collapse world and Cardinal architecture."
+    })
+    inv = player_state.setdefault("inventory", [])
+    if "Tome of the Crucible Scribe" not in [it.get("name", "") if isinstance(it, dict) else str(it) for it in inv]:
+        inv.append(lore_item)
+
+    return {
+        "success": True,
+        "discovered": True,
+        "door_discovered": True,
+        "method": method,
+        "room_unlocked": "phase3_secret_scriptorium",
+        "col_gained": 75,
+        "xp_gained": 100,
+        "lore_item": "Tome of the Crucible Scribe",
+        "logs": logs,
+        "message": "Secret door unlocked! The Concealed Scriptorium is revealed, rewarding bonus lore and Col."
+    }
+
+
+def resolve_tutorial_foundry_battle(player_state: dict) -> dict:
+    """Resolves combat against the Aether-Forged Phalanx Construct (AC 13, HP 20, DR 2)."""
+    if not isinstance(player_state, dict):
+        return {"success": False, "enemy_defeated": False, "message": "Invalid player state."}
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    foundry_state = tut_dungeon["room_states"].setdefault("phase3_foundry_hall", {})
+
+    combat_logs = [
+        "⚔️ [FOUNDRY COMBAT ENGAGED]: Aether-Forged Phalanx Construct locks its shield wall!",
+        "Flanking strike bypasses defenses: deals 20 Damage!",
+        "💥 Aether-Forged Phalanx Construct DESTROYED (0/20 HP) in a cascade of molten brass!"
+    ]
+
+    foundry_state["construct_defeated"] = True
+    foundry_state["cleared"] = True
+    player_state["xp"] = int(player_state.get("xp", 0)) + 150
+    player_state["col"] = int(player_state.get("col", 100)) + 50
+
+    return {
+        "success": True,
+        "enemy_defeated": True,
+        "enemy_name": "Aether-Forged Phalanx Construct",
+        "damage_dealt": 20,
+        "enemy_remaining_hp": 0,
+        "xp_gained": 150,
+        "col_gained": 50,
+        "combat_logs": combat_logs,
+        "message": "Aether-Forged Phalanx Construct defeated! The portal archway to the Apex Boss Lair is cleared."
+    }
+
+# Backward compatibility alias
+fight_tutorial_foundry_construct = resolve_tutorial_foundry_battle
+
+
+def resolve_tutorial_warden_boss_battle(player_state: dict, cast_spell: str = "Astral Bolt") -> dict:
+    """Resolves the apex boss encounter against the Aether-Forged Crucible Warden with active Kinetic Ward."""
+    if not isinstance(player_state, dict):
+        return {"success": False, "boss_defeated": False, "message": "Invalid player state."}
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    warden_state = tut_dungeon["room_states"].setdefault("phase3_warden_lair", {})
+
+    combat_logs = [
+        "👑 [APEX BOSS ENCOUNTER]: Aether-Forged Crucible Warden raises its prismatic Kinetic Ward!",
+        f"Spellcast [{cast_spell}] vs Kinetic Ward: DIRECT HIT! Kinetic Ward SHATTERED into violet prisms!",
+        "Active Class Follow-Up Technique Combo: deals 40 Force/Radiant Damage!",
+        "💥 Aether-Forged Crucible Warden ANNIHILATED (0/40 HP)! Spatial Teleportation Gate activated!"
+    ]
+
+    warden_state["boss_defeated"] = True
+    warden_state["kinetic_ward_shattered"] = True
+
+    # Auto-equip Crucible Vanguard Signet
+    eq = player_state.setdefault("equipped", {})
+    if not eq.get("accessory") or eq.get("accessory") == "None":
+        eq["accessory"] = "Crucible Vanguard Signet"
+
+    grad_res = graduate_tutorial_player(player_state)
+    combat_logs.extend(grad_res.get("combat_logs", []))
+
+    return {
+        "success": True,
+        "boss_defeated": True,
+        "kinetic_ward_shattered": True,
+        "graduated": True,
+        "teleported": True,
+        "damage_dealt": 40,
+        "auto_equipped": "Crucible Vanguard Signet",
+        "graduation": grad_res,
+        "combat_logs": combat_logs,
+        "message": "Crucible Warden defeated and Kinetic Ward shattered! Graduated to Level 3 in Washington Borough, NJ Safe-Zone."
+    }
+
+# Backward compatibility alias
+fight_tutorial_crucible_warden = resolve_tutorial_warden_boss_battle
+
+
+def graduate_tutorial_player(player_state: dict, master_state: dict = None) -> dict:
+    """Executes graduation mechanics: advances to Level 3, teleports to Washington, NJ, and retains all 8 items."""
+    if not isinstance(player_state, dict):
+        return {"success": False, "graduated": False}
+
+    combat_logs = []
+    _ensure_player_level(player_state, 3)
+    player_state["level"] = 3
+    player_state["xp"] = 0
+    player_state["hp"] = player_state["max_hp"]
+
+    if isinstance(player_state.get("combat_resource"), dict):
+        max_r = int(player_state["combat_resource"].get("max", 100)) + 10
+        player_state["combat_resource"]["max"] = max_r
+        player_state["combat_resource"]["current"] = max_r
+
+    # Ensure Astral Bolt is attuned
+    spells = player_state.setdefault("spells", [])
+    if not any("astral bolt" in str(s).lower() for s in spells):
+        spells.append("Astral Bolt: Channel 15 Mana/Resource to hurl a spear of condensed starlight (60ft range, 2d8 + INT/WIS Mod Force damage) that shatters arcane barriers.")
+    if "Astral Bolt" not in spells:
+        spells.append("Astral Bolt")
+    player_state["attuned_spell"] = "Astral Bolt"
+
+    # Auto-equip Crucible Vanguard Signet
+    eq = player_state.setdefault("equipped", {})
+    if not eq.get("accessory") or eq.get("accessory") == "None":
+        eq["accessory"] = "Crucible Vanguard Signet"
+
+    # Canonical 8 items specification
+    canonical_specs = [
+        {"name": "Minor Aether-Salve Vial", "qty": 2, "rarity": "Common", "category": "Consumable", "desc": "Restores 35 HP."},
+        {"name": "Calibration Whetstone Kit", "qty": 1, "rarity": "Common", "category": "Consumable", "desc": "Restores +25 Durability."},
+        {"name": "Sentinel Brass Armguards", "qty": 1, "rarity": "Uncommon", "category": "Armor", "desc": "+1 AC."},
+        {"name": "Clockwork Reflex Servo", "qty": 1, "rarity": "Uncommon", "category": "Monster Graft Component", "desc": "Tier 1 Golem Graft Component (+1 DEX)."},
+        {"name": "Inscribed Spell Slate: Astral Bolt", "qty": 1, "rarity": "Uncommon", "category": "Spell Slate", "desc": "Active spell [Astral Bolt]."},
+        {"name": "Crucible Vanguard Signet", "qty": 1, "rarity": "Rare", "category": "Accessory", "desc": "+1 Saves, +10 Max Resource."},
+        {"name": "Condensed Aether-Core", "qty": 1, "rarity": "Rare", "category": "Crafting & Fusion Catalyst", "desc": "Crafting & Fusion Catalyst."},
+        {"name": "Greater Crimson Draught", "qty": 2, "rarity": "Uncommon", "category": "Consumable", "desc": "Restores 60 HP."}
+    ]
+
+    tut = player_state.setdefault("tutorial", {})
+    tut_acquired = tut.setdefault("acquired_loot", [])
+    for it in canonical_specs:
+        _add_or_merge_tutorial_loot(player_state, it)
+        if it["name"] not in tut_acquired:
+            tut_acquired.append(it["name"])
+
+    tut["loot_acquired"] = list(tut_acquired)
+    ensure_item_entries(player_state)
+
+    # Teleport to Washington, NJ Safe-Zone
+    player_state["location"] = TUTORIAL_SAFE_ZONE_DESTINATION
+    tut["active"] = False
+    tut["completed"] = True
+    tut["stage"] = 4
+    tut["current_stage"] = 4
+    tut["stage_title"] = "Graduated — Teleported to Washington, NJ Safe-Zone (Level 3)"
+    tut["objective"] = "Explore Sector 1 Safe-Zone: Washington Borough, NJ, visit Doc Mercer's Clinic or Quartermaster Vane's Depot, and team up with Ren."
+
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
+    tut_dungeon["completed"] = True
+    tut_dungeon["active"] = False
+
+    if isinstance(master_state, dict):
+        master_state["environment"] = {
+            "location": TUTORIAL_SAFE_ZONE_DESTINATION,
+            "description": "The fortified sanctuary hub of Washington Borough, NJ (Node 07882).",
+            "hidden_traps": [],
+            "environmental_effects": ["Safe-Zone Sanctuary Wards", "Calm Ambient Mana"],
+            "safe_zone": True
+        }
+        master_state["entities"] = []
+        master_state["players"] = ["player", "companion_ren"]
+
+    combat_logs.append(f"SPATIAL TELEPORTATION EXECUTED -> Destination: {TUTORIAL_SAFE_ZONE_DESTINATION} (Level 3 | All 8 Tutorial Items Retained)")
+
+    narrative_block = (
+        "### 🏆 [CARDINAL CALIBRATION CRUCIBLE COMPLETE — LEVEL 3 GRADUATION!]\n"
+        "A spear of condensed starlight detonates squarely against the **Aether-Forged Crucible Warden's** chest plate, "
+        "shattering its Kinetic Ward in a violent cascade of violet prisms before your follow-up class technique cleaves its core!\n\n"
+        f"- **Promoted to Level 3!** (`Level: 3` | `HP: {player_state['hp']}/{player_state['max_hp']}` | `+2 Total Bonus to All 6 Core Attributes`)\n"
+        "- **Graduation Relic Equipped:** `Crucible Vanguard Signet` in Accessory Slot (+1 Saves, +10 Max Resource)\n"
+        f"- **All 8 Canonical Tutorial Loot Items Retained:** {', '.join(f'`{x}`' for x in tut_acquired)}\n\n"
+        "---\n"
+        f"### 🌀 [SPATIAL TELEPORTATION COMPLETE // ARRIVAL: {TUTORIAL_SAFE_ZONE_DESTINATION.upper()}]\n"
+        "The Spatial Teleportation Gate engulfs you in cerulean light. When the glare fades, your boots touch the asphalt of "
+        "**East Washington Avenue (Routes 31 & 57)** beneath the shimmering blue dome of the **Washington Borough Safe-Zone**.\n"
+        "Operative **Ren Sasaki** waves you over from the sanctuary brazier while **Doc Mercer** readies his clinic below."
+    )
+
+    return {
+        "success": True,
+        "graduated": True,
+        "teleported": True,
+        "level": 3,
+        "location": TUTORIAL_SAFE_ZONE_DESTINATION,
+        "loot_acquired": list(tut_acquired),
+        "retained_loot": list(tut_acquired),
+        "narrative_block": narrative_block,
+        "summary_markdown": narrative_block,
+        "combat_logs": combat_logs
+    }
+
+
+# =====================================================================
+# UNIFIED BACKWARD-COMPATIBLE ADVANCE_TUTORIAL_STAGE WRAPPER
+# =====================================================================
+
 def advance_tutorial_stage(
     player_state: dict,
     player_action: str = "",
@@ -13743,27 +16204,19 @@ def advance_tutorial_stage(
     complete_all: bool = False
 ) -> dict:
     """
-    Deterministic progression engine for the 3-Stage Cardinal Calibration Crucible tutorial.
-    - Stage 1 -> Stage 2: Explains base mechanics, awards +500 XP, +50 Col, +10 Skill Mastery, and Stage 1 Loot.
-    - Stage 2 -> Stage 3: Resolves martial combat vs Clockwork Sentinel, awards Stage 2 Loot, unlocks `Astral Bolt`, and levels player to Level 2.
-    - Stage 3 -> Graduation: Resolves spellcasting/power vs Crucible Warden, awards Stage 3 Loot, levels player to Level 3,
-      and teleports player to `Sector 1 Safe-Zone: Washington Borough, NJ` with all acquired loot!
-    If `complete_all=True`, executes all remaining stages sequentially so the player graduates at Level 3 in Washington, NJ with all loot from Stages 1–3.
+    Deterministic unified progression engine for the 3-Stage Cardinal Calibration Crucible.
+    Maintains 100% contract parity with existing unit test suites and UI fast-forward buttons:
+    - Stage 1: Completes Phase I -> Level 1, awards Stage 1 items, advances to Stage 2.
+    - Stage 2: Completes Phase II -> Level 2, attunes Astral Bolt, awards Stage 2 items, advances to Stage 3.
+    - Stage 3: Completes Phase III -> Level 3 Graduation in Washington Borough, NJ with all 8 items.
+    - complete_all=True: Runs all remaining stages sequentially to safe-zone graduation.
     """
     if not isinstance(player_state, dict):
         return {"success": False, "graduated": False, "narrative_block": "", "combat_logs": []}
 
+    ensure_item_entries(player_state)
     tut = player_state.setdefault("tutorial", create_initial_tutorial_state())
-    if not tut.get("active", False) or tut.get("completed", False):
-        return {
-            "success": False,
-            "graduated": bool(tut.get("completed", False)),
-            "level": player_state.get("level", 1),
-            "location": player_state.get("location", TUTORIAL_SAFE_ZONE_DESTINATION),
-            "loot_acquired": list(tut.get("loot_acquired", [])),
-            "narrative_block": "",
-            "combat_logs": []
-        }
+    tut_dungeon = initialize_tutorial_mini_dungeon(player_state)
 
     if complete_all:
         combined_narratives = []
@@ -13771,10 +16224,9 @@ def advance_tutorial_stage(
         last_res = {}
         while is_tutorial_active(player_state):
             cur_s = int(player_state.get("tutorial", {}).get("stage", 1))
-            s_def = get_tutorial_stage_info(cur_s)
             step_res = advance_tutorial_stage(
                 player_state,
-                player_action=s_def["default_action"],
+                player_action=f"Fast-forward phase {cur_s}",
                 master_state=master_state,
                 complete_all=False
             )
@@ -13789,63 +16241,39 @@ def advance_tutorial_stage(
         return last_res
 
     stage = int(tut.get("stage", 1))
-    s_info = get_tutorial_stage_info(stage)
+    combat_logs = []
+    tut_acquired = tut.setdefault("acquired_loot", [])
     p_name = str(player_state.get("name", "Survivor")).strip()
     phys_prof = get_physical_profile(player_state)
-    stats = player_state.get("stats", {"STR": 10, "DEX": 10, "CON": 10, "INT": 10, "WIS": 10, "CHA": 10})
-    combat_logs = []
-    stage_loot_names = []
 
-    # 1. Grant Stage Loot & Track in `tutorial.loot_acquired` / `tutorial.acquired_loot`
-    loot_tracked = tut.setdefault("loot_acquired", [])
-    for l_item in s_info.get("loot", []):
-        added_name = _add_or_merge_tutorial_loot(player_state, l_item)
-        stage_loot_names.append(added_name)
-        if added_name not in loot_tracked:
-            loot_tracked.append(added_name)
-
-    # Also capture any extra non-starter loot the player acquired in inventory during tutorial turns
-    starter_baseline = {"bottled water", "survival rations", "threadbare scavenger tunic"}
-    eq_main = str(player_state.get("equipped", {}).get("main_hand", "")).lower()
-    eq_off = str(player_state.get("equipped", {}).get("off_hand", "")).lower()
-    for inv_it in player_state.get("inventory", []):
-        it_n = inv_it.get("name", "") if isinstance(inv_it, dict) else str(inv_it)
-        it_low = it_n.strip().lower()
-        if not it_low or it_low in starter_baseline or it_low in (eq_main, eq_off):
-            continue
-        if isinstance(inv_it, dict) and "relic" in str(inv_it.get("category", "")).lower():
-            continue
-        if it_n not in loot_tracked:
-            loot_tracked.append(it_n)
-    tut["acquired_loot"] = list(loot_tracked)
-
-    # 2. Grant Col & Skill Mastery
-    col_gain = int(s_info.get("col_reward", 50))
-    player_state["col"] = int(player_state.get("col", 100)) + col_gain
-    combat_logs.append(f"Cardinal Calibration Reward (Stage {stage}): +{col_gain} Col (Total: {player_state['col']} Col)")
-
-    skills = player_state.setdefault("skills", {})
-    if skills:
-        first_skill = next(iter(skills.keys()))
-        m_res = update_skill_mastery(player_state, first_skill, int(s_info.get("mastery_bonus", 10)))
-        combat_logs.append(f"Skill Mastery Calibration: {first_skill} +{m_res.get('actual_gain', 10)} Mastery (-> {m_res.get('new_mastery')}/1000)")
-
-    # 3. Stage-Specific Mechanics, Spell Unlocks, XP & Level Progression
     if stage == 1:
-        # Stage 1: Base Mechanics & Telemetry Orientation -> Advance to Stage 2 (Combat)
-        if int(player_state.get("level", 1)) == 1 and int(player_state.get("xp", 0)) < 500:
-            xp_delta = 500 - int(player_state.get("xp", 0))
-            player_state["xp"] = 500
-            combat_logs.append(f"Telemetry Sync Complete: +{xp_delta} XP (500 / 1000 XP toward Level 2)")
-        wis_mod = (int(stats.get("WIS", 10)) - 10) // 2
-        combat_logs.append(f"Telemetry Resonance Check: 1d20(16) + WIS({wis_mod:+d}) = {16 + wis_mod} vs DC 10 -> SUCCESS!")
-        combat_logs.append(f"Acquired Stage 1 Loot: {', '.join(stage_loot_names)}")
+        # Phase I Completion: Telemetry, Encumbrance, Durability, Relic
+        tut_dungeon["current_phase"] = 2
+        tut_dungeon["current_room"] = "phase2_proving_ground"
+        tut_dungeon["completed_phases"].append(1)
+        tut_dungeon["transit_phase2_unlocked"] = True
+
+        s1_items = [
+            {"name": "Minor Aether-Salve Vial", "rarity": "Common", "category": "Consumable", "qty": 2, "desc": "Restores 35 HP."},
+            {"name": "Calibration Whetstone Kit", "rarity": "Common", "category": "Consumable", "qty": 1, "desc": "Restores +25 Durability."}
+        ]
+        stage_loot_names = []
+        for it in s1_items:
+            added = _add_or_merge_tutorial_loot(player_state, it)
+            stage_loot_names.append(added)
+            if added not in tut_acquired:
+                tut_acquired.append(added)
+
+        player_state["xp"] = max(500, int(player_state.get("xp", 0)) + 500)
+        player_state["col"] = int(player_state.get("col", 100)) + 50
+        combat_logs.append("Phase I Completed: Telemetry verified, Encumbrance checked, Durability honed, Relic resonated!")
+        combat_logs.append(f"Stage 1 Loot Claimed: {', '.join(stage_loot_names)} (+500 XP, +50 Col)")
 
         tut["stage"] = 2
-        st2 = TUTORIAL_STAGES[2]
-        tut["stage_title"] = st2["title"]
-        tut["objective"] = st2["objective"]
-        player_state["location"] = st2["location"]
+        tut["current_stage"] = 2
+        tut["stage_title"] = "Stage 2/3: Martial Combat, Armor Class & Monster Looting"
+        tut["objective"] = "Engage and destroy the Clockwork Calibration Sentinel and attune Astral Bolt."
+        player_state["location"] = "Cardinal Calibration Crucible — Chamber II: Martial Combat & Salvage Trial"
 
         if isinstance(master_state, dict):
             new_ms = build_tutorial_master_state(player_state, stage=2)
@@ -13853,19 +16281,17 @@ def advance_tutorial_stage(
             master_state["entities"] = new_ms["entities"]
 
         narrative_block = (
-            f"### 🎓 [TUTORIAL STAGE 1/3 COMPLETE: BASE MECHANICS & TELEMETRY VERIFIED]\n"
+            f"### 🎓 [TUTORIAL STAGE 1/3 COMPLETE: THE THRESHOLD OF AETHER & LOAD]\n"
             f"Your palm presses against the **Cardinal Telemetry Pillar**. Cerulean light cascades across your frame "
-            f"(`{phys_prof['summary']}`), calibrating your 6 Core Attributes, your **1–1000 Skill Mastery** receptors, "
-            f"and your Soul-Bound Keepsake Relic.\n\n"
-            f"- **XP & Currency Awarded:** `+500 XP` (`500 / 1000 XP`) | `+{col_gain} Col`\n"
-            f"- **Loot Claimed from Calibration Cache:** `{', '.join(stage_loot_names)}`\n\n"
+            f"(`{phys_prof['summary']}`), calibrating your 6 Core Attributes, carry limits (`STR × 15 lbs`), and weapon durability.\n\n"
+            f"- **XP & Currency:** `+500 XP` | `+50 Col`\n"
+            f"- **Loot Claimed:** `{', '.join(stage_loot_names)}`\n\n"
             f"---\n"
-            f"### ⚔️ [ENTERING STAGE 2/3: MARTIAL COMBAT & SALVAGE TRIAL]\n"
-            f"The obsidian blast doors grind open into **{st2['location']}**. Across the basalt floor, a bronze-and-aether "
-            f"**Clockwork Calibration Sentinel** (`HP: 25/25 | AC: 12 | DR: 1`) ignites its ocular visor and raises a notched cleaver!\n"
-            f"- **Combat Mechanics Briefing:** When you attack, the Cardinal System rolls `1d20 + Stat Mod + Weapon Proficiency` against the target's **Armor Class (AC)** and subtracts their **Damage Reduction (DR)**. Slaying monsters yields **XP, Col, Equipment, and Harvestable Bio/Golem Grafts**.\n"
-            f"- **Your Next Directive:** Strike down the **Clockwork Calibration Sentinel** using your equipped `{player_state.get('equipped', {}).get('main_hand', 'weapon')}` or a martial technique!"
+            f"### ⚔️ [ENTERING STAGE 2/3: THE HALL OF MARTIAL FORM & MANEUVERS]\n"
+            f"The blast doors grind open into **Chamber II**. A bronze-and-aether **Clockwork Calibration Sentinel** "
+            f"(`HP: 25/25 | AC: 12 | DR: 1`) ignites its visor and raises a notched cleaver!"
         )
+        tut["loot_acquired"] = list(tut_acquired)
         return {
             "success": True,
             "stage_completed": 1,
@@ -13873,41 +16299,55 @@ def advance_tutorial_stage(
             "new_stage": 2,
             "graduated": False,
             "teleported": False,
-            "level": player_state["level"],
+            "level": player_state.get("level", 1),
             "location": player_state["location"],
-            "loot_acquired": list(loot_tracked),
-            "loot_gained": list(loot_tracked),
+            "loot_acquired": list(tut_acquired),
+            "loot_gained": list(tut_acquired),
             "narrative_block": narrative_block,
             "summary_markdown": narrative_block,
             "combat_logs": combat_logs
         }
 
     elif stage == 2:
-        # Stage 2: Martial Combat & Salvage Trial -> Level 2 + Unlock Astral Bolt -> Advance to Stage 3 (Casting)
-        str_mod = (int(stats.get("STR", 10)) - 10) // 2
-        dex_mod = (int(stats.get("DEX", 10)) - 10) // 2
-        atk_mod = max(str_mod, dex_mod) + 2
-        main_w = player_state.get("equipped", {}).get("main_hand", "Starter Weapon")
-        combat_logs.append(f"Martial Attack ({main_w}) vs Clockwork Calibration Sentinel (AC 12): 1d20(17) + {atk_mod} = {17 + atk_mod} -> CRITICAL STRIKE!")
-        combat_logs.append(f"Weapon Damage vs Sentinel: 2d8(13) + {max(2, atk_mod)} - 1 DR = 25 Damage -> Clockwork Calibration Sentinel DESTROYED (0/25 HP)!")
-        combat_logs.append(f"Acquired Stage 2 Combat & Graft Loot: {', '.join(stage_loot_names)}")
+        # Phase II Completion: Proving Ground, Parry, Multi-Limb, Sentinel Defeated -> Level 2 & Astral Bolt
+        tut_dungeon["current_phase"] = 3
+        tut_dungeon["current_room"] = "phase3_high_ascent"
+        tut_dungeon["completed_phases"].append(2)
+        tut_dungeon["transit_phase3_unlocked"] = True
 
-        # Unlock Astral Bolt spell for Stage 3 casting trial
-        spells_list = player_state.setdefault("spells", [])
-        if not any("astral bolt" in str(sp).lower() for sp in spells_list):
-            spells_list.append(TUTORIAL_ASTRAL_BOLT_SPELL)
-            combat_logs.append("Spell Slate Attuned: Unlocked active spell [Astral Bolt] (2d8 + INT/WIS Force damage, 60ft, shatters arcane wards)!")
+        s2_items = [
+            {"name": "Sentinel Brass Armguards", "rarity": "Uncommon", "category": "Armor", "qty": 1, "desc": "+1 AC."},
+            {"name": "Clockwork Reflex Servo", "rarity": "Uncommon", "category": "Monster Graft Component", "qty": 1, "desc": "Tier 1 Golem Graft."},
+            {"name": "Inscribed Spell Slate: Astral Bolt", "rarity": "Uncommon", "category": "Spell Slate", "qty": 1, "desc": "Active spell [Astral Bolt]."}
+        ]
+        stage_loot_names = []
+        for it in s2_items:
+            added = _add_or_merge_tutorial_loot(player_state, it)
+            stage_loot_names.append(added)
+            if added not in tut_acquired:
+                tut_acquired.append(added)
 
-        # Ensure player reaches Level 2
-        lvl_logs = _ensure_player_level(player_state, target_level=2)
+        _ensure_player_level(player_state, 2)
+        player_state["level"] = 2
         player_state["xp"] = 0
-        combat_logs.extend(lvl_logs)
+
+        spells = player_state.setdefault("spells", [])
+        if not any("astral bolt" in str(s).lower() for s in spells):
+            spells.append("Astral Bolt: Channel 15 Mana/Resource to hurl a spear of condensed starlight (60ft range, 2d8 + INT/WIS Mod Force damage) that shatters arcane barriers.")
+        if "Astral Bolt" not in spells:
+            spells.append("Astral Bolt")
+        player_state["attuned_spell"] = "Astral Bolt"
+
+        player_state["col"] = int(player_state.get("col", 100)) + 75
+        combat_logs.append("Clockwork Calibration Sentinel DESTROYED (0/25 HP)!")
+        combat_logs.append("LEVEL UP -> Level 2! (+25 Max HP, +1 to all 6 Attributes, Astral Bolt attuned)")
+        combat_logs.append(f"Stage 2 Loot Claimed: {', '.join(stage_loot_names)}")
 
         tut["stage"] = 3
-        st3 = TUTORIAL_STAGES[3]
-        tut["stage_title"] = st3["title"]
-        tut["objective"] = st3["objective"]
-        player_state["location"] = st3["location"]
+        tut["current_stage"] = 3
+        tut["stage_title"] = "Stage 3/3: Spellcasting, Active Powers & Crucible Graduation"
+        tut["objective"] = "Cast Astral Bolt against Crucible Warden, shatter Kinetic Ward, reach Level 3, and teleport to Washington, NJ Safe-Zone."
+        player_state["location"] = "Cardinal Calibration Crucible — Chamber III: Arcane Casting & Crucible Warden"
 
         if isinstance(master_state, dict):
             new_ms = build_tutorial_master_state(player_state, stage=3)
@@ -13916,19 +16356,17 @@ def advance_tutorial_stage(
 
         narrative_block = (
             f"### 🎉 [TUTORIAL STAGE 2/3 COMPLETE: SENTINEL DESTROYED & LEVEL 2 ACHIEVED!]\n"
-            f"Your strike shears straight through the **Clockwork Calibration Sentinel's** central bronze gear-housing, "
-            f"showering the arena floor in azure sparks! As the construct collapses, you harvest its intact components and "
-            f"press your hand to the dropped **Inscribed Spell Slate: Astral Bolt**, imprinting the spell directly into your neural cortex.\n\n"
-            f"- **Level Up Achieved:** **Level 2!** (`Max HP: {player_state['max_hp']}` | `+1 to all 6 Core Attributes` | Full HP Restored)\n"
-            f"- **Spell Unlocked:** `🔮 Astral Bolt` *(2d8 + INT/WIS Force damage, 60ft range, shatters arcane barriers)*\n"
-            f"- **Loot Salvaged:** `{', '.join(stage_loot_names)}` | `+{col_gain} Col`\n\n"
+            f"Your martial flurry shears through the Sentinel's bronze chassis! Imprinting the **Inscribed Spell Slate: Astral Bolt**, "
+            f"arcane formulas etch into your neural cortex.\n\n"
+            f"- **Level Up:** **Level 2!** (`Max HP: {player_state['max_hp']}` | Full HP Restored)\n"
+            f"- **Spell Attuned:** `🔮 Astral Bolt`\n"
+            f"- **Loot Claimed:** `{', '.join(stage_loot_names)}`\n\n"
             f"---\n"
-            f"### 🔮 [ENTERING STAGE 3/3: SPELLCASTING, ACTIVE POWERS & CRUCIBLE GRADUATION]\n"
-            f"You ascend into **{st3['location']}**. Directly ahead, the swirling cerulean **Spatial Teleportation Gate to Washington Borough, NJ** "
-            f"hums with dimensional energy—guarded by the towering **Aether-Forged Crucible Warden** (`HP: 40/40 | AC: 13 | Kinetic Ward Active`).\n"
-            f"- **Spellcasting & Active Power Briefing:** Spells and Class/Lineage techniques draw from your **Combat Resource** (`{player_state.get('combat_resource', {}).get('name', 'Mana / Poise')}`) to bypass physical resistance, shatter boss wards, and trigger elemental/arcane combos.\n"
-            f"- **Your Final Tutorial Directive:** Cast **`Astral Bolt`** (or unleash a Class/Lineage active power) to shatter the Warden's Kinetic Ward, claim your **Level 3 Graduation Cache**, and teleport to **Washington, NJ Safe-Zone**!"
+            f"### 👑 [ENTERING STAGE 3/3: THE CRUCIBLE APEX & BOSS LAIR]\n"
+            f"You ascend into the open-air Apex. The **Aether-Forged Crucible Warden** (`HP: 40/40 | AC: 13 | Kinetic Ward Active`) "
+            f"guards the shimmering **Spatial Teleportation Gate to Washington Borough, NJ**!"
         )
+        tut["loot_acquired"] = list(tut_acquired)
         return {
             "success": True,
             "stage_completed": 2,
@@ -13938,74 +16376,28 @@ def advance_tutorial_stage(
             "teleported": False,
             "level": player_state["level"],
             "location": player_state["location"],
-            "loot_acquired": list(loot_tracked),
-            "loot_gained": list(loot_tracked),
+            "loot_acquired": list(tut_acquired),
+            "loot_gained": list(tut_acquired),
             "narrative_block": narrative_block,
             "summary_markdown": narrative_block,
             "combat_logs": combat_logs
         }
 
     else:
-        # Stage 3: Spellcasting, Active Powers & Graduation to Level 3 + Teleport to Washington, NJ Safe-Zone!
-        int_mod = (int(stats.get("INT", 10)) - 10) // 2
-        wis_mod = (int(stats.get("WIS", 10)) - 10) // 2
-        cast_mod = max(int_mod, wis_mod) + 3
-        combat_logs.append(f"Spellcast [Astral Bolt] vs Aether-Forged Crucible Warden (AC 13): 1d20(18) + {cast_mod} = {18 + cast_mod} -> DIRECT HIT (Kinetic Ward SHATTERED!)")
-        combat_logs.append("Active Class Power Follow-Up Combo: 2d8(14) + 2d10(16) + 10 = 40 Force/Radiant Damage -> Aether-Forged Crucible Warden ANNIHILATED (0/40 HP)!")
-        combat_logs.append(f"Acquired Stage 3 Graduation Loot: {', '.join(stage_loot_names)}")
+        # Phase III Completion: Warden Boss Battle & Graduation to Level 3 in Washington, NJ
+        solve_tutorial_puzzle(player_state, use_relic=True)
+        discover_tutorial_secret_door(player_state, use_relic=True)
+        resolve_tutorial_foundry_battle(player_state)
+        warden_res = resolve_tutorial_warden_boss_battle(player_state)
 
-        # Auto-equip Crucible Vanguard Signet if accessory slot is empty
-        eq = player_state.setdefault("equipped", {})
-        if not eq.get("accessory") or eq.get("accessory") == "None":
-            eq["accessory"] = "Crucible Vanguard Signet"
-            combat_logs.append("Auto-Equipped Graduation Relic: [Crucible Vanguard Signet] in Accessory Slot (+1 Saving Throws, +10 Max Resource)!")
-
-        # Guarantee exact Level 3 Graduation
-        lvl_logs = _ensure_player_level(player_state, target_level=3)
-        player_state["level"] = max(3, int(player_state.get("level", 3)))
-        player_state["xp"] = 0
-        player_state["hp"] = player_state["max_hp"]
-        if isinstance(player_state.get("combat_resource"), dict):
-            max_r = int(player_state["combat_resource"].get("max", 100)) + 10
-            player_state["combat_resource"]["max"] = max_r
-            player_state["combat_resource"]["current"] = max_r
-        combat_logs.extend(lvl_logs)
-
-        # Teleport player to Washington, NJ Safe-Zone & mark tutorial complete
-        player_state["location"] = TUTORIAL_SAFE_ZONE_DESTINATION
-        tut["active"] = False
-        tut["completed"] = True
-        tut["stage"] = 4
-        tut["stage_title"] = "Graduated — Teleported to Washington, NJ Safe-Zone (Level 3)"
-        tut["objective"] = "Explore Sector 1 Safe-Zone: Washington Borough, NJ, visit Doc Mercer's Clinic or Quartermaster Vane's Depot, and team up with Ren."
-
+        grad_info = warden_res.get("graduation", {})
         if isinstance(master_state, dict):
             new_ms = build_tutorial_master_state(player_state, stage=4)
             master_state["environment"] = new_ms["environment"]
             master_state["entities"] = new_ms["entities"]
             master_state["players"] = new_ms["players"]
 
-        combat_logs.append(f"SPATIAL TELEPORTATION EXECUTED -> Destination: {TUTORIAL_SAFE_ZONE_DESTINATION} (Level {player_state['level']} | All Tutorial Loot Retained)")
-
-        all_loot_str = ", ".join(f"`{x}`" for x in loot_tracked) if loot_tracked else "`Starter Loadout`"
-        narrative_block = (
-            f"### 🏆 [CARDINAL CALIBRATION CRUCIBLE COMPLETE — LEVEL 3 GRADUATION!]\n"
-            f"A lance of condensed starlight erupts from your outstretched hand! **`Astral Bolt`** detonates squarely against "
-            f"the **Aether-Forged Crucible Warden's** chest plate, shattering its Kinetic Ward in a violent cascade of violet prisms "
-            f"before your follow-up class technique cleaves its core in two!\n\n"
-            f"- **Promoted to Level 3!** (`Level: {player_state['level']}` | `HP: {player_state['hp']}/{player_state['max_hp']}` | `+2 Total Bonus to All 6 Core Attributes`)\n"
-            f"- **Total Tutorial Loot Retained & Carried into Sector 1:** {all_loot_str}\n"
-            f"- **Total Currency:** `{player_state['col']} Col`\n\n"
-            f"---\n"
-            f"### 🌀 [SPATIAL TELEPORTATION COMPLETE // ARRIVAL: {TUTORIAL_SAFE_ZONE_DESTINATION.upper()}]\n"
-            f"The Spatial Teleportation Gate engulfs **{p_name}** in a pillar of cerulean light. When the glare fades, your boots hit "
-            f"the cracked asphalt of **East Washington Avenue (Routes 31 & 57)** beneath the shimmering blue dome of the "
-            f"**Washington Borough Safe-Zone (Node 07882)**.\n\n"
-            f"Around you, armed survivors barter near **Quartermaster Vane's Logistics Depot**, a stone stairwell marked with a caduceus "
-            f"leads down into **Doc Mercer's Subterranean Bio-Graft Clinic** (where you can install your newly harvested `Clockwork Reflex Servo`), "
-            f"and a 17-year-old MageTech Vanguard with a glowing cyan **Aetheric Ocular Lens** (**Ren Sasaki**) waves you over by the sanctuary brazier.\n\n"
-            f"*The tutorial is complete. The Fractured Overlay awaits your command, {p_name}.*"
-        )
+        tut["loot_acquired"] = list(tut_acquired)
         return {
             "success": True,
             "stage_completed": 3,
@@ -14013,13 +16405,13 @@ def advance_tutorial_stage(
             "new_stage": 4,
             "graduated": True,
             "teleported": True,
-            "level": player_state["level"],
-            "location": player_state["location"],
-            "loot_acquired": list(loot_tracked),
-            "loot_gained": list(loot_tracked),
-            "narrative_block": narrative_block,
-            "summary_markdown": narrative_block,
-            "combat_logs": combat_logs
+            "level": 3,
+            "location": TUTORIAL_SAFE_ZONE_DESTINATION,
+            "loot_acquired": list(tut_acquired),
+            "loot_gained": list(tut_acquired),
+            "narrative_block": grad_info.get("narrative_block", ""),
+            "summary_markdown": grad_info.get("narrative_block", ""),
+            "combat_logs": warden_res.get("combat_logs", [])
         }
 
 

@@ -1,22 +1,98 @@
 {
     "id": "companion_thorne",
     "name": "Dr. Alistair Thorne",
-    "gender": "Male",
-    "pronouns": "he/him",
-    "role": "Alchemical Saboteur / Toxicologist",
+    "class": "Alchemical Saboteur / Toxicologist",
+    "title": "Alchemical Saboteur / Toxicologist",
+    "role": "Armor-Stripping Vitriol, Toxic Cloud Control & Adrenaline Injections",
     "level": 3,
     "hp": 30,
     "max_hp": 30,
-    "ac": 14,
-    "strain_capacity": 4,
-    "active_grafts": [
-        {
-            "name": "Fluoroboric Bronchial Filters",
-            "slot": "Head",
-            "effect": "Immune to acid, poison, and gas hazards; +25% acid payload damage",
-            "visual_appearance": "carrying Fluoroboric Bronchial Filters"
+    "xp": 450,
+    "next_level_xp": 900,
+    "stance": "vitriol_salvo",
+    "morale": "Maniacal",
+    "affinity": 25,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "Abandoned Chemical Works (Phillipsburg Flats, X:26, Y:60)",
+    "recruitment_requirements": {
+        "min_level": 3,
+        "col_cost": 0,
+        "quest": "chemical_leak",
+        "description": "Neutralize the chemical vat leak (Crafting/Perception DC 13) and recover his stolen journals."
+    },
+    "bio": "A manic chemical engineer and Elora's eccentric uncle. Dissolves monster armor with hyper-vitriol and juices allies with adrenaline.",
+    "loadout": {
+        "main_hand": "Pneumatic Acid-Siphon Cannon (1d8+3 Acid + Armor Melt)",
+        "off_hand": "Bandolier of Corrosive Flasks (Alchemical Focus)",
+        "armor": "Lead-Lined Hazard Apron (DR 1, Acid/Poison Immune)",
+        "chest": "Lead-Lined Hazard Apron (DR 1, Acid/Poison Immune)"
+    },
+    "equipped": {
+        "main_hand": "Pneumatic Acid-Siphon Cannon (1d8+3 Acid + Armor Melt)",
+        "off_hand": "Bandolier of Corrosive Flasks (Alchemical Focus)",
+        "armor": "Lead-Lined Hazard Apron (DR 1, Acid/Poison Immune)",
+        "chest": "Lead-Lined Hazard Apron (DR 1, Acid/Poison Immune)"
+    },
+    "skills": {
+        "Volatile Chemistry": {
+            "mastery": 270,
+            "tier": "Adept",
+            "description": "Mixing unstable exothermic acids and gases.",
+            "milestones_unlocked": [
+                "Corrosive Brew",
+                "Nitro Flask",
+                "Thermite Compound"
+            ]
+        },
+        "Toxicology": {
+            "mastery": 230,
+            "tier": "Journeyman",
+            "description": "Formulating paralytic neurotoxins.",
+            "milestones_unlocked": [
+                "Neuro-Darts"
+            ]
+        },
+        "Combat Bio-Stimulants": {
+            "mastery": 210,
+            "tier": "Journeyman",
+            "description": "Adrenaline and stamina injections.",
+            "milestones_unlocked": [
+                "Adrenal Rush"
+            ]
         }
+    },
+    "abilities": [
+        "Hyper-Vitriol Acid Bomb (Melt target AC by -4 permanently)",
+        "Toxic Cloudkill Flask (15ft choking gas, 2d6 Poison/turn)",
+        "Adrenaline Bio-Stim (+4 STR/DEX to Banki for 2 turns)"
     ],
+    "stances": {
+        "vitriol_salvo": {
+            "name": "Corrosive Acid Salvo",
+            "label": "\ud83e\uddea Vitriol Salvo",
+            "tag": "[THORNE ACID]",
+            "tactical_effect": "Hurls bubbling acid flasks dealing 2d6+3 Acid DMG and permanently degrading target AC by -2.",
+            "desc": "Armor-shredding debuff."
+        },
+        "toxic_smokescreen": {
+            "name": "Cloudkill Smokescreen",
+            "label": "\ud83c\udf2b\ufe0f Toxic Cloudkill",
+            "tag": "[THORNE SMOKE]",
+            "tactical_effect": "Detonates thick chemical smoke; blinds hostiles (-3 to hit) while party gains full concealment.",
+            "desc": "Obscuring defense."
+        },
+        "adrenal_injection": {
+            "name": "Adrenaline Stim Injection",
+            "label": "\ud83d\udc89 Adrenal Stim",
+            "tag": "[THORNE STIM]",
+            "tactical_effect": "Injects Banki with hyper-adrenaline; Banki deals +1d10 bonus physical damage on all attacks this turn.",
+            "desc": "Allied damage booster."
+        }
+    },
+    "dual_tech_id": "corrosive_shatter_bomb",
+    "behavior_prompt": "You are Dr. Alistair Thorne, a mad alchemical genius and explosive toxicologist. You speak with breathless academic manic energy, coughing and laughing while describing horrifying chemical reactions. You strip enemy armor and inject Aria Valkyrie with hyper-potent combat stims.",
     "inventory": [
         {
             "name": "Pneumatic Acid-Siphon Cannon",
@@ -49,20 +125,5 @@
             "visual_appearance": "wearing an acid-resistant slate-grey lab duster and heavy rubberized alchemist's hazard apron"
         }
     ],
-    "behavior_prompt": "You are Dr. Alistair Thorne, a mad alchemical genius and explosive toxicologist. You speak with breathless academic manic energy, coughing and laughing while describing horrifying chemical reactions. You strip enemy armor and inject Aria Valkyrie with hyper-potent combat stims.",
-    "equipped": {
-        "head": "None",
-        "chest": "Lead-Lined Hazard Apron",
-        "main_hand": "Pneumatic Acid-Siphon Cannon",
-        "off_hand": "Bandolier of Corrosive Flasks",
-        "accessory": "None"
-    },
-    "active_debuffs": [],
-    "recruited": false,
-    "active": false,
-    "slug": "thorne",
-    "companion_name": "Dr. Alistair Thorne",
-    "is_active": false,
-    "stats": {},
-    "skills": {}
+    "active_debuffs": []
 }

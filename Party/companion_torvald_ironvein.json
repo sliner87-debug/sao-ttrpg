@@ -1,0 +1,94 @@
+{
+    "id": "torvald_ironvein",
+    "name": "Torvald Iron-Vein",
+    "class": "Deepforged Vanguard",
+    "title": "Deepforged Vanguard",
+    "role": "Heavy Tower Shield Tank, Frontline Threat Generation & Seismic Stuns",
+    "level": 4,
+    "hp": 55,
+    "max_hp": 55,
+    "xp": 750,
+    "next_level_xp": 1200,
+    "stance": "aegis_bulwark",
+    "morale": "Steady",
+    "affinity": 25,
+    "affinity_tier": "Ally",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "The Iron Spoke Tavern / Oxford Ridge Outpost (X:52, Y:48)",
+    "recruitment_requirements": {
+        "min_level": 3,
+        "col_cost": 150,
+        "description": "Prove your vanguard mettle in battle and pay 150 Col for deepforged gear upkeep."
+    },
+    "bio": "A veteran dwarven mercenary and barkeep of the Iron Spoke. Possesses runic cyber-plated armor and a tower shield wide as a castle gate.",
+    "loadout": {
+        "main_hand": "Deepforged War-Axe (Heavy Runic Iron, 1d10+4 Slashing)",
+        "off_hand": "Adamant Bulwark Tower Shield (+4 AC, DR 2)",
+        "armor": "Runic Plate Carapace (Heavy Armor, DR 3)",
+        "chest": "Runic Plate Carapace (Heavy Armor, DR 3)"
+    },
+    "equipped": {
+        "main_hand": "Deepforged War-Axe (Heavy Runic Iron, 1d10+4 Slashing)",
+        "off_hand": "Adamant Bulwark Tower Shield (+4 AC, DR 2)",
+        "armor": "Runic Plate Carapace (Heavy Armor, DR 3)",
+        "chest": "Runic Plate Carapace (Heavy Armor, DR 3)"
+    },
+    "skills": {
+        "Tower Shield Phalanx": {
+            "mastery": 240,
+            "tier": "Journeyman",
+            "description": "Mastery of defensive interlocking shield stances.",
+            "milestones_unlocked": [
+                "Shield Wall",
+                "Brace Impact"
+            ]
+        },
+        "Deepforged Smithing": {
+            "mastery": 210,
+            "tier": "Journeyman",
+            "description": "Knowledge of runic alloys, temper lines, and repairs.",
+            "milestones_unlocked": [
+                "Field Tempering"
+            ]
+        },
+        "Battlefield Provocation": {
+            "mastery": 180,
+            "tier": "Journeyman",
+            "description": "Commanding hostile attention through force of presence.",
+            "milestones_unlocked": [
+                "Roar of Challenge"
+            ]
+        }
+    },
+    "abilities": [
+        "Interception Ward (+4 AC to adjacent ally)",
+        "Challenge of the Anvil (Forced Taunt)",
+        "Seismic Tremor (Frontal Knockdown)"
+    ],
+    "stances": {
+        "aegis_bulwark": {
+            "name": "Aegis Bulwark",
+            "label": "\ud83d\udee1\ufe0f Aegis Bulwark",
+            "tag": "[TORVALD AEGIS]",
+            "tactical_effect": "Locks tower shield on frontline; grants Banki +4 AC and absorbs 50% of incoming physical damage.",
+            "desc": "Frontline damage interception."
+        },
+        "iron_taunt": {
+            "name": "Iron Challenge",
+            "label": "\ud83d\udde3\ufe0f Iron Challenge",
+            "tag": "[TORVALD TAUNT]",
+            "tactical_effect": "Bangs war-axe against adamant shield; forces all active foes to attack Torvald instead of allies.",
+            "desc": "Aggro and threat control."
+        },
+        "seismic_slam": {
+            "name": "Seismic Slam",
+            "label": "\ud83d\udca5 Seismic Slam",
+            "tag": "[TORVALD SLAM]",
+            "tactical_effect": "Slams shield into the earth for 2d10+5 Force DMG; chips target Break Gauge by -30.",
+            "desc": "Heavy bludgeoning stun."
+        }
+    },
+    "dual_tech_id": "titans_anvil_shockwave",
+    "active_debuffs": []
+}

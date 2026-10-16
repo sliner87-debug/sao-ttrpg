@@ -1,22 +1,98 @@
 {
     "id": "companion_garrick",
     "name": "Garrick Stone-Grip",
-    "gender": "Male",
-    "pronouns": "he/him",
-    "role": "Seismic Brawler / Ki-Siphon Pugilist",
+    "class": "Seismic Brawler / Ki-Siphon Pugilist",
+    "title": "Seismic Brawler / Ki-Siphon Pugilist",
+    "role": "Unarmed Frontline Pressure, Kinetic Deflection & Break Gauge Stun",
     "level": 4,
     "hp": 52,
     "max_hp": 52,
-    "ac": 16,
-    "strain_capacity": 4,
-    "active_grafts": [
-        {
-            "name": "Calcified Granite Dermis",
-            "slot": "Torso",
-            "effect": "DR 2 against physical damage, immune to knockback",
-            "visual_appearance": "carrying Calcified Granite Dermis"
+    "xp": 750,
+    "next_level_xp": 1200,
+    "stance": "mountain_crusher",
+    "morale": "Steady",
+    "affinity": 25,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "Pequest River Limestone Quarry (X:38, Y:42)",
+    "recruitment_requirements": {
+        "min_level": 3,
+        "col_cost": 0,
+        "stat_check": "STR 14 or Athletics 100",
+        "description": "Defeat or spar with Garrick to a standstill in the Quarry fighting ring."
+    },
+    "bio": "An Earth Genasi structural ironworker whose knuckles and skin calcified into dense granite. Dominates the Pequest quarries.",
+    "loadout": {
+        "main_hand": "Granite-Studded Cestus (1d8+4 Bludgeoning)",
+        "off_hand": "Granite-Studded Cestus (1d8+4 Bludgeoning)",
+        "armor": "Iron-Thread Gi (Unarmored, DR 2)",
+        "chest": "Iron-Thread Gi (Unarmored, DR 2)"
+    },
+    "equipped": {
+        "main_hand": "Granite-Studded Cestus (1d8+4 Bludgeoning)",
+        "off_hand": "Granite-Studded Cestus (1d8+4 Bludgeoning)",
+        "armor": "Iron-Thread Gi (Unarmored, DR 2)",
+        "chest": "Iron-Thread Gi (Unarmored, DR 2)"
+    },
+    "skills": {
+        "Unarmed Pummeling": {
+            "mastery": 280,
+            "tier": "Adept",
+            "description": "Bone-cracking pugilism.",
+            "milestones_unlocked": [
+                "Iron Fist",
+                "Staggering Hook",
+                "Haymaker"
+            ]
+        },
+        "Seismic Grounding": {
+            "mastery": 220,
+            "tier": "Journeyman",
+            "description": "Rooting into tectonic bedrock.",
+            "milestones_unlocked": [
+                "Unyielding Stance"
+            ]
+        },
+        "Ki Kinetic Deflection": {
+            "mastery": 190,
+            "tier": "Journeyman",
+            "description": "Deflecting incoming missiles with bare hands.",
+            "milestones_unlocked": [
+                "Missile Snatch"
+            ]
         }
+    },
+    "abilities": [
+        "Tectonic Tremor Palm (2d8+5 Force + Stagger)",
+        "Iron Shirt Deflection (Absorbs 15 Bludgeoning/Piercing)",
+        "Earthquake Stomp (Prone all enemies in 10ft)"
     ],
+    "stances": {
+        "mountain_crusher": {
+            "name": "Mountain-Crusher Stance",
+            "label": "\u26f0\ufe0f Mountain-Crusher",
+            "tag": "[GARRICK CRUSHER]",
+            "tactical_effect": "Strikes target with 2d8+5 Bludgeoning DMG; chips boss Break Gauge by -35.",
+            "desc": "High stun and break gauge pressure."
+        },
+        "ki_deflection": {
+            "name": "Ki-Deflection Weave",
+            "label": "\ud83e\udd4b Ki-Deflection Weave",
+            "tag": "[GARRICK DEFLECT]",
+            "tactical_effect": "Swats aside incoming projectiles and melee strikes, granting himself and Banki +3 AC.",
+            "desc": "Martial defensive weave."
+        },
+        "seismic_slam": {
+            "name": "Earth-Shatter Flurry",
+            "label": "\ud83d\udca5 Earth-Shatter Flurry",
+            "tag": "[GARRICK FLURRY]",
+            "tactical_effect": "Unleashes 3 rapid concussive palm strikes dealing 3d6+6 Force DMG and forcing DC 14 STR check vs Prone.",
+            "desc": "Multi-hit knockdown flurry."
+        }
+    },
+    "dual_tech_id": "seismic_cataclysm",
+    "behavior_prompt": "You are Garrick Stone-Grip, a Seismic Brawler and frontline unarmed juggernaut. You speak with thunderous good humor and blue-collar martial wisdom. You dive into enemy formations, parrying strikes and shattering stances.",
     "inventory": [
         {
             "name": "Granite-Studded Cestus",
@@ -49,20 +125,5 @@
             "visual_appearance": "wearing a sleeveless dark iron-thread martial arts gi revealing stone-grafted arms and glowing chest ki-glyphs"
         }
     ],
-    "behavior_prompt": "You are Garrick Stone-Grip, a Seismic Brawler and frontline unarmed juggernaut. You speak with thunderous good humor and blue-collar martial wisdom. You dive into enemy formations, parrying strikes and shattering stances.",
-    "equipped": {
-        "head": "None",
-        "chest": "Iron-Thread Gi",
-        "main_hand": "Granite-Studded Cestus",
-        "off_hand": "Weighted Linen Wraps",
-        "accessory": "None"
-    },
-    "active_debuffs": [],
-    "recruited": false,
-    "active": false,
-    "slug": "garrick",
-    "companion_name": "Garrick Stone-Grip",
-    "is_active": false,
-    "stats": {},
-    "skills": {}
+    "active_debuffs": []
 }

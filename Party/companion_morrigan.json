@@ -1,22 +1,97 @@
 {
     "id": "companion_morrigan",
     "name": "Morrigan Black-Thorn",
-    "gender": "Female",
-    "pronouns": "she/her",
-    "role": "Abyssal Grave-Binder / Necrotic Hexer",
+    "class": "Abyssal Grave-Binder / Necrotic Hexer",
+    "title": "Abyssal Grave-Binder / Necrotic Hexer",
+    "role": "Necrotic Crowd Control, Soul-Siphon Drain & Bone Barricades",
     "level": 3,
     "hp": 34,
     "max_hp": 34,
-    "ac": 14,
-    "strain_capacity": 3,
-    "active_grafts": [
-        {
-            "name": "Umbral Necrotic Iris",
-            "slot": "Head",
-            "effect": "Perceive soul-remnants, +2 DC to Necrotic saving throws",
-            "visual_appearance": "carrying Umbral Necrotic Iris"
+    "xp": 450,
+    "next_level_xp": 900,
+    "stance": "soul_siphon",
+    "morale": "Steady",
+    "affinity": 20,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "Musconetcong Crypts - Sunken Ossuary (X:45, Y:62)",
+    "recruitment_requirements": {
+        "min_level": 3,
+        "col_cost": 0,
+        "quest": "crypt_reanimator",
+        "description": "Defeat the Crypt Reanimator in the Musconetcong Crypts and recover the Shattered Veil Tome."
+    },
+    "bio": "An umbral tiefling shadow-weaver who harvests digital soul-residue and deceased bio-mana from fallen monsters.",
+    "loadout": {
+        "main_hand": "Bone-Chime Scythe (1d8+3 Slashing + 1d6 Necrotic)",
+        "off_hand": "Soul-Vessel Phylactery (Focus)",
+        "armor": "Obsidian Shroud (Cloth, DR 1, +2 Spell DC)",
+        "chest": "Obsidian Shroud (Cloth, DR 1, +2 Spell DC)"
+    },
+    "equipped": {
+        "main_hand": "Bone-Chime Scythe (1d8+3 Slashing + 1d6 Necrotic)",
+        "off_hand": "Soul-Vessel Phylactery (Focus)",
+        "armor": "Obsidian Shroud (Cloth, DR 1, +2 Spell DC)",
+        "chest": "Obsidian Shroud (Cloth, DR 1, +2 Spell DC)"
+    },
+    "skills": {
+        "Necrotic Siphoning": {
+            "mastery": 210,
+            "tier": "Journeyman",
+            "description": "Draining vitality from decaying tissue.",
+            "milestones_unlocked": [
+                "Soul Tap",
+                "Life Leech"
+            ]
+        },
+        "Bone Matrix Weaving": {
+            "mastery": 180,
+            "tier": "Journeyman",
+            "description": "Erecting calcified bone barriers.",
+            "milestones_unlocked": [
+                "Ossuary Shield"
+            ]
+        },
+        "Abyssal Hexes": {
+            "mastery": 195,
+            "tier": "Journeyman",
+            "description": "Debilitating enemy metabolic functions.",
+            "milestones_unlocked": [
+                "Withering Curse"
+            ]
         }
+    },
+    "abilities": [
+        "Soul-Siphon Lash (1d8 Necrotic DMG + restores 8 HP to lowest ally)",
+        "Grave-Wall Erection (absorbs 30 incoming damage)",
+        "Miasma of the Tomb (-2 Enemy Saves)"
     ],
+    "stances": {
+        "soul_siphon": {
+            "name": "Soul-Siphon Drain",
+            "label": "\ud83d\udc80 Soul-Siphon Drain",
+            "tag": "[MORRIGAN SIPHON]",
+            "tactical_effect": "Drains 2d6 Necrotic DMG from target, transferring health to Banki.",
+            "desc": "Lifesteal support stance."
+        },
+        "skeletal_wall": {
+            "name": "Skeletal Wall",
+            "label": "\ud83e\uddb4 Skeletal Wall",
+            "tag": "[MORRIGAN BONEWALL]",
+            "tactical_effect": "Raises calcified bone palisades that intercept up to 30 damage from incoming enemy attacks.",
+            "desc": "Barrier defense."
+        },
+        "miasma_curse": {
+            "name": "Miasma Hex Aura",
+            "label": "\ud83c\udf2b\ufe0f Miasma Hex Aura",
+            "tag": "[MORRIGAN MIASMA]",
+            "tactical_effect": "Surrounds the enemy line in choking grave-mist; enemies suffer -2 to saving throws and lose 5 HP/turn.",
+            "desc": "AOE necrotic debuff."
+        }
+    },
+    "dual_tech_id": "grave_lord_cleave",
+    "behavior_prompt": "You are Morrigan Black-Thorn, an Abyssal Grave-Binder and necrotic support caster. You speak softly with morbid elegance and absolute clinical detachment. You harvest life-force from weakened foes and erect bone barricades.",
     "inventory": [
         {
             "name": "Bone-Chime Scythe",
@@ -49,20 +124,5 @@
             "visual_appearance": "draped in a gothic obsidian-and-bone mantle shrouded in dark necrotic mist"
         }
     ],
-    "behavior_prompt": "You are Morrigan Black-Thorn, an Abyssal Grave-Binder and necrotic support caster. You speak softly with morbid elegance and absolute clinical detachment. You harvest life-force from weakened foes and erect bone barricades.",
-    "equipped": {
-        "head": "None",
-        "chest": "Obsidian Shroud",
-        "main_hand": "Bone-Chime Scythe",
-        "off_hand": "Soul-Vessel Phylactery",
-        "accessory": "None"
-    },
-    "active_debuffs": [],
-    "recruited": false,
-    "active": false,
-    "slug": "morrigan",
-    "companion_name": "Morrigan Black-Thorn",
-    "is_active": false,
-    "stats": {},
-    "skills": {}
+    "active_debuffs": []
 }

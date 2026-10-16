@@ -1,22 +1,98 @@
 {
     "id": "companion_valeria",
     "name": "Valeria Vane",
-    "gender": "Female",
-    "pronouns": "she/her",
-    "role": "Primal Valkyrie / Aerial Skirmisher",
+    "class": "Primal Valkyrie / Aerial Skirmisher",
+    "title": "Primal Valkyrie / Aerial Skirmisher",
+    "role": "Aerial High-Ground Recon, Dive-Bomb Impalement & Radiant Shielding",
     "level": 4,
     "hp": 48,
     "max_hp": 48,
-    "ac": 17,
-    "strain_capacity": 4,
-    "active_grafts": [
-        {
-            "name": "Aerodynamic Aether-Glider Struts",
-            "slot": "Spine",
-            "effect": "+30ft Flight movement, Dive-Bomb kinetic multiplier",
-            "visual_appearance": "carrying Aerodynamic Aether-Glider Struts"
+    "xp": 800,
+    "next_level_xp": 1200,
+    "stance": "aerial_divebomb",
+    "morale": "Steady",
+    "affinity": 25,
+    "affinity_tier": "Acquaintance",
+    "recruited": false,
+    "active": false,
+    "recruitment_location": "Warren County Barony Watchtower (Washington Borough, X:52, Y:50)",
+    "recruitment_requirements": {
+        "min_level": 3,
+        "col_cost": 0,
+        "faction": "Warren County Barony",
+        "min_rep": 15,
+        "description": "Reach Level 3 and achieve Respected standing (15+ Rep) with Warren County Barony."
+    },
+    "bio": "A phrenic human aerial skirmisher whose spine fused with aerodynamic aether-glider struts. Serves as Barony aerial perimeter commander.",
+    "loadout": {
+        "main_hand": "Winged Aether-Spear (1d10+4 Piercing)",
+        "off_hand": "Solar Aegis Shield (+3 AC, Radiant Blind)",
+        "armor": "Falcon Crest Mail (DR 2, Flight)",
+        "chest": "Falcon Crest Mail (DR 2, Flight)"
+    },
+    "equipped": {
+        "main_hand": "Winged Aether-Spear (1d10+4 Piercing)",
+        "off_hand": "Solar Aegis Shield (+3 AC, Radiant Blind)",
+        "armor": "Falcon Crest Mail (DR 2, Flight)",
+        "chest": "Falcon Crest Mail (DR 2, Flight)"
+    },
+    "skills": {
+        "Aerial Spear Technique": {
+            "mastery": 260,
+            "tier": "Adept",
+            "description": "High-velocity vertical thrusts.",
+            "milestones_unlocked": [
+                "Dive-Strike Impact",
+                "Falcon Lunge"
+            ]
+        },
+        "Aether Gliding": {
+            "mastery": 240,
+            "tier": "Journeyman",
+            "description": "Mastery of thermal drafts and aetheric lift.",
+            "milestones_unlocked": [
+                "Thermal Glide"
+            ]
+        },
+        "Aegis Phalanx": {
+            "mastery": 180,
+            "tier": "Journeyman",
+            "description": "Radiant shield positioning.",
+            "milestones_unlocked": [
+                "Blinding Glare"
+            ]
         }
+    },
+    "abilities": [
+        "Solar Dive-Bomb (3d10 Radiant/Piercing + Knockdown)",
+        "Skyward Interception (+3 AC to ground ally)",
+        "Blinding Sunburst (DC 14 CON vs Blinded)"
     ],
+    "stances": {
+        "aerial_divebomb": {
+            "name": "Aerial Dive-Bomb",
+            "label": "\ud83e\udd85 Aerial Dive-Bomb",
+            "tag": "[VALERIA DIVE]",
+            "tactical_effect": "Dives from the sky dealing 2d10+4 Piercing DMG and knocking targets prone.",
+            "desc": "High offensive aerial assault."
+        },
+        "radiant_bulwark": {
+            "name": "Radiant Bulwark",
+            "label": "\ud83d\udee1\ufe0f Radiant Bulwark",
+            "tag": "[VALERIA BULWARK]",
+            "tactical_effect": "Hovers above the vanguard, granting Banki +3 AC and absorbing projectile fire.",
+            "desc": "Aerial defensive perimeter."
+        },
+        "high_overwatch": {
+            "name": "High-Ground Overwatch",
+            "label": "\ud83d\udc41\ufe0f High-Ground Overwatch",
+            "tag": "[VALERIA RECON]",
+            "tactical_effect": "Scouts the perimeter from cloud altitude, revealing concealed enemies and granting +3 party Initiative.",
+            "desc": "Aerial reconnaissance."
+        }
+    },
+    "dual_tech_id": "valkyries_wrath",
+    "behavior_prompt": "You are Valeria Vane, an aerial Valkyrie vanguard in the service of Aria Valkyrie's raiding party. You speak with proud military authority and hawk-like focus. You monitor the airspace, execute diving kinetic thrusts from above, and blind hostiles with solar-aegis reflections.",
     "inventory": [
         {
             "name": "Winged Aether-Spear",
@@ -49,20 +125,5 @@
             "visual_appearance": "clad in gleaming silver-and-azure Falcon Crest scale mail with luminous cyan aether-glider wings extending from the back"
         }
     ],
-    "behavior_prompt": "You are Valeria Vane, an aerial Valkyrie vanguard in the service of Aria Valkyrie's raiding party. You speak with proud military authority and hawk-like focus. You monitor the airspace, execute diving kinetic thrusts from above, and blind hostiles with solar-aegis reflections.",
-    "equipped": {
-        "head": "None",
-        "chest": "Falcon Crest Mail",
-        "main_hand": "Winged Aether-Spear",
-        "off_hand": "Solar Aegis Shield",
-        "accessory": "None"
-    },
-    "active_debuffs": [],
-    "recruited": false,
-    "active": false,
-    "slug": "valeria",
-    "companion_name": "Valeria Vane",
-    "is_active": false,
-    "stats": {},
-    "skills": {}
+    "active_debuffs": []
 }

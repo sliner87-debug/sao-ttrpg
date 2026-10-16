@@ -430,6 +430,8 @@ def render_character_calibration_wizard():
         st.session_state.cg_gender = "Male"
     if "cg_points" not in st.session_state:
         st.session_state.cg_points = {"STR": 0, "DEX": 0, "CON": 0, "INT": 0, "WIS": 0, "CHA": 0}
+    if "cg_lifestyle_key" not in st.session_state:
+        st.session_state.cg_lifestyle_key = "desk_bound"
     if "cg_bg_key" not in st.session_state:
         st.session_state.cg_bg_key = "software_engineer"
     if "cg_custom_bg_text" not in st.session_state:
@@ -519,13 +521,17 @@ def render_character_calibration_wizard():
         else:
             st.error(f"⚠️ Calibration Pool Overdrawn: **{total_allocated} / 20** points ({abs(pts_left)} too many)! Please reduce allocated points.")
 
-        # Quick-Lifestyle Questionnaire Presets (18 Archetypes)
-        with st.expander("⚡ 18 Quick-Lifestyle Questionnaire Presets (Auto-Distribute 20 Points)", expanded=False):
-            st.caption("Select any Pre-Integration Earth archetype to instantly auto-distribute your 20 calibration points:")
+        # Quick-Lifestyle Questionnaire Presets (26 Archetypes)
+        num_lifestyles = len(cg.PRESET_LIFESTYLES)
+        with st.expander(f"⚡ {num_lifestyles} Quick-Lifestyle Questionnaire Presets (Auto-Distribute 20 Points)", expanded=False):
+            st.caption("Select any Pre-Integration Earth or Classic Fantasy archetype to auto-distribute your 20 calibration points and grant starting skill bonuses and innate feats:")
             preset_keys = list(cg.PRESET_LIFESTYLES.keys())
+            cur_ls_key = st.session_state.get("cg_lifestyle_key", "desk_bound")
+            cur_p_idx = preset_keys.index(cur_ls_key) if cur_ls_key in preset_keys else 0
             sel_p_key = st.selectbox(
                 "Browse Lifestyle Archetype:",
                 options=preset_keys,
+                index=cur_p_idx,
                 format_func=lambda k: cg.PRESET_LIFESTYLES[k]["title"],
                 key="sel_lifestyle_preset"
             )
@@ -533,8 +539,26 @@ def render_character_calibration_wizard():
             st.info(f"**Archetype Summary:** {p_data['desc']}")
             p_pts = p_data["points"]
             st.caption(f"**Point Allocation:** STR +{p_pts['STR']} | DEX +{p_pts['DEX']} | CON +{p_pts['CON']} | INT +{p_pts['INT']} | WIS +{p_pts['WIS']} | CHA +{p_pts['CHA']}")
+            
+            # Thematic 1-1000 Skill Bonuses
+            p_skills = p_data.get("skill_bonuses", {})
+            if p_skills:
+                skills_str = " | ".join([f"**{sk}** (+{b} Mastery)" for sk, b in p_skills.items()])
+                st.caption(f"**Thematic Skill Bonuses:** {skills_str}")
+                
+            # Innate Starting Talent / Feat / Spell
+            feat_name = p_data.get("starting_feat", "")
+            feat_desc = p_data.get("feat_desc", "")
+            if feat_name and feat_desc:
+                st.caption(f"**Innate Starting Talent:** `{feat_name}` — *{feat_desc}*")
+            elif feat_name:
+                st.caption(f"**Innate Starting Talent:** `{feat_name}`")
+            elif "innate_ability" in p_data:
+                st.caption(f"**Innate Starting Talent:** {p_data['innate_ability']}")
+
             if st.button("⚡ Apply Selected Lifestyle Preset (20 Points)", use_container_width=True, key="btn_apply_preset_main"):
                 st.session_state.cg_points = dict(p_pts)
+                st.session_state.cg_lifestyle_key = sel_p_key
                 st.rerun()
 
             st.markdown("---")
@@ -542,30 +566,83 @@ def render_character_calibration_wizard():
             q_cols1 = st.columns(4)
             if q_cols1[0].button("🛋️ Desk Bound", use_container_width=True, key="preset_desk"):
                 st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["desk_bound"]["points"])
+                st.session_state.cg_lifestyle_key = "desk_bound"
                 st.rerun()
             if q_cols1[1].button("🏃 Athletic", use_container_width=True, key="preset_athletic"):
                 st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["athletic"]["points"])
+                st.session_state.cg_lifestyle_key = "athletic"
                 st.rerun()
             if q_cols1[2].button("🔨 Heavy Labor", use_container_width=True, key="preset_labor"):
                 st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["heavy_labor"]["points"])
+                st.session_state.cg_lifestyle_key = "heavy_labor"
                 st.rerun()
             if q_cols1[3].button("🎖️ First Responder", use_container_width=True, key="preset_responder"):
                 st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["first_responder"]["points"])
+                st.session_state.cg_lifestyle_key = "first_responder"
                 st.rerun()
                 
             q_cols2 = st.columns(4)
             if q_cols2[0].button("📚 Academic Scholar", use_container_width=True, key="preset_scholar"):
                 st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["academic_scholar"]["points"])
+                st.session_state.cg_lifestyle_key = "academic_scholar"
                 st.rerun()
             if q_cols2[1].button("🧘 Yoga Contortionist", use_container_width=True, key="preset_yoga"):
                 st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["yoga_contortionist"]["points"])
+                st.session_state.cg_lifestyle_key = "yoga_contortionist"
                 st.rerun()
             if q_cols2[2].button("🎮 Esports Gamer", use_container_width=True, key="preset_esports"):
                 st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["esports_gamer"]["points"])
+                st.session_state.cg_lifestyle_key = "esports_gamer"
                 st.rerun()
             if q_cols2[3].button("🌲 Homesteader", use_container_width=True, key="preset_homesteader"):
                 st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["offgrid_homesteader"]["points"])
+                st.session_state.cg_lifestyle_key = "offgrid_homesteader"
                 st.rerun()
+
+            st.caption("New Classic Fantasy Archetypes:")
+            q_cols3 = st.columns(4)
+            if q_cols3[0].button("🪓 Woodsman", use_container_width=True, key="preset_woodsman"):
+                if "woodsman" in cg.PRESET_LIFESTYLES:
+                    st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["woodsman"]["points"])
+                    st.session_state.cg_lifestyle_key = "woodsman"
+                    st.rerun()
+            if q_cols3[1].button("🧘 Ascetic", use_container_width=True, key="preset_ascetic"):
+                if "monastery_ascetic" in cg.PRESET_LIFESTYLES:
+                    st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["monastery_ascetic"]["points"])
+                    st.session_state.cg_lifestyle_key = "monastery_ascetic"
+                    st.rerun()
+            if q_cols3[2].button("🌿 Apothecary", use_container_width=True, key="preset_apothecary"):
+                if "hearth_apothecary" in cg.PRESET_LIFESTYLES:
+                    st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["hearth_apothecary"]["points"])
+                    st.session_state.cg_lifestyle_key = "hearth_apothecary"
+                    st.rerun()
+            if q_cols3[3].button("⛏️ Delver", use_container_width=True, key="preset_delver"):
+                if "dungeon_delver" in cg.PRESET_LIFESTYLES:
+                    st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["dungeon_delver"]["points"])
+                    st.session_state.cg_lifestyle_key = "dungeon_delver"
+                    st.rerun()
+
+            q_cols4 = st.columns(4)
+            if q_cols4[0].button("⚔️ Gladiator", use_container_width=True, key="preset_gladiator"):
+                if "arena_gladiator" in cg.PRESET_LIFESTYLES:
+                    st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["arena_gladiator"]["points"])
+                    st.session_state.cg_lifestyle_key = "arena_gladiator"
+                    st.rerun()
+            if q_cols4[1].button("👑 Emissary", use_container_width=True, key="preset_emissary"):
+                if "courtier_emissary" in cg.PRESET_LIFESTYLES:
+                    st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["courtier_emissary"]["points"])
+                    st.session_state.cg_lifestyle_key = "courtier_emissary"
+                    st.rerun()
+            if q_cols4[2].button("🔥 Blacksmith", use_container_width=True, key="preset_blacksmith"):
+                if "blacksmith_apprentice" in cg.PRESET_LIFESTYLES:
+                    st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["blacksmith_apprentice"]["points"])
+                    st.session_state.cg_lifestyle_key = "blacksmith_apprentice"
+                    st.rerun()
+            if q_cols4[3].button("📜 Scribe", use_container_width=True, key="preset_scribe"):
+                if "archive_scribe" in cg.PRESET_LIFESTYLES:
+                    st.session_state.cg_points = dict(cg.PRESET_LIFESTYLES["archive_scribe"]["points"])
+                    st.session_state.cg_lifestyle_key = "archive_scribe"
+                    st.rerun()
 
         st.divider()
         st.markdown("#### 🎛️ Point-Buy Attribute Steppers")
@@ -718,8 +795,14 @@ def render_character_calibration_wizard():
         st.markdown("### 🧬 Stage 3: Genetic Rift Mutation (Racial Lineage)")
         st.write("When the Aetheric Rift collapsed into Earth, ambient leylines permeated human biology. Survivors either resisted mutation or adapted into new physical lineages pulling from high-fantasy and sci-fi phenotypes.")
         
-        race_keys = list(cg.RACIAL_LINEAGES.keys())
-        race_display_labels = [f"[{cg.RACIAL_LINEAGES[k].get('genre', 'Universal')}] {cg.RACIAL_LINEAGES[k]['name']}" for k in race_keys]
+        creation_lineages = cg.get_character_creation_lineages() if hasattr(cg, "get_character_creation_lineages") else cg.RACIAL_LINEAGES
+        race_keys = list(creation_lineages.keys())
+        race_display_labels = [f"[{creation_lineages[k].get('genre', 'Universal')}] {creation_lineages[k]['name']}" for k in race_keys]
+        
+        # Handle backward compatibility if session previously held a purged race
+        if hasattr(cg, "LEGACY_RACE_FALLBACKS") and st.session_state.cg_race_key in cg.LEGACY_RACE_FALLBACKS:
+            st.session_state.cg_race_key = cg.LEGACY_RACE_FALLBACKS[st.session_state.cg_race_key]
+            
         cur_r_idx = race_keys.index(st.session_state.cg_race_key) if st.session_state.cg_race_key in race_keys else 0
         
         sel_race_label = st.selectbox(
@@ -848,13 +931,51 @@ def render_character_calibration_wizard():
         st.markdown("### ⚔️ Stage 4: Combat Doctrine & Class Path")
         st.write("Choose your philosophical approach to surviving the death-game. Structured classes provide specialized tactical frameworks, while the Pathless walk an unconstrained anomaly path.")
         
-        canonical_keys = ["warrior", "mage", "cleric", "thief", "ranger", "engineer", "psion", "pathless"]
-        class_keys = [k for k in canonical_keys if k in cg.CLASS_PATHS]
+        # Classic 10 Base Classes + Pathless (+ non-breaking legacy classes if in registry)
+        classic_10_keys = [
+            "fighter", "wizard", "rogue", "cleric", "ranger",
+            "paladin", "druid", "bard", "barbarian", "monk"
+        ]
+        roster_order = classic_10_keys + ["pathless"]
+        class_keys = [k for k in roster_order if k in cg.CLASS_PATHS]
+        
+        # Include legacy non-breaking classes if defined in CLASS_PATHS
+        for legacy_k in ["engineer", "psion"]:
+            if legacy_k in cg.CLASS_PATHS and legacy_k not in class_keys:
+                class_keys.append(legacy_k)
+
+        # Legacy alias map for backward compatibility
+        legacy_alias_map = {
+            "warrior": "fighter",
+            "vanguard": "fighter",
+            "mage": "wizard",
+            "aether_slinger": "wizard",
+            "thief": "rogue",
+            "infiltrator": "rogue",
+            "wilderness_ranger": "ranger",
+        }
+        
+        # Safe index resolution handling legacy keys in session state
+        raw_saved_key = st.session_state.get("cg_class_key", "fighter")
+        if hasattr(mechanics, "normalize_class_key"):
+            resolved_key = mechanics.normalize_class_key(raw_saved_key)
+        else:
+            resolved_key = legacy_alias_map.get(raw_saved_key, raw_saved_key)
+            
+        if resolved_key not in class_keys:
+            resolved_key = legacy_alias_map.get(raw_saved_key, raw_saved_key)
+            
+        if resolved_key in class_keys:
+            cur_c_idx = class_keys.index(resolved_key)
+        elif raw_saved_key in class_keys:
+            cur_c_idx = class_keys.index(raw_saved_key)
+        else:
+            cur_c_idx = 0
+
         class_titles = [cg.CLASS_PATHS[k]["title"] for k in class_keys]
-        cur_c_idx = class_keys.index(st.session_state.cg_class_key) if st.session_state.cg_class_key in class_keys else 0
         
         sel_class_title = st.selectbox(
-            "Select Combat Doctrine:",
+            "Select Combat Doctrine (Classic 10 Framework):",
             options=class_titles,
             index=cur_c_idx,
             key="sel_class_box"
@@ -866,23 +987,42 @@ def render_character_calibration_wizard():
         st.info(f"**Doctrine Summary:** {class_obj['description']}")
         
         # Display Core Stats & Scaling
-        c_meta1, c_meta2, c_meta3 = st.columns(3)
+        c_meta1, c_meta2, c_meta3, c_meta4 = st.columns(4)
         c_meta1.metric("Base HP", f"{class_obj.get('base_hp', 100)} HP", f"+{class_obj.get('hp_per_lvl', 25)}/lvl")
-        c_meta2.metric("Combat Resource", class_obj.get("combat_resource", {}).get("name", "Stamina"))
-        c_meta3.metric("Native Armor", ", ".join(class_obj.get("native_armor", ["Cloth"])))
+        
+        res_info = class_obj.get("combat_resource", {})
+        res_name = res_info.get("name", "Stamina")
+        res_max = res_info.get("max", 100)
+        res_type = res_info.get("type", "stamina").capitalize()
+        c_meta2.metric("Combat Resource", res_name, f"Max {res_max} ({res_type})")
+        
+        native_armors = class_obj.get("native_armor", ["Cloth"])
+        c_meta3.metric("Native Armor", ", ".join(native_armors))
+        
+        c_meta4.metric("Starting Tier", "Tier 1 (Base)", "Levels 1–9")
 
-        st.caption(f"**Favored Skill Affinities (+25% Mastery XP):** {', '.join(class_obj.get('favored_skills', []))}")
+        favored_skills = class_obj.get("favored_skills", [])
+        st.caption(f"🎯 **Favored Skill Affinities (+25% Mastery XP):** {', '.join(favored_skills)}")
         
         st.markdown("##### 🎖️ Fixed Iconic Duo (Level 1 Baseline Powers & Feats):")
-        for cf in class_obj["starting_feats"]:
-            cf_det = mechanics.get_spell_or_power_details(cf) if hasattr(mechanics, "get_spell_or_power_details") else {"name": cf, "category": "Class Power", "action_type": "Active", "cost": "Resource", "range": "Combat", "description": "", "mechanics": cf}
-            with st.expander(f"🔹 {cf_det['name']} — [{cf_det['category']}]", expanded=False):
-                st.caption(f"⏱️ **Action:** {cf_det['action_type']} | 💧 **Cost:** {cf_det['cost']} | 📏 **Range:** {cf_det['range']}")
-                st.markdown(f"**📖 Description:**\n{cf_det['description']}")
-                st.markdown(f"**🎲 Game Mechanics:**\n{cf_det['mechanics']}")
+        for cf in class_obj.get("starting_feats", []):
+            cf_det = mechanics.get_spell_or_power_details(cf) if hasattr(mechanics, "get_spell_or_power_details") else {
+                "name": cf, "category": "Class Power", "action_type": "Active", "cost": "Resource",
+                "range": "Combat", "description": "", "mechanics": cf
+            }
+            with st.expander(f"🔹 {cf_det['name']} — [{cf_det.get('category', 'Class Power')}]", expanded=False):
+                st.caption(f"⏱️ **Action:** {cf_det.get('action_type', 'Active')} | 💧 **Cost:** {cf_det.get('cost', 'Resource')} | 📏 **Range:** {cf_det.get('range', 'Combat')}")
+                if cf_det.get("description"):
+                    st.markdown("**📖 Description:**\n" + str(cf_det.get("description", "")))
+                if cf_det.get("mechanics"):
+                    st.markdown("**🎲 Game Mechanics:**\n" + str(cf_det.get("mechanics", "")))
             
-        def_w = cg.CLASS_WEAPONS.get(selected_class_key, cg.CLASS_WEAPONS["pathless"])
-        st.caption(f"Default Combat Loadout: **{def_w['main_hand']}** (Main) & **{def_w['off_hand']}** (Off) - *{def_w['desc']}*")
+        def_w = cg.CLASS_WEAPONS.get(selected_class_key, cg.CLASS_WEAPONS.get("pathless", {
+            "main_hand": "Rusted Iron Sword", "off_hand": "None", "desc": "Standard survival blade"
+        }))
+        st.markdown("##### ⚔️ Starter Weapon Configuration:")
+        st.info(f"**Default Combat Loadout:** ⚔️ **{def_w.get('main_hand', 'None')}** (Main) & 🛡️ **{def_w.get('off_hand', 'None')}** (Off) — *{def_w.get('desc', '')}*")
+        st.caption("💡 *Note: You can retain these default weapons or configure custom weapon choices from the 14-weapon survival cache in Stage 5 (Relic & Gear).*")
 
     # --- TAB 5: RELIC & GEAR ---
     with tab5:
@@ -991,6 +1131,11 @@ def render_character_calibration_wizard():
         calc_hp = cg.compute_starting_max_hp(r_info, c_info, final_scores, get_cg_physical())
         
         st.markdown("### 📋 Final Calibration Review")
+        cur_ls_key = st.session_state.get("cg_lifestyle_key", "desk_bound")
+        ls_obj = cg.PRESET_LIFESTYLES.get(cur_ls_key, cg.PRESET_LIFESTYLES.get("desk_bound", {}))
+        ls_title = ls_obj.get("title", "Sedentary")
+        ls_feat = ls_obj.get("starting_feat", "None")
+
         rev_c1, rev_c2, rev_c3 = st.columns(3)
         rev_c1.metric("Callsign", f"{st.session_state.cg_name} ({st.session_state.get('cg_gender', 'Male')})")
         rev_c1.metric("Lineage", r_info["name"])
@@ -998,6 +1143,7 @@ def render_character_calibration_wizard():
         rev_c2.metric("Starting HP", f"{calc_hp} HP")
         rev_c3.metric("Main Weapon", st.session_state.cg_main_hand)
         rev_c3.metric("Personal Relic", relic_obj["name"][:22] + "...")
+        st.caption(f"**Lifestyle Archetype:** {ls_title} | **Innate Talent:** `{ls_feat}`")
         
         # Link Start Action Button
         st.write("")
@@ -1023,6 +1169,7 @@ def render_character_calibration_wizard():
                     physical=get_cg_physical(),
                     gender=st.session_state.get("cg_gender", "Male"),
                     start_tutorial=True,
+                    lifestyle_key=st.session_state.get("cg_lifestyle_key", "desk_bound"),
                 )
                 
                 opening_announcement = cg.build_system_initialization_welcome_message(new_avatar)
@@ -3378,7 +3525,8 @@ def render_game_hud():
                         st.caption(f"💎 **Harvestable Spoils & Grafts:** {', '.join(c_entry['loot_drops'])}")
 
         with b_tab2:
-            race_map = {f"{r_data['name']} [{r_data.get('genre', 'Fantasy')}]": r_data for r_data in cg.RACIAL_LINEAGES.values()}
+            display_lineages = cg.get_character_creation_lineages() if hasattr(cg, "get_character_creation_lineages") else cg.RACIAL_LINEAGES
+            race_map = {f"{r_data['name']} [{r_data.get('genre', 'Fantasy')}]": r_data for r_data in display_lineages.values()}
             sel_r_label = st.selectbox("Inspect Lineage:", list(race_map.keys()), key="bestiary_race_select")
             r_entry = race_map[sel_r_label]
             with st.container(border=True):
@@ -3782,40 +3930,150 @@ def render_tutorial_crucible_banner():
 
     tut = player.get("tutorial", {})
     curr_stage = int(tut.get("stage", 1))
-    stage_info = mechanics.get_tutorial_stage_info(curr_stage)
-    progress_frac = max(0.0, min(1.0, (curr_stage - 1) / 3.0))
+    tut_dungeon = mechanics.initialize_tutorial_mini_dungeon(player)
+    cur_room = mechanics.get_current_tutorial_room(player)
+    curr_phase = cur_room.get("phase", curr_stage)
+    room_id = cur_room.get("room_id", "phase1_telemetry_sanctum")
 
     with st.container(border=True):
-        st.markdown(f"### 🎓 Cardinal Calibration Crucible — {stage_info['title']}")
-        st.progress(progress_frac, text=f"Tutorial Progress: Stage {curr_stage} of 3 | Current Level: {player.get('level', 1)} → Target: Level 3 & Teleport to Washington, NJ Safe-Zone")
-        st.markdown(f"**Current Objective:** {stage_info['objective']}")
-        with st.expander("📘 Stage Mechanics Briefing & Loot Preview", expanded=(curr_stage == 1)):
-            for bullet in stage_info.get("mechanics_focus", []):
-                st.markdown(f"- {bullet}")
-            loot_names = [it["name"] for it in stage_info.get("loot_items", [])]
-            st.markdown(
-                f"**Stage {curr_stage} Completion Rewards:** `+{stage_info['xp_reward']} XP`, "
-                f"`+{stage_info['col_reward']} Col`, Skill Mastery `+{stage_info['skill_gain']}`, "
-                f"and Loot Cache: **{', '.join(loot_names)}**"
-                + (" + Spell Unlock: **`Astral Bolt`** & **Level 2 Advancement**" if curr_stage == 2 else "")
-                + (" + **Level 3 Advancement** & **Teleportation to Washington, NJ Safe-Zone**" if curr_stage == 3 else "")
-            )
+        col_hdr1, col_hdr2 = st.columns([3, 1])
+        with col_hdr1:
+            st.markdown(f"### 🎓 {cur_room.get('phase_name', f'Stage {curr_stage} Crucible')}")
+            st.markdown(f"**Current Chamber:** `{cur_room.get('badge', 'Room')}` **{cur_room.get('name', 'Chamber')}**")
+        with col_hdr2:
+            st.metric("Progress", f"Phase {curr_phase} / 3", f"Level {player.get('level', 1)} → 3")
 
+        progress_frac = max(0.0, min(1.0, (curr_phase - 1) / 3.0 + 0.1))
+        st.progress(progress_frac, text=f"Tutorial Progress: Phase {curr_phase} of 3 | Current Level: {player.get('level', 1)} → Target: Level 3 & Safe-Zone Graduation")
+
+        # Chamber Description & Active Environmental Hazards
+        st.info(f"📜 **Chamber Environment:** {cur_room.get('description', '')}")
+        if cur_room.get("hazards"):
+            haz_labels = [h.get("name", str(h)) if isinstance(h, dict) else str(h) for h in cur_room["hazards"]]
+            st.caption(f"⚠️ **Active Room Hazards:** {', '.join(haz_labels)}")
+
+        # Adjacent Room Navigation Buttons
+        adj_rooms = mechanics.get_tutorial_adjacent_rooms(player)
+        if adj_rooms:
+            st.markdown("**🚪 Adjacent Chambers & Passages:**")
+            nav_cols = st.columns(max(1, len(adj_rooms)))
+            for idx, adj in enumerate(adj_rooms):
+                with nav_cols[idx]:
+                    if st.button(f"➡️ Move to {adj['name']}", key=f"btn_nav_{adj['room_id']}", use_container_width=True):
+                        move_res = mechanics.move_tutorial_dungeon_room(player, adj["room_id"])
+                        save_game(st.session_state.player, st.session_state.messages)
+                        st.rerun()
+
+        st.divider()
+
+        # Contextual Room Interaction Drill Buttons
+        st.markdown("**⚡ Chamber Gameplay Drills & Interactive Trials:**")
+        drill_c1, drill_c2 = st.columns([2, 2])
+        with drill_c1:
+            if room_id == "phase1_telemetry_sanctum":
+                if st.button("🧭 Synchronize Telemetry Pedestal", key="drill_telemetry", use_container_width=True):
+                    res = mechanics.interact_tutorial_telemetry_pillar(player)
+                    st.success(res.get("message", "Telemetry synchronized!"))
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.rerun()
+            elif room_id == "phase1_gravity_chasm":
+                if st.button("⚖️ Test Encumbrance Hazard (STR*15 lbs)", key="drill_encumbrance", use_container_width=True):
+                    res = mechanics.resolve_tutorial_encumbrance_hazard(player)
+                    st.success(res.get("message", "Encumbrance evaluated!"))
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.rerun()
+            elif room_id == "phase1_rust_mist_adit":
+                if st.button("🧪 Brave Rust-Mist & Hone Durability (+25)", key="drill_durability", use_container_width=True):
+                    res = mechanics.resolve_tutorial_durability_hazard(player)
+                    st.success(res.get("message", "Durability honed!"))
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.rerun()
+            elif room_id == "phase1_relic_sanctum":
+                if st.button("✨ Resonate Soul-Bound Keepsake Relic", key="drill_relic", use_container_width=True):
+                    res = mechanics.resolve_tutorial_relic_resonance(player)
+                    st.success(res.get("message", "Relic resonated!"))
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.rerun()
+            elif room_id == "phase2_proving_ground":
+                if st.button("⚔️ Strike Sparring Automata (+15 Mastery)", key="drill_martial", use_container_width=True):
+                    res = mechanics.resolve_tutorial_martial_drill(player)
+                    st.success(res.get("message", "Martial strike landed!"))
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.rerun()
+            elif room_id == "phase2_parry_arena":
+                if st.button("🛡️ Charge Buffer & Execute Parry", key="drill_parry", use_container_width=True):
+                    res = mechanics.resolve_tutorial_parry_and_charge(player)
+                    st.success(res.get("message", "Parry and charge executed!"))
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.rerun()
+            elif room_id == "phase2_coordination_annex":
+                if st.button("🦾 Execute Multi-Limb Weapon Flurry", key="drill_multilimb", use_container_width=True):
+                    res = mechanics.resolve_tutorial_multi_limb_drill(player)
+                    st.success(res.get("message", "Multi-limb drill executed!"))
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.rerun()
+            elif room_id == "phase2_triage_infirmary":
+                if st.button("🩹 Triage Debuff & Slay Sentinel (➔ Lv. 2)", key="drill_sentinel", use_container_width=True):
+                    res = mechanics.resolve_tutorial_status_triage(player)
+                    st.success(res.get("message", "Clockwork Sentinel defeated!"))
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.rerun()
+            elif room_id == "phase3_puzzle_vault":
+                if st.button("🧩 Solve Runic Dials (DC 12 Arcana)", key="drill_puzzle", use_container_width=True):
+                    res = mechanics.solve_tutorial_puzzle(player)
+                    st.success(res.get("message", "Puzzle solved!"))
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.rerun()
+            elif room_id == "phase3_foundry_hall":
+                if st.button("⚔️ Engage Phalanx Construct", key="drill_foundry", use_container_width=True):
+                    res = mechanics.resolve_tutorial_foundry_battle(player)
+                    st.success(res.get("message", "Phalanx Construct defeated!"))
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.rerun()
+            elif room_id == "phase3_warden_lair":
+                if st.button("👑 Cast Astral Bolt & Slay Warden (➔ Lv. 3)", key="drill_boss", use_container_width=True):
+                    res = mechanics.resolve_tutorial_warden_boss_battle(player)
+                    st.balloons()
+                    st.success(res.get("message", "Crucible Warden defeated! Graduated to Level 3!"))
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.rerun()
+            else:
+                st.write("Explore chamber to uncover hidden mechanisms.")
+
+        with drill_c2:
+            if room_id == "phase3_puzzle_vault":
+                if st.button("🔍 Search for Secret Passages (DC 13)", key="drill_secret", use_container_width=True):
+                    res = mechanics.discover_tutorial_secret_door(player)
+                    if res.get("discovered"):
+                        st.success(res.get("message"))
+                    else:
+                        st.warning(res.get("message"))
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.rerun()
+            elif room_id == "phase3_secret_scriptorium":
+                st.success("📜 Concealed Scriptorium Unlocked: Bonus lore codex and Col cache claimed!")
+            else:
+                st.caption("Room interactions trigger instant deterministic resolution.")
+
+        st.divider()
+
+        # Global Actions: Guided Action, Complete Phase Drill, and Fast-Forward
+        stage_info = mechanics.get_tutorial_stage_info(curr_stage)
         btn_c1, btn_c2, btn_c3 = st.columns([2, 2, 1.5])
         with btn_c1:
             if st.button(
-                f"🎲 Run Guided Stage {curr_stage} Action (AI + Drill)",
+                f"🎲 Run Guided Phase {curr_phase} Action (AI + Drill)",
                 type="primary",
                 use_container_width=True,
-                key=f"btn_tut_guided_s{curr_stage}",
+                key=f"btn_tut_guided_p{curr_phase}",
             ):
-                st.session_state["pending_dev_command"] = stage_info["suggested_action"]
+                st.session_state["pending_dev_command"] = stage_info.get("suggested_action", f"Explore {cur_room.get('name')} and execute chamber trial.")
                 st.rerun()
         with btn_c2:
             if st.button(
-                f"✅ Complete Stage {curr_stage} Drill & Claim Loot",
+                f"✅ Complete Phase {curr_phase} Drills & Claim Loot",
                 use_container_width=True,
-                key=f"btn_tut_instant_s{curr_stage}",
+                key=f"btn_tut_instant_p{curr_phase}",
             ):
                 m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
                 sid = get_current_session_id()
@@ -3827,7 +4085,7 @@ def render_tutorial_crucible_banner():
                     m_state = atomic_read_json(m_path, default=None)
                 res = mechanics.advance_tutorial_stage(
                     st.session_state.player,
-                    player_action=stage_info["suggested_action"],
+                    player_action=stage_info.get("suggested_action", ""),
                     master_state=m_state,
                     complete_all=False,
                 )
@@ -3850,8 +4108,8 @@ def render_tutorial_crucible_banner():
                         pass
                 st.session_state.messages.append({
                     "role": "user",
-                    "content": stage_info["suggested_action"],
-                    "ai_prompt": stage_info["suggested_action"],
+                    "content": stage_info.get("suggested_action", ""),
+                    "ai_prompt": stage_info.get("suggested_action", ""),
                 })
                 mech_lines = [f"* 🎲 `{lg}`" for lg in res.get("combat_logs", [])]
                 st.session_state.messages.append({
@@ -3869,7 +4127,7 @@ def render_tutorial_crucible_banner():
             if st.button(
                 "⚡ Fast-Forward to Lvl 3 & Washington, NJ",
                 use_container_width=True,
-                key=f"btn_tut_skip_s{curr_stage}",
+                key=f"btn_tut_skip_p{curr_phase}",
             ):
                 m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
                 sid = get_current_session_id()
