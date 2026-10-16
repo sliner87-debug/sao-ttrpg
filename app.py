@@ -2038,7 +2038,10 @@ def render_game_hud():
         hud_profile = mechanics.get_physical_profile(player)
         limb_prof = mechanics.get_limb_anatomy_profile(player) if hasattr(mechanics, "get_limb_anatomy_profile") else {"arm_count": 2, "hand_slots": {}, "tactical_rules": []}
         st.write(f"**Sex / Gender:** {hud_profile['gender']} ({hud_profile['pronouns']})")
-        st.write(f"**Race:** {player['race']}")
+        if player.get("polymorphed_form"):
+            st.write(f"**Race:** {player['race']} *(Polymorphed: {player['polymorphed_form']})*")
+        else:
+            st.write(f"**Race:** {player['race']}")
         st.write(f"**Class:** {player['class']}")
         st.write(f"**SAO Status:** {cursor_data.get('badge', '🟢 Green')}")
         if isinstance(player.get("physical"), dict):
@@ -2282,6 +2285,43 @@ def render_game_hud():
                     st.write(sp.get("description", ""))
                     st.markdown("**🎲 Game Mechanics:**")
                     st.info(sp.get("mechanics", ""))
+
+                    if "polymorph self" in sp.get("name", "").lower() and hasattr(mechanics, "execute_pixie_polymorph"):
+                        st.markdown("---")
+                        st.markdown("🐾 **Pixie Polymorph Self Form Shifting (At Will):**")
+                        poly_forms = list(getattr(mechanics, "PIXIE_POLYMORPH_FORMS", {}).keys())
+                        poly_options = ["Pixie (True Form)"] + [mechanics.PIXIE_POLYMORPH_FORMS[k]["name"] for k in poly_forms]
+                        cur_form = player.get("polymorphed_form", "Pixie (True Form)")
+                        cur_idx = poly_options.index(cur_form) if cur_form in poly_options else 0
+                        selected_form = st.selectbox("Select Assumed Form", poly_options, index=cur_idx, key=f"poly_select_{sp_idx}")
+                        
+                        p_b1, p_b2 = st.columns(2)
+                        with p_b1:
+                            if st.button("🔄 Shift Form", key=f"btn_shift_poly_{sp_idx}", use_container_width=True):
+                                form_key = "revert" if "pixie" in selected_form.lower() else selected_form.lower().replace(" ", "_")
+                                poly_res = mechanics.execute_pixie_polymorph(player, form_key)
+                                save_game(player, st.session_state.messages)
+                                st.toast(poly_res.get("message", "Form shifted!"), icon="🐾")
+                                st.rerun()
+                        with p_b2:
+                            if player.get("polymorphed_form"):
+                                if st.button("↩️ Revert to Pixie", key=f"btn_revert_poly_{sp_idx}", use_container_width=True):
+                                    rev_res = mechanics.execute_pixie_polymorph(player, "revert")
+                                    save_game(player, st.session_state.messages)
+                                    st.toast(rev_res.get("message", "Reverted!"), icon="🧚")
+                                    st.rerun()
+                        
+                        if player.get("polymorphed_form"):
+                            st.success(f"🐾 **Active Form:** {player['polymorphed_form']} — {player.get('polymorph_data', {}).get('size', 'Medium')} | Stats: {player.get('polymorph_data', {}).get('stat_overrides', {})} | Natural Armor: +{player.get('polymorph_data', {}).get('natural_armor', 0)}")
+
+                    if "pixie dust" in sp.get("name", "").lower() and hasattr(mechanics, "apply_pixie_dust_effect"):
+                        st.markdown("---")
+                        st.markdown("✨ **Scatter Pixie Dust (Sleep / Memory Loss / Confusion):**")
+                        dust_mode = st.radio("Dust Effect Mode", ["Sleep (DC 15)", "Memory Loss (DC 15)", "Confusion (DC 15)"], horizontal=True, key=f"dust_mode_{sp_idx}")
+                        if st.button("✨ Scatter Dust on Hostile", key=f"btn_dust_{sp_idx}", use_container_width=True):
+                            clean_mode = "sleep" if "sleep" in dust_mode.lower() else ("memory_loss" if "memory" in dust_mode.lower() else "confusion")
+                            st.session_state.pending_dev_command = f"I scatter [Pixie Dust] ({dust_mode}) in a 15-ft burst! Target must roll DC 15 Will save vs {clean_mode} or suffer full effect."
+                            st.rerun()
 
                     sp_col1, sp_col2 = st.columns(2)
                     with sp_col1:

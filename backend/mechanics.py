@@ -249,6 +249,22 @@ def get_physical_profile(player_state) -> dict:
     else:
         size = "Medium"
 
+    # Polymorph size override (e.g. D&D 3.0 Pixie Polymorph Self into Dire Wolf, Giant Eagle, Bear, etc.)
+    if isinstance(player_state, dict) and player_state.get("polymorph_data"):
+        poly_size = player_state["polymorph_data"].get("size")
+        if poly_size == "Large":
+            size = "Large"
+            mods.update(carry_mult=2.0, ac_mod=-1, reach_bonus_ft=5, attack_mod=-1, grapple_mod=4)
+        elif poly_size == "Medium":
+            size = "Medium"
+            mods.update(carry_mult=1.0, ac_mod=0, reach_bonus_ft=0, attack_mod=0, grapple_mod=0)
+        elif poly_size == "Small":
+            size = "Small"
+            mods.update(carry_mult=0.75, ac_mod=1, reach_bonus_ft=0, attack_mod=1, grapple_mod=-4)
+        elif poly_size == "Tiny":
+            size = "Tiny"
+            mods.update(carry_mult=0.5, ac_mod=2, attack_mod=2, grapple_mod=-8, stealth_bonus=8)
+
     # Build (weight relative to height, BMI)
     bmi = 703.0 * weight_lbs / (height_in ** 2)
     if bmi < 18.5:
@@ -828,6 +844,8 @@ def calculate_ac(player_state, encumbrance=None):
         
     stats = player_state.get("stats", {})
     dex_val = stats.get("DEX", 10)
+    if isinstance(player_state, dict) and player_state.get("polymorph_data") and "DEX" in player_state["polymorph_data"].get("stat_overrides", {}):
+        dex_val = player_state["polymorph_data"]["stat_overrides"]["DEX"]
     dex_mod = (dex_val - 10) // 2
     
     # Encumbrance penalty to DEX
@@ -901,6 +919,11 @@ def calculate_ac(player_state, encumbrance=None):
         natural_ac += 1
     elif "pneumatic endoskeleton" in feats_str or "dragon-scale armor" in feats_str or "+1 natural armor" in feats_str or "dragon scales: small size" in feats_str:
         natural_ac += 1
+
+    # Polymorph natural armor override
+    if isinstance(player_state, dict) and player_state.get("polymorph_data"):
+        poly_nat = player_state["polymorph_data"].get("natural_armor", 0)
+        natural_ac = max(natural_ac, poly_nat)
 
     # Unearthly Grace: Add Charisma modifier as deflection bonus to AC when wearing light or no armor
     deflection_ac = 0
@@ -1012,24 +1035,144 @@ def evaluate_stealth_and_invisibility(actor_state: dict, in_combat: bool = False
 
 def apply_pixie_dust_effect(target_state: dict, dust_choice: str = "sleep", dc: int = 15) -> dict:
     """
-    Applies Pixie Dust (Sleep & Confusion) rules from D&D 3.0 / Savage Species.
+    Applies Pixie Dust (Sleep, Confusion, Memory Loss) rules from D&D 3.0 / Savage Species.
     Range 30ft, 15-ft burst, DC 15 Will/Wisdom saving throw.
-    Failure causes Sleep (incapacitated) or Confusion (random actions).
+    Failure causes Sleep (incapacitated), Confusion (random actions), or Memory Loss (amnesia).
     """
     stats = target_state.get("stats", {}) if isinstance(target_state, dict) else {}
     wis_mod = (stats.get("WIS", 10) - 10) // 2
     race_str = str(target_state.get("race", "")).lower() if isinstance(target_state, dict) else ""
     feats_str = " ".join(str(f).lower() for f in (target_state.get("feats", []) + target_state.get("racial_abilities", []))) if isinstance(target_state, dict) else ""
-    if "synthetic" in race_str or "sleepless" in feats_str or "construct" in race_str:
-        return {"saved": True, "immune": True, "effect": None, "desc": "Target has sleepless alien or synthetic metabolism; immune to Pixie Dust."}
+    if "synthetic" in race_str or "construct" in race_str or ("sleepless" in feats_str and str(dust_choice).lower() == "sleep"):
+        return {"saved": True, "immune": True, "effect": None, "desc": "Target has synthetic or construct metabolism; immune to Pixie Dust."}
+
+    d_choice = str(dust_choice or "sleep").lower().strip()
+    if d_choice in ("memory", "memory_loss", "memory loss"):
+        effect_applied = "amnesia"
+    elif d_choice == "sleep":
+        effect_applied = "incapacitated"
+    else:
+        effect_applied = "confused"
 
     return {
         "dc": dc,
         "target_wis_mod": wis_mod,
         "dust_choice": dust_choice,
-        "effect_applied": "incapacitated" if dust_choice.lower() == "sleep" else "confused",
+        "effect_applied": effect_applied,
         "duration_rounds": 1,
         "desc": f"Target subjected to DC {dc} Pixie Dust ({dust_choice.capitalize()})."
+    }
+
+
+PIXIE_POLYMORPH_FORMS = {
+    "dire_wolf": {
+        "name": "Dire Wolf",
+        "size": "Large",
+        "stat_overrides": {"STR": 25, "DEX": 15, "CON": 17},
+        "natural_armor": 3,
+        "speed_ft": 50,
+        "attacks": ["Bite (1d8 + 7 plus Trip)"],
+        "traits": ["Scent", "Low-Light Vision", "Trip on Bite (DC 17 STR check)"]
+    },
+    "giant_eagle": {
+        "name": "Giant Eagle",
+        "size": "Large",
+        "stat_overrides": {"STR": 18, "DEX": 17, "CON": 12},
+        "natural_armor": 3,
+        "speed_ft": 10,
+        "flight_speed_ft": 80,
+        "flight_maneuverability": "Average",
+        "attacks": ["2 Claws (1d6 + 4)", "Bite (1d8 + 2)"],
+        "traits": ["Low-Light Vision", "Superior Aerial Dive (+4 on charge from altitude)"]
+    },
+    "black_bear": {
+        "name": "Black Bear",
+        "size": "Medium",
+        "stat_overrides": {"STR": 19, "DEX": 13, "CON": 15},
+        "natural_armor": 2,
+        "speed_ft": 40,
+        "attacks": ["2 Claws (1d4 + 4)", "Bite (1d6 + 2)"],
+        "traits": ["Scent", "Endurance (+4 vs exhaustion)"]
+    },
+    "giant_spider": {
+        "name": "Giant Spider",
+        "size": "Medium",
+        "stat_overrides": {"STR": 15, "DEX": 17, "CON": 12},
+        "natural_armor": 1,
+        "speed_ft": 30,
+        "climb_speed_ft": 20,
+        "attacks": ["Bite (1d6 + 2 plus Poison DC 14 Fort vs 1d6 STR damage)"],
+        "traits": ["Web Spin (Entangle Range 50ft)", "Tremorsense 60ft", "Spider Climb"]
+    },
+    "viper": {
+        "name": "Medium Viper",
+        "size": "Medium",
+        "stat_overrides": {"STR": 12, "DEX": 17, "CON": 11},
+        "natural_armor": 2,
+        "speed_ft": 20,
+        "swim_speed_ft": 20,
+        "attacks": ["Bite (1d4 + 1 plus Poison DC 12 Fort vs 1d6 CON damage)"],
+        "traits": ["Scent", "Poisonous Fangs"]
+    },
+    "human_adventurer": {
+        "name": "Human Adventurer",
+        "size": "Medium",
+        "stat_overrides": {"STR": 14, "DEX": 14, "CON": 14},
+        "natural_armor": 0,
+        "speed_ft": 30,
+        "attacks": ["Weapon Strikes / Unarmed (1d4)"],
+        "traits": ["Human Camouflage (Indistinguishable from standard human conscript)"]
+    }
+}
+
+
+def execute_pixie_polymorph(player_state: dict, target_form: str) -> dict:
+    """
+    Executes D&D 3.0 Polymorph Self at will for Pixie characters.
+    Can transform into any creature form (from Fine up to Large) or revert to Pixie True Form.
+    Updates `player_state['polymorphed_form']` and active traits.
+    """
+    if not isinstance(player_state, dict):
+        return {"success": False, "message": "Invalid player state."}
+
+    clean_target = str(target_form or "").strip().lower().replace(" ", "_")
+
+    if clean_target in ("revert", "pixie", "pixie_true_form", "true_form", "none"):
+        player_state.pop("polymorphed_form", None)
+        player_state.pop("polymorph_data", None)
+        return {
+            "success": True,
+            "reverted": True,
+            "form": "Pixie (True Form)",
+            "message": "Reverted back to your true Tiny Gossamer Pixie form (Flight 60ft, Permanent Greater Invisibility restored)."
+        }
+
+    form_data = PIXIE_POLYMORPH_FORMS.get(clean_target)
+    if not form_data:
+        form_data = {
+            "name": target_form.title(),
+            "size": "Medium",
+            "stat_overrides": {"STR": 16, "DEX": 14, "CON": 14},
+            "natural_armor": 2,
+            "speed_ft": 40,
+            "attacks": ["Natural Strike (1d6 + STR)"],
+            "traits": [f"Assumed {target_form.title()} physiology"]
+        }
+
+    player_state["polymorphed_form"] = form_data["name"]
+    player_state["polymorph_data"] = copy.deepcopy(form_data)
+
+    return {
+        "success": True,
+        "reverted": False,
+        "form": form_data["name"],
+        "size": form_data["size"],
+        "stat_overrides": form_data["stat_overrides"],
+        "natural_armor": form_data["natural_armor"],
+        "speed_ft": form_data.get("speed_ft", 30),
+        "attacks": form_data["attacks"],
+        "traits": form_data["traits"],
+        "message": f"Polymorphed into {form_data['name']} (Size: {form_data['size']}). Retain your own HP and mental attributes while wielding the new physical form's strength and natural weapons."
     }
 
 
@@ -13131,6 +13274,345 @@ CANONICAL_SPELLS_AND_POWERS = {
         "range": "Melee Reach (180° Frontal Arc)",
         "description": "Unleash a ferocious wide-arcing axe sweep that carves through every hostile standing in your frontal engagement zone.",
         "mechanics": "• Action: Standard Action | Cost: 20 Poise / Stamina\n• Effect: Make a melee attack against up to 3 adjacent enemies in a frontal arc, dealing full weapon damage + STR mod + 1d6 slashing damage and inflicting [Bleed] on targets that fail a DC 13 CON save."
+    },
+
+    # --- D&D 3.0 PIXIE / FEY INNATE SPELLS & SUPERNATURAL POWERS ---
+    "polymorph self": {
+        "name": "Polymorph Self",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (At Will)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "Self",
+        "description": (
+            "Drawing upon pristine primordial faerie magic, the pixie alters their physical form into that of another "
+            "living creature, ranging anywhere from Fine to Large size (such as a Dire Wolf, Giant Eagle, Black Bear, "
+            "Giant Spider, or Viper). You retain your own hit points, base attack bonus, saving throws, mental ability scores "
+            "(INT, WIS, CHA), alignment, and spellcasting, while acquiring the physical scores (STR, DEX, CON), size, "
+            "natural armor, natural weapons, and non-magical movement modes of the assumed form."
+        ),
+        "mechanics": (
+            "• Action: Standard Action (At Will; revert to Pixie True Form freely as a Free Action).\n"
+            "• Size Allowance: Fine up to Large (Dire Wolf, Giant Eagle, Bear, Spider, Humanoid, etc.).\n"
+            "• Physical Overrides: Assumes new form's STR, DEX, CON, natural armor, reach, and movement (fly, climb, swim).\n"
+            "• Retained Attributes: Retains player HP, INT, WIS, CHA, class features, feats, and spellcasting.\n"
+            "• Invisibility: Reverts to standard visibility while polymorphed as a beast unless greater invisibility is maintained."
+        )
+    },
+    "polymorph self (at will)": {
+        "name": "Polymorph Self (At Will)",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (At Will)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "Self",
+        "description": (
+            "Assume the form of any creature from Fine up to Large size at will as a Standard Action. "
+            "Gain the physical ability scores, natural armor, natural attacks, and movement modes of the chosen form "
+            "while retaining your own HP, mental stats (INT/WIS/CHA), and spellcasting."
+        ),
+        "mechanics": (
+            "• Action: Standard Action (At Will; revert to Pixie True Form freely as a Free Action).\n"
+            "• Size Allowance: Fine up to Large (Dire Wolf, Giant Eagle, Bear, Spider, Humanoid, etc.).\n"
+            "• Physical Overrides: Assumes new form's STR, DEX, CON, natural armor, reach, and movement.\n"
+            "• Retained Attributes: Retains player HP, INT, WIS, CHA, class features, feats, and spellcasting."
+        )
+    },
+    "permanent greater invisibility": {
+        "name": "Permanent Greater Invisibility",
+        "category": "D&D 3.0 Pixie Supernatural Ability",
+        "action_type": "Continuous / Supernatural",
+        "cost": "Passive / Constant",
+        "range": "Self",
+        "description": (
+            "A pixie remains naturally and continuously invisible at all times. This supernatural shroud does not "
+            "break when attacking or casting spells; instead, the pixie's form flickers momentarily at the instant of strike "
+            "and immediately refracts back into absolute optical and arcane concealment."
+        ),
+        "mechanics": (
+            "• Passive / Continuous: Active at all times without spell slot or stamina consumption.\n"
+            "• Attack Interaction: Does not end upon making attacks or casting spells.\n"
+            "• Combat Advantage: Gain Advantage on all attack rolls; opponents are denied their Dexterity bonus to AC.\n"
+            "• Defense: Enemies without Blindsight, Tremorsense, or See Invisibility suffer Disadvantage on attacks and a flat 50% miss chance."
+        )
+    },
+    "greater invisibility": {
+        "name": "Permanent Greater Invisibility",
+        "category": "D&D 3.0 Pixie Supernatural Ability",
+        "action_type": "Continuous / Supernatural",
+        "cost": "Passive / Constant",
+        "range": "Self",
+        "description": "Naturally invisible at all times. Attacking or casting spells does not dispel invisibility.",
+        "mechanics": "• Passive: Advantage on attacks, target denied DEX to AC, 50% miss chance for attackers without Blindsight."
+    },
+    "pixie dust: sleep & memory loss": {
+        "name": "Pixie Dust: Sleep & Memory Loss",
+        "category": "D&D 3.0 Pixie Supernatural Power",
+        "action_type": "Standard Action (1/Encounter)",
+        "cost": "10 Stamina / 1/Encounter",
+        "range": "30 ft (15-ft Burst or Touch/Arrow)",
+        "description": (
+            "A pouch of shimmering, iridescent faerie dust harvested from delicate gossamer wings. Can be thrown in a "
+            "15-foot burst or sprinkled onto arrowheads and melee weapons. Targets inhaling or struck by the dust must "
+            "resist the fey glamour or succumb to deep magical slumber or total retroactive amnesia."
+        ),
+        "mechanics": (
+            "• Action: Standard Action | Area: 15-ft burst within 30 ft, or applied to weapon touch/projectile.\n"
+            "• Saving Throw: DC 15 Will/Wisdom save.\n"
+            "• Mode Choice:\n"
+            "  - Sleep: Failed save inflicts Incapacitated (magical sleep) for 5 minutes or until shaken/damaged.\n"
+            "  - Memory Loss: Failed save causes target to completely forget all memories and events of the previous 24 hours."
+        )
+    },
+    "pixie dust": {
+        "name": "Pixie Dust (Sleep & Memory Loss)",
+        "category": "D&D 3.0 Pixie Supernatural Power",
+        "action_type": "Standard Action (1/Encounter)",
+        "cost": "10 Stamina / 1/Encounter",
+        "range": "30 ft (15-ft Burst or Touch/Arrow)",
+        "description": "Faerie dust scatter that inflicts DC 15 magical Sleep or 24-hour Memory Loss on failed Will saving throw.",
+        "mechanics": "• Action: Standard Action | Area: 15-ft burst | Save: DC 15 Will | Modes: Sleep (5 min) or Memory Loss (24 hr amnesia)."
+    },
+    "pixie dust (sleep & memory loss)": {
+        "name": "Pixie Dust: Sleep & Memory Loss",
+        "category": "D&D 3.0 Pixie Supernatural Power",
+        "action_type": "Standard Action (1/Encounter)",
+        "cost": "10 Stamina / 1/Encounter",
+        "range": "30 ft (15-ft Burst or Touch/Arrow)",
+        "description": "Faerie dust scatter that inflicts DC 15 magical Sleep or 24-hour Memory Loss on failed Will saving throw.",
+        "mechanics": "• Action: Standard Action | Area: 15-ft burst | Save: DC 15 Will | Modes: Sleep (5 min) or Memory Loss (24 hr amnesia)."
+    },
+    "detect thoughts": {
+        "name": "Detect Thoughts",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (At Will)",
+        "action_type": "Standard Action (Concentration)",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "60 ft Cone",
+        "description": (
+            "Attuning your fey senses to the subconscious psychic vibrations of nearby creatures, you detect the presence, "
+            "intelligence scores, and active surface thoughts of thinking minds within a 60-foot cone."
+        ),
+        "mechanics": (
+            "• Action: Standard Action (Concentration up to 1 minute).\n"
+            "• Round 1: Detect presence or absence of conscious minds (INT 1+).\n"
+            "• Round 2: Number of thinking minds and the highest Intelligence score in the area.\n"
+            "• Round 3: Surface thoughts of any mind in the area (DC 15 Will save negates reading thoughts)."
+        )
+    },
+    "detect thoughts (at will)": {
+        "name": "Detect Thoughts (At Will)",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (At Will)",
+        "action_type": "Standard Action (Concentration)",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "60 ft Cone",
+        "description": "Sense and read surface thoughts of creatures within 60 ft (DC 15 Will save negates).",
+        "mechanics": "• Action: Standard Action | Range: 60 ft | Save: DC 15 Will | Reveals thinking minds and surface thoughts."
+    },
+    "lesser confusion": {
+        "name": "Lesser Confusion",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (At Will)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "30 ft",
+        "description": (
+            "With a flash of bewildering faerie light and a mocking laugh, you disorient a single target's mind, "
+            "causing them to lose their bearings and act erratically for 1 round."
+        ),
+        "mechanics": (
+            "• Action: Standard Action | Range: 30 ft | Target: 1 living creature.\n"
+            "• Saving Throw: DC 15 Will save negates.\n"
+            "• Effect: Target becomes Confused for 1 round (d100 roll: 01-10 attack caster, 11-20 act normally, 21-50 babble incoherently, 51-70 flee, 71-100 attack nearest creature)."
+        )
+    },
+    "lesser confusion (at will)": {
+        "name": "Lesser Confusion (At Will)",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (At Will)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "30 ft",
+        "description": "Confuses a single target within 30 ft for 1 round on failed DC 15 Will save.",
+        "mechanics": "• Action: Standard Action | Range: 30 ft | Save: DC 15 Will | Inflicts 1 round of erratic confusion behavior."
+    },
+    "dancing lights": {
+        "name": "Dancing Lights",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (At Will)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "100 ft",
+        "description": (
+            "Summons up to four sphere-like motes of glowing faerie light or one faintly glowing humanoid shape (will-o'-wisp) "
+            "that illuminate darkened corridors, distract guards, or guide party members."
+        ),
+        "mechanics": (
+            "• Action: Standard Action | Duration: 1 minute (Concentration).\n"
+            "• Effect: Creates 4 motes of light that illuminate a 20-ft radius. Can be moved up to 100 ft per turn as a Move Action.\n"
+            "• Utility: Reveals hidden dungeon features, blinds creatures sensitive to light, and creates diversionary signals."
+        )
+    },
+    "dancing lights (at will)": {
+        "name": "Dancing Lights (At Will)",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (At Will)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "100 ft",
+        "description": "Conjures up to 4 glowing faerie light orbs up to 100 ft to guide allies or distract hostiles.",
+        "mechanics": "• Action: Standard Action | Range: 100 ft | Duration: 1 minute | At Will."
+    },
+    "entangle": {
+        "name": "Entangle",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (At Will)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "120 ft (40-ft Radius Spread)",
+        "description": (
+            "Causes grasses, weeds, roots, and vines in the area to writhe and twine around foes, grasping at their legs and weapons "
+            "to anchor them firmly in place."
+        ),
+        "mechanics": (
+            "• Action: Standard Action | Area: 40-ft radius spread within 120 ft.\n"
+            "• Saving Throw: DC 15 Reflex / DEX save.\n"
+            "• Effect: Creatures that fail become Entangled (cannot move, -2 on attack rolls, -4 to DEX, must make Concentration checks to cast spells). Area counts as Difficult Terrain."
+        )
+    },
+    "entangle (at will)": {
+        "name": "Entangle (At Will)",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (At Will)",
+        "action_type": "Standard Action",
+        "cost": "At Will (0 Resource Cost)",
+        "range": "120 ft (40-ft Radius)",
+        "description": "Wild foliage and roots snare all enemies in a 40-ft radius spread on failed DC 15 Reflex save.",
+        "mechanics": "• Action: Standard Action | Area: 40 ft radius | Save: DC 15 Reflex | Entangles foes and creates difficult terrain."
+    },
+    "confusion": {
+        "name": "Confusion",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (1/Day)",
+        "action_type": "Standard Action (1/Day)",
+        "cost": "1/Day Usage",
+        "range": "120 ft (15-ft Radius Burst)",
+        "description": (
+            "Unleashes a cascade of iridescent, shimmering fey psychotropic lights across a 15-foot radius, driving all creatures within "
+            "into a state of chaotic madness and random impulses."
+        ),
+        "mechanics": (
+            "• Action: Standard Action | Usage: 1/Day | Range: 120 ft (15-ft radius burst).\n"
+            "• Saving Throw: DC 15 Will save negates.\n"
+            "• Duration: 3 rounds.\n"
+            "• Effect: All failed targets roll d100 each turn to determine actions (fleeing, attacking allies, babbling, or standing paralyzed)."
+        )
+    },
+    "confusion (1/day)": {
+        "name": "Confusion (1/Day)",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (1/Day)",
+        "action_type": "Standard Action (1/Day)",
+        "cost": "1/Day Usage",
+        "range": "120 ft (15-ft Radius Burst)",
+        "description": "Drives all creatures in a 15-ft radius into wild confusion for 3 rounds (DC 15 Will negates).",
+        "mechanics": "• Action: Standard Action | Usage: 1/Day | Save: DC 15 Will | Duration: 3 rounds."
+    },
+    "dispel magic": {
+        "name": "Dispel Magic",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (1/Day)",
+        "action_type": "Standard Action (1/Day)",
+        "cost": "1/Day Usage",
+        "range": "120 ft",
+        "description": (
+            "Channels pure, uncorrupted fey counter-aether to unravel magical spells, glyphs, runic wards, and active enchantments "
+            "affecting a single creature, object, or area."
+        ),
+        "mechanics": (
+            "• Action: Standard Action | Usage: 1/Day | Range: 120 ft.\n"
+            "• Effect: Strip all hostile or beneficial spells from target with a Dispel Check (1d20 + Caster Level vs DC 11 + Spell Level).\n"
+            "• Area Dispel: Strips the highest-level spell affecting each creature in a 20-ft burst, and terminates surface wards/runes."
+        )
+    },
+    "dispel magic (1/day)": {
+        "name": "Dispel Magic (1/Day)",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (1/Day)",
+        "action_type": "Standard Action (1/Day)",
+        "cost": "1/Day Usage",
+        "range": "120 ft",
+        "description": "Unravels hostile spells, barrier wards, and active enchantments targeting an ally, enemy, or area.",
+        "mechanics": "• Action: Standard Action | Usage: 1/Day | Range: 120 ft | Dispel Check 1d20 + Level vs DC 11 + Spell Level."
+    },
+    "permanent image": {
+        "name": "Permanent Image",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (1/Day)",
+        "action_type": "Standard Action (1/Day)",
+        "cost": "1/Day Usage",
+        "range": "120 ft (Up to 20-ft Cube)",
+        "description": (
+            "Weaves an enduring, multi-sensory master illusion creating visual imagery, sound, thermal warmth, and scent. "
+            "The illusion remains permanently anchored in the physical world until dispelled or touched."
+        ),
+        "mechanics": (
+            "• Action: Standard Action | Usage: 1/Day | Duration: Permanent until dispelled.\n"
+            "• Scope: Up to a 20-ft cube. Includes synchronized sight, sound, smell, and temperature.\n"
+            "• Interaction: Will save (DC 15) to disbelieve when interacted with. Physical objects pass right through it."
+        )
+    },
+    "permanent image (1/day)": {
+        "name": "Permanent Image (1/Day)",
+        "category": "D&D 3.0 Pixie Spell-Like Ability (1/Day)",
+        "action_type": "Standard Action (1/Day)",
+        "cost": "1/Day Usage",
+        "range": "120 ft (Up to 20-ft Cube)",
+        "description": "Permanent multi-sensory illusion (visual, auditory, thermal, olfactory) up to a 20-ft cube.",
+        "mechanics": "• Action: Standard Action | Usage: 1/Day | Duration: Permanent until dispelled | DC 15 Will save to disbelieve."
+    },
+    "natural gossamer flight": {
+        "name": "Natural Gossamer Flight (60ft)",
+        "category": "D&D 3.0 Pixie Lineage Trait",
+        "action_type": "Passive / Movement",
+        "cost": "Passive",
+        "range": "60 ft Speed (Good Maneuverability)",
+        "description": (
+            "Four iridescent gossamer insectoid wings beat with near-silent faerie resonance, carrying the pixie into the air "
+            "with effortless speed and agile hover capability."
+        ),
+        "mechanics": (
+            "• Fly Speed: 60 ft per move action with Good maneuverability (can hover in place, make sharp turns without drift).\n"
+            "• Hazard Immunity: Completely avoids ground-level spikes, tripwires, landmines, pit traps, difficult terrain, and mire."
+        )
+    },
+    "natural gossamer flight (60ft)": {
+        "name": "Natural Gossamer Flight (60ft)",
+        "category": "D&D 3.0 Pixie Lineage Trait",
+        "action_type": "Passive / Movement",
+        "cost": "Passive",
+        "range": "60 ft Speed (Good Maneuverability)",
+        "description": "60ft aerial flight speed with Good maneuverability and hover capability.",
+        "mechanics": "• Fly Speed: 60 ft | Hover Capable | Immune to ground-based traps and difficult terrain."
+    },
+    "cold iron damage reduction & spell resistance": {
+        "name": "Cold Iron Damage Reduction & Spell Resistance",
+        "category": "D&D 3.0 Pixie Lineage Trait",
+        "action_type": "Passive Trait",
+        "cost": "Passive",
+        "range": "Self",
+        "description": (
+            "The faerie spirit within the pixie's physical form is protected by ancient ancestral warding. Only cold iron weapons "
+            "can bite deep into pixie flesh, and hostile arcane incantations frequently glance off harmlessly."
+        ),
+        "mechanics": (
+            "• Damage Reduction: DR 5/cold iron (subtracts 5 flat damage from all physical attacks not forged from pure Cold Iron).\n"
+            "• Spell Resistance: SR 15 (enemies casting hostile spells on the pixie must roll 1d20 + Caster Level >= 15 to penetrate)."
+        )
+    },
+    "spell resistance": {
+        "name": "Spell Resistance (SR 15)",
+        "category": "D&D 3.0 Pixie Trait",
+        "action_type": "Passive Trait",
+        "cost": "Passive",
+        "range": "Self",
+        "description": "Innate fey warding deflects incoming spells and spell-like abilities (SR 15 + character level).",
+        "mechanics": "• Spell Resistance: SR 15. Hostile casters must roll 1d20 + Caster Level >= SR to affect you."
+    },
+    "tiny fey stature & aerodynamics": {
+        "name": "Tiny Fey Stature & Aerodynamics",
+        "category": "D&D 3.0 Pixie Lineage Trait",
+        "action_type": "Passive Trait",
+        "cost": "Passive",
+        "range": "Self",
+        "description": "Tiny stature provides tremendous evasive agility, a diminutive hit profile, and unparalleled stealth.",
+        "mechanics": "• Size Modifiers: +2 size bonus to AC, +2 on attack rolls, +8 bonus on Stealth checks.\n• Movement: Can freely slip through occupied enemy spaces and narrow crevices."
     }
 }
 
@@ -13198,6 +13680,10 @@ def get_spell_or_power_details(entry, player_state: dict = None) -> dict:
             inline_type = paren_part.rstrip(")").strip()
         else:
             clean_lookup_name = head_part.strip()
+    elif "(" in raw_name and ")" in raw_name:
+        base_n, paren_part = raw_name.split("(", 1)
+        clean_lookup_name = base_n.strip()
+        inline_type = paren_part.rstrip(")").strip()
 
     norm_full = raw_name.lower().strip()
     norm_clean = clean_lookup_name.lower().strip()

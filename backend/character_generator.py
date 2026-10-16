@@ -1249,21 +1249,37 @@ RACIAL_LINEAGES = {
         "genre": "D&D 3.0 / Savage Species Fey",
         "desc": (
             "Tiny, gossamer-winged woodland sprites blessed with shimmering starlight aether, "
-            "playful trickery, and innate faerie magic. Standing less than two feet tall, pixies flit "
-            "through the air naturally invisible, confounding giants and beasts alike with enchanting pixie dust."
+            "playful trickery, and legendary faerie magic from D&D 3.0. Standing less than two feet tall, "
+            "pixies possess natural 60ft flight, permanent Greater Invisibility, Polymorph Self at will, "
+            "a suite of innate spell-like enchantments, and potent Sleep and Memory Loss dust."
         ),
         "stat_mods": {"STR": -4, "DEX": 5, "CON": -1, "INT": 2, "WIS": 1, "CHA": 3},
         "size": "Tiny",
         "default_physical": {"age": 60, "height_in": 20.0, "weight_lbs": 15.0},
-        "flight_speed_ft": 40,
+        "flight_speed_ft": 60,
         "flight_maneuverability": "Good",
         "damage_reduction": "DR 5/cold iron",
+        "spell_resistance": 15,
         "racial_abilities": [
             "Tiny Fey Stature & Aerodynamics: Tiny size grants a +2 size bonus to AC, +2 on attack rolls, +8 bonus on Stealth checks, -8 grapple bonus, and 0.5x carrying capacity. Allows moving freely through occupied enemy spaces and narrow crevices.",
-            "Natural Gossamer Flight (40ft): Shimmering iridescent wings grant Natural Flight with 40ft aerial speed (good maneuverability) and hover capability, completely ignoring ground-level traps, tripwires, pits, and difficult terrain.",
-            "Permanent Greater Invisibility: Naturally invisible at all times. Attacking or executing an offensive skill causes your form to briefly flicker at the moment of strike (granting Advantage on attack and denying target DEX to AC), then immediately refracts back into complete invisibility. Hostiles without Blindsight or True Seeing suffer Disadvantage and 50% miss chance.",
-            "Cold Iron Damage Reduction (DR 5/Cold Iron): Fey enchantment reduces all incoming physical and non-cold-iron weapon damage by 5 flat points per strike.",
-            "Pixie Dust (Sleep & Confusion): Scatter magical faerie dust in a 15-ft burst (Range 30ft, Action, DC 15 Save, 1/encounter). Targets must pass a DC 15 Wisdom save or succumb to magical Sleep (incapacitated for 1 round or until damaged) or Confusion (wander or attack random creatures for 1 round)."
+            "Natural Gossamer Flight (60ft): Shimmering iridescent wings grant Natural Flight with 60ft aerial speed (good maneuverability) and hover capability, completely ignoring ground-level traps, tripwires, pits, and difficult terrain.",
+            "Permanent Greater Invisibility: Naturally invisible at all times (Supernatural Ability). Attacking or executing an offensive skill causes your form to briefly flicker at the moment of strike (granting Advantage on attack and denying target DEX to AC), then immediately refracts back into complete invisibility. Hostiles without Blindsight or True Seeing suffer Disadvantage and 50% miss chance.",
+            "Polymorph Self (At Will - D&D 3.0 Spell-Like Ability): Assume the form of any creature from Fine up to Large size at will as a Standard Action. Gain the physical ability scores, natural armor, natural attacks, and movement modes (burrow, climb, fly, swim) of the chosen form while retaining your own HP, mental stats (INT/WIS/CHA), and spellcasting.",
+            "Pixie Dust (Sleep & Memory Loss): Scatter magical faerie dust in a 15-ft burst or sprinkle on arrows/touch (DC 15 Save, 1/encounter). Targets must pass a DC 15 Wisdom save or succumb to magical Sleep (incapacitated for 1 round or until damaged) or Memory Loss (target completely forgets all events of the past 24 hours).",
+            "Innate Spell-Like Abilities (At Will & 1/Day): Cast at will as Standard Actions: Detect Thoughts (sense/read surface thoughts within 60ft, DC 15), Lesser Confusion (confuse target for 1 round, DC 15), Dancing Lights (create glowing motes up to 100ft), Entangle (roots entangle foes in 40ft radius), Detect Alignment (Chaos/Evil/Good/Law). Once per day each: Confusion (15ft burst, DC 15), Dispel Magic (strip enchantments and wards), and Permanent Image (permanent multi-sensory visual/auditory illusion).",
+            "Cold Iron Damage Reduction & Spell Resistance (DR 5/Cold Iron & SR 15): Fey enchantment reduces all incoming physical and non-cold-iron weapon damage by 5 flat points per strike. Possesses Spell Resistance (SR 15 + level) against hostile enemy magic."
+        ],
+        "innate_spells": [
+            "Polymorph Self (At Will)",
+            "Permanent Greater Invisibility",
+            "Pixie Dust: Sleep & Memory Loss",
+            "Detect Thoughts (At Will)",
+            "Lesser Confusion (At Will)",
+            "Dancing Lights (At Will)",
+            "Entangle (At Will)",
+            "Confusion (1/Day)",
+            "Dispel Magic (1/Day)",
+            "Permanent Image (1/Day)"
         ]
     },
     "meadow_nymph_fey": {
@@ -3632,6 +3648,11 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
     # Add Class Feats
     for f in chosen_class.get("starting_feats", []):
         feats_list.append(f)
+
+    # Add Racial Innate Spells (e.g. D&D 3.0 Pixie Spell-Like Abilities, Polymorph Self, etc.)
+    for rsp in race.get("innate_spells", []):
+        if rsp not in lifestyle_spells:
+            lifestyle_spells.append(rsp)
         
     # 4. Weapons & Equipment Loadout
     class_def_weapons = CLASS_WEAPONS.get(class_key, CLASS_WEAPONS["pathless"])
@@ -3755,6 +3776,7 @@ def generate_starting_character(name="Survivor", point_alloc=None, background_ke
         "spells": list(lifestyle_spells),
         "feats": feats_list,
         "racial_abilities": race["racial_abilities"],
+        "innate_spells": list(race.get("innate_spells", [])),
         "racial_variant_config": race.get("variant_config"),
         "inventory": starter_inventory,
         "equipped": equipped,
