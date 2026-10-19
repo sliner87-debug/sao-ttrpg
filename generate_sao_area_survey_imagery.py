@@ -25,12 +25,21 @@ from concurrent.futures import ThreadPoolExecutor
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-DRIVE_ROOT = r"E:\My Drive\SAO Area Survery"
+REPO_RAW_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "maps", "raw")
+os.makedirs(REPO_RAW_DIR, exist_ok=True)
+
+DRIVE_ROOT = r"G:\My Drive\SAO Area Survery" if os.path.exists(r"G:\My Drive\SAO Area Survery") else r"E:\My Drive\SAO Area Survery"
 DRIVE_IMG_DIR = os.path.join(DRIVE_ROOT, "Imagery")
 ARTIFACT_DIR = r"C:\Users\sline\.gemini\antigravity\brain\82c75b20-5567-4dc2-aaab-bc20f20510ad"
 
-os.makedirs(DRIVE_IMG_DIR, exist_ok=True)
-os.makedirs(ARTIFACT_DIR, exist_ok=True)
+try:
+    os.makedirs(DRIVE_IMG_DIR, exist_ok=True)
+except Exception:
+    pass
+try:
+    os.makedirs(ARTIFACT_DIR, exist_ok=True)
+except Exception:
+    pass
 
 ORIGIN_LAT = 40.7584
 ORIGIN_LON = -74.9793
@@ -106,7 +115,7 @@ SECTORS = {
     "Sector2_WestNW": {
         "title": "SECTOR 2 (WEST & NW 25-100 MI): POCONOS, LEHIGH GORGE & PA ANTHRACITE BELT",
         "subtitle": "Allentown, Jim Thorpe, Scranton, Wilkes-Barre, Centralia & Susquehanna Valley",
-        "bbox": (-76.85, 40.25, -74.65, 41.70),
+        "bbox": (-77.05, 40.25, -74.65, 41.70),
         "nodes": [
             (-75.4710, 40.6010, "Allentown & PPL Building (322 ft)", "sky", "24 Stories + NS 46-Track Hump Yard"),
             (-75.9060, 40.3360, "Reading Pagoda (Mt. Penn)", "sky", "886 ft Cliffside Tower (620 ft Drop)"),
@@ -122,7 +131,7 @@ SECTORS = {
             (-76.3400, 40.8040, "CENTRALIA MINE FIRE (-300 ft)", "mine", "1,000 F Burning Mammoth Vein Since 1962"),
             (-76.3740, 40.7710, "Locust Summit Breaker & Pioneer", "sky", "158-ft 11-Story Breaker + 1,800-ft Adit"),
             (-75.4410, 40.3560, "AT&T Finland Nuclear Bunker", "bunker", "2-Story Subterranean L-4/L-5 Blast Bunker"),
-            (-76.9400, 40.6410, "AT&T Dalmatia Hardened Bunker", "bunker", "Autovon Subterranean Coaxial Vault"),
+            (-76.8950, 40.6410, "AT&T Dalmatia Hardened Bunker", "bunker", "Autovon Subterranean Coaxial Vault"),
             (-75.4320, 41.1930, "Tobyhanna Army Depot (1,400 Acres)", "sky", "DoD C4ISR Radar & Satcom Citadel (2,130 ft)"),
             (-75.1850, 41.4600, "Lake Wallenpaupack (-60 ft)", "water", "5,700 Acres | Submerged Town of Wilsonville"),
             (-75.8820, 41.2460, "Wilkes-Barre & Huber Breaker Site", "hub", "Luzerne Bank Tower + Susquehanna Levees"),
@@ -132,6 +141,7 @@ SECTORS = {
             (-76.0420, 41.3660, "Harveys Lake (-102 ft)", "water", "PA's Largest Natural Lake | Sunken Steamboats"),
             (-76.0080, 41.5420, "Vosburg Tunnel (3,902 ft)", "tunnel", "1886 Bore through Susquehanna Meander Neck"),
             (-75.7770, 41.6220, "Tunkhannock Viaduct (Nicholson)", "sky", "2,375 ft Long x 240 ft High Concrete Colossus"),
+            (-76.9050, 40.3330, "Rockville 48-Arch Stone Viaduct", "sky", "3,820 ft Long 48-Arch Stone Bridge"),
         ],
         "cross_section": {
             "title": "SECTOR 2 VERTICAL PROFILE: POCONO PLATEAU TO ANTHRACITE DEEP BASINS (+2,175 ft to -1,500 ft)",
@@ -317,11 +327,19 @@ def fetch_wms_image(service_type, bbox, width=1800, height=1350):
 
 
 def save_dual_image(img, filename):
-    drive_path = os.path.join(DRIVE_IMG_DIR, filename)
-    artifact_path = os.path.join(ARTIFACT_DIR, filename)
-    img.convert("RGB").save(drive_path, format="PNG", optimize=True)
-    shutil.copy2(drive_path, artifact_path)
-    print(f"[OK] Saved {filename} ({os.path.getsize(drive_path)//1024} KB)")
+    repo_path = os.path.join(REPO_RAW_DIR, filename)
+    img.convert("RGB").save(repo_path, format="PNG", optimize=True)
+    print(f"[OK] Saved {filename} ({os.path.getsize(repo_path)//1024} KB)")
+    try:
+        drive_path = os.path.join(DRIVE_IMG_DIR, filename)
+        img.convert("RGB").save(drive_path, format="PNG", optimize=True)
+    except Exception:
+        pass
+    try:
+        artifact_path = os.path.join(ARTIFACT_DIR, filename)
+        shutil.copy2(repo_path, artifact_path)
+    except Exception:
+        pass
 
 
 def lonlat_to_xy(lon, lat, bbox, map_x0, map_y0, map_w, map_h):

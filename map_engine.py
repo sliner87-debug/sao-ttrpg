@@ -66,7 +66,7 @@ SECTORS: Dict[str, Dict[str, Any]] = {
             "north": 41.8000,
             "south": 40.3000,
             "east": -74.5000,
-            "west": -76.5000
+            "west": -77.0500
         },
         "description": "Lehigh River Gorge, Poconos, Scranton, Wilkes-Barre, and PA Anthracite Coal Belt."
     },

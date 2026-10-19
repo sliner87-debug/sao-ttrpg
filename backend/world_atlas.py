@@ -1447,7 +1447,7 @@ WORLD_ATLAS_ZONES: Dict[str, Dict[str, Any]] = {
         "quadrant": "Inner Core (0-25 mi)",
         "distance_miles": 0.5,
         "bearing_deg": 90,
-        "compass_dir": "E-W Artery",
+        "compass_dir": "E",
         "coords": {"x": 51, "y": 50},
         "level_min": 3,
         "level_max": 15,
@@ -1965,6 +1965,116 @@ WORLD_ATLAS_ZONES: Dict[str, Dict[str, Any]] = {
         "aliases": ["catskills", "slide mountain", "kaaterskill falls", "overlook mountain", "ashokan reservoir"]
     }
 }
+
+# =========================================================================
+# INTEGRATION: NEW 100-MILE MULTI-SCAN LOCATIONS (new_locations_168.json)
+# =========================================================================
+import json
+import os
+import re
+
+_NEW_LOCATIONS_FILE = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "data", "new_locations_168.json")
+)
+if not os.path.exists(_NEW_LOCATIONS_FILE):
+    _NEW_LOCATIONS_FILE = os.path.normpath(
+        os.path.join(os.getcwd(), "data", "new_locations_168.json")
+    )
+
+if os.path.exists(_NEW_LOCATIONS_FILE):
+    try:
+        with open(_NEW_LOCATIONS_FILE, "r", encoding="utf-8") as _f:
+            _new_locs = json.load(_f)
+        for _site in _new_locs:
+            _sid = _site.get("id")
+            if not _sid or _sid in WORLD_ATLAS_ZONES:
+                continue
+
+            # Compass and bearing
+            _b_str = _site.get("bearing", "")
+            _b_parts = _b_str.split()
+            if _b_parts:
+                try:
+                    _deg_num = int(re.sub(r"\D", "", _b_parts[0]))
+                except ValueError:
+                    _deg_num = 0
+                _compass = _b_parts[1] if len(_b_parts) > 1 else "Origin"
+            else:
+                _deg_num = 0
+                _compass = "Origin"
+
+            # Coordinates on [0, 100] grid, Washington Borough Hub at (50, 50)
+            _dist = float(_site.get("distance", 0.0))
+            _rad = math.radians(_deg_num)
+            _gx = int(round(50.0 + (_dist / 100.0) * 50.0 * math.sin(_rad)))
+            _gy = int(round(50.0 - (_dist / 100.0) * 50.0 * math.cos(_rad)))
+            _gx = max(0, min(100, _gx))
+            _gy = max(0, min(100, _gy))
+
+            # Level parsing
+            _lvls = [int(_n) for _n in re.findall(r"\d+", _site.get("level", ""))]
+            if len(_lvls) >= 2:
+                _lmin = max(1, min(_lvls))
+                _lmax = min(100, max(_lvls))
+            elif len(_lvls) == 1:
+                _lmin = max(1, _lvls[0])
+                _lmax = min(100, _lvls[0] + 5)
+            else:
+                _lmin = 1
+                _lmax = 10
+
+            # Quadrant derivation
+            _rnum = _site.get("ringNum", 1)
+            if _rnum == 1:
+                _quad = "Inner Core (0-25 mi)"
+            else:
+                _sec = _site.get("sector", "CORE")
+                if _sec == "WEST":
+                    _quad = "West & Northwest (25-100 mi)"
+                elif _sec == "NORTH":
+                    _quad = "North & East (25-100 mi)"
+                elif _sec == "SOUTH":
+                    _quad = "South & Southwest (25-100 mi)"
+                else:
+                    _quad = "Inner Core (0-25 mi)"
+
+            _cat = _site.get("category", "wilderness")
+            if _cat not in ("safe_zone", "mine", "dungeon", "wilderness"):
+                _cat = "wilderness"
+
+            WORLD_ATLAS_ZONES[_sid] = {
+                "id": _sid,
+                "name": _site.get("preName", _sid),
+                "subtitle": _site.get("postName", ""),
+                "category": _cat,
+                "quadrant": _quad,
+                "distance_miles": round(_dist, 2),
+                "bearing_deg": _deg_num,
+                "compass_dir": _compass,
+                "coords": {"x": _gx, "y": _gy},
+                "level_min": _lmin,
+                "level_max": _lmax,
+                "is_safe_zone": (_cat == "safe_zone"),
+                "controlling_faction": _site.get("faction", "Unclaimed Frontier"),
+                "real_world_lore": f"{_site.get('preHistory', '')} Geology: {_site.get('geology', 'Unclassified')}. Collar ASL: {_site.get('collarAsl', 0)} ft, Bottom ASL: {_site.get('bottomAsl', 0)} ft.",
+                "system_merge_lore": _site.get("multiScanFindings", _site.get("postName", "")),
+                "special_mechanics": f"Vertical datum: {_site.get('verticalDatum', 'surface')}. Hydrostatic pressure: {_site.get('hydrostaticPsi', 0.0)} PSI (Submerged: {_site.get('submerged', False)}).",
+                "ambient_effects": [f"Vertical Datum: {_site.get('verticalDatum', 'surface').upper()}", f"Sector: {_site.get('sector', 'CORE')}"],
+                "monsters": [m.strip() for m in _site.get("monsterEcology", "").split(",") if m.strip()],
+                "boss": _site.get("boss"),
+                "resources": [r.strip() for r in _site.get("harvestableResources", "").split(",") if r.strip()],
+                "signature_grafts": [g.strip() for g in _site.get("golemGrafts", "").split(",") if g.strip()],
+                "stationed_companions": [],
+                "aliases": [
+                    _sid,
+                    _site.get("preName", "").lower(),
+                    _site.get("postName", "").lower()
+                ],
+                "origin": "new_168",
+                "source_dataset": "new_locations_168.json"
+            }
+    except Exception as _e:
+        pass
 
 # Enrich each zone entry with dispersed D&D / Pathfinder / Fantasy Series races, monsters & grafts
 try:

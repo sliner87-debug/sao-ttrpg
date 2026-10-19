@@ -444,6 +444,17 @@ def harvest_all_expansion_sectors():
     with open(manifest_file, "w", encoding="utf-8") as f:
         json.dump(manifest_updates, f, indent=2)
 
+    # Ensure all 25 plates are composited with standard 2000x1560 cartographic template
+    try:
+        from generate_sector_plates import generate_all_group_b_plates
+        generate_all_group_b_plates()
+    except ImportError:
+        try:
+            from sao_ttrpg.scripts.generate_sector_plates import generate_all_group_b_plates
+            generate_all_group_b_plates()
+        except Exception as e:
+            print(f"[INFO] generate_sector_plates hook: {e}")
+
     print(f"\n[COMPLETE] Successfully generated all 25 plates for the 20-50 mile expansion!")
     print(f"[SAVED] Metadata saved to {manifest_file}")
 

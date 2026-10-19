@@ -61,7 +61,7 @@ SECTOR_CONFIG = {
             "north": 41.8000,
             "south": 40.3000,
             "east": -74.5000,
-            "west": -76.5000
+            "west": -77.0500
         },
         "description": "Lehigh River Gorge, Poconos, Scranton, Wilkes-Barre, and PA Anthracite Coal Belt."
     },
@@ -207,7 +207,7 @@ MASTER_LAYER_TYPES = {
 }
 
 def resolve_source_file(filename: str) -> Path | None:
-    for d in [SOURCE_IMAGERY_DIR, FALLBACK_SOURCE_DIR]:
+    for d in [SOURCE_IMAGERY_DIR, FALLBACK_SOURCE_DIR, TARGET_RAW_DIR]:
         candidate = d / filename
         if candidate.exists():
             return candidate
@@ -238,9 +238,10 @@ def ingest_maps(optimize_size: int = 1024):
             opt_target = s_opt_dir / f"{l_key}.jpg"
 
             if src_file and src_file.exists():
-                print(f"[COPY] {filename} -> raw/")
-                if not raw_target.exists() or raw_target.stat().st_size != src_file.stat().st_size:
-                    shutil.copy2(src_file, raw_target)
+                if src_file.resolve() != raw_target.resolve():
+                    print(f"[COPY] {filename} -> raw/")
+                    if not raw_target.exists() or raw_target.stat().st_size != src_file.stat().st_size:
+                        shutil.copy2(src_file, raw_target)
                 
                 # Create web-optimized version for instant Streamlit rendering
                 print(f"[OPTIMIZE] Generating {opt_target.name} ({optimize_size}x{optimize_size})...")
