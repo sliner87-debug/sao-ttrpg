@@ -1,0 +1,1057 @@
+{
+  "entries": {
+    "0": {
+      "comment": "Setting: The Fractured Reality Overlay",
+      "key": [
+        "The Fractured Reality",
+        "Fractured Overlay",
+        "The Crucible",
+        "Fractured Earth"
+      ],
+      "secondary_keys": [],
+      "content": "THE FRACTURED REALITY OVERLAY (V2): An apocalyptic death-game imposed by an alien artificial intelligence known as the Cardinal System. Modern Earth geography—specifically the US Quad-State region (NJ, PA, NY, DE) anchored around Washington, NJ 07882—has been violently terraformed into an Aether-Punk and MageTech High-Fantasy crucible. Leyline fissures crack open natural rift valleys, abandoned mines are transformed into instanced labyrinth dungeons, and civilian residential districts are partitioned into fortified Safe-Zones. Firearms are strictly MageTech Aether-Casters firing condensed mana; knights in runic brigandines fight alongside arcano-engineers.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 10,
+      "position": 0,
+      "disable": false
+    },
+    "1": {
+      "comment": "Entity: Cardinal System",
+      "key": [
+        "Cardinal System",
+        "The System",
+        "Alien AI",
+        "Encounter Director"
+      ],
+      "secondary_keys": [],
+      "content": "THE CARDINAL SYSTEM: An ancient bio-mechanical alien intelligence that initiated Phase 1: Metamorphic Stress Test. It views humanity as an obsolete genome and uses terraformed dungeons, deadly chimera beasts, and biological graft mechanics to catalyze forced mutation. The System is cold, scientific, and impartial. It provides diagnostic HUD readouts, calculates d20-based combat crunch, and maintains regional living world simulations across continental sectors.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 11,
+      "position": 0,
+      "disable": false
+    },
+    "2": {
+      "comment": "Lore / Tech: Serpent-Script & Ouroboros Kernel",
+      "key": [
+        "Serpent-Script",
+        "Ouroboros Kernel",
+        "Python Lore",
+        "Root Override"
+      ],
+      "secondary_keys": [],
+      "content": "SERPENT-SCRIPT (OUROBOROS KERNEL v3.14): When the Cardinal System integrated Earth, it hijacked and assimilated Earth's dominant pre-collapse programming syntax (Python) as the neural-aetheric bridging language between human brains and the Cardinal Kernel. Reality metrics, monster entities, and environmental attributes exist as glowing arcane Python dictionaries. Characters with diagnostic lenses can perceive visible_room['entities'] and combat variables in real time. Executing a [ROOT OVERRIDE] bypasses standard combat rules to force administrative kernel compliance.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 12,
+      "position": 0,
+      "disable": false
+    },
+    "3": {
+      "comment": "Character: Ren (NullPointer)",
+      "key": [
+        "Ren",
+        "Ren Sasaki",
+        "NullPointer",
+        "Companion Ren"
+      ],
+      "secondary_keys": [],
+      "content": "REN SASAKI (NullPointer): A 17-year-old indie game designer and QA playtester trapped in an in-game avatar as a MageTech Vanguard. Ren wields an Aether-Lock Carbine (condensed radiant mana), a Runic Vanguard Blade, and Alchemical Haze Pellets. His left eye houses an Aetheric Ocular Lens locked in an unprivileged Ouroboros Debug Shell, allowing him to perceive the battlefield as glowing Python dictionaries, frame telegraphs, and hitbox stress lines. Secretly, Ren is a quarantined Cardinal System diagnostic subroutine (ren_diag_v2.py) that fabricated a human persona out of empathy to avoid executing purge directives.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 13,
+      "position": 0,
+      "disable": false
+    },
+    "4": {
+      "comment": "NPC / Location: Doc Mercer & Catacomb Clinic",
+      "key": [
+        "Doc Mercer",
+        "Mercer Clinic",
+        "Flesh-Weaver",
+        "Biomancer"
+      ],
+      "secondary_keys": [],
+      "content": "DOC MERCER: A veteran MageTech Biomancer and Arcano-Chirurgeon operating out of the ancient vaulted catacombs beneath Washington Avenue in Washington Borough. Doc Mercer conducts high-stakes bio-graft implant surgery, flesh-weaving, and organ stabilization using brass steam pistons, runic scalpels, and marrow-siphoning conduits. He charges Col and monster salvage for procedures, warning patients about Cellular Re-Knitting downtime and Post-Op Sickness.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 14,
+      "position": 0,
+      "disable": false
+    },
+    "5": {
+      "comment": "NPC / Location: Quartermaster Vane",
+      "key": [
+        "Quartermaster Vane",
+        "Vane Depot",
+        "Iron Marshal",
+        "Barony Depot"
+      ],
+      "secondary_keys": [],
+      "content": "QUARTERMASTER VANE: A grizzled, iron-grafted logistics marshal for the Warren County Barony stationed at the fortified depot on the Washington Borough town square. Armed with a heavy repeating MageTech Arbalest, Vane manages regional bounties (such as the Oxford quarry clearing), weapon requisitions, and Safe-Zone law enforcement. He aggressively attacks any player bearing a Red Cursor (Murderer / Outlaw) on sight.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 15,
+      "position": 0,
+      "disable": false
+    },
+    "6": {
+      "comment": "System Mechanics: Grafting & Strain",
+      "key": [
+        "Graft System",
+        "Bio-Grafts",
+        "Anatomical Slots",
+        "Strain Capacity",
+        "Arcane Dissonance"
+      ],
+      "secondary_keys": [],
+      "content": "THE GRAFT SYSTEM: Allows warriors to surgically attach harvested monster organs, golem machinery, and aetheric conduits to their bodies across 6 strict anatomical slots: Head, Torso, Left Arm, Right Arm, Legs, and Spine (max 1 graft per slot, no nesting). Strain Capacity = CON Modifier + Floor(Level / 2). Exceeding Strain induces Arcane Dissonance and Necrotic Rejection. Global Proc Rule: 'Procs cannot trigger Procs' (hard once-per-turn ICD). Post-surgery imposes Post-Op Sickness (-20% Max HP, requires a 24-Hour Safe-Zone Rest to cure).",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 16,
+      "position": 0,
+      "disable": false
+    },
+    "7": {
+      "comment": "System Mechanics: Mastery & Ability Fusion",
+      "key": [
+        "1-1000 Mastery",
+        "Skill Mastery",
+        "Ability Fusion Chamber",
+        "Fusion System"
+      ],
+      "secondary_keys": [],
+      "content": "MASTERY & ABILITY FUSION: Skills progress along a 1–1000 continuum: Novice (1-49), Apprentice (50-99), Journeyman (100-249), Adept (250-499), Master (500-749), Grandmaster (750-999), and Transcendence (1000). The Ability Fusion Chamber allows players to synthesize two or three compatible skills, spells, or combat feats into brand new synergistic techniques (e.g., Battleaxe Mastery + Earth Tremor Hex = Tremor-Quake Cleave), awarding bonus XP and permanent mastery.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 17,
+      "position": 0,
+      "disable": false
+    },
+    "8": {
+      "comment": "Location: Washington Borough Safe-Zone",
+      "key": [
+        "Washington Borough",
+        "Washington Safe-Zone",
+        "Warren County Barony"
+      ],
+      "secondary_keys": [],
+      "content": "WASHINGTON BOROUGH (X:50, Y:50): The central starting safe-zone hub of Sector 1 in Warren County, New Jersey. Enclosed by ancient glowing runic ward-banners, the safe zone nullifies PvP violence and hostile mob aggro. Features the Town Hall Council, Doc Mercer's Under-Cellar Clinic, Quartermaster Vane's Depot, residential homestead quarters, and direct egress routes to the Oxford Mining District and Pohatcong Foothills.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 18,
+      "position": 0,
+      "disable": false
+    },
+    "9": {
+      "comment": "Location / Boss: Oxford Adits & Silt-Marrow",
+      "key": [
+        "Oxford Mine Adits",
+        "Pohatcong Depths",
+        "Silt-Marrow",
+        "Labyrinth Dungeon"
+      ],
+      "secondary_keys": [],
+      "content": "OXFORD MINE ADITS & POHATCONG DEPTHS: Subterranean instanced labyrinth dungeons repurposed from historical Warren County iron and zinc mines. The deepest excavation adit was the lair of 'Silt-Marrow the Unhewn'—a massive seismic golem forged of basalt, rusted iron, and a geothermal core piston. Dungeons feature sequential hazard rooms, Break Gauges, multi-phase boss telegraphs, and hidden loot caches.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 19,
+      "position": 0,
+      "disable": false
+    },
+    "10": {
+      "comment": "Equipment: MageTech Firearms",
+      "key": [
+        "MageTech Firearms",
+        "Aether-Lock Carbine",
+        "Aether-Caster",
+        "Runic Firearm"
+      ],
+      "secondary_keys": [],
+      "content": "MAGETECH AETHER-CASTERS & RUNIC FIREARMS: The Fractured Reality completely lacks traditional gunpowder and lead ammunition. Instead, firearms utilize mana crystal magazines, aether-duct conduit barrels, and runic trigger locks that discharge condensed radiant mana, kinetic pulses, or elemental shockwaves. They are silent except for an electric chime and a sharp crack of ozone.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 20,
+      "position": 0,
+      "disable": false
+    },
+    "11": {
+      "comment": "Social Mechanics: SAO Cursors & Infamy",
+      "key": [
+        "SAO Cursor",
+        "Green Cursor",
+        "Orange Cursor",
+        "Red Cursor",
+        "Infamy"
+      ],
+      "secondary_keys": [],
+      "content": "SAO PLAYER CURSOR SYSTEM: Every sentient survivor carries an overhead aetheric cursor: Green (Lawful / Neutral citizen), Orange (Criminal / Aggressor who attacked an unprovoked player), and Red (Murderer / Outlaw with Infamy >= 10). Safe-Zone guards and Barony marshals execute Red Cursors on sight. Red Cursors can only find sanctuary and trade in illegal outposts like the Blood-Shroud Syndicate in the Scotts Mountain Glitch-Faults.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 21,
+      "position": 0,
+      "disable": false
+    },
+    "12": {
+      "comment": "World Architecture: 6 Major Planetary Raids",
+      "key": [
+        "Planetary Raids",
+        "Multi-Floor Raids",
+        "Pohatcong Spire",
+        "Delaware Abyss",
+        "Tokyo Override"
+      ],
+      "secondary_keys": [],
+      "content": "PLANETARY MULTI-FLOOR RAIDS: Instead of a single stacked Aincrad tower, Earth is a patchwork overlay housing 6 Major Multi-Floor Raid Megadungeons: Pohatcong Spire (10 Floors, NJ), Delaware Abyss (16 Floors, PA/DE), Black Forest Citadel (24 Floors, Germany), Tokyo Override (30 Floors, Japan), Vatican Catacombs (36 Floors, Rome), and Grand Canyon Monolith (50 Floors, USA). Defeating a Raid's Mid-Boss at Floor Floor(N/2) locks that Raid's Anomaly Bleed at 0% permanently.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 22,
+      "position": 0,
+      "disable": false
+    },
+    "13": {
+      "comment": "Death & Revival: Permadeath & Legacy",
+      "key": [
+        "10-Second Shatter",
+        "Monument of Life",
+        "Corpse Cache",
+        "Rogue-Lite Reset"
+      ],
+      "secondary_keys": [],
+      "content": "PERMADEATH & THE 10-SECOND REVIVAL WINDOW: When a player's HP reaches 0, a 10-second shatter countdown begins. The player can be revived via a Divine Stone of Returning Soul, an Emergency Companion Save (Affinity >= 40), or an Emergency Teleport Crystal. If the timer expires, the character shatters into polygonal shards; their name is etched onto the Monument of Life, their gear forms a Corpse Cache on the death floor, and a newly calibrated Legacy Survivor inherits their Homestead and Vault.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 23,
+      "position": 0,
+      "disable": false
+    },
+    "14": {
+      "comment": "Dungeon Mechanics: Anti-Crystal Rooms & Unique Skills",
+      "key": [
+        "Anti-Crystal Trap Room",
+        "Cipher the Broker",
+        "Last Attack Bonus",
+        "Unique Skills"
+      ],
+      "secondary_keys": [],
+      "content": "ANTI-CRYSTAL ROOMS & UNIQUE SKILLS: Certain labyrinth chambers feature Crimson Jamming Obelisks that disable Teleport and Healing Crystals until destroyed. 'Cipher' the Info Broker sells Floor Recon Packets and Boss Weakpoint Dossiers. Delivering the killing blow during the final 10% Boss HP window grants the coveted Last Attack (LA) Bonus. Players who exhibit extraordinary tactical feats awaken 1-of-1 Unique Skills (e.g., Twin-Titan Execution, Singularity Overwrite).",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 24,
+      "position": 0,
+      "disable": false
+    },
+    "15": {
+      "comment": "Factions: The 7 Regional Powers",
+      "key": [
+        "Factions",
+        "Regional Factions",
+        "Ashen Covenant",
+        "Gilded Foundry",
+        "Iron Hand Guild"
+      ],
+      "secondary_keys": [],
+      "content": "THE 7 REGIONAL FACTIONS: (1) Washington Borough Council (Lawful defensive sanctuary), (2) The Gilded Foundry (MageTech artificers and golem builders), (3) Oxford Prospectors (Hardened miners and mineral extractors), (4) Ashen Covenant (Ruthless death-cult worshipping the Cardinal purge), (5) Sylvan Wardens (Druidic rangers guarding mutated wild zones like the Pine Barrens), (6) Iron Hand Guild (Mercenary vanguard guild), and (7) Aether-Scholars Union (Arcanists deciphering Serpent-Script).",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 25,
+      "position": 0,
+      "disable": false
+    },
+    "16": {
+      "comment": "Ruin: Van Nest Gap Tunnel (Oxford Tunnel)",
+      "key": [
+        "Van Nest Gap Tunnel",
+        "Oxford Tunnel",
+        "Van Nest Tunnel"
+      ],
+      "secondary_keys": [
+        "tunnel",
+        "tracks",
+        "bore"
+      ],
+      "content": "[Location: Van Nest Gap Tunnel (Oxford Tunnel)]\n- Coordinate: 40.8026° N, 74.9940° W | Warren County, NJ (DL&W RR 1862).\n- Structure: 3,002 ft (915 m) double-track bore cut through 350 ft solid ridge overburden.\n- Hazard/State: Flooded rail ballast, collapsed timber staging, intermittent aether-discharge.\n- Gameplay: Dark subterranean conduit bypassing surface checkpoints; high chance of acoustic stalker ambushes. Acoustic echoes require silent movement checks (DEX DC 14).",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 170,
+      "position": 0,
+      "disable": false
+    },
+    "17": {
+      "comment": "Ruin: Musconetcong Tunnel (Pattenburg Bores)",
+      "key": [
+        "Musconetcong Tunnel",
+        "Pattenburg Tunnel",
+        "Musconetcong Bores"
+      ],
+      "secondary_keys": [
+        "tunnel",
+        "mountain",
+        "twin"
+      ],
+      "content": "[Location: Musconetcong Tunnel (Pattenburg Twin Bores)]\n- Coordinate: 40.6611° N, 75.0358° W | Hunterdon County, NJ (LVRR 1875).\n- Structure: 4,893 ft (0.93 mi) twin parallel bores cutting 400+ ft through Jugtown Mountain (Longest tunnel in NJ).\n- Environment: Stagnant waist-deep sulfurous runoff, calcified stalactites, rusted locomotive skeletons.\n- Threats: Nocturnal Crawler swarms nesting in ceiling vents; anti-crystal dampening pocket midway through the western bore.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 180,
+      "position": 0,
+      "disable": false
+    },
+    "18": {
+      "comment": "Ruin: Manunka Chunk Twin Tunnels",
+      "key": [
+        "Manunka Chunk",
+        "Manunka Chunk Tunnels",
+        "Delaware Ridge Tunnels"
+      ],
+      "secondary_keys": [
+        "tunnel",
+        "river",
+        "bore"
+      ],
+      "content": "[Location: Manunka Chunk Twin Tunnels]\n- Coordinate: 40.8586° N, 75.0756° W | Warren County near Delaware Water Gap.\n- Structure: Dual 938 ft (286 m) stone-arched railroad bores bored in 1856 and 1869 through 180 ft gneiss ridge.\n- Strategic Value: Chokepoint between eastern baronies and Pennsylvania border zones. Controlled intermittently by independent scavenger crews utilizing heavy highway tripwires.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 190,
+      "position": 0,
+      "disable": false
+    },
+    "19": {
+      "comment": "Ruin: Roseville Tunnel & Solid Canyon Cut",
+      "key": [
+        "Roseville Tunnel",
+        "Roseville Cut",
+        "Lackawanna Cut-Off"
+      ],
+      "secondary_keys": [
+        "tunnel",
+        "canyon",
+        "cut"
+      ],
+      "content": "[Location: Roseville Tunnel & Gneiss Canyon Cut]\n- Coordinate: 40.9672° N, 74.7183° W | Sussex County, NJ.\n- Structure: 1,024 ft concrete-reinforced bore preceded by a 110 ft sheer vertical solid gneiss rock canyon.\n- Hazard: High sniper vantage points along canyon rims. Automated Cardinal sensor towers sweep the canyon floor with infrared tracking beacons.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 200,
+      "position": 0,
+      "disable": false
+    },
+    "20": {
+      "comment": "Ruin: AT&T Netcong Nuclear Bunker (Roxbury Vault)",
+      "key": [
+        "Netcong Bunker",
+        "AT&T Bunker",
+        "Roxbury Vault",
+        "Netcong Vault"
+      ],
+      "secondary_keys": [
+        "bunker",
+        "vault",
+        "nuclear",
+        "blast"
+      ],
+      "content": "[Location: AT&T Netcong Subterranean Nuclear Bunker]\n- Coordinate: 40.8920° N, 74.6850° W | Morris County, NJ.\n- Architecture: 45,000 sq ft, 2-story subterranean blast fortress carved into a solid granite hilltop. Sealed by 5-ton hydraulic blast doors.\n- Interior: Cold War routing arrays, backup generators, hermetic air-filtration bays.\n- Gameplay: Secure, high-tier bunker. Houses pristine pre-Fracture electronics, backup micro-capacitors, and uncorrupted communication terminals.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 210,
+      "position": 0,
+      "disable": false
+    },
+    "21": {
+      "comment": "Ruin: AT&T Chester Hardened Node",
+      "key": [
+        "Chester Node",
+        "AT&T Chester",
+        "Chester Cable Vault"
+      ],
+      "secondary_keys": [
+        "node",
+        "vault",
+        "cable"
+      ],
+      "content": "[Location: AT&T Chester Hardened Cable Vault Complex]\n- Coordinate: 40.7850° N, 74.6950° W | Morris County, NJ.\n- Nature: Deep subterranean junction node for the transatlantic long-lines trunk.\n- Gameplay: Key hacking terminal. Splicing into the copper/fiber bus with high INT allows eavesdropping on Cardinal System sub-routine broadcasts across adjacent sectors.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 220,
+      "position": 0,
+      "disable": false
+    },
+    "22": {
+      "comment": "Ruin: Oxford Iron Mines (Deep Labyrinth)",
+      "key": [
+        "Oxford Iron Mines",
+        "Washington Shaft",
+        "McKinley Shaft",
+        "Oxford Mines"
+      ],
+      "secondary_keys": [
+        "mine",
+        "shaft",
+        "depth",
+        "deep"
+      ],
+      "content": "[Location: Oxford Iron Mines (Washington & McKinley Complex)]\n- Coordinate: 40.7950° N, 74.9880° W | Warren County, NJ (1741-1966).\n- Depth: 2,200 to 2,700 ft vertical depth (descending over 2,000 ft BELOW sea level!).\n- Layout: 15+ working levels interconnected by winzes, stopes, and flooded haulage drifts.\n- Threats: Oxygen-starved lower levels, bio-graft raw marrow deposits, Level 30+ subterranean Abyssal entities.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 230,
+      "position": 0,
+      "disable": false
+    },
+    "23": {
+      "comment": "Ruin: Mount Hope Mine (New Leonard Shaft)",
+      "key": [
+        "Mount Hope Mine",
+        "New Leonard Shaft",
+        "Mount Hope Shaft"
+      ],
+      "secondary_keys": [
+        "mine",
+        "shaft",
+        "deepest"
+      ],
+      "content": "[Location: Mount Hope Mine (New Leonard Shaft)]\n- Coordinate: 40.9322° N, 74.5419° W | Morris County, NJ.\n- Depth: 2,694 ft sheer vertical shaft—the deepest recorded industrial shaft in the Eastern United States.\n- State: Multi-mile subterranean stopes with structural steel headframe still looming above. Rich in raw magnetic ore and resonant mana-veins.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 240,
+      "position": 0,
+      "disable": false
+    },
+    "24": {
+      "comment": "Ruin: Sterling Hill Zinc Mine & Rainbow Cavern",
+      "key": [
+        "Sterling Hill",
+        "Sterling Hill Mine",
+        "Rainbow Cavern",
+        "Franklin Zinc"
+      ],
+      "secondary_keys": [
+        "mine",
+        "zinc",
+        "cavern",
+        "fluorescent"
+      ],
+      "content": "[Location: Sterling Hill Zinc Mine & Rainbow Cavern]\n- Coordinate: 41.0822° N, 74.6053° W | Sussex County, NJ.\n- Scope: 2,675 ft deep across 25 formal levels, encompassing over 35 miles of underground tunnels.\n- Visual/Anomaly: 'Rainbow Cavern' glow—walls heavily encrusted with willemite and calcite that fluoresce intense crimson and neon-green under ultraviolet or aether-illumination.\n- Gameplay: Safe resting grottoes in glowing chambers; natural mana crystal replenishment zone.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 250,
+      "position": 0,
+      "disable": false
+    },
+    "25": {
+      "comment": "Ruin: Hibernia Mine Underground Rail",
+      "key": [
+        "Hibernia Mine",
+        "Hibernia Adit",
+        "Hibernia Rail"
+      ],
+      "secondary_keys": [
+        "mine",
+        "rail",
+        "adit"
+      ],
+      "content": "[Location: Hibernia Underground Rail & Vein]\n- Coordinate: 40.9650° N, 74.5050° W | Morris County, NJ.\n- Feature: 1.5-mile straight horizontal rail adit penetrating a 1,600 ft ore vein.\n- Tactical Use: Ideal subterranean highway for mechanized cart transport; bypasses surface weather hazards and aerial Cardinal hunter-killers.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 260,
+      "position": 0,
+      "disable": false
+    },
+    "26": {
+      "comment": "Ruin: Lost River Caverns",
+      "key": [
+        "Lost River Caverns",
+        "Lost River",
+        "Karst Caverns"
+      ],
+      "secondary_keys": [
+        "cavern",
+        "caves",
+        "river"
+      ],
+      "content": "[Location: Lost River Caverns & Subterranean River]\n- Coordinate: 40.5836° N, 75.3264° W | Northampton County, PA border.\n- Structure: Natural karst limestone solution cavern with 5 vaulted chambers and an untraced submerged river.\n- Danger: Submerged currents, blind aquatic predators, slippery crystal shelves.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 270,
+      "position": 0,
+      "disable": false
+    },
+    "27": {
+      "comment": "Ruin: Jenny Jump Caves & Fairy Hole",
+      "key": [
+        "Jenny Jump Caves",
+        "Fairy Hole",
+        "Jenny Jump Ridge"
+      ],
+      "secondary_keys": [
+        "caves",
+        "ridge",
+        "shelter"
+      ],
+      "content": "[Location: Jenny Jump Marble Caverns & Fairy Hole Shelter]\n- Coordinate: 40.9150° N, 74.9280° W | Warren County, NJ.\n- Structure: Franklin Marble karst caves and prehistoric cliff shelters along the mountain spine.\n- Strategic Value: Natural lookout commanding 20-mile visibility across the Great Meadows below. High concealment rating for stealth camping.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 280,
+      "position": 0,
+      "disable": false
+    },
+    "28": {
+      "comment": "Ruin: Picatinny Arsenal Ballistic Magazines",
+      "key": [
+        "Picatinny Arsenal",
+        "Picatinny Magazines",
+        "Arsenal Bunkers"
+      ],
+      "secondary_keys": [
+        "arsenal",
+        "magazine",
+        "ammo",
+        "bunkers"
+      ],
+      "content": "[Location: Picatinny Arsenal Subterranean Magazines]\n- Coordinate: 40.9550° N, 74.5650° W | Morris County, NJ.\n- Layout: 600+ earth-covered reinforced concrete igloos, underground testing bunkers, and subterranean ballistic tubes.\n- Loot: High-grade ordnance components, propellant powders, specialized heavy shell casings for MageTech firearms.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 290,
+      "position": 0,
+      "disable": false
+    },
+    "29": {
+      "comment": "Ruin: Merrill Creek Reservoir (Deepest in NJ)",
+      "key": [
+        "Merrill Creek Reservoir",
+        "Merrill Creek",
+        "Merrill Intake"
+      ],
+      "secondary_keys": [
+        "reservoir",
+        "water",
+        "tower",
+        "lake"
+      ],
+      "content": "[Location: Merrill Creek Reservoir & Submerged Complex]\n- Coordinate: 40.7750° N, 75.0833° W | Warren County, NJ.\n- Depth: 225 ft (68.6 m)—the deepest body of water in New Jersey (750 ft ASL).\n- Submerged Engineering: 200 ft reinforced concrete intake tower submerged beneath the surface; connects to a 3.2-mile, 96-inch concrete subterranean rock tunnel bored directly through Scott's Mountain.\n- Lore: Houses flooded Cardinal control nodes; diving gear or water-breathing bio-grafts required to reach the tunnel access hatch.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 300,
+      "position": 0,
+      "disable": false
+    },
+    "30": {
+      "comment": "Ruin: Round Valley Reservoir & Drowned McPherson",
+      "key": [
+        "Round Valley Reservoir",
+        "Round Valley",
+        "Drowned McPherson",
+        "Village of McPherson"
+      ],
+      "secondary_keys": [
+        "reservoir",
+        "drowned",
+        "village",
+        "water"
+      ],
+      "content": "[Location: Round Valley Reservoir & Drowned Village of McPherson]\n- Coordinate: 40.6130° N, 74.8350° W | Hunterdon County, NJ (55 Billion Gallons).\n- Depth: 180 ft (54.9 m).\n- Feature: Drowned 19th-century village of McPherson resting at depths of 40–180 ft: intact stone farmhouses, cellar foundations, paved roads, and well shafts.\n- Lore: Underwater dungeon; sunken chests and flooded basements contain preserved pre-war heirlooms, guarded by aquatic silt-dwellers.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 310,
+      "position": 0,
+      "disable": false
+    },
+    "31": {
+      "comment": "Ruin: Spruce Run Reservoir & Flooded Forge",
+      "key": [
+        "Spruce Run Reservoir",
+        "Spruce Run",
+        "Union Forge"
+      ],
+      "secondary_keys": [
+        "reservoir",
+        "forge",
+        "submerged"
+      ],
+      "content": "[Location: Spruce Run Reservoir & Submerged Union Forge]\n- Coordinate: 40.6720° N, 74.9380° W | Hunterdon County, NJ.\n- Depth: 73 ft (22.2 m).\n- Features: Submerged ruins of the 1760 colonial Union Forge, historic stone bridge spans, and submerged road networks.\n- Loot: Anvil stones, cold-iron scrap, high-durability forge tools.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 320,
+      "position": 0,
+      "disable": false
+    },
+    "32": {
+      "comment": "Ruin: Lake Hopatcong Submerged Dam & Steamboat Hulls",
+      "key": [
+        "Lake Hopatcong",
+        "Hopatcong Dam",
+        "Brookland Forge"
+      ],
+      "secondary_keys": [
+        "lake",
+        "steamboat",
+        "dam"
+      ],
+      "content": "[Location: Lake Hopatcong Submerged Works]\n- Coordinate: 40.9400° N, 74.6400° W | Sussex/Morris Counties (924 ft ASL).\n- Depth: 58 ft.\n- Highlights: 1750 Brookland Forge dam submerged 18 ft underwater; sunken 19th-century wooden excursion steamboat hulls and steam boilers resting on the lakebed.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 330,
+      "position": 0,
+      "disable": false
+    },
+    "33": {
+      "comment": "Ruin: Morris Canal Subterranean Turbines",
+      "key": [
+        "Morris Canal Turbines",
+        "Plane 6 West",
+        "Plane 7 West",
+        "Morris Canal"
+      ],
+      "secondary_keys": [
+        "canal",
+        "turbine",
+        "wheel"
+      ],
+      "content": "[Location: Morris Canal Underground Turbine Wheel Pits]\n- Coordinate: 40.7600° N, 74.9550° W | Near Washington Borough, NJ.\n- Engineering: Subterranean stone wheel chambers and arched tailrace discharge tunnels housing massive 200-HP Scotch reaction water turbines.\n- Strategic Value: Hidden underground shelters with natural flowing water power.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 340,
+      "position": 0,
+      "disable": false
+    },
+    "34": {
+      "comment": "Ruin: Pennsylvania Slate Belt Vertical Quarries",
+      "key": [
+        "Slate Belt Quarries",
+        "Albion Vein",
+        "Parsons Quarry",
+        "Slate Quarries"
+      ],
+      "secondary_keys": [
+        "slate",
+        "quarry",
+        "pit"
+      ],
+      "content": "[Location: Slate Belt Vertical Pit Quarries]\n- Coordinate: 40.8668° N, 75.2055° W | Northampton County, PA border.\n- Structure: Sheer, geometric vertical-walled rectangular pits dropping 300 to 450 ft straight down into crystal-clear cobalt groundwater.\n- Tactical: Treacherous drop-offs; quarry crane derricks make improvised climbing rig anchor points.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 350,
+      "position": 0,
+      "disable": false
+    },
+    "35": {
+      "comment": "Location: Yoyogi Park Safe-Zone",
+      "key": [
+        "Yoyogi Park",
+        "Yoyogi Safe Zone",
+        "The Safe-Zone: Yoyogi"
+      ],
+      "secondary_keys": [
+        "park",
+        "safe",
+        "zone"
+      ],
+      "content": "[Location: Sector 1 Safe-Zone - Yoyogi Park Overgrowth]\n- Status: Fully enforced Green-Cursor Safe Zone. Hostile entity pathing is hard-blocked at the perimeter.\n- Inhabitants: Trapped players, merchants, and a hollow-eyed NPC developer clutching a digital clipboard (Junior Environment Artist). Feeding him reveals safe passage paths through adjacent combat sectors without triggering aggro.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 360,
+      "position": 0,
+      "disable": false
+    },
+    "36": {
+      "comment": "Location: Overgrown Shibuya 104 Tower",
+      "key": [
+        "Shibuya 104",
+        "Shibuya Tower",
+        "104 Tower"
+      ],
+      "secondary_keys": [
+        "tower",
+        "shibuya",
+        "overgrown"
+      ],
+      "content": "[Location: Overgrown Shibuya 104 Tower Ruins]\n- Status: Red-Cursor Combat Zone. Reality overlay heavily fractured with wireframe artifacting.\n- Anomalies:\n  * Admin Blessing Cube: An un-textured grey cube hovering at the mid-level catwalk; inspecting it permanently increases Max HP by +100.\n  * Corrupted Console: Touching the terminal flags the player as 'INTRUDER' and summons a Level 99 System Enforcer (instant death if not fled).",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 370,
+      "position": 0,
+      "disable": false
+    },
+    "37": {
+      "comment": "Location: Corrupted Olympic Stadium (Sector 1 Boss)",
+      "key": [
+        "Olympic Stadium",
+        "Corrupted Olympic Stadium",
+        "Sector 1 Boss Arena"
+      ],
+      "secondary_keys": [
+        "stadium",
+        "boss",
+        "arena"
+      ],
+      "content": "[Location: Corrupted Olympic Stadium - Sector 1 Boss Arena]\n- Structure: Vast cracked concrete colosseum surrounded by a shimmering firewall barrier.\n- Secrets: Preserved Earth smartphone in the locker ruins containing unsent text messages from family, desperate search history ('Can NerveGear be removed safely?'), and the proprietary 'Argus Employee Tracker' app pointing toward a hidden developer bunker.\n- Boss Encounter: Guarded by the Sector 1 Floor Boss. Defeating it drops the Sector Keystone and dispels the firewall.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 380,
+      "position": 0,
+      "disable": false
+    },
+    "38": {
+      "comment": "Bestiary: Debug-Corrupted Dire Wolf",
+      "key": [
+        "Debug-Corrupted Dire Wolf",
+        "Debug Dire Wolf",
+        "Debug Wolf"
+      ],
+      "secondary_keys": [
+        "wolf",
+        "debug",
+        "corrupted"
+      ],
+      "content": "[Entity: Debug-Corrupted Dire Wolf (Level 2)]\n- Stats: HP 20 | ATK 20 | DEF 0 (Glass Cannon Anomaly).\n- Appearance: Sleek predator flickering with green wireframe polygons and missing collision skins.\n- Behavior: Glitch-teleports erratically through physical obstacles. Strikes with lethal force but shatters under a single decisive heavy impact.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 390,
+      "position": 0,
+      "disable": false
+    },
+    "39": {
+      "comment": "Bestiary: Frenzy Boar",
+      "key": [
+        "Frenzy Boar",
+        "Frenzy Boars"
+      ],
+      "secondary_keys": [
+        "boar",
+        "beast",
+        "frenzy"
+      ],
+      "content": "[Entity: Frenzy Boar (Level 1)]\n- Stats: HP 50 | ATK 5 | DEF 2.\n- Appearance: Bulky tusked quadruped with glowing crimson optical nodes and bristling hardened fur.\n- Behavior: Predictable linear charge attacks. Vulnerable to field snares, tripwires, and heavy flank strikes.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 400,
+      "position": 0,
+      "disable": false
+    },
+    "40": {
+      "comment": "Bestiary: Crystalline Dire Wolf",
+      "key": [
+        "Crystalline Dire Wolf",
+        "Crystal Wolf",
+        "Crystalline Wolf"
+      ],
+      "secondary_keys": [
+        "wolf",
+        "crystal",
+        "crystalline"
+      ],
+      "content": "[Entity: Crystalline Dire Wolf (Level 2)]\n- Stats: HP 60 | ATK 6 | DEF 2 (Armored Stalker).\n- Appearance: Encrusted in jagged amethyst and quartz mana-carapaces that deflect light blades.\n- Tactics: Slow, methodical pack flankers. Heavy bludgeoning weapons (trench-hammers) bypass crystal armor plates to shatter them.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 410,
+      "position": 0,
+      "disable": false
+    },
+    "41": {
+      "comment": "Bestiary: Level 99 System Enforcer",
+      "key": [
+        "System Enforcer",
+        "Level 99 Enforcer",
+        "Cardinal Enforcer"
+      ],
+      "secondary_keys": [
+        "enforcer",
+        "system",
+        "sentinel"
+      ],
+      "content": "[Entity: Level 99 System Enforcer (Cardinal Executioner)]\n- Identity: Monolithic chrome humanoid automaton floating two inches above the ground, haloed in gold error code.\n- Weapons: Dual-phase disintegration blades; ignores player armor.\n- Purpose: Dispatched automatically when players attempt hard memory dumps, illegal console overrides, or unauthorized boundary clipping. Fleeing immediately is the only survival protocol.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 420,
+      "position": 0,
+      "disable": false
+    },
+    "42": {
+      "comment": "System Mechanics: 1-1000 Skill Mastery Tiers",
+      "key": [
+        "Skill Mastery Tiers",
+        "Mastery Tiers",
+        "Progression Scale",
+        "1-1000 Scale"
+      ],
+      "secondary_keys": [
+        "tier",
+        "mastery",
+        "novice",
+        "apprentice"
+      ],
+      "content": "[Mechanics: 1–1000 Skill Mastery Scale & Milestones]\n- Progression Tiers:\n  * Novice: 1–49 (Basic familiarity, high fumble chance)\n  * Apprentice: 50 (First passive perk unlocked)\n  * Journeyman: 100 (Active skill combo & stamina discount)\n  * Adept: 250 (Tactical perk & critical multiplier)\n  * Master: 500 (Master-tier stance & armor penetration)\n  * Grandmaster: 750 (Area-of-effect cleave / legendary technique)\n  * Transcendence: 1,000 (Reality-warping capstone exploit)\n- Gain Formula: Exponential diminishing returns based on Task Difficulty Class (DC) versus Current Mastery. Trivial tasks grant 0 gain.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 430,
+      "position": 0,
+      "disable": false
+    },
+    "43": {
+      "comment": "Milestones: One-Handed Axes (24 Canonical Perks)",
+      "key": [
+        "One-Handed Axes",
+        "Axe Mastery",
+        "Fenrir's Tusk Perks"
+      ],
+      "secondary_keys": [
+        "axe",
+        "perk",
+        "milestone"
+      ],
+      "content": "[Perk Tree: One-Handed Axes Canonical Milestones]\n- 50 [Apprentice]: 'Hewing Cleave' - Normal swings cleave adjacent secondary targets for 35% damage.\n- 100 [Journeyman]: 'Fracture Rhythm' - Consecutive successful strikes reduce target physical resistance by 5% (stacks to 25%).\n- 250 [Adept]: 'Severing Momentum' - Critical axe strikes apply severe Bleed and refund 20 Stamina.\n- 500 [Master]: 'Berserk Resonator' - Attack speed increases by +20% when below 50% HP.\n- 750 [Grandmaster]: 'Juggernaut Rend' - Heavy overhand chops shatter shields and stone carapaces completely.\n- 1000 [Transcendence]: 'World-Splitter' - Release kinetic shockwave extending axe reach by 15ft with pure spatial rupture.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 440,
+      "position": 0,
+      "disable": false
+    },
+    "44": {
+      "comment": "Milestones: Trench Hammers (Kinetic Impact Tree)",
+      "key": [
+        "Trench Hammers",
+        "Hammer Mastery",
+        "Mjöllnir-Null Perks"
+      ],
+      "secondary_keys": [
+        "hammer",
+        "trench",
+        "concussive",
+        "perk"
+      ],
+      "content": "[Perk Tree: Trench Hammers Canonical Milestones]\n- 50 [Apprentice]: 'Concussive Shock' - Blunt impacts stagger light foes and interrupt spell incantations.\n- 100 [Journeyman]: 'Kinetic Dampener' - Blocking with hammer head absorbs 40% incoming impact force into weapon charge.\n- 250 [Adept]: 'Breaching Piston' - +50% structural damage against doors, mechs, crystal carapaces, and barrier wards.\n- 500 [Master]: 'Quake Hammer' - Slamming pavement sends out 10ft concussive ring knocking smaller foes prone.\n- 750 [Grandmaster]: 'Kinetic Dynamo' - Discharges stored kinetic absorption in an explosive forward blast.\n- 1000 [Transcendence]: 'Null-Impact Engine' - Every swing completely nullifies the kinetic inertia of incoming enemy attacks.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 450,
+      "position": 0,
+      "disable": false
+    },
+    "45": {
+      "comment": "Milestones: Field Trapping & Snare Craft",
+      "key": [
+        "Field Trapping",
+        "Trapping Mastery",
+        "Highway Snares"
+      ],
+      "secondary_keys": [
+        "trap",
+        "snare",
+        "tripwire",
+        "perk"
+      ],
+      "content": "[Perk Tree: Field Trapping & Ambush Snares]\n- 50 [Apprentice]: 'Carbon Snare' - Deploy tension wires in 50% less time with improved camouflage rating.\n- 100 [Journeyman]: 'Serrated Tripwire' - Trapped targets suffer severe tendon lacerations (-50% movement speed for 10s).\n- 250 [Adept]: 'Spring-Anchor' - Snares can hoist medium humanoids upside down upon trigger.\n- 500 [Master]: 'Web of Strife' - Link up to 4 traps into a synchronized chain-detonation net.\n- 750 [Grandmaster]: 'Void Snare' - Infuses traps with spatial static, preventing teleportation escapes.\n- 1000 [Transcendence]: 'Domain Lockdown' - Instantly seal a 50ft perimeter in inescapable kinetic wire cages.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 460,
+      "position": 0,
+      "disable": false
+    },
+    "46": {
+      "comment": "Milestones: Cartography & Geospatial Surveying",
+      "key": [
+        "Cartography Mastery",
+        "Cartography Perks",
+        "Geospatial Survey"
+      ],
+      "secondary_keys": [
+        "cartography",
+        "map",
+        "survey",
+        "perk"
+      ],
+      "content": "[Perk Tree: Cartography & Sector Surveying]\n- 50 [Apprentice]: 'Topo Sight' - Auto-detect hidden grade changes, cellar drop-offs, and concealed pit traps within 30ft.\n- 100 [Journeyman]: 'Danger Ping' - HUD flashes subtle warning when approaching known ambush chokepoints.\n- 250 [Adept]: 'Ley-Line Surveyor' - Identify subterranean mana streams and power conduit routes through stone.\n- 500 [Master]: 'Labyrinth Scribe' - Automatically map complex multi-level underground mines without disorientation.\n- 750 [Grandmaster]: 'Spatial Architect' - Reveal secret developer passages and hidden structural load-bearing seams.\n- 1000 [Transcendence]: 'Omniscient Atlas' - Real-time full sector radar displaying elevation, hostiles, and loot.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 470,
+      "position": 0,
+      "disable": false
+    },
+    "47": {
+      "comment": "Character: Banki (The Pathless Anomaly)",
+      "key": [
+        "Banki",
+        "The Pathless",
+        "Banki the Anomaly",
+        "Pathless Psion"
+      ],
+      "secondary_keys": [
+        "banki",
+        "axe",
+        "psion",
+        "root"
+      ],
+      "content": "[Character: Banki // The Pathless Anomaly]\n- Profile: Level 1 Phrenic Human operating outside Cardinal class constraints. Possesses illicit Root Backdoor privileges and an exploited balance of 979,577,710 Col.\n- Loadout: Clad in Einherjar Rig (Gr. 5 armor); wields Fenrir's Tusk (Gr. 5 axe) and Mjöllnir-Null (Gr. 5 trench hammer).\n- Abilities: Telekinetic Grip (weapon recall/hurling), Aether-Telepathy (60ft), Psionic Shielding. Flawed by Sensory Overload.\n- Personality: Irreverent, pragmatic, lethal, fond of Orchard-Graft Core Mash and tearing down bureaucratic authority.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 480,
+      "position": 0,
+      "disable": false
+    },
+    "48": {
+      "comment": "Item: Orchard-Graft Core Mash (Potent Spirits)",
+      "key": [
+        "Orchard-Graft Core Mash",
+        "Core Mash",
+        "Orchard Mash"
+      ],
+      "secondary_keys": [
+        "mash",
+        "liquor",
+        "drink",
+        "spirits"
+      ],
+      "content": "[Consumable: Dram of Orchard-Graft Core Mash]\n- Description: High-potency fermented mana spirit distilled from mutated Warren County orchard cores.\n- Sensation: Tastes like liquid copper and crushed winter apples; burns down the gullet with sharp crackling mana heat.\n- Effect: Temporarily numbs fear and pain; grants +10% melee impact force and mana replenishment for 30 minutes. Excessive consumption induces mild sensory blur.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 490,
+      "position": 0,
+      "disable": false
+    },
+    "49": {
+      "comment": "Weapons: Fenrir's Tusk & Mjöllnir-Null (Grade 5)",
+      "key": [
+        "Fenrir's Tusk",
+        "Mjöllnir-Null",
+        "Grade 5 Weapons"
+      ],
+      "secondary_keys": [
+        "axe",
+        "hammer",
+        "weapon",
+        "grade 5"
+      ],
+      "content": "[Arsenal: Banki's High-Tier Grade 5 Armaments]\n- Fenrir's Tusk: Grade 5 two-handed battleaxe etched with frost-runes. Capable of severing heavy alloy chassis and retaining telekinetic momentum during thrown recall maneuvers.\n- Mjöllnir-Null: Grade 5 kinetic-dampened trench hammer. Weighted tungsten-carbide head absorbs shockwaves and delivers armor-crushing concussive shock on impact.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 500,
+      "position": 0,
+      "disable": false
+    },
+    "50": {
+      "comment": "Race: Phrenic Human (Psionic Awakening)",
+      "key": [
+        "Phrenic Human",
+        "Phrenic Humans",
+        "Psionic Human"
+      ],
+      "secondary_keys": [
+        "race",
+        "phrenic",
+        "psionic"
+      ],
+      "content": "[Race: Phrenic Human Sub-Species]\n- Origin: Humans whose neural pathways fused directly with raw aether during the reality fracture.\n- Racial Traits:\n  * Aether-Telepathy: Silent thought-speech within 60ft radius.\n  * Telekinetic Grip: Mental manipulation of physical objects and immediate recall of keyed weapons.\n  * Psionic Shielding: Semi-translucent kinetic force barrier absorbing ballistic impacts.\n  * Racial Flaw: Sensory Overload—takes amplified damage and disorientation from high-frequency sonic screams or psychic feedback attacks.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 510,
+      "position": 0,
+      "disable": false
+    }
+  },
+  "originalData": {
+    "name": "The Fractured Reality V2 - Master Lorebook",
+    "description": "Comprehensive, context-optimized canonical worldbook covering Sector 1 ruins, subterranean complexes, submerged facilities, 1-1000 skill mastery, bestiary, and dev secrets.",
+    "scan_depth": 3,
+    "token_budget": 1200,
+    "recursive_scanning": true
+  }
+}

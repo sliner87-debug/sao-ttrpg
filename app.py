@@ -19,6 +19,7 @@ import backend.character_generator as cg
 import backend.world_atlas as world_atlas
 import backend.bestiary_compendium as bestiary
 import backend.persona_engine as persona_engine
+import backend.sillytavern_engine as st_engine
 import backend.database as db
 import map_engine
 if not hasattr(map_engine, "SECTORS"):
@@ -65,8 +66,8 @@ def _refresh_stale_backend_modules():
             print(f"[HOT-RELOAD] Failed to reload map_engine: {reload_err}", flush=True)
 
     order = ["backend.schemas", "backend.world_atlas", "backend.bestiary_compendium", "backend.mechanics",
-             "backend.character_generator", "backend.persona_engine", "backend.voice_engine",
-             "backend.actor_engine", "backend.auth", "backend.gm_engine", "map_engine"]
+             "backend.sillytavern_engine", "backend.character_generator", "backend.persona_engine",
+             "backend.voice_engine", "backend.actor_engine", "backend.auth", "backend.gm_engine", "map_engine"]
     current = {}
     for mod_name in order:
         mod = sys.modules.get(mod_name)
@@ -3302,6 +3303,335 @@ def render_game_hud():
         else:
             st.caption("Entities directory not found.")
 
+    # --- SILLYTAVERN DIRECTOR, WORLDBOOK & V2 CHARACTER CARD SUITE ---
+    st_cfg = st_engine.ensure_st_settings(player)
+    last_insp = st_cfg.get("last_prompt_inspection", {})
+    wb_trig_cnt = last_insp.get("worldbook_triggered_count", 0)
+    with st.expander(f"🍺 SillyTavern Director & Worldbook Suite ({wb_trig_cnt} Lore Active)", expanded=False):
+        st.caption("Community-beloved SillyTavern controls integrated natively with autonomous SubAgents & deterministic Python math.")
+        st_tab_preset, st_tab_an, st_tab_wb, st_tab_cards = st.tabs([
+            "🎭 Presets",
+            "📝 Author's Note",
+            "📚 Worldbook",
+            "🃏 V2 Cards",
+        ])
+
+        with st_tab_preset:
+            preset_keys = list(st_engine.DEFAULT_NARRATIVE_PRESETS.keys())
+            cur_preset = st_cfg.get("preset_id", "grimdark_sensory")
+            p_idx = preset_keys.index(cur_preset) if cur_preset in preset_keys else 0
+            sel_preset = st.selectbox(
+                "Narrative Style Preset",
+                options=preset_keys,
+                index=p_idx,
+                format_func=lambda k: st_engine.DEFAULT_NARRATIVE_PRESETS[k]["name"],
+                key="st_preset_select",
+            )
+            if sel_preset != cur_preset:
+                p_obj = st_engine.DEFAULT_NARRATIVE_PRESETS[sel_preset]
+                st_cfg["preset_id"] = sel_preset
+                st_cfg["temperature"] = p_obj["temperature"]
+                st_cfg["top_p"] = p_obj["top_p"]
+                st_cfg["max_output_tokens"] = p_obj["max_output_tokens"]
+                st_cfg["authors_note"] = p_obj["default_authors_note"]
+                save_game(player, st.session_state.messages)
+                st.toast(f"Activated preset: {p_obj['name']}", icon="🎭")
+                st.rerun()
+
+            col_s1, col_s2 = st.columns(2)
+            with col_s1:
+                new_temp = st.slider(
+                    "Temperature",
+                    min_value=0.10,
+                    max_value=1.50,
+                    value=float(st_cfg.get("temperature", 0.85)),
+                    step=0.05,
+                    key="st_slider_temp",
+                )
+                st_cfg["temperature"] = new_temp
+            with col_s2:
+                new_top_p = st.slider(
+                    "Top-P",
+                    min_value=0.10,
+                    max_value=1.00,
+                    value=float(st_cfg.get("top_p", 0.95)),
+                    step=0.05,
+                    key="st_slider_top_p",
+                )
+                st_cfg["top_p"] = new_top_p
+
+            st.markdown("##### 🔌 LLM Backend & Sampler Routing")
+            b_mode = st.radio(
+                "Generation Engine",
+                options=["gemini", "openai_compat"],
+                index=0 if st_cfg.get("backend_mode", "gemini") == "gemini" else 1,
+                format_func=lambda x: "☁️ Google Gemini Cloud (Structured + Fast)" if x == "gemini" else "🖥️ Local/Cloud OpenAI / KoboldCpp GGUF",
+                horizontal=True,
+                key="st_backend_radio",
+            )
+            st_cfg["backend_mode"] = b_mode
+            if b_mode == "gemini":
+                gem_models = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.5-pro"]
+                cur_gm = st_cfg.get("gemini_model", "gemini-3.8-flash")
+                gm_idx = gem_models.index(cur_gm) if cur_gm in gem_models else 0
+                st_cfg["gemini_model"] = st.selectbox("Gemini Model", options=gem_models, index=gm_idx, key="st_gem_model")
+            else:
+                st_cfg["openai_endpoint"] = st.text_input(
+                    "OpenAI / KoboldCpp Endpoint URL",
+                    value=st_cfg.get("openai_endpoint", "http://127.0.0.1:5001/v1"),
+                    key="st_oai_url",
+                )
+                st_cfg["openai_model"] = st.text_input(
+                    "GGUF Model Name",
+                    value=st_cfg.get("openai_model", "Magnum-v2-12B-GGUF"),
+                    key="st_oai_model",
+                )
+
+            st.markdown("##### ✨ SillyTavern Visual & UX Enhancements")
+            st_cfg["vn_sprites_enabled"] = st.toggle(
+                "🖼️ Visual Novel (VN) Dynamic Expression Stage",
+                value=bool(st_cfg.get("vn_sprites_enabled", True)),
+                key="st_tog_vn",
+            )
+            st_cfg["regex_coloring_enabled"] = st.toggle(
+                "🎨 Regex Dialogue, Telepathy & Docent Quote Coloring",
+                value=bool(st_cfg.get("regex_coloring_enabled", True)),
+                key="st_tog_regex",
+            )
+            st_cfg["quick_replies_enabled"] = st.toggle(
+                "⚡ Quick-Reply (QR) Macro Bar Above Chat",
+                value=bool(st_cfg.get("quick_replies_enabled", True)),
+                key="st_tog_qr",
+            )
+            if st.button("💾 Save Preset & UI Settings", key="btn_save_st_preset", use_container_width=True):
+                save_game(player, st.session_state.messages)
+                st.toast("SillyTavern Preset & UI settings saved!", icon="✅")
+
+        with st_tab_an:
+            st.markdown("##### 📌 Author's Note / `@Depth` Injection")
+            st.caption("Spliced directly into the recent chat history at `@Depth N` before the latest turn so the GM never forgets your pacing or tone rules.")
+            new_an = st.text_area(
+                "Active Author's Note / Post-History Instruction",
+                value=st_cfg.get("authors_note", ""),
+                height=110,
+                key="st_an_textarea",
+            )
+            st_cfg["authors_note"] = new_an
+            col_an1, col_an2 = st.columns(2)
+            with col_an1:
+                st_cfg["authors_note_depth"] = st.slider(
+                    "Injection @Depth",
+                    min_value=0,
+                    max_value=8,
+                    value=int(st_cfg.get("authors_note_depth", 1)),
+                    help="0 = at the very bottom of chat history; 1 = 1 turn before the latest message.",
+                    key="st_an_depth",
+                )
+            with col_an2:
+                st_cfg["chat_history_depth"] = st.slider(
+                    "Chat Context Window (Turns)",
+                    min_value=2,
+                    max_value=16,
+                    value=int(st_cfg.get("chat_history_depth", 6)),
+                    key="st_chat_depth",
+                )
+            if st.button("📌 Update Author's Note", key="btn_save_st_an", use_container_width=True):
+                save_game(player, st.session_state.messages)
+                st.toast(f"Author's Note pinned at @Depth {st_cfg['authors_note_depth']}!", icon="📌")
+
+            st.divider()
+            st.markdown("##### 🔍 Live Prompt & Token Inspector")
+            if not last_insp:
+                st.caption("Run a turn to inspect exact token usage, Worldbook triggers, and the assembled GM prompt.")
+            else:
+                ic1, ic2 = st.columns(2)
+                ic1.metric("Total Prompt Tokens", f"{last_insp.get('total_prompt_tokens', 0):,}")
+                ic2.metric(
+                    "Worldbook Budget",
+                    f"{last_insp.get('worldbook_tokens', 0)} / {last_insp.get('worldbook_budget', 1200)}",
+                )
+                st.caption(
+                    f"**Preset:** {last_insp.get('preset_name', '')} | **Temp:** `{last_insp.get('temperature')}` | "
+                    f"**Author's Note:** `@Depth {last_insp.get('authors_note_depth')}`"
+                )
+                trig_list = last_insp.get("worldbook_triggered", [])
+                if trig_list:
+                    st.markdown("**📚 Triggered Worldbook Entries This Turn:**")
+                    for te in trig_list:
+                        st.markdown(f"- **{te['comment']}** *(key: `{te['key']}`, `{te['tokens']} tok`)*")
+                with st.expander("📄 View Assembled Prompt Tail"):
+                    st.code(last_insp.get("prompt_preview", ""), language="markdown")
+
+        with st_tab_wb:
+            st.markdown("##### 📚 Keyword-Triggered World Info / Lorebooks")
+            st.caption("Entries sit dormant at **0 tokens** until triggered by keywords in chat, your action, or the current location.")
+            st_cfg["worldbook_enabled"] = st.toggle(
+                "Enable Dynamic Worldbook Injection",
+                value=bool(st_cfg.get("worldbook_enabled", True)),
+                key="st_wb_toggle",
+            )
+            wb_c1, wb_c2 = st.columns(2)
+            with wb_c1:
+                st_cfg["worldbook_token_budget"] = st.slider(
+                    "Token Budget Cap",
+                    min_value=300,
+                    max_value=3600,
+                    value=int(st_cfg.get("worldbook_token_budget", 1200)),
+                    step=100,
+                    key="st_wb_budget",
+                )
+            with wb_c2:
+                st_cfg["worldbook_scan_depth"] = st.slider(
+                    "Scan Depth (Turns)",
+                    min_value=1,
+                    max_value=10,
+                    value=int(st_cfg.get("worldbook_scan_depth", 4)),
+                    key="st_wb_scandepth",
+                )
+
+            avail_wbs = st_engine.list_available_worldbook_files(BASE_DIR)
+            cur_wbs = [w for w in st_cfg.get("active_worldbooks", []) if w in avail_wbs] or (
+                ["Fractured_Reality_V2_Master_Worldbook.json"]
+                if "Fractured_Reality_V2_Master_Worldbook.json" in avail_wbs
+                else avail_wbs[:1]
+            )
+            sel_wbs = st.multiselect(
+                "Active Worldbook Files (`presets/`)",
+                options=avail_wbs,
+                default=cur_wbs,
+                key="st_wb_files",
+            )
+            st_cfg["active_worldbooks"] = sel_wbs
+
+            loaded_entries = st_engine.load_worldbook_entries(
+                sel_wbs, st_cfg.get("custom_worldbook_entries", []), base_dir=BASE_DIR
+            )
+            st.info(f"📖 **{len(loaded_entries)} Lore Entries Ready** across {len(sel_wbs)} Worldbook(s) (0 tokens until triggered).")
+
+            with st.expander("➕ Add Custom Worldbook Entry"):
+                c_title = st.text_input("Entry Title / Comment", placeholder="e.g. The Whispering Sluice Gate", key="wb_new_title")
+                c_keys = st.text_input("Trigger Keywords (comma-separated)", placeholder="sluice, canal gate, whisper", key="wb_new_keys")
+                c_text = st.text_area("Lore Content (Injected when keyword is mentioned)", height=90, key="wb_new_content")
+                if st.button("➕ Add Lore Entry to Worldbook", key="btn_add_wb_entry", use_container_width=True):
+                    if c_title.strip() and c_keys.strip() and c_text.strip():
+                        st_cfg.setdefault("custom_worldbook_entries", []).append({
+                            "comment": c_title.strip(),
+                            "keys": [k.strip() for k in c_keys.split(",") if k.strip()],
+                            "content": c_text.strip(),
+                            "order": 150,
+                            "enabled": True,
+                        })
+                        save_game(player, st.session_state.messages)
+                        st.toast(f"Added Worldbook entry: {c_title.strip()}!", icon="📚")
+                        st.rerun()
+                    else:
+                        st.warning("Provide a title, at least one keyword, and lore content.")
+
+            with st.expander("🔍 Browse / Test Loaded Worldbook Entries"):
+                test_q = st.text_input("Test Phrase / Action Scan", placeholder="Type e.g. 'Oxford Silt-Marrow Poise' to test triggers", key="wb_test_input")
+                if test_q:
+                    sim = st_engine.scan_and_inject_worldbook(
+                        player_action=test_q,
+                        messages=st.session_state.messages,
+                        player_state=player,
+                        base_dir=BASE_DIR,
+                    )
+                    st.success(f"Triggered {len(sim['triggered_entries'])} entries ({sim['total_tokens']}/{sim['token_budget']} tokens)!")
+                    for te in sim["triggered_entries"]:
+                        st.markdown(f"- **{te['comment']}** (Key: `{te['matched_key']}` | `{te['tokens']} tok`): {te['content'][:160]}...")
+                else:
+                    for ent in loaded_entries[:15]:
+                        st.markdown(f"- **{ent['comment']}** (`{', '.join(ent['keys'][:4])}`) — *{ent['tokens']} tok*")
+
+        with st_tab_cards:
+            st.markdown("##### 📥 Import SillyTavern V2 Character Card (`.png` / `.json`)")
+            st.caption("Drag & drop any SillyTavern V2 `.png` portrait (with embedded `chara` metadata) or `.json` card to awaken them as an autonomous SubAgent companion!")
+            uploaded_card = st.file_uploader(
+                "Upload SillyTavern V2 Card (.png or .json)",
+                type=["png", "json"],
+                key="st_card_uploader",
+            )
+            if uploaded_card is not None:
+                if st.button(f"⚡ Awaken '{uploaded_card.name}' as Autonomous SubAgent", key="btn_import_uploaded_card", type="primary", use_container_width=True):
+                    imp_res = st_engine.import_sillytavern_card_to_game(
+                        raw_bytes=uploaded_card.getvalue(),
+                        filename=uploaded_card.name,
+                        player_state=player,
+                        recruit_immediately=True,
+                        base_dir=BASE_DIR,
+                    )
+                    if imp_res.get("success"):
+                        save_game(player, st.session_state.messages)
+                        st.balloons()
+                        st.success(imp_res["message"])
+                        if imp_res.get("first_mes"):
+                            st.info(f"**Card Greeting:**\n\n{imp_res['first_mes'][:400]}")
+                        st.rerun()
+                    else:
+                        st.error(imp_res.get("message", "Import failed."))
+
+            # Quick-Import from Bundled Presets Folder
+            preset_pngs = [
+                f for f in sorted(os.listdir(os.path.join(BASE_DIR, "presets")))
+                if f.endswith(".png") and "_" not in f
+            ] if os.path.exists(os.path.join(BASE_DIR, "presets")) else []
+            if preset_pngs:
+                sel_preset_png = st.selectbox("Or Import Bundled V2 PNG Card (`presets/`)", options=preset_pngs, key="st_bundled_png_sel")
+                if st.button(f"🃏 Sync / Recruit `{sel_preset_png}` V2 Card", key="btn_sync_bundled_png", use_container_width=True):
+                    p_path = os.path.join(BASE_DIR, "presets", sel_preset_png)
+                    with open(p_path, "rb") as pf:
+                        raw_b = pf.read()
+                    imp_res = st_engine.import_sillytavern_card_to_game(
+                        raw_bytes=raw_b,
+                        filename=sel_preset_png,
+                        player_state=player,
+                        recruit_immediately=True,
+                        base_dir=BASE_DIR,
+                    )
+                    if imp_res.get("success"):
+                        save_game(player, st.session_state.messages)
+                        st.toast(imp_res["message"], icon="🃏")
+                        st.rerun()
+                    else:
+                        st.warning(imp_res.get("message"))
+
+            st.divider()
+            st.markdown("##### 📤 Export Character / SubAgent to SillyTavern V2 `.png` Card")
+            export_targets = [f"👑 Player: {player.get('name', 'Survivor')}"]
+            comps_dict = player.get("companions", {}) if isinstance(player.get("companions"), dict) else {}
+            for ck, cv in comps_dict.items():
+                if isinstance(cv, dict):
+                    export_targets.append(f"🛡️ Companion: {cv.get('name', ck)} ({ck})")
+            sel_exp = st.selectbox("Select Character to Export", options=export_targets, key="st_export_target_sel")
+            if sel_exp.startswith("👑 Player:"):
+                exp_card_dict, exp_png_bytes = st_engine.export_character_to_sillytavern_v2(player, is_player=True, base_dir=BASE_DIR)
+                exp_slug = sanitize_character_slug(player.get("name", "Player"))
+            else:
+                c_key = sel_exp.split("(")[-1].rstrip(")")
+                c_obj = comps_dict.get(c_key, {"name": c_key})
+                exp_card_dict, exp_png_bytes = st_engine.export_character_to_sillytavern_v2(c_obj, is_player=False, base_dir=BASE_DIR)
+                exp_slug = sanitize_character_slug(c_obj.get("name", c_key))
+
+            ec1, ec2 = st.columns(2)
+            with ec1:
+                st.download_button(
+                    "🖼️ Download V2 `.png` Card",
+                    data=exp_png_bytes,
+                    file_name=f"{exp_slug}_SillyTavern_V2.png",
+                    mime="image/png",
+                    use_container_width=True,
+                    key="btn_dl_st_png",
+                )
+            with ec2:
+                st.download_button(
+                    "📄 Download V2 `.json`",
+                    data=json.dumps(exp_card_dict, indent=2, ensure_ascii=False).encode("utf-8"),
+                    file_name=f"{exp_slug}_SillyTavern_V2.json",
+                    mime="application/json",
+                    use_container_width=True,
+                    key="btn_dl_st_json",
+                )
+
     st.divider()
     st.subheader("🎙️ Live Table Companion")
     st.caption("Record voice commands or GM narration.")
@@ -4423,9 +4753,85 @@ if st.session_state.get("character_creation_mode", False):
     st.stop()
 
 st.title("🗡️ The Fractured Overlay")
-st.caption("A Death-Game TTRPG powered by the Cardinal System AI.")
+st_cfg_main = st_engine.ensure_st_settings(st.session_state.player)
+active_preset_obj = st_engine.DEFAULT_NARRATIVE_PRESETS.get(
+    st_cfg_main.get("preset_id", "grimdark_sensory"),
+    st_engine.DEFAULT_NARRATIVE_PRESETS["grimdark_sensory"],
+)
+last_insp_main = st_cfg_main.get("last_prompt_inspection", {})
+st.caption(
+    f"A Death-Game TTRPG powered by the Cardinal System AI | "
+    f"**Preset:** {active_preset_obj['name']} | "
+    f"**Author's Note:** `@Depth {st_cfg_main.get('authors_note_depth', 1)}` | "
+    f"**Worldbook:** `{last_insp_main.get('worldbook_triggered_count', 0)} active ({last_insp_main.get('worldbook_tokens', 0)}/{st_cfg_main.get('worldbook_token_budget', 1200)} tok)`"
+)
 
 render_tutorial_crucible_banner()
+
+# --- SILLYTAVERN VISUAL NOVEL (VN) DYNAMIC EXPRESSION STAGE ---
+if st_cfg_main.get("vn_sprites_enabled", True):
+    active_party_vn = list(mechanics.get_active_party(st.session_state.player)) if hasattr(mechanics, "get_active_party") else []
+    latest_sub_text = ""
+    for m_rev in reversed(st.session_state.get("messages", [])):
+        if isinstance(m_rev, dict) and m_rev.get("subagent_log"):
+            latest_sub_text = str(m_rev.get("subagent_log", ""))
+            break
+
+    vn_actors = [{
+        "name": st.session_state.player.get("name", "Survivor"),
+        "role": f"Lv.{st.session_state.player.get('level', 1)} {st.session_state.player.get('class', 'Vanguard')}",
+        "hp": st.session_state.player.get("hp", 100),
+        "max_hp": st.session_state.player.get("max_hp", 100),
+        "portrait": st_engine.resolve_companion_portrait_path(
+            st.session_state.player.get("name", "Survivor"),
+            st.session_state.player,
+            base_dir=BASE_DIR,
+        ),
+        "thought_snippet": "Leading the vanguard.",
+        "is_player": True,
+    }]
+    for cp in active_party_vn[:3]:
+        if not isinstance(cp, dict):
+            continue
+        cp_name = cp.get("name", "Companion")
+        # Extract this companion's latest thought from latest_sub_text if present
+        cp_thought = cp.get("stance", "Ready")
+        if latest_sub_text and cp_name.split()[0].lower() in latest_sub_text.lower():
+            for blk in latest_sub_text.split("\n\n"):
+                if cp_name.split()[0].lower() in blk.lower():
+                    lines_b = [ln.strip("> *\"") for ln in blk.split("\n")[1:] if ln.strip()]
+                    if lines_b:
+                        cp_thought = lines_b[0][:110]
+                    break
+        vn_actors.append({
+            "name": cp_name,
+            "role": f"Lv.{cp.get('level', 3)} {cp.get('class', cp.get('role', 'Vanguard'))}",
+            "hp": cp.get("hp", 35),
+            "max_hp": cp.get("max_hp", 35),
+            "portrait": st_engine.resolve_companion_portrait_path(cp_name, cp, base_dir=BASE_DIR),
+            "thought_snippet": cp_thought,
+            "is_player": False,
+        })
+
+    with st.expander("🎭 Visual Novel (VN) Live Party Stage & Dynamic Expressions", expanded=False):
+        vn_cols = st.columns(max(1, len(vn_actors)))
+        for v_idx, actor in enumerate(vn_actors):
+            with vn_cols[v_idx]:
+                hp_r = actor["hp"] / max(1, actor["max_hp"])
+                expr = st_engine.classify_vn_expression(actor["thought_snippet"], hp_ratio=hp_r, actor_name=actor["name"])
+                st.markdown(
+                    f"<div style='border:1px solid {expr['border']}; background:{expr['bg']}; "
+                    f"border-radius:10px; padding:8px 10px; margin-bottom:6px;'>"
+                    f"<strong>{'👑' if actor['is_player'] else '🛡️'} {actor['name']}</strong><br/>"
+                    f"<span style='font-size:0.8em; opacity:0.85;'>{actor['role']}</span><br/>"
+                    f"<span style='font-size:0.82em; color:{expr['border']}; font-weight:600;'>{expr['badge']}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+                if actor["portrait"] and os.path.exists(actor["portrait"]):
+                    st.image(actor["portrait"], use_container_width=True)
+                st.progress(min(1.0, max(0.0, hp_r)), text=f"HP: {actor['hp']}/{actor['max_hp']}")
+                st.caption(f"*\"{actor['thought_snippet']}\"*")
 
 # Offload any legacy inline base64 images in session_state.messages to disk
 if isinstance(st.session_state.get("messages"), list):
@@ -4435,12 +4841,48 @@ if isinstance(st.session_state.get("messages"), list):
         st.session_state.messages,
     )
 
-# Render Chat History
-for msg in st.session_state.messages:
-    avatar = "👾" if msg.get("role") in ["assistant", "system"] else "👤"
-    with st.chat_message(msg["role"], avatar=avatar):
+# Render Chat History with SillyTavern Swiping (◀ 1/N ▶), Inline Editing, State-Safe Rewind & Branching
+total_msgs = len(st.session_state.messages)
+for msg_idx, msg in enumerate(st.session_state.messages):
+    role = msg.get("role", "assistant")
+    avatar = "👾" if role in ["assistant", "system"] else "👤"
+    if role in ["assistant", "system"] and msg_idx > 0:
+        st_engine.ensure_message_swipe_structure(msg)
+
+    with st.chat_message(role, avatar=avatar):
         content, mechanics_log, subagent_log = extract_turn_components(msg)
-        st.markdown(content)
+        edit_state_key = f"st_editing_msg_{msg_idx}"
+
+        if st.session_state.get(edit_state_key, False):
+            edited_text = st.text_area(
+                "✏️ Inline Message Editor (Trim auto-play or refine prose/action):",
+                value=content,
+                height=220,
+                key=f"st_edit_ta_{msg_idx}",
+            )
+            ed_c1, ed_c2 = st.columns([1, 1])
+            with ed_c1:
+                if st.button("💾 Save Edit", key=f"btn_save_edit_{msg_idx}", type="primary", use_container_width=True):
+                    msg["content"] = edited_text
+                    if isinstance(msg.get("swipes"), list) and len(msg["swipes"]) > 0:
+                        s_i = int(msg.get("swipe_index", 0) or 0)
+                        if 0 <= s_i < len(msg["swipes"]):
+                            msg["swipes"][s_i]["content"] = edited_text
+                    st.session_state[edit_state_key] = False
+                    save_game(st.session_state.player, st.session_state.messages)
+                    st.toast("Message updated inline!", icon="✏️")
+                    st.rerun()
+            with ed_c2:
+                if st.button("✖️ Cancel", key=f"btn_cancel_edit_{msg_idx}", use_container_width=True):
+                    st.session_state[edit_state_key] = False
+                    st.rerun()
+        else:
+            if role in ["assistant", "system"] and st_cfg_main.get("regex_coloring_enabled", True):
+                styled_html = st_engine.format_sillytavern_prose(content, enable_regex_coloring=True)
+                st.markdown(styled_html, unsafe_allow_html=True)
+            else:
+                st.markdown(content)
+
         if mechanics_log:
             with st.expander("🎲 Dice Rolls & Game Mechanics (Click to open/close)", expanded=False):
                 st.markdown(mechanics_log)
@@ -4455,12 +4897,121 @@ for msg in st.session_state.messages:
         elif msg.get("image_data"):
             st.image(msg["image_data"], use_container_width=True)
 
+        # --- SILLYTAVERN MESSAGE CONTROL BAR (Recent messages or last 6 turns) ---
+        if msg_idx > 0 and msg_idx >= max(1, total_msgs - 8):
+            if role in ["assistant", "system"]:
+                swipes = msg.get("swipes", [])
+                s_idx = int(msg.get("swipe_index", 0) or 0)
+                s_total = max(1, len(swipes))
+                mc1, mc2, mc3, mc4, mc5, mc6 = st.columns([0.8, 1.3, 0.8, 1.2, 1.1, 1.2])
+                with mc1:
+                    if st.button("◀", key=f"st_prev_sw_{msg_idx}", disabled=(s_idx <= 0), help="Previous Swipe", use_container_width=True):
+                        st_engine.apply_active_swipe_to_message(msg, s_idx - 1)
+                        save_game(st.session_state.player, st.session_state.messages)
+                        st.rerun()
+                with mc2:
+                    if st.button(f"🔄 Swipe ({s_idx + 1}/{s_total})", key=f"st_new_sw_{msg_idx}", help="Generate a new SillyTavern Swipe variation for this turn", use_container_width=True):
+                        prev_user_action = "Continue"
+                        for back_i in range(msg_idx - 1, -1, -1):
+                            if st.session_state.messages[back_i].get("role") == "user":
+                                prev_user_action = st.session_state.messages[back_i].get("ai_prompt") or st.session_state.messages[back_i].get("content", "Continue")
+                                break
+                        with st.spinner("Generating new Swipe variation..."):
+                            new_prose, sw_err = st_engine.generate_swipe_variation(
+                                api_key=api_key,
+                                user_action=prev_user_action,
+                                msg=msg,
+                                player_state=st.session_state.player,
+                                messages_context=st.session_state.messages[:msg_idx],
+                            )
+                            if new_prose:
+                                st_engine.append_new_swipe_to_message(msg, new_prose)
+                                save_game(st.session_state.player, st.session_state.messages)
+                                st.toast(f"Generated Swipe {len(msg['swipes'])}/{len(msg['swipes'])}!", icon="🔄")
+                                st.rerun()
+                            else:
+                                st.error(f"Swipe failed: {sw_err}")
+                with mc3:
+                    if st.button("▶", key=f"st_next_sw_{msg_idx}", disabled=(s_idx >= s_total - 1), help="Next Swipe", use_container_width=True):
+                        st_engine.apply_active_swipe_to_message(msg, s_idx + 1)
+                        save_game(st.session_state.player, st.session_state.messages)
+                        st.rerun()
+                with mc4:
+                    if st.button("✏️ Edit", key=f"st_edit_btn_{msg_idx}", help="Edit this response inline", use_container_width=True):
+                        st.session_state[edit_state_key] = not st.session_state.get(edit_state_key, False)
+                        st.rerun()
+                with mc5:
+                    if st.button("⏪ Rewind", key=f"st_rewind_btn_{msg_idx}", help="Rewind chat and state to this point", use_container_width=True):
+                        # Restore post-turn or pre-turn snapshot if available on subsequent message
+                        if msg_idx + 1 < len(st.session_state.messages):
+                            for later_m in st.session_state.messages[msg_idx + 1:]:
+                                snap = later_m.get("pre_turn_snapshot")
+                                if isinstance(snap, dict) and snap.get("player"):
+                                    import copy
+                                    st.session_state.player = copy.deepcopy(snap["player"])
+                                    if snap.get("master_state"):
+                                        m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+                                        atomic_write_json(m_path, snap["master_state"])
+                                    break
+                        st.session_state.messages = st.session_state.messages[:msg_idx + 1]
+                        save_game(st.session_state.player, st.session_state.messages)
+                        st.toast(f"Rewound timeline to message #{msg_idx + 1}!", icon="⏪")
+                        st.rerun()
+                with mc6:
+                    if st.button("🌿 Branch", key=f"st_branch_btn_{msg_idx}", help="Fork timeline at this turn into a new Character Branch", use_container_width=True):
+                        import copy
+                        base_name = st.session_state.player.get("name", "Survivor").split("_Branch")[0]
+                        branch_name = f"{base_name}_Branch_{int(time.time()) % 1000}"
+                        branched_player = copy.deepcopy(st.session_state.player)
+                        branched_player["name"] = branch_name
+                        branched_msgs = copy.deepcopy(st.session_state.messages[:msg_idx + 1])
+                        cg.save_character_to_folder(BASE_DIR, branched_player, branched_msgs)
+                        st.toast(f"Created Timeline Branch: {branch_name}!", icon="🌿")
+                        activate_character_session(branch_name)
+                        st.rerun()
+            else:
+                uc1, uc2 = st.columns([1, 1])
+                with uc1:
+                    if st.button("✏️ Edit Action", key=f"st_edit_usr_{msg_idx}", use_container_width=True):
+                        st.session_state[edit_state_key] = not st.session_state.get(edit_state_key, False)
+                        st.rerun()
+                with uc2:
+                    if st.button("⏪ Rewind Before Action", key=f"st_rew_usr_{msg_idx}", use_container_width=True):
+                        snap = msg.get("pre_turn_snapshot")
+                        if isinstance(snap, dict) and snap.get("player"):
+                            import copy
+                            st.session_state.player = copy.deepcopy(snap["player"])
+                            if snap.get("master_state"):
+                                m_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+                                atomic_write_json(m_path, snap["master_state"])
+                        st.session_state.messages = st.session_state.messages[:msg_idx]
+                        save_game(st.session_state.player, st.session_state.messages)
+                        st.toast("Rewound to before this action & restored pre-turn character state!", icon="⏪")
+                        st.rerun()
+
+# --- SILLYTAVERN QUICK-REPLY (QR) MACRO BAR ---
+if st_cfg_main.get("quick_replies_enabled", True):
+    qr_list = list(st_engine.DEFAULT_QUICK_REPLIES) + list(st_cfg_main.get("custom_quick_replies", []))
+    qr_cols = st.columns(len(qr_list))
+    for q_i, qr_item in enumerate(qr_list):
+        with qr_cols[q_i]:
+            if st.button(qr_item["label"], key=f"st_qr_btn_{q_i}", use_container_width=True, help=qr_item["prompt"]):
+                st.session_state["pending_dev_command"] = qr_item["prompt"]
+                st.rerun()
+
 # User Input
 chat_prompt = st.chat_input("Action... (Type /admin to force an AI outcome)")
 dev_prompt = st.session_state.pop("pending_dev_command", None)
 
 if prompt := (dev_prompt or chat_prompt):
-    
+    import copy
+    # Capture Pre-Turn Snapshot for State-Safe Rewind
+    m_snap_path = os.path.join(BASE_DIR, ".game_state", "secret_master_state.json")
+    pre_turn_snapshot = {
+        "player": copy.deepcopy(st.session_state.player),
+        "master_state": atomic_read_json(m_snap_path, default=None),
+    }
+
     # Intercept Explicit Admin Commands (normal UI action buttons execute as regular player turns)
     is_admin = prompt.strip().lower().startswith("/admin ") or "[root override]" in prompt.lower()
     if is_admin:
@@ -4471,7 +5022,12 @@ if prompt := (dev_prompt or chat_prompt):
         ui_text = prompt
         ai_prompt = prompt
         
-    st.session_state.messages.append({"role": "user", "content": ui_text, "ai_prompt": ai_prompt})
+    st.session_state.messages.append({
+        "role": "user",
+        "content": ui_text,
+        "ai_prompt": ai_prompt,
+        "pre_turn_snapshot": pre_turn_snapshot,
+    })
     with st.chat_message("user", avatar="👤"):
         st.markdown(ui_text)
         
@@ -4502,8 +5058,13 @@ if prompt := (dev_prompt or chat_prompt):
                 subagent_log_lines.append(f"**[{icon} {actor_name} — SubAgent Mind]**\n> *\"{thought}\"*\n> **Intent:** {intent}{dial_line}")
             subagent_log = "\n\n".join(subagent_log_lines) if subagent_log_lines else ""
             
-            # c. Resolve the turn (Read Player Action + SubAgent Action Queue + Live Equipped Gear)
-            turn_data = gm_engine.resolve_turn(api_key=api_key, player_action=ai_prompt, player_state=st.session_state.player)
+            # c. Resolve the turn (Read Player Action + SubAgent Action Queue + SillyTavern Worldbook & Author's Note)
+            turn_data = gm_engine.resolve_turn(
+                api_key=api_key,
+                player_action=ai_prompt,
+                player_state=st.session_state.player,
+                messages=st.session_state.messages,
+            )
             
             narrative = turn_data.get("narrative_recap", "Error parsing narrative.")
             tactical_footer = turn_data.get("tactical_state_footer", "")
@@ -4702,7 +5263,7 @@ if prompt := (dev_prompt or chat_prompt):
                     mechanics_entries.append(f"* {icon} **{clean_eid}:** {sign}{delta} HP")
             mechanics_log = "\n".join(mechanics_entries) if mechanics_entries else ""
 
-            st.markdown(narrative)
+            st.markdown(st_engine.format_sillytavern_prose(narrative, enable_regex_coloring=st_cfg_main.get("regex_coloring_enabled", True)), unsafe_allow_html=True)
             if mechanics_log:
                 with st.expander("🎲 Dice Rolls & Game Mechanics (Click to open/close)", expanded=False):
                     st.markdown(mechanics_log)
@@ -4731,14 +5292,14 @@ if prompt := (dev_prompt or chat_prompt):
                 except Exception as e:
                     narrative += f"\n\n*(System Note: Image Generation Exception - {e})*"
             
-    new_msg = {
+    new_msg = st_engine.ensure_message_swipe_structure({
         "role": "assistant", 
         "content": narrative,
         "mechanics_log": mechanics_log,
         "subagent_log": subagent_log,
         "image_path": image_path_rel,
         "image_data": None
-    }
+    })
     st.session_state.messages.append(new_msg)
     save_game(st.session_state.player, st.session_state.messages)
     

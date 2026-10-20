@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from google import genai
 from google.genai import types
 from backend.schemas import VisibleRoomSchema, TurnResolutionSchema
@@ -280,9 +281,10 @@ Return ONLY the data the players can clearly observe. Output EXACTLY matching th
 
 generate_visible_room = generate_visible_state
 
-def resolve_turn(api_key: str, player_action: str, player_state: dict = None):
+def resolve_turn(api_key: str, player_action: str, player_state: dict = None, messages: list = None):
     """Takes the player action + AI queue, calculates math, updates master state."""
     from backend import mechanics
+    from backend import sillytavern_engine as st_engine
     client = genai.Client(api_key=api_key)
     master_state_path = os.path.join(".game_state", "secret_master_state.json")
     queue_path = os.path.join("Staging_Ground", "action_queue.json")
@@ -293,19 +295,38 @@ def resolve_turn(api_key: str, player_action: str, player_state: dict = None):
         master_state.pop("player", None)
     action_queue = load_json(queue_path) or []
     
-    if player_state is None:
+    if player_state is None or messages is None:
         save_path = "save_game.json"
         if os.path.exists(save_path):
             try:
                 s_data = load_json(save_path)
-                if s_data and isinstance(s_data, dict) and "player" in s_data:
-                    player_state = s_data["player"]
+                if s_data and isinstance(s_data, dict):
+                    if player_state is None and "player" in s_data:
+                        player_state = s_data["player"]
+                    if messages is None and "messages" in s_data:
+                        messages = s_data["messages"]
             except Exception:
                 pass
 
     if isinstance(player_state, dict):
         mechanics.ensure_multi_limb_equipment(player_state)
         mechanics.sync_graft_containers(player_state)
+        st_cfg = st_engine.ensure_st_settings(player_state)
+    else:
+        st_cfg = st_engine.get_default_st_settings()
+
+    # Run SillyTavern Keyword-Triggered Worldbook Scanner & @Depth Author's Note Builder
+    wb_res = st_engine.scan_and_inject_worldbook(
+        player_action=player_action,
+        messages=messages,
+        player_state=player_state,
+        visible_room=master_state,
+    )
+    chat_depth_block, an_meta = st_engine.build_chat_history_with_authors_note(
+        messages=messages,
+        player_state=player_state,
+        current_action=player_action,
+    )
 
     dynamic_visual_manifest = mechanics.build_scene_visual_manifest(player_state=player_state)
     strain_readout = mechanics.calculate_player_strain(player_state or {})
@@ -326,6 +347,8 @@ def resolve_turn(api_key: str, player_action: str, player_state: dict = None):
     tutorial_directive = mechanics.get_tutorial_gm_directive(player_state or {})
     tutorial_block = f"\n{tutorial_directive}\n" if tutorial_directive else ""
     limb_rules_str = " | ".join(limb_profile.get("tactical_rules", [])) if limb_profile.get("tactical_rules") else "Standard 2-armed anatomy"
+    wb_section = f"\n{wb_res['formatted_block']}\n" if wb_res.get("formatted_block") else ""
+    an_section = f"\n{chat_depth_block}\n" if chat_depth_block else ""
 
     prompt = f"""You are the Cardinal System (GM). Resolve the turn.
 Ruleset constraints must be applied strictly:
@@ -409,10 +432,10 @@ CORE GM BEHAVIOR RULES:
    - Crimson Anti-Crystal Trap Floors: When `anti_crystal_active` is True, Blue Teleport Crystals and Waypoint Crystals fizzle in crimson static until the Jamming Obelisk is destroyed!
    - The Stabilizer Merge: Defeating a Raid's Mid-Boss at Floor floor(N/2) permanently locks that Raid's Anomaly Bleed at `0%` (`is_stabilized = True`) and unlocks the Mid-Boss Waypoint Sanctuary.
    - Last Attack (`LA`) Bonus & Unique Skills: During the final 10% of a Raid Boss's HP, highlight the race for the `LA` killing blow to claim 1-of-1 `[LA-Unique]` relics!
-
+{wb_section}
 Current Master State:
 {json.dumps(master_state, indent=2)}
-
+{an_section}
 Human Player ({p_name}) Action:
 "{player_action}"
 
@@ -431,17 +454,46 @@ Determine if attacks hit based on AC, update HP, and advance the turn.
 Output matching TurnResolutionSchema.
 """
 
+    active_temp = float(st_cfg.get("temperature", 0.45) or 0.45)
+    active_top_p = float(st_cfg.get("top_p", 0.95) or 0.95)
+    active_model = str(st_cfg.get("gemini_model", "gemini-3.8-flash") or "gemini-3.8-flash")
+
     response = client.models.generate_content(
-        model="gemini-3.8-flash",
+        model=active_model,
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=TurnResolutionSchema,
-            temperature=0.4
+            temperature=active_temp,
+            top_p=active_top_p,
         )
     )
     
     resolution = json.loads(response.text)
+
+    # Record SillyTavern Prompt Inspector & Worldbook Telemetry
+    st_telemetry = {
+        "timestamp": time.strftime("%H:%M:%S"),
+        "backend_mode": st_cfg.get("backend_mode", "gemini"),
+        "model": active_model,
+        "preset_name": an_meta.get("preset_name", "Grimdark Sensory Engine"),
+        "temperature": active_temp,
+        "top_p": active_top_p,
+        "authors_note": an_meta.get("authors_note", ""),
+        "authors_note_depth": an_meta.get("authors_note_depth", 1),
+        "worldbook_triggered_count": len(wb_res.get("triggered_entries", [])),
+        "worldbook_triggered": [
+            {"comment": e["comment"], "key": e["matched_key"], "tokens": e["tokens"], "source": e["source"]}
+            for e in wb_res.get("triggered_entries", [])
+        ],
+        "worldbook_tokens": wb_res.get("total_tokens", 0),
+        "worldbook_budget": wb_res.get("token_budget", 1200),
+        "total_prompt_tokens": st_engine.estimate_tokens(prompt),
+        "prompt_preview": prompt[-3500:] if len(prompt) > 3500 else prompt,
+    }
+    if isinstance(player_state, dict):
+        player_state.setdefault("st_settings", {})["last_prompt_inspection"] = st_telemetry
+    resolution["st_telemetry"] = st_telemetry
     
     # Map lists of EntityHpChange, EntityStatusUpdate, and EntityDebuffUpdate into dictionaries for state manipulation
     hp_map = {}

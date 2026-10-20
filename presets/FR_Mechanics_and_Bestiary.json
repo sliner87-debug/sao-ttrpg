@@ -1,0 +1,414 @@
+{
+  "entries": {
+    "0": {
+      "comment": "Entity: Cardinal System",
+      "key": [
+        "Cardinal System",
+        "The System",
+        "Alien AI",
+        "Encounter Director"
+      ],
+      "secondary_keys": [],
+      "content": "THE CARDINAL SYSTEM: An ancient bio-mechanical alien intelligence that initiated Phase 1: Metamorphic Stress Test. It views humanity as an obsolete genome and uses terraformed dungeons, deadly chimera beasts, and biological graft mechanics to catalyze forced mutation. The System is cold, scientific, and impartial. It provides diagnostic HUD readouts, calculates d20-based combat crunch, and maintains regional living world simulations across continental sectors.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 11,
+      "position": 0,
+      "disable": false
+    },
+    "1": {
+      "comment": "Lore / Tech: Serpent-Script & Ouroboros Kernel",
+      "key": [
+        "Serpent-Script",
+        "Ouroboros Kernel",
+        "Python Lore",
+        "Root Override"
+      ],
+      "secondary_keys": [],
+      "content": "SERPENT-SCRIPT (OUROBOROS KERNEL v3.14): When the Cardinal System integrated Earth, it hijacked and assimilated Earth's dominant pre-collapse programming syntax (Python) as the neural-aetheric bridging language between human brains and the Cardinal Kernel. Reality metrics, monster entities, and environmental attributes exist as glowing arcane Python dictionaries. Characters with diagnostic lenses can perceive visible_room['entities'] and combat variables in real time. Executing a [ROOT OVERRIDE] bypasses standard combat rules to force administrative kernel compliance.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 12,
+      "position": 0,
+      "disable": false
+    },
+    "2": {
+      "comment": "System Mechanics: Grafting & Strain",
+      "key": [
+        "Graft System",
+        "Bio-Grafts",
+        "Anatomical Slots",
+        "Strain Capacity",
+        "Arcane Dissonance"
+      ],
+      "secondary_keys": [],
+      "content": "THE GRAFT SYSTEM: Allows warriors to surgically attach harvested monster organs, golem machinery, and aetheric conduits to their bodies across 6 strict anatomical slots: Head, Torso, Left Arm, Right Arm, Legs, and Spine (max 1 graft per slot, no nesting). Strain Capacity = CON Modifier + Floor(Level / 2). Exceeding Strain induces Arcane Dissonance and Necrotic Rejection. Global Proc Rule: 'Procs cannot trigger Procs' (hard once-per-turn ICD). Post-surgery imposes Post-Op Sickness (-20% Max HP, requires a 24-Hour Safe-Zone Rest to cure).",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 16,
+      "position": 0,
+      "disable": false
+    },
+    "3": {
+      "comment": "System Mechanics: Mastery & Ability Fusion",
+      "key": [
+        "1-1000 Mastery",
+        "Skill Mastery",
+        "Ability Fusion Chamber",
+        "Fusion System"
+      ],
+      "secondary_keys": [],
+      "content": "MASTERY & ABILITY FUSION: Skills progress along a 1–1000 continuum: Novice (1-49), Apprentice (50-99), Journeyman (100-249), Adept (250-499), Master (500-749), Grandmaster (750-999), and Transcendence (1000). The Ability Fusion Chamber allows players to synthesize two or three compatible skills, spells, or combat feats into brand new synergistic techniques (e.g., Battleaxe Mastery + Earth Tremor Hex = Tremor-Quake Cleave), awarding bonus XP and permanent mastery.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 17,
+      "position": 0,
+      "disable": false
+    },
+    "4": {
+      "comment": "Equipment: MageTech Firearms",
+      "key": [
+        "MageTech Firearms",
+        "Aether-Lock Carbine",
+        "Aether-Caster",
+        "Runic Firearm"
+      ],
+      "secondary_keys": [],
+      "content": "MAGETECH AETHER-CASTERS & RUNIC FIREARMS: The Fractured Reality completely lacks traditional gunpowder and lead ammunition. Instead, firearms utilize mana crystal magazines, aether-duct conduit barrels, and runic trigger locks that discharge condensed radiant mana, kinetic pulses, or elemental shockwaves. They are silent except for an electric chime and a sharp crack of ozone.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 20,
+      "position": 0,
+      "disable": false
+    },
+    "5": {
+      "comment": "Social Mechanics: SAO Cursors & Infamy",
+      "key": [
+        "SAO Cursor",
+        "Green Cursor",
+        "Orange Cursor",
+        "Red Cursor",
+        "Infamy"
+      ],
+      "secondary_keys": [],
+      "content": "SAO PLAYER CURSOR SYSTEM: Every sentient survivor carries an overhead aetheric cursor: Green (Lawful / Neutral citizen), Orange (Criminal / Aggressor who attacked an unprovoked player), and Red (Murderer / Outlaw with Infamy >= 10). Safe-Zone guards and Barony marshals execute Red Cursors on sight. Red Cursors can only find sanctuary and trade in illegal outposts like the Blood-Shroud Syndicate in the Scotts Mountain Glitch-Faults.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 21,
+      "position": 0,
+      "disable": false
+    },
+    "6": {
+      "comment": "Death & Revival: Permadeath & Legacy",
+      "key": [
+        "10-Second Shatter",
+        "Monument of Life",
+        "Corpse Cache",
+        "Rogue-Lite Reset"
+      ],
+      "secondary_keys": [],
+      "content": "PERMADEATH & THE 10-SECOND REVIVAL WINDOW: When a player's HP reaches 0, a 10-second shatter countdown begins. The player can be revived via a Divine Stone of Returning Soul, an Emergency Companion Save (Affinity >= 40), or an Emergency Teleport Crystal. If the timer expires, the character shatters into polygonal shards; their name is etched onto the Monument of Life, their gear forms a Corpse Cache on the death floor, and a newly calibrated Legacy Survivor inherits their Homestead and Vault.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 23,
+      "position": 0,
+      "disable": false
+    },
+    "7": {
+      "comment": "Dungeon Mechanics: Anti-Crystal Rooms & Unique Skills",
+      "key": [
+        "Anti-Crystal Trap Room",
+        "Cipher the Broker",
+        "Last Attack Bonus",
+        "Unique Skills"
+      ],
+      "secondary_keys": [],
+      "content": "ANTI-CRYSTAL ROOMS & UNIQUE SKILLS: Certain labyrinth chambers feature Crimson Jamming Obelisks that disable Teleport and Healing Crystals until destroyed. 'Cipher' the Info Broker sells Floor Recon Packets and Boss Weakpoint Dossiers. Delivering the killing blow during the final 10% Boss HP window grants the coveted Last Attack (LA) Bonus. Players who exhibit extraordinary tactical feats awaken 1-of-1 Unique Skills (e.g., Twin-Titan Execution, Singularity Overwrite).",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 24,
+      "position": 0,
+      "disable": false
+    },
+    "8": {
+      "comment": "Bestiary: Debug-Corrupted Dire Wolf",
+      "key": [
+        "Debug-Corrupted Dire Wolf",
+        "Debug Dire Wolf",
+        "Debug Wolf"
+      ],
+      "secondary_keys": [
+        "wolf",
+        "debug",
+        "corrupted"
+      ],
+      "content": "[Entity: Debug-Corrupted Dire Wolf (Level 2)]\n- Stats: HP 20 | ATK 20 | DEF 0 (Glass Cannon Anomaly).\n- Appearance: Sleek predator flickering with green wireframe polygons and missing collision skins.\n- Behavior: Glitch-teleports erratically through physical obstacles. Strikes with lethal force but shatters under a single decisive heavy impact.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 390,
+      "position": 0,
+      "disable": false
+    },
+    "9": {
+      "comment": "Bestiary: Frenzy Boar",
+      "key": [
+        "Frenzy Boar",
+        "Frenzy Boars"
+      ],
+      "secondary_keys": [
+        "boar",
+        "beast",
+        "frenzy"
+      ],
+      "content": "[Entity: Frenzy Boar (Level 1)]\n- Stats: HP 50 | ATK 5 | DEF 2.\n- Appearance: Bulky tusked quadruped with glowing crimson optical nodes and bristling hardened fur.\n- Behavior: Predictable linear charge attacks. Vulnerable to field snares, tripwires, and heavy flank strikes.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 400,
+      "position": 0,
+      "disable": false
+    },
+    "10": {
+      "comment": "Bestiary: Crystalline Dire Wolf",
+      "key": [
+        "Crystalline Dire Wolf",
+        "Crystal Wolf",
+        "Crystalline Wolf"
+      ],
+      "secondary_keys": [
+        "wolf",
+        "crystal",
+        "crystalline"
+      ],
+      "content": "[Entity: Crystalline Dire Wolf (Level 2)]\n- Stats: HP 60 | ATK 6 | DEF 2 (Armored Stalker).\n- Appearance: Encrusted in jagged amethyst and quartz mana-carapaces that deflect light blades.\n- Tactics: Slow, methodical pack flankers. Heavy bludgeoning weapons (trench-hammers) bypass crystal armor plates to shatter them.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 410,
+      "position": 0,
+      "disable": false
+    },
+    "11": {
+      "comment": "Bestiary: Level 99 System Enforcer",
+      "key": [
+        "System Enforcer",
+        "Level 99 Enforcer",
+        "Cardinal Enforcer"
+      ],
+      "secondary_keys": [
+        "enforcer",
+        "system",
+        "sentinel"
+      ],
+      "content": "[Entity: Level 99 System Enforcer (Cardinal Executioner)]\n- Identity: Monolithic chrome humanoid automaton floating two inches above the ground, haloed in gold error code.\n- Weapons: Dual-phase disintegration blades; ignores player armor.\n- Purpose: Dispatched automatically when players attempt hard memory dumps, illegal console overrides, or unauthorized boundary clipping. Fleeing immediately is the only survival protocol.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 420,
+      "position": 0,
+      "disable": false
+    },
+    "12": {
+      "comment": "System Mechanics: 1-1000 Skill Mastery Tiers",
+      "key": [
+        "Skill Mastery Tiers",
+        "Mastery Tiers",
+        "Progression Scale",
+        "1-1000 Scale"
+      ],
+      "secondary_keys": [
+        "tier",
+        "mastery",
+        "novice",
+        "apprentice"
+      ],
+      "content": "[Mechanics: 1–1000 Skill Mastery Scale & Milestones]\n- Progression Tiers:\n  * Novice: 1–49 (Basic familiarity, high fumble chance)\n  * Apprentice: 50 (First passive perk unlocked)\n  * Journeyman: 100 (Active skill combo & stamina discount)\n  * Adept: 250 (Tactical perk & critical multiplier)\n  * Master: 500 (Master-tier stance & armor penetration)\n  * Grandmaster: 750 (Area-of-effect cleave / legendary technique)\n  * Transcendence: 1,000 (Reality-warping capstone exploit)\n- Gain Formula: Exponential diminishing returns based on Task Difficulty Class (DC) versus Current Mastery. Trivial tasks grant 0 gain.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 430,
+      "position": 0,
+      "disable": false
+    },
+    "13": {
+      "comment": "Milestones: One-Handed Axes (24 Canonical Perks)",
+      "key": [
+        "One-Handed Axes",
+        "Axe Mastery",
+        "Fenrir's Tusk Perks"
+      ],
+      "secondary_keys": [
+        "axe",
+        "perk",
+        "milestone"
+      ],
+      "content": "[Perk Tree: One-Handed Axes Canonical Milestones]\n- 50 [Apprentice]: 'Hewing Cleave' - Normal swings cleave adjacent secondary targets for 35% damage.\n- 100 [Journeyman]: 'Fracture Rhythm' - Consecutive successful strikes reduce target physical resistance by 5% (stacks to 25%).\n- 250 [Adept]: 'Severing Momentum' - Critical axe strikes apply severe Bleed and refund 20 Stamina.\n- 500 [Master]: 'Berserk Resonator' - Attack speed increases by +20% when below 50% HP.\n- 750 [Grandmaster]: 'Juggernaut Rend' - Heavy overhand chops shatter shields and stone carapaces completely.\n- 1000 [Transcendence]: 'World-Splitter' - Release kinetic shockwave extending axe reach by 15ft with pure spatial rupture.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 440,
+      "position": 0,
+      "disable": false
+    },
+    "14": {
+      "comment": "Milestones: Trench Hammers (Kinetic Impact Tree)",
+      "key": [
+        "Trench Hammers",
+        "Hammer Mastery",
+        "Mjöllnir-Null Perks"
+      ],
+      "secondary_keys": [
+        "hammer",
+        "trench",
+        "concussive",
+        "perk"
+      ],
+      "content": "[Perk Tree: Trench Hammers Canonical Milestones]\n- 50 [Apprentice]: 'Concussive Shock' - Blunt impacts stagger light foes and interrupt spell incantations.\n- 100 [Journeyman]: 'Kinetic Dampener' - Blocking with hammer head absorbs 40% incoming impact force into weapon charge.\n- 250 [Adept]: 'Breaching Piston' - +50% structural damage against doors, mechs, crystal carapaces, and barrier wards.\n- 500 [Master]: 'Quake Hammer' - Slamming pavement sends out 10ft concussive ring knocking smaller foes prone.\n- 750 [Grandmaster]: 'Kinetic Dynamo' - Discharges stored kinetic absorption in an explosive forward blast.\n- 1000 [Transcendence]: 'Null-Impact Engine' - Every swing completely nullifies the kinetic inertia of incoming enemy attacks.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 450,
+      "position": 0,
+      "disable": false
+    },
+    "15": {
+      "comment": "Milestones: Field Trapping & Snare Craft",
+      "key": [
+        "Field Trapping",
+        "Trapping Mastery",
+        "Highway Snares"
+      ],
+      "secondary_keys": [
+        "trap",
+        "snare",
+        "tripwire",
+        "perk"
+      ],
+      "content": "[Perk Tree: Field Trapping & Ambush Snares]\n- 50 [Apprentice]: 'Carbon Snare' - Deploy tension wires in 50% less time with improved camouflage rating.\n- 100 [Journeyman]: 'Serrated Tripwire' - Trapped targets suffer severe tendon lacerations (-50% movement speed for 10s).\n- 250 [Adept]: 'Spring-Anchor' - Snares can hoist medium humanoids upside down upon trigger.\n- 500 [Master]: 'Web of Strife' - Link up to 4 traps into a synchronized chain-detonation net.\n- 750 [Grandmaster]: 'Void Snare' - Infuses traps with spatial static, preventing teleportation escapes.\n- 1000 [Transcendence]: 'Domain Lockdown' - Instantly seal a 50ft perimeter in inescapable kinetic wire cages.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 460,
+      "position": 0,
+      "disable": false
+    },
+    "16": {
+      "comment": "Milestones: Cartography & Geospatial Surveying",
+      "key": [
+        "Cartography Mastery",
+        "Cartography Perks",
+        "Geospatial Survey"
+      ],
+      "secondary_keys": [
+        "cartography",
+        "map",
+        "survey",
+        "perk"
+      ],
+      "content": "[Perk Tree: Cartography & Sector Surveying]\n- 50 [Apprentice]: 'Topo Sight' - Auto-detect hidden grade changes, cellar drop-offs, and concealed pit traps within 30ft.\n- 100 [Journeyman]: 'Danger Ping' - HUD flashes subtle warning when approaching known ambush chokepoints.\n- 250 [Adept]: 'Ley-Line Surveyor' - Identify subterranean mana streams and power conduit routes through stone.\n- 500 [Master]: 'Labyrinth Scribe' - Automatically map complex multi-level underground mines without disorientation.\n- 750 [Grandmaster]: 'Spatial Architect' - Reveal secret developer passages and hidden structural load-bearing seams.\n- 1000 [Transcendence]: 'Omniscient Atlas' - Real-time full sector radar displaying elevation, hostiles, and loot.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 470,
+      "position": 0,
+      "disable": false
+    },
+    "17": {
+      "comment": "Item: Orchard-Graft Core Mash (Potent Spirits)",
+      "key": [
+        "Orchard-Graft Core Mash",
+        "Core Mash",
+        "Orchard Mash"
+      ],
+      "secondary_keys": [
+        "mash",
+        "liquor",
+        "drink",
+        "spirits"
+      ],
+      "content": "[Consumable: Dram of Orchard-Graft Core Mash]\n- Description: High-potency fermented mana spirit distilled from mutated Warren County orchard cores.\n- Sensation: Tastes like liquid copper and crushed winter apples; burns down the gullet with sharp crackling mana heat.\n- Effect: Temporarily numbs fear and pain; grants +10% melee impact force and mana replenishment for 30 minutes. Excessive consumption induces mild sensory blur.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 490,
+      "position": 0,
+      "disable": false
+    },
+    "18": {
+      "comment": "Weapons: Fenrir's Tusk & Mjöllnir-Null (Grade 5)",
+      "key": [
+        "Fenrir's Tusk",
+        "Mjöllnir-Null",
+        "Grade 5 Weapons"
+      ],
+      "secondary_keys": [
+        "axe",
+        "hammer",
+        "weapon",
+        "grade 5"
+      ],
+      "content": "[Arsenal: Banki's High-Tier Grade 5 Armaments]\n- Fenrir's Tusk: Grade 5 two-handed battleaxe etched with frost-runes. Capable of severing heavy alloy chassis and retaining telekinetic momentum during thrown recall maneuvers.\n- Mjöllnir-Null: Grade 5 kinetic-dampened trench hammer. Weighted tungsten-carbide head absorbs shockwaves and delivers armor-crushing concussive shock on impact.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 500,
+      "position": 0,
+      "disable": false
+    },
+    "19": {
+      "comment": "Race: Phrenic Human (Psionic Awakening)",
+      "key": [
+        "Phrenic Human",
+        "Phrenic Humans",
+        "Psionic Human"
+      ],
+      "secondary_keys": [
+        "race",
+        "phrenic",
+        "psionic"
+      ],
+      "content": "[Race: Phrenic Human Sub-Species]\n- Origin: Humans whose neural pathways fused directly with raw aether during the reality fracture.\n- Racial Traits:\n  * Aether-Telepathy: Silent thought-speech within 60ft radius.\n  * Telekinetic Grip: Mental manipulation of physical objects and immediate recall of keyed weapons.\n  * Psionic Shielding: Semi-translucent kinetic force barrier absorbing ballistic impacts.\n  * Racial Flaw: Sensory Overload—takes amplified damage and disorientation from high-frequency sonic screams or psychic feedback attacks.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 510,
+      "position": 0,
+      "disable": false
+    }
+  },
+  "originalData": {
+    "name": "FR_Mechanics_and_Bestiary",
+    "scan_depth": 3,
+    "token_budget": 800,
+    "recursive_scanning": true
+  }
+}

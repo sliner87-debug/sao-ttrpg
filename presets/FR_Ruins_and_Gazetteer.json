@@ -1,0 +1,573 @@
+{
+  "entries": {
+    "0": {
+      "comment": "Setting: The Fractured Reality Overlay",
+      "key": [
+        "The Fractured Reality",
+        "Fractured Overlay",
+        "The Crucible",
+        "Fractured Earth"
+      ],
+      "secondary_keys": [],
+      "content": "THE FRACTURED REALITY OVERLAY (V2): An apocalyptic death-game imposed by an alien artificial intelligence known as the Cardinal System. Modern Earth geography—specifically the US Quad-State region (NJ, PA, NY, DE) anchored around Washington, NJ 07882—has been violently terraformed into an Aether-Punk and MageTech High-Fantasy crucible. Leyline fissures crack open natural rift valleys, abandoned mines are transformed into instanced labyrinth dungeons, and civilian residential districts are partitioned into fortified Safe-Zones. Firearms are strictly MageTech Aether-Casters firing condensed mana; knights in runic brigandines fight alongside arcano-engineers.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 10,
+      "position": 0,
+      "disable": false
+    },
+    "1": {
+      "comment": "NPC / Location: Doc Mercer & Catacomb Clinic",
+      "key": [
+        "Doc Mercer",
+        "Mercer Clinic",
+        "Flesh-Weaver",
+        "Biomancer"
+      ],
+      "secondary_keys": [],
+      "content": "DOC MERCER: A veteran MageTech Biomancer and Arcano-Chirurgeon operating out of the ancient vaulted catacombs beneath Washington Avenue in Washington Borough. Doc Mercer conducts high-stakes bio-graft implant surgery, flesh-weaving, and organ stabilization using brass steam pistons, runic scalpels, and marrow-siphoning conduits. He charges Col and monster salvage for procedures, warning patients about Cellular Re-Knitting downtime and Post-Op Sickness.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 14,
+      "position": 0,
+      "disable": false
+    },
+    "2": {
+      "comment": "NPC / Location: Quartermaster Vane",
+      "key": [
+        "Quartermaster Vane",
+        "Vane Depot",
+        "Iron Marshal",
+        "Barony Depot"
+      ],
+      "secondary_keys": [],
+      "content": "QUARTERMASTER VANE: A grizzled, iron-grafted logistics marshal for the Warren County Barony stationed at the fortified depot on the Washington Borough town square. Armed with a heavy repeating MageTech Arbalest, Vane manages regional bounties (such as the Oxford quarry clearing), weapon requisitions, and Safe-Zone law enforcement. He aggressively attacks any player bearing a Red Cursor (Murderer / Outlaw) on sight.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 15,
+      "position": 0,
+      "disable": false
+    },
+    "3": {
+      "comment": "Location: Washington Borough Safe-Zone",
+      "key": [
+        "Washington Borough",
+        "Washington Safe-Zone",
+        "Warren County Barony"
+      ],
+      "secondary_keys": [],
+      "content": "WASHINGTON BOROUGH (X:50, Y:50): The central starting safe-zone hub of Sector 1 in Warren County, New Jersey. Enclosed by ancient glowing runic ward-banners, the safe zone nullifies PvP violence and hostile mob aggro. Features the Town Hall Council, Doc Mercer's Under-Cellar Clinic, Quartermaster Vane's Depot, residential homestead quarters, and direct egress routes to the Oxford Mining District and Pohatcong Foothills.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 18,
+      "position": 0,
+      "disable": false
+    },
+    "4": {
+      "comment": "Location / Boss: Oxford Adits & Silt-Marrow",
+      "key": [
+        "Oxford Mine Adits",
+        "Pohatcong Depths",
+        "Silt-Marrow",
+        "Labyrinth Dungeon"
+      ],
+      "secondary_keys": [],
+      "content": "OXFORD MINE ADITS & POHATCONG DEPTHS: Subterranean instanced labyrinth dungeons repurposed from historical Warren County iron and zinc mines. The deepest excavation adit was the lair of 'Silt-Marrow the Unhewn'—a massive seismic golem forged of basalt, rusted iron, and a geothermal core piston. Dungeons feature sequential hazard rooms, Break Gauges, multi-phase boss telegraphs, and hidden loot caches.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 19,
+      "position": 0,
+      "disable": false
+    },
+    "5": {
+      "comment": "Ruin: Van Nest Gap Tunnel (Oxford Tunnel)",
+      "key": [
+        "Van Nest Gap Tunnel",
+        "Oxford Tunnel",
+        "Van Nest Tunnel"
+      ],
+      "secondary_keys": [
+        "tunnel",
+        "tracks",
+        "bore"
+      ],
+      "content": "[Location: Van Nest Gap Tunnel (Oxford Tunnel)]\n- Coordinate: 40.8026° N, 74.9940° W | Warren County, NJ (DL&W RR 1862).\n- Structure: 3,002 ft (915 m) double-track bore cut through 350 ft solid ridge overburden.\n- Hazard/State: Flooded rail ballast, collapsed timber staging, intermittent aether-discharge.\n- Gameplay: Dark subterranean conduit bypassing surface checkpoints; high chance of acoustic stalker ambushes. Acoustic echoes require silent movement checks (DEX DC 14).",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 170,
+      "position": 0,
+      "disable": false
+    },
+    "6": {
+      "comment": "Ruin: Musconetcong Tunnel (Pattenburg Bores)",
+      "key": [
+        "Musconetcong Tunnel",
+        "Pattenburg Tunnel",
+        "Musconetcong Bores"
+      ],
+      "secondary_keys": [
+        "tunnel",
+        "mountain",
+        "twin"
+      ],
+      "content": "[Location: Musconetcong Tunnel (Pattenburg Twin Bores)]\n- Coordinate: 40.6611° N, 75.0358° W | Hunterdon County, NJ (LVRR 1875).\n- Structure: 4,893 ft (0.93 mi) twin parallel bores cutting 400+ ft through Jugtown Mountain (Longest tunnel in NJ).\n- Environment: Stagnant waist-deep sulfurous runoff, calcified stalactites, rusted locomotive skeletons.\n- Threats: Nocturnal Crawler swarms nesting in ceiling vents; anti-crystal dampening pocket midway through the western bore.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 180,
+      "position": 0,
+      "disable": false
+    },
+    "7": {
+      "comment": "Ruin: Manunka Chunk Twin Tunnels",
+      "key": [
+        "Manunka Chunk",
+        "Manunka Chunk Tunnels",
+        "Delaware Ridge Tunnels"
+      ],
+      "secondary_keys": [
+        "tunnel",
+        "river",
+        "bore"
+      ],
+      "content": "[Location: Manunka Chunk Twin Tunnels]\n- Coordinate: 40.8586° N, 75.0756° W | Warren County near Delaware Water Gap.\n- Structure: Dual 938 ft (286 m) stone-arched railroad bores bored in 1856 and 1869 through 180 ft gneiss ridge.\n- Strategic Value: Chokepoint between eastern baronies and Pennsylvania border zones. Controlled intermittently by independent scavenger crews utilizing heavy highway tripwires.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 190,
+      "position": 0,
+      "disable": false
+    },
+    "8": {
+      "comment": "Ruin: Roseville Tunnel & Solid Canyon Cut",
+      "key": [
+        "Roseville Tunnel",
+        "Roseville Cut",
+        "Lackawanna Cut-Off"
+      ],
+      "secondary_keys": [
+        "tunnel",
+        "canyon",
+        "cut"
+      ],
+      "content": "[Location: Roseville Tunnel & Gneiss Canyon Cut]\n- Coordinate: 40.9672° N, 74.7183° W | Sussex County, NJ.\n- Structure: 1,024 ft concrete-reinforced bore preceded by a 110 ft sheer vertical solid gneiss rock canyon.\n- Hazard: High sniper vantage points along canyon rims. Automated Cardinal sensor towers sweep the canyon floor with infrared tracking beacons.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 200,
+      "position": 0,
+      "disable": false
+    },
+    "9": {
+      "comment": "Ruin: AT&T Netcong Nuclear Bunker (Roxbury Vault)",
+      "key": [
+        "Netcong Bunker",
+        "AT&T Bunker",
+        "Roxbury Vault",
+        "Netcong Vault"
+      ],
+      "secondary_keys": [
+        "bunker",
+        "vault",
+        "nuclear",
+        "blast"
+      ],
+      "content": "[Location: AT&T Netcong Subterranean Nuclear Bunker]\n- Coordinate: 40.8920° N, 74.6850° W | Morris County, NJ.\n- Architecture: 45,000 sq ft, 2-story subterranean blast fortress carved into a solid granite hilltop. Sealed by 5-ton hydraulic blast doors.\n- Interior: Cold War routing arrays, backup generators, hermetic air-filtration bays.\n- Gameplay: Secure, high-tier bunker. Houses pristine pre-Fracture electronics, backup micro-capacitors, and uncorrupted communication terminals.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 210,
+      "position": 0,
+      "disable": false
+    },
+    "10": {
+      "comment": "Ruin: AT&T Chester Hardened Node",
+      "key": [
+        "Chester Node",
+        "AT&T Chester",
+        "Chester Cable Vault"
+      ],
+      "secondary_keys": [
+        "node",
+        "vault",
+        "cable"
+      ],
+      "content": "[Location: AT&T Chester Hardened Cable Vault Complex]\n- Coordinate: 40.7850° N, 74.6950° W | Morris County, NJ.\n- Nature: Deep subterranean junction node for the transatlantic long-lines trunk.\n- Gameplay: Key hacking terminal. Splicing into the copper/fiber bus with high INT allows eavesdropping on Cardinal System sub-routine broadcasts across adjacent sectors.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 220,
+      "position": 0,
+      "disable": false
+    },
+    "11": {
+      "comment": "Ruin: Oxford Iron Mines (Deep Labyrinth)",
+      "key": [
+        "Oxford Iron Mines",
+        "Washington Shaft",
+        "McKinley Shaft",
+        "Oxford Mines"
+      ],
+      "secondary_keys": [
+        "mine",
+        "shaft",
+        "depth",
+        "deep"
+      ],
+      "content": "[Location: Oxford Iron Mines (Washington & McKinley Complex)]\n- Coordinate: 40.7950° N, 74.9880° W | Warren County, NJ (1741-1966).\n- Depth: 2,200 to 2,700 ft vertical depth (descending over 2,000 ft BELOW sea level!).\n- Layout: 15+ working levels interconnected by winzes, stopes, and flooded haulage drifts.\n- Threats: Oxygen-starved lower levels, bio-graft raw marrow deposits, Level 30+ subterranean Abyssal entities.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 230,
+      "position": 0,
+      "disable": false
+    },
+    "12": {
+      "comment": "Ruin: Mount Hope Mine (New Leonard Shaft)",
+      "key": [
+        "Mount Hope Mine",
+        "New Leonard Shaft",
+        "Mount Hope Shaft"
+      ],
+      "secondary_keys": [
+        "mine",
+        "shaft",
+        "deepest"
+      ],
+      "content": "[Location: Mount Hope Mine (New Leonard Shaft)]\n- Coordinate: 40.9322° N, 74.5419° W | Morris County, NJ.\n- Depth: 2,694 ft sheer vertical shaft—the deepest recorded industrial shaft in the Eastern United States.\n- State: Multi-mile subterranean stopes with structural steel headframe still looming above. Rich in raw magnetic ore and resonant mana-veins.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 240,
+      "position": 0,
+      "disable": false
+    },
+    "13": {
+      "comment": "Ruin: Sterling Hill Zinc Mine & Rainbow Cavern",
+      "key": [
+        "Sterling Hill",
+        "Sterling Hill Mine",
+        "Rainbow Cavern",
+        "Franklin Zinc"
+      ],
+      "secondary_keys": [
+        "mine",
+        "zinc",
+        "cavern",
+        "fluorescent"
+      ],
+      "content": "[Location: Sterling Hill Zinc Mine & Rainbow Cavern]\n- Coordinate: 41.0822° N, 74.6053° W | Sussex County, NJ.\n- Scope: 2,675 ft deep across 25 formal levels, encompassing over 35 miles of underground tunnels.\n- Visual/Anomaly: 'Rainbow Cavern' glow—walls heavily encrusted with willemite and calcite that fluoresce intense crimson and neon-green under ultraviolet or aether-illumination.\n- Gameplay: Safe resting grottoes in glowing chambers; natural mana crystal replenishment zone.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 250,
+      "position": 0,
+      "disable": false
+    },
+    "14": {
+      "comment": "Ruin: Hibernia Mine Underground Rail",
+      "key": [
+        "Hibernia Mine",
+        "Hibernia Adit",
+        "Hibernia Rail"
+      ],
+      "secondary_keys": [
+        "mine",
+        "rail",
+        "adit"
+      ],
+      "content": "[Location: Hibernia Underground Rail & Vein]\n- Coordinate: 40.9650° N, 74.5050° W | Morris County, NJ.\n- Feature: 1.5-mile straight horizontal rail adit penetrating a 1,600 ft ore vein.\n- Tactical Use: Ideal subterranean highway for mechanized cart transport; bypasses surface weather hazards and aerial Cardinal hunter-killers.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 260,
+      "position": 0,
+      "disable": false
+    },
+    "15": {
+      "comment": "Ruin: Lost River Caverns",
+      "key": [
+        "Lost River Caverns",
+        "Lost River",
+        "Karst Caverns"
+      ],
+      "secondary_keys": [
+        "cavern",
+        "caves",
+        "river"
+      ],
+      "content": "[Location: Lost River Caverns & Subterranean River]\n- Coordinate: 40.5836° N, 75.3264° W | Northampton County, PA border.\n- Structure: Natural karst limestone solution cavern with 5 vaulted chambers and an untraced submerged river.\n- Danger: Submerged currents, blind aquatic predators, slippery crystal shelves.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 270,
+      "position": 0,
+      "disable": false
+    },
+    "16": {
+      "comment": "Ruin: Jenny Jump Caves & Fairy Hole",
+      "key": [
+        "Jenny Jump Caves",
+        "Fairy Hole",
+        "Jenny Jump Ridge"
+      ],
+      "secondary_keys": [
+        "caves",
+        "ridge",
+        "shelter"
+      ],
+      "content": "[Location: Jenny Jump Marble Caverns & Fairy Hole Shelter]\n- Coordinate: 40.9150° N, 74.9280° W | Warren County, NJ.\n- Structure: Franklin Marble karst caves and prehistoric cliff shelters along the mountain spine.\n- Strategic Value: Natural lookout commanding 20-mile visibility across the Great Meadows below. High concealment rating for stealth camping.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 280,
+      "position": 0,
+      "disable": false
+    },
+    "17": {
+      "comment": "Ruin: Picatinny Arsenal Ballistic Magazines",
+      "key": [
+        "Picatinny Arsenal",
+        "Picatinny Magazines",
+        "Arsenal Bunkers"
+      ],
+      "secondary_keys": [
+        "arsenal",
+        "magazine",
+        "ammo",
+        "bunkers"
+      ],
+      "content": "[Location: Picatinny Arsenal Subterranean Magazines]\n- Coordinate: 40.9550° N, 74.5650° W | Morris County, NJ.\n- Layout: 600+ earth-covered reinforced concrete igloos, underground testing bunkers, and subterranean ballistic tubes.\n- Loot: High-grade ordnance components, propellant powders, specialized heavy shell casings for MageTech firearms.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 290,
+      "position": 0,
+      "disable": false
+    },
+    "18": {
+      "comment": "Ruin: Merrill Creek Reservoir (Deepest in NJ)",
+      "key": [
+        "Merrill Creek Reservoir",
+        "Merrill Creek",
+        "Merrill Intake"
+      ],
+      "secondary_keys": [
+        "reservoir",
+        "water",
+        "tower",
+        "lake"
+      ],
+      "content": "[Location: Merrill Creek Reservoir & Submerged Complex]\n- Coordinate: 40.7750° N, 75.0833° W | Warren County, NJ.\n- Depth: 225 ft (68.6 m)—the deepest body of water in New Jersey (750 ft ASL).\n- Submerged Engineering: 200 ft reinforced concrete intake tower submerged beneath the surface; connects to a 3.2-mile, 96-inch concrete subterranean rock tunnel bored directly through Scott's Mountain.\n- Lore: Houses flooded Cardinal control nodes; diving gear or water-breathing bio-grafts required to reach the tunnel access hatch.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 300,
+      "position": 0,
+      "disable": false
+    },
+    "19": {
+      "comment": "Ruin: Round Valley Reservoir & Drowned McPherson",
+      "key": [
+        "Round Valley Reservoir",
+        "Round Valley",
+        "Drowned McPherson",
+        "Village of McPherson"
+      ],
+      "secondary_keys": [
+        "reservoir",
+        "drowned",
+        "village",
+        "water"
+      ],
+      "content": "[Location: Round Valley Reservoir & Drowned Village of McPherson]\n- Coordinate: 40.6130° N, 74.8350° W | Hunterdon County, NJ (55 Billion Gallons).\n- Depth: 180 ft (54.9 m).\n- Feature: Drowned 19th-century village of McPherson resting at depths of 40–180 ft: intact stone farmhouses, cellar foundations, paved roads, and well shafts.\n- Lore: Underwater dungeon; sunken chests and flooded basements contain preserved pre-war heirlooms, guarded by aquatic silt-dwellers.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 310,
+      "position": 0,
+      "disable": false
+    },
+    "20": {
+      "comment": "Ruin: Spruce Run Reservoir & Flooded Forge",
+      "key": [
+        "Spruce Run Reservoir",
+        "Spruce Run",
+        "Union Forge"
+      ],
+      "secondary_keys": [
+        "reservoir",
+        "forge",
+        "submerged"
+      ],
+      "content": "[Location: Spruce Run Reservoir & Submerged Union Forge]\n- Coordinate: 40.6720° N, 74.9380° W | Hunterdon County, NJ.\n- Depth: 73 ft (22.2 m).\n- Features: Submerged ruins of the 1760 colonial Union Forge, historic stone bridge spans, and submerged road networks.\n- Loot: Anvil stones, cold-iron scrap, high-durability forge tools.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 320,
+      "position": 0,
+      "disable": false
+    },
+    "21": {
+      "comment": "Ruin: Lake Hopatcong Submerged Dam & Steamboat Hulls",
+      "key": [
+        "Lake Hopatcong",
+        "Hopatcong Dam",
+        "Brookland Forge"
+      ],
+      "secondary_keys": [
+        "lake",
+        "steamboat",
+        "dam"
+      ],
+      "content": "[Location: Lake Hopatcong Submerged Works]\n- Coordinate: 40.9400° N, 74.6400° W | Sussex/Morris Counties (924 ft ASL).\n- Depth: 58 ft.\n- Highlights: 1750 Brookland Forge dam submerged 18 ft underwater; sunken 19th-century wooden excursion steamboat hulls and steam boilers resting on the lakebed.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 330,
+      "position": 0,
+      "disable": false
+    },
+    "22": {
+      "comment": "Ruin: Morris Canal Subterranean Turbines",
+      "key": [
+        "Morris Canal Turbines",
+        "Plane 6 West",
+        "Plane 7 West",
+        "Morris Canal"
+      ],
+      "secondary_keys": [
+        "canal",
+        "turbine",
+        "wheel"
+      ],
+      "content": "[Location: Morris Canal Underground Turbine Wheel Pits]\n- Coordinate: 40.7600° N, 74.9550° W | Near Washington Borough, NJ.\n- Engineering: Subterranean stone wheel chambers and arched tailrace discharge tunnels housing massive 200-HP Scotch reaction water turbines.\n- Strategic Value: Hidden underground shelters with natural flowing water power.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 340,
+      "position": 0,
+      "disable": false
+    },
+    "23": {
+      "comment": "Ruin: Pennsylvania Slate Belt Vertical Quarries",
+      "key": [
+        "Slate Belt Quarries",
+        "Albion Vein",
+        "Parsons Quarry",
+        "Slate Quarries"
+      ],
+      "secondary_keys": [
+        "slate",
+        "quarry",
+        "pit"
+      ],
+      "content": "[Location: Slate Belt Vertical Pit Quarries]\n- Coordinate: 40.8668° N, 75.2055° W | Northampton County, PA border.\n- Structure: Sheer, geometric vertical-walled rectangular pits dropping 300 to 450 ft straight down into crystal-clear cobalt groundwater.\n- Tactical: Treacherous drop-offs; quarry crane derricks make improvised climbing rig anchor points.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 350,
+      "position": 0,
+      "disable": false
+    },
+    "24": {
+      "comment": "Location: Yoyogi Park Safe-Zone",
+      "key": [
+        "Yoyogi Park",
+        "Yoyogi Safe Zone",
+        "The Safe-Zone: Yoyogi"
+      ],
+      "secondary_keys": [
+        "park",
+        "safe",
+        "zone"
+      ],
+      "content": "[Location: Sector 1 Safe-Zone - Yoyogi Park Overgrowth]\n- Status: Fully enforced Green-Cursor Safe Zone. Hostile entity pathing is hard-blocked at the perimeter.\n- Inhabitants: Trapped players, merchants, and a hollow-eyed NPC developer clutching a digital clipboard (Junior Environment Artist). Feeding him reveals safe passage paths through adjacent combat sectors without triggering aggro.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 360,
+      "position": 0,
+      "disable": false
+    },
+    "25": {
+      "comment": "Location: Overgrown Shibuya 104 Tower",
+      "key": [
+        "Shibuya 104",
+        "Shibuya Tower",
+        "104 Tower"
+      ],
+      "secondary_keys": [
+        "tower",
+        "shibuya",
+        "overgrown"
+      ],
+      "content": "[Location: Overgrown Shibuya 104 Tower Ruins]\n- Status: Red-Cursor Combat Zone. Reality overlay heavily fractured with wireframe artifacting.\n- Anomalies:\n  * Admin Blessing Cube: An un-textured grey cube hovering at the mid-level catwalk; inspecting it permanently increases Max HP by +100.\n  * Corrupted Console: Touching the terminal flags the player as 'INTRUDER' and summons a Level 99 System Enforcer (instant death if not fled).",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 370,
+      "position": 0,
+      "disable": false
+    },
+    "26": {
+      "comment": "Location: Corrupted Olympic Stadium (Sector 1 Boss)",
+      "key": [
+        "Olympic Stadium",
+        "Corrupted Olympic Stadium",
+        "Sector 1 Boss Arena"
+      ],
+      "secondary_keys": [
+        "stadium",
+        "boss",
+        "arena"
+      ],
+      "content": "[Location: Corrupted Olympic Stadium - Sector 1 Boss Arena]\n- Structure: Vast cracked concrete colosseum surrounded by a shimmering firewall barrier.\n- Secrets: Preserved Earth smartphone in the locker ruins containing unsent text messages from family, desperate search history ('Can NerveGear be removed safely?'), and the proprietary 'Argus Employee Tracker' app pointing toward a hidden developer bunker.\n- Boss Encounter: Guarded by the Sector 1 Floor Boss. Defeating it drops the Sector Keystone and dispels the firewall.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 380,
+      "position": 0,
+      "disable": false
+    }
+  },
+  "originalData": {
+    "name": "FR_Ruins_and_Gazetteer",
+    "scan_depth": 3,
+    "token_budget": 800,
+    "recursive_scanning": true
+  }
+}

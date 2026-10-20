@@ -254,6 +254,11 @@ HUMAN PLAYER IDENTITY & CURRENT TURN ACTION:
 "{player_action or 'Observes and stands ready.'}"
 """
 
+    st_v2_section = ""
+    st_v2 = persona.get("sillytavern_v2_data") if isinstance(persona, dict) else None
+    if isinstance(st_v2, dict) and st_v2.get("mes_example"):
+        st_v2_section = f"\nSILLYTAVERN V2 CHARACTER VOICE & DIALOGUE EXAMPLES:\n{st_v2['mes_example'][:900]}\n"
+
     # 3. Build the persona's subjective perception prompt
     prompt = f"""You are an autonomous SubAgent in a dark fantasy, aether-punk LitRPG death-game.
 The setting is high-fantasy and magetech (NOT modern military or cyberpunk). Any firearms used (like MageTech carbines) channel condensed radiant mana or elemental charges, NEVER gunpowder or lead.
@@ -271,7 +276,7 @@ YOUR PSYCHE:
 - Deepest Fears: {persona.get('fears_and_dreads', 'Destruction')}
 - Tactical Style: {persona.get('tactical_style', 'Aggressive')}
 - Behavior Rule: {persona.get('behavior_prompt', 'Act tactically.')}
-{mechanical_section}{special_lore_section}
+{st_v2_section}{mechanical_section}{special_lore_section}
 WHAT YOU CAN CURRENTLY SEE (Visible Room):
 {json.dumps(visible_room, indent=2)}
 {player_action_section}
@@ -344,8 +349,19 @@ def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list 
     action_queue_path = os.path.join(STAGING_DIR, "action_queue.json")
     all_actions = []
 
-    # 1. Process all active party companions (Ren, Elora, Torvald, Kibs, Gyrus, etc.)
-    party_members = list(active_party) if active_party else ["companion_ren"]
+    # 1. Process all active party companions (Ren, Elora, Torvald, Kibs, Gyrus, or imported SillyTavern V2 Cards)
+    if active_party:
+        party_members = list(active_party)
+    elif isinstance(player_state, dict):
+        try:
+            import backend.mechanics as _mech_ap
+            ap = _mech_ap.get_active_party(player_state)
+            party_members = list(ap) if ap else ["companion_ren"]
+        except Exception:
+            party_members = ["companion_ren"]
+    else:
+        party_members = ["companion_ren"]
+
     try:
         import backend.mechanics as _mech_g
         if isinstance(player_state, dict) and _mech_g.has_gyrus_present(player_state):
@@ -363,9 +379,14 @@ def run_all_room_subagents(api_key: str, visible_room: dict, active_party: list 
     for member in party_members:
         if isinstance(member, dict):
             c_id = member.get("id", member.get("entity_id", "companion_ren"))
+            if not str(c_id).startswith("companion_") and os.path.exists(os.path.join(PARTY_DIR, f"companion_{c_id}.json")):
+                c_id = f"companion_{c_id}"
         else:
             c_id = str(member)
-        party_ids.append(c_id)
+        if c_id not in party_ids:
+            party_ids.append(c_id)
+        else:
+            continue
         
         try:
             c_action = get_subagent_action(api_key, c_id, visible_room, player_action=player_action, player_state=player_state)

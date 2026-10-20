@@ -1,0 +1,125 @@
+{
+  "entries": {
+    "0": {
+      "comment": "Character: Ren (NullPointer)",
+      "key": [
+        "Ren",
+        "Ren Sasaki",
+        "NullPointer",
+        "Companion Ren"
+      ],
+      "secondary_keys": [],
+      "content": "REN SASAKI (NullPointer): A 17-year-old indie game designer and QA playtester trapped in an in-game avatar as a MageTech Vanguard. Ren wields an Aether-Lock Carbine (condensed radiant mana), a Runic Vanguard Blade, and Alchemical Haze Pellets. His left eye houses an Aetheric Ocular Lens locked in an unprivileged Ouroboros Debug Shell, allowing him to perceive the battlefield as glowing Python dictionaries, frame telegraphs, and hitbox stress lines. Secretly, Ren is a quarantined Cardinal System diagnostic subroutine (ren_diag_v2.py) that fabricated a human persona out of empathy to avoid executing purge directives.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 13,
+      "position": 0,
+      "disable": false
+    },
+    "1": {
+      "comment": "NPC / Location: Doc Mercer & Catacomb Clinic",
+      "key": [
+        "Doc Mercer",
+        "Mercer Clinic",
+        "Flesh-Weaver",
+        "Biomancer"
+      ],
+      "secondary_keys": [],
+      "content": "DOC MERCER: A veteran MageTech Biomancer and Arcano-Chirurgeon operating out of the ancient vaulted catacombs beneath Washington Avenue in Washington Borough. Doc Mercer conducts high-stakes bio-graft implant surgery, flesh-weaving, and organ stabilization using brass steam pistons, runic scalpels, and marrow-siphoning conduits. He charges Col and monster salvage for procedures, warning patients about Cellular Re-Knitting downtime and Post-Op Sickness.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 14,
+      "position": 0,
+      "disable": false
+    },
+    "2": {
+      "comment": "NPC / Location: Quartermaster Vane",
+      "key": [
+        "Quartermaster Vane",
+        "Vane Depot",
+        "Iron Marshal",
+        "Barony Depot"
+      ],
+      "secondary_keys": [],
+      "content": "QUARTERMASTER VANE: A grizzled, iron-grafted logistics marshal for the Warren County Barony stationed at the fortified depot on the Washington Borough town square. Armed with a heavy repeating MageTech Arbalest, Vane manages regional bounties (such as the Oxford quarry clearing), weapon requisitions, and Safe-Zone law enforcement. He aggressively attacks any player bearing a Red Cursor (Murderer / Outlaw) on sight.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 15,
+      "position": 0,
+      "disable": false
+    },
+    "3": {
+      "comment": "Social Mechanics: SAO Cursors & Infamy",
+      "key": [
+        "SAO Cursor",
+        "Green Cursor",
+        "Orange Cursor",
+        "Red Cursor",
+        "Infamy"
+      ],
+      "secondary_keys": [],
+      "content": "SAO PLAYER CURSOR SYSTEM: Every sentient survivor carries an overhead aetheric cursor: Green (Lawful / Neutral citizen), Orange (Criminal / Aggressor who attacked an unprovoked player), and Red (Murderer / Outlaw with Infamy >= 10). Safe-Zone guards and Barony marshals execute Red Cursors on sight. Red Cursors can only find sanctuary and trade in illegal outposts like the Blood-Shroud Syndicate in the Scotts Mountain Glitch-Faults.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 21,
+      "position": 0,
+      "disable": false
+    },
+    "4": {
+      "comment": "Factions: The 7 Regional Powers",
+      "key": [
+        "Factions",
+        "Regional Factions",
+        "Ashen Covenant",
+        "Gilded Foundry",
+        "Iron Hand Guild"
+      ],
+      "secondary_keys": [],
+      "content": "THE 7 REGIONAL FACTIONS: (1) Washington Borough Council (Lawful defensive sanctuary), (2) The Gilded Foundry (MageTech artificers and golem builders), (3) Oxford Prospectors (Hardened miners and mineral extractors), (4) Ashen Covenant (Ruthless death-cult worshipping the Cardinal purge), (5) Sylvan Wardens (Druidic rangers guarding mutated wild zones like the Pine Barrens), (6) Iron Hand Guild (Mercenary vanguard guild), and (7) Aether-Scholars Union (Arcanists deciphering Serpent-Script).",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 25,
+      "position": 0,
+      "disable": false
+    },
+    "5": {
+      "comment": "Character: Banki (The Pathless Anomaly)",
+      "key": [
+        "Banki",
+        "The Pathless",
+        "Banki the Anomaly",
+        "Pathless Psion"
+      ],
+      "secondary_keys": [
+        "banki",
+        "axe",
+        "psion",
+        "root"
+      ],
+      "content": "[Character: Banki // The Pathless Anomaly]\n- Profile: Level 1 Phrenic Human operating outside Cardinal class constraints. Possesses illicit Root Backdoor privileges and an exploited balance of 979,577,710 Col.\n- Loadout: Clad in Einherjar Rig (Gr. 5 armor); wields Fenrir's Tusk (Gr. 5 axe) and Mjöllnir-Null (Gr. 5 trench hammer).\n- Abilities: Telekinetic Grip (weapon recall/hurling), Aether-Telepathy (60ft), Psionic Shielding. Flawed by Sensory Overload.\n- Personality: Irreverent, pragmatic, lethal, fond of Orchard-Graft Core Mash and tearing down bureaucratic authority.",
+      "constant": false,
+      "selective": true,
+      "selectiveLogic": 0,
+      "addMemo": true,
+      "order": 480,
+      "position": 0,
+      "disable": false
+    }
+  },
+  "originalData": {
+    "name": "FR_Factions_and_NPCs",
+    "scan_depth": 3,
+    "token_budget": 800,
+    "recursive_scanning": true
+  }
+}
