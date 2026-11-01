@@ -13,3 +13,7 @@ app.py.bak
 .agents/
 out.txt
 upload_log.txt
+*.tar.gz
+*.zip
+.system_generated/
+scratch/
